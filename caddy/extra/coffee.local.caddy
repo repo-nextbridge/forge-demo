@@ -39,6 +39,42 @@
 # ⚠️ THE ID IS THIS BOX'S AND CHANGES IF THE INSTANCE IS RE-PROVISIONED. `bash bin/seed.mjs` prints it, and
 # `read.stores` on the internal face lists it. If the coffee shop ever comes up wearing the vanilla design,
 # this line is the first thing to check — that is the symptom of a stale id, and it is silent.
+# ⚠️⚠️⚠️ THE CHECKOUT'S PATHS UNDER THIS STORE ARE CEDED BACK, AND THIS BLOCK IS NOT OPTIONAL.
+#
+# The wildcard below does not match only the vitrine: `/s/<store>*` also covers `/s/<store>/checkout` and
+# `/s/<store>/account`, which belong to the CHECKOUT container. `Caddyfile.local` already routes those with
+# `handle /s/*/checkout*` — but this file's pattern carries a long literal store id, so it is the more
+# SPECIFIC of the two and it wins. Measured: `/s/<cafe>/checkout` came back 404 through the edge while the
+# checkout container answered 200 to the same path directly.
+#
+# ⚠️ DO NOT "SIMPLIFY" THIS BACK TO ONE WILDCARD. That is the whole warning: the shop's "Finalizar compra"
+# then leads to this container's 404, and — as the header of `Caddyfile.local` puts it three lines above its
+# own version of these routes — *a shop whose "Finalizar compra" leads to the vitrine's 404 is the same
+# defect the front split exists to prevent, one layer out*. The two fronts share a hostname precisely so a
+# shopper can cross between them carrying their cart cookie; a matcher that swallows the crossing undoes it.
+#
+# Both spellings of the store are listed for the same reason both are routed below.
+# ⚠️ ONE BLOCK PER PATH, and not one block listing four: `handle` takes a SINGLE matcher token, and a list
+# is a parse error — which does not degrade this store, it takes the WHOLE EDGE DOWN (measured: every host
+# on the box answered nothing at all until this file parsed again). A named matcher would compile, but a
+# `handle` with one has no path for Caddy to sort by, and sorting is exactly what makes these win over the
+# wildcard below.
+handle /s/sto_01M1DE555TJ36TQB6E9PR5VSJ4/checkout* {
+	reverse_proxy checkout:3000
+}
+
+handle /s/sto_01M1DE555TJ36TQB6E9PR5VSJ4/account* {
+	reverse_proxy checkout:3000
+}
+
+handle /s/cafe/checkout* {
+	reverse_proxy checkout:3000
+}
+
+handle /s/cafe/account* {
+	reverse_proxy checkout:3000
+}
+
 handle /s/sto_01M1DE555TJ36TQB6E9PR5VSJ4* {
 	reverse_proxy storefront-coffee:3000
 }
