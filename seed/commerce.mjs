@@ -267,6 +267,23 @@ export function storesWithReviews(stores) {
  */
 const REQUIRED_APPS = ['reviews'];
 
+/**
+ * ⛔ "IS THIS APP INSTALLED?" — ONE HELPER, BECAUSE THE OBVIOUS READ IS THE WRONG ONE.
+ *
+ * `read.extensions` takes a STORE and lists the apps with a block PLACEMENT there. It is not the
+ * installation list, and a store can have an app installed and working and still answer `[]` — measured in
+ * the totem wave and written up as a finding. `read.installed_extensions` is the tenant's installations,
+ * with no store parameter, and it is the question being asked here.
+ *
+ * ⚠️ THIS FILE FELL INTO THAT EXACT TRAP ANYWAY, hours after writing it down. A finding in a report protects
+ * whoever reads the report; it does not protect the person who wrote it. So the question lives in one
+ * function with the right read inside it, and `commerce.test.mjs` refuses a module that asks the other one.
+ */
+export async function appsNotInstalled(read, ids) {
+  const installed = (await read('internal/installed_extensions')) ?? [];
+  return ids.filter((id) => !installed.some((e) => e.extension_id === id && e.status === 'active'));
+}
+
 /** An app action on the tenant face. ⚠️ The tenant is the CREDENTIAL's — `tenant_id` in the body is ignored
  * by construction (action-adapter.ts), which is the write side of the same rule `assertCredentialTenant`
  * exists for on the read side. */
@@ -294,14 +311,7 @@ export async function seedCommerce({ stores, command, read, log, fail, post }) {
   );
   log(`commerce — credential proven in the tenant holding ${visible.map((s) => s.handle).join(', ')}`);
 
-  // ⚠️ `installed_extensions`, NOT `extensions` — and this file fell into its own finding. `read.extensions`
-  // takes a STORE and lists apps with a block PLACEMENT there; `read.installed_extensions` is the tenant's
-  // installations, which is the question being asked. The first draft used the former, got a 400 for a
-  // missing `store`, and would otherwise have reported a perfectly installed app as absent.
-  const installed = (await read('internal/installed_extensions')) ?? [];
-  const absent = REQUIRED_APPS.filter(
-    (id) => !installed.some((e) => e.extension_id === id && e.status === 'active'),
-  );
+  const absent = await appsNotInstalled(read, REQUIRED_APPS);
   if (absent.length)
     fail(
       `commerce needs ${absent.join(', ')} installed and this slice does not install apps — the filler does. ` +

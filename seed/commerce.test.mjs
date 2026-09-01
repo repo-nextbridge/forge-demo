@@ -13,10 +13,12 @@
 //   · the counter re-armed with buyer mail — a totem that e-mails, when the number is called at the counter.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   BUYER_ORDER_TYPES,
   SILENT_STORE_HANDLES,
+  appsNotInstalled,
   assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
@@ -213,4 +215,39 @@ test('★ a store nobody decided about is a REFUSAL, never a default', () => {
 
 test('every store of the target topology has an explicit decision', () => {
   for (const s of STORES) assert.ok(reviewDoorFor(s.handle));
+});
+
+// ── ⛔ THE FINDING THAT DID NOT PROTECT ITS OWN AUTHOR ───────────────────────────────────────────────────
+//
+// `read.extensions` takes a STORE and lists block PLACEMENTS; `read.installed_extensions` is the tenant's
+// installations. This module wrote that distinction down as a finding in an earlier slice and then used the
+// wrong one anyway. A note in a report protects the reader, not the writer — so this is a guard.
+test('★ "is it installed?" asks installed_extensions, never the placement read', async () => {
+  const asked = [];
+  const read = async (name) => {
+    asked.push(name);
+    return [{ extension_id: 'reviews', status: 'active' }];
+  };
+  assert.deepEqual(await appsNotInstalled(read, ['reviews']), []);
+  assert.deepEqual(asked, ['internal/installed_extensions']);
+});
+
+test('it reports an app that is present but NOT active as absent', async () => {
+  const read = async () => [{ extension_id: 'reviews', status: 'suspended' }];
+  assert.deepEqual(await appsNotInstalled(read, ['reviews']), ['reviews']);
+});
+
+test('an unreadable answer is "absent", never a silent pass', async () => {
+  const read = async () => null;
+  assert.deepEqual(await appsNotInstalled(read, ['reviews']), ['reviews']);
+});
+
+test('★ and no line of the module asks the placement read for this question', () => {
+  const src = readFileSync(new URL('./commerce.mjs', import.meta.url), 'utf8');
+  const placementReads = [...src.matchAll(/read\(\s*'internal\/extensions'/g)];
+  assert.equal(
+    placementReads.length,
+    0,
+    "read('internal/extensions') is the per-STORE placement list — use appsNotInstalled()",
+  );
 });
