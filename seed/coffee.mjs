@@ -93,7 +93,7 @@ export async function seedCoffee(port) {
   log(`coffee — store ${store.handle} (${store.id}), theme "${store.theme_key ?? 'vanilla'}"`);
 
   await installApps(port);
-  await markSubscribable(port);
+  await markSubscribable(port, store);
   await subscriberPromotion(port, store);
 
   log('coffee — done. Re-running this is a no-op.');
@@ -127,7 +127,7 @@ async function installApps({ command, read, rows, log }) {
  * because "nothing there today" is a fact about this afternoon and the destructive version of this line
  * would be found by a merchant, later, missing a field they typed.
  */
-async function markSubscribable({ command, read, rows, log }) {
+async function markSubscribable({ command, read, rows, log }, store) {
   const wanted = new Set(SUBSCRIBABLE_HANDLES);
   const known = new Set(catalog.products.map((p) => p.handle));
   const orphans = [...wanted].filter((handle) => !known.has(handle));
@@ -141,7 +141,10 @@ async function markSubscribable({ command, read, rows, log }) {
 
   let marked = 0;
   let already = 0;
-  for (const product of rows(await read('products', { limit: '100' }))) {
+  // ⚠️ `store` IS REQUIRED BY THIS READ even though the internal face answers the whole TENANT catalogue
+  // regardless of it (measured by D1, and the note is in bin/seed.mjs). Omitting it is a refusal, not a
+  // wider answer — so it is passed, and the filtering this loop does is by handle rather than by trusting it.
+  for (const product of rows(await read('products', { store: store.id, limit: '100' }))) {
     if (!wanted.has(product.handle)) continue;
     for (const sku of product.skus ?? []) {
       const bag = sku.metadata && typeof sku.metadata === 'object' ? sku.metadata : {};
@@ -177,7 +180,7 @@ async function markSubscribable({ command, read, rows, log }) {
  * discount would be a promotion the other two shops never asked for.
  */
 async function subscriberPromotion({ command, read, rows, log }, store) {
-  const existing = rows(await read('promotions', { limit: '100' })).find(
+  const existing = rows(await read('promotions_admin', { limit: '100' })).find(
     (p) => p.name === PROMOTION_NAME,
   );
   if (existing) {

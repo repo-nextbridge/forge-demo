@@ -19,6 +19,30 @@
 #   · `/checkout*`, `/account*`, `/_checkout/*`, `/apps/*` — the CHECKOUT's, and more specific than this
 #     block, so they already win. Written down anyway because "why does the coffee checkout look like the
 #     vanilla one" has exactly one right answer: it is supposed to. It wears the THEME, not the fork.
+# ⚠️⚠️ TWO MATCHERS, AND THE REASON IS A DEFECT THIS BOX HAS TODAY — not a preference.
+#
+# A store's WORKING address here is `/s/<store id>`. The pretty `/s/<handle>` answers 200 with a whole page
+# and NO STORE: every public read takes an id and refuses a handle (measured — `products`, `categories` and
+# `store_flags` all 404 on `?store=outlet`), so the front degrades to its neutral title and an empty
+# catalogue. That is true of all three shops on this box, it is not this slice's, and it has a card of its
+# own (opened by C2, corroborated by D2 and reached a third time from here).
+#
+# So BOTH are pointed at this container, and each for its own reason:
+#
+#   · the ID is the address that WORKS, and it has to be here or `/s/<the coffee id>` would fall through to
+#     the REFERENCE vitrine — the coffee shop rendered in the vanilla design, which is worse than a 404
+#     because it looks like a decision;
+#   · the HANDLE is the address humans type and the README used to promise. Pointed here it degrades exactly
+#     the way the other two shops degrade, which is the honest behaviour: one defect, one shape, everywhere.
+#     The day the handle card lands, this line starts working with no edit.
+#
+# ⚠️ THE ID IS THIS BOX'S AND CHANGES IF THE INSTANCE IS RE-PROVISIONED. `bash bin/seed.mjs` prints it, and
+# `read.stores` on the internal face lists it. If the coffee shop ever comes up wearing the vanilla design,
+# this line is the first thing to check — that is the symptom of a stale id, and it is silent.
+handle /s/sto_01M1DE555TJ36TQB6E9PR5VSJ4* {
+	reverse_proxy storefront-coffee:3000
+}
+
 handle /s/cafe* {
 	reverse_proxy storefront-coffee:3000
 }

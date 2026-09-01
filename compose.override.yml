@@ -22,6 +22,10 @@
 
 services:
   storefront-coffee:
+    # ★ NAMED EXPLICITLY, so the image `bin/build-coffee.sh` produces and the one compose starts are the same
+    # thing under the same tag. Without it compose invents a project-scoped name, and the build script would
+    # have to guess it — a guess that breaks the day somebody runs compose with `-p`.
+    image: forge-demo-storefront-coffee:local
     build:
       context: ./storefront-coffee
     restart: unless-stopped

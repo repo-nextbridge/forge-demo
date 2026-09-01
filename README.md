@@ -25,7 +25,7 @@ apps/                  the apps THIS box wrote. `demo-gate` today.
 extensions/            GENERATED from apps/ by bin/pack-apps.sh — the packed form the kernel actually loads.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
 seed/                  the birth data: the stores, the coffee catalogue, the photos.
-bin/                   build-local · pack-apps · images-from-lock · verify-composition · seed
+bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
 ```
 
@@ -78,6 +78,7 @@ printf 'forge-vault-key=%s\n'         "$(openssl rand -base64 32)" >> .secrets
 
 bash bin/build-local.sh ~/path/to/forge     # PRE-RELEASE ONLY — builds the four images, writes forge.lock
 bash bin/pack-apps.sh   ~/path/to/forge     # apps/ → extensions/ (the form the kernel loads)
+bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's own front, built not pinned
 
 source ./env-source.sh
 source bin/images-from-lock.sh

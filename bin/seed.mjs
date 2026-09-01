@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 // The OUTLET store's own content (D2) — a module of its own, handed the port this file already built.
 // It lives beside the data it drives rather than in here, so two slices can fill two stores without
 // meeting in one file.
+import { seedCoffee } from '../seed/coffee.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -504,6 +505,9 @@ await publish();
 await stock();
 // The OUTLET store, which shares only the stores and the field declarations with everything above it.
 await seedOutlet({ api, token, tenant, command, read, rows, log, fail });
+// The COFFEE store's own half: the subscription mark on the SKUs the merchant curated, and the promotion
+// that prices it. Same shape as the Outlet's — one store, one file, the seed keeps deciding the order.
+await seedCoffee({ api, token, tenant, command, read, rows, log, fail });
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +
