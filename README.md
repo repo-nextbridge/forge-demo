@@ -21,8 +21,9 @@ forge.lock             the pin: which Forge this box runs, by digest, and where 
 composition.json       WHICH APPS the images compose. An instance's answer, not the product's.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
-apps/                  the apps THIS box wrote. `demo-gate` today.
-extensions/            GENERATED from apps/ by bin/pack-apps.sh — the packed form the kernel actually loads.
+apps/                  the apps THIS box wrote. `demo-gate` today; composed into the images (see §4).
+extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
+                       composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
 seed/                  the birth data: the stores, the coffee catalogue, the photos.
 bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
@@ -192,24 +193,36 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
 
 ---
 
-## ⚠️ 4. What the gate does, and what it does not do yet
+## 4. The gate — this box's own app, with a screen
 
-`demo-gate` is this box's own app — the first one, and the reason the species exists. It loads from
-`extensions/`, appears in the admin's Apps area, installs, and fills `storefront:gate`. All of that works
-and is measured (`/health` reports `"loaded": 1`).
+`demo-gate` is this box's own app: the first one, and the reason the species exists. It fills
+`storefront:gate` with the full-screen "Demo store" interstitial and the ribbon under it, and it renders on
+**the reference storefront — the one the Outlet runs unforked.**
 
-**Its screen does not render, and that is a property of the platform's model rather than a missing value
-here.** The front half of a hook resolves through a **static registry compiled into the front's build** —
-`packages/storefront-kit/src/gate/registry.tsx` for gates, the block registry beside it for blocks — and
-both are generated from the **composition list**. An app that belongs to ONE box can never be on a
-composition list: the oven refuses it at `docker build`, by name, with `not-carried` (it does not live in
-the Forge monorepo) or `not-offered` (a release does not hand one box's app to another).
+**That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
+ONE box could not be on a composition list at all, and both front registries are built from that list — so
+this app could load, install and fill its slot in the data, and show nothing. The Outlet had no gate. The
+refusal that caused it was wider than its own reason ("does not offer it to ANOTHER box" — and the box that
+OWNS the app is not another box), and P1 split it into two axes: the platform's OFFER stays exactly as shut,
+the instance's own LIST opens.
 
-So an instance-owned app can declare a screen, install, and fill its slot in the data — and show nothing,
-until its owner builds its own front. **The Outlet store therefore has no gate screen**, because the Outlet
-deliberately runs the reference vitrine; the coffee store will have one once it forks (slice C1).
+**How it reaches the image now.** It is on `instanceApps` in `composition.json`, NOT on `apps` — the second
+list is what the platform offers and this box chose, the first is what this repository wrote.
+`bin/build-local.sh` copies it into the Forge build context and the oven adopts it: it checks the app declares
+`forge.origin: "instance"`, composes it like any other app, and links its dependencies from what the image
+already carries. **No install runs and no lockfile line moves.**
 
-This is reported upstream with the measurement. Nothing here works around it.
+⚠️ **It is no longer mounted through `FORGE_EXTENSIONS_DIR`, and it must never be both.** A composed app is
+already in the image; mounting the same id on top of it is a duplicate the kernel refuses at boot. The mount
+seam is still there for an app of ACTIONS ONLY, which needs no rebuild.
+
+⚠️ **The images this box builds are stamped NOT OFFERABLE, on purpose.** An image carrying one customer's app
+may never be promoted as a Forge release artifact — `forge.lock` says so in `offerable`, and Forge's own
+release gate refuses it. This is a property of what this box asked for, not a defect.
+
+⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URL` are now read by the FRONTS, not by the kernel.** The gate's
+entry is a Server Component in the storefront and the checkout, so its wiring lives where the component runs
+(`compose.yml` sets both on those two services). They never reach the browser.
 
 ---
 

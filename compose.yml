@@ -91,18 +91,18 @@ services:
       FORGE_REF_STORE_NAME: ${FORGE_REF_STORE_NAME:-}
       FORGE_ADMIN_SEED_EMAIL: ${FORGE_ADMIN_SEED_EMAIL:-}
       FORGE_ADMIN_SEED_NAME: ${FORGE_ADMIN_SEED_NAME:-}
-      # OUR extensions — the apps this instance owns. `demo-gate` is the only one, and it is here rather than
-      # on `composition.json` because an app of ONE box is MOUNTED, never composed into an image.
+      # ★★ THE MOUNT FOR AN APP THIS BOX WANTS WITHOUT REBUILDING (FORGE_EXTENSIONS_DIR). It is EMPTY today and
+      # that is the state, not an omission: `demo-gate` used to arrive this way and is now COMPOSED into the
+      # images (`instanceApps` in composition.json), which is what gives it a screen — a mounted app reaches
+      # the kernel and renders nothing, because a front draws an app only from the composition. The two must
+      # never both carry the same app: a composed id mounted on top of itself is a duplicate the kernel
+      # refuses at boot. The seam stays because a box may still want an app of ACTIONS ONLY, with no rebuild.
       FORGE_EXTENSIONS_DIR: ${FORGE_EXTENSIONS_DIR:-}
       # Busting the storefront's cache when something a shopper can see changes. Both are needed.
       FORGE_STOREFRONT_URL: ${FORGE_STOREFRONT_URL:-http://storefront:3000}
       FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
       FORGE_RATE_LIMIT_PER_CREDENTIAL: ${FORGE_RATE_LIMIT_PER_CREDENTIAL:-}
       FORGE_RATE_LIMIT_WINDOW_SECONDS: ${FORGE_RATE_LIMIT_WINDOW_SECONDS:-}
-      # The gate app's own wiring, read when its block renders. Both optional: with no admin URL the gate
-      # simply does not offer the admin door.
-      FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
-      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
     volumes:
       # Our extensions, read-only: the kernel loads this code, it never writes it.
       - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
@@ -117,6 +117,15 @@ services:
     image: ${FORGE_STOREFRONT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
+      # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
+      #
+      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`
+      # was only MOUNTED, the kernel was the only process that had the app at all — and the app had no screen.
+      # Now it is COMPOSED into the fronts, so `gateWiring()` runs in THIS process, inside a Server Component,
+      # and these variables have to be where the component is. They never reach the browser: the entry resolves
+      # them and hands the values down as props.
+      FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
       NODE_ENV: production
       PORT: 3000
       FORGE_READ_BASE_URL: http://kernel:3000
@@ -156,6 +165,15 @@ services:
     image: ${FORGE_CHECKOUT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
+      # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
+      #
+      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`
+      # was only MOUNTED, the kernel was the only process that had the app at all — and the app had no screen.
+      # Now it is COMPOSED into the fronts, so `gateWiring()` runs in THIS process, inside a Server Component,
+      # and these variables have to be where the component is. They never reach the browser: the entry resolves
+      # them and hands the values down as props.
+      FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
       NODE_ENV: production
       PORT: 3000
       FORGE_READ_BASE_URL: http://kernel:3000

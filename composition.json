@@ -22,9 +22,22 @@
     "                         never be paid for is not a store.",
     "  · payment-mercadopago — the provider the demo actually shows a visitor.",
     "",
-    "WHAT IS NOT HERE AND STILL RUNS: `demo-gate`. An app that belongs to ONE box is never COMPOSED into an",
-    "image — it is MOUNTED, from `./extensions`, through FORGE_EXTENSIONS_DIR. It appears in `forge.lock`",
-    "under `extensions`, next to nothing else, because it is the only app this instance wrote for itself.",
+    "★★ `demo-gate` IS COMPOSED NOW, AND IT IS ON `instanceApps` RATHER THAN ON `apps` — the two lists are two",
+    "different questions and the split is the whole point. `apps` names what the PLATFORM offers and this box",
+    "chose; it is the list `infra/fleet/lists/demo-instance.json` in the monorepo mirrors, and it is the list",
+    "the fleet oven can bake there because every entry is an app that release carries. `instanceApps` names what",
+    "THIS REPOSITORY WROTE — code no release of ours has ever seen — and it reaches the bake by being copied",
+    "into the build context (`bin/build-local.sh` stages it; the oven adopts it with --instance-apps).",
+    "",
+    "⚠️ AND THE IMAGE THAT COMES OUT IS NOT OFFERABLE, BY CONSTRUCTION. The oven stamps it, and the platform's",
+    "release gate refuses to promote such an image. That is correct and it is not a limitation of this box: an",
+    "image carrying OUR app must never be handed to anybody else. See `docs/concepts/instance-owned-apps.md`",
+    "in the monorepo.",
+    "",
+    "⚠️ IT IS NO LONGER MOUNTED THROUGH FORGE_EXTENSIONS_DIR, and it must not be BOTH. A composed app is already",
+    "in the image; mounting the same id on top of it is a duplicate the kernel refuses at boot. Composing is the",
+    "better half: mounting gave this box the KERNEL side of the app (manifest, install, actions) and no screen at",
+    "all, because a front renders an app only from the composition. That is exactly what P1 fixed upstream.",
     "",
     "⚠️ THE COPY IN THE MONOREPO. `infra/fleet/lists/demo-instance.json` over there is this list, so the",
     "`fleet-oven` job can bake `release × THIS list` before a release is offered. Nothing mechanical keeps",
@@ -34,12 +47,41 @@
   ],
   "version": 1,
   "apps": [
-    { "id": "banners", "package": "@forgecommerce/ext-banners" },
-    { "id": "shelves", "package": "@forgecommerce/ext-shelves" },
-    { "id": "reviews", "package": "@forgecommerce/ext-reviews" },
-    { "id": "recommendations", "package": "@forgecommerce/ext-recommendations" },
-    { "id": "subscriptions", "package": "@forgecommerce/ext-subscriptions" },
-    { "id": "payment-reference", "package": "@forgecommerce/ext-payment-reference" },
-    { "id": "payment-mercadopago", "package": "@forgecommerce/ext-payment-mercadopago" }
+    {
+      "id": "banners",
+      "package": "@forgecommerce/ext-banners"
+    },
+    {
+      "id": "shelves",
+      "package": "@forgecommerce/ext-shelves"
+    },
+    {
+      "id": "reviews",
+      "package": "@forgecommerce/ext-reviews"
+    },
+    {
+      "id": "recommendations",
+      "package": "@forgecommerce/ext-recommendations"
+    },
+    {
+      "id": "subscriptions",
+      "package": "@forgecommerce/ext-subscriptions"
+    },
+    {
+      "id": "payment-reference",
+      "package": "@forgecommerce/ext-payment-reference"
+    },
+    {
+      "id": "payment-mercadopago",
+      "package": "@forgecommerce/ext-payment-mercadopago"
+    }
+  ],
+  "instanceApps": [
+    {
+      "id": "demo-gate",
+      "package": "@forge/ext-demo-gate",
+      "source": "./apps/demo-gate",
+      "why": "the demo's own gate: the full-screen 'Demo store' interstitial and the ribbon under it. Composed, not mounted, since Forge P1 — which is what gives it a screen on the reference storefront the Outlet runs."
+    }
   ]
 }

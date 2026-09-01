@@ -65,6 +65,51 @@ if [ "$mine" != "$theirs" ]; then
   exit 1
 fi
 
+# ★★ THE APPS THIS REPOSITORY WROTE, HANDED TO THE OVEN (Forge P1).
+#
+# `composition.json` has two lists and they answer two different questions. `apps` is what the PLATFORM offers
+# and this box chose — that is the list the monorepo mirrors and the fleet oven bakes over there. `instanceApps`
+# is OUR OWN CODE, which no release of theirs has ever seen; it cannot be on the mirrored list, and the check
+# above deliberately compares only `apps`.
+#
+# It reaches the bake by being COPIED INTO THE BUILD CONTEXT, because `docker build` cannot see a path outside
+# it. `.instance-apps/` in the Forge checkout is the landing strip (gitignored there, and NOT in
+# `.dockerignore` — being in the context is its whole reason to exist), and the oven adopts what it finds with
+# `--instance-apps`: it checks each app declares `forge.origin: "instance"`, copies it under `extensions/`,
+# takes it OUT of the pnpm workspace so no install is triggered, and links its dependencies from what the image
+# already carries. No resolver runs and `pnpm install --frozen-lockfile` upstream stays frozen.
+#
+# ⚠️ THE IMAGE THAT COMES OUT IS STAMPED NOT-OFFERABLE, and that is the point rather than a side effect: an
+# image carrying one box's app may never be promoted as a Forge release artifact.
+staging="$forge/.instance-apps"
+rm -rf "$staging"
+mkdir -p "$staging"
+instance_count="$(jq '.instanceApps | length' "$here/composition.json")"
+if [ "$instance_count" -gt 0 ]; then
+  while read -r src; do
+    [ -d "$here/$src" ] || {
+      echo "[build-local] composition.json names an instance app at '$src', which is not a directory here." >&2
+      exit 1
+    }
+    # `node_modules` is deliberately not copied: the oven links what the app needs from what the image already
+    # has, and a stale local install would shadow it.
+    rsync -a --exclude node_modules --exclude 'design-base' "$here/$src/" "$staging/$(basename "$src")/" 2>/dev/null \
+      || { mkdir -p "$staging/$(basename "$src")" && (cd "$here/$src" && tar --exclude=node_modules --exclude=design-base -cf - .) | (cd "$staging/$(basename "$src")" && tar -xf -); }
+  done < <(jq -r '.instanceApps[].source' "$here/composition.json")
+fi
+
+# THE LIST THE OVEN READS is the mirrored one PLUS this box's own apps, written into the context next to them.
+# It is generated rather than committed: the platform half must stay byte-comparable with the monorepo's copy
+# (that is what the check above is for), and the instance half is this file's to add.
+composition_arg="$composition_path"
+if [ "$instance_count" -gt 0 ]; then
+  jq -s '{version: 1, apps: (.[1].instanceApps | map({id, package})) + .[0].apps}' \
+    "$forge/$composition_path" "$here/composition.json" > "$staging/composition.json"
+  composition_arg='.instance-apps/composition.json'
+fi
+
+echo "[build-local] instance apps: $(jq -r '[.instanceApps[].id] | join(", ") // "(none)"' "$here/composition.json")" >&2
+
 # The release the images report. Read from the monorepo's contracts package, with the same `v` convention the
 # platform's own tooling uses, and marked as a pre-release build of a branch.
 branch="$(git -C "$forge" rev-parse --abbrev-ref HEAD)"
@@ -107,8 +152,9 @@ build() { # <lock key> <image name> <dockerfile>
   echo "[build-local] building $name …" >&2
   docker build \
     -f "$forge/$dockerfile" \
-    --build-arg "FORGE_COMPOSITION=$composition_path" \
+    --build-arg "FORGE_COMPOSITION=$composition_arg" \
     --build-arg "FORGE_COMPOSITION_ID=$composition_id" \
+    --build-arg "FORGE_INSTANCE_APPS=$([ "$instance_count" -gt 0 ] && echo .instance-apps || echo '')" \
     --build-arg "FORGE_RELEASE=$version" \
     --build-arg "GIT_SHA=$STAMP_SHA" \
     --build-arg "BUILD_DATE=$BUILT_AT" \
@@ -144,7 +190,7 @@ admin_ref="$(build admin forge-demo-admin infra/admin.Dockerfile)"
 jq -n \
   --arg version "$version" \
   --arg id "$composition_id" \
-  --argjson apps "$(jq '[.apps[].id]' "$here/composition.json")" \
+  --argjson apps "$(jq '[(.instanceApps // [] | .[].id), (.apps[].id)]' "$here/composition.json")" \
   --arg kernel "$kernel_ref" \
   --arg storefront "$storefront_ref" \
   --arg checkout "$checkout_ref" \
@@ -166,14 +212,8 @@ jq -n \
     },
     composition: { id: $id, apps: $apps },
     images: { kernel: $kernel, storefront: $storefront, checkout: $checkout, admin: $admin },
-    extensions: [
-      {
-        id: "demo-gate",
-        source: "./extensions/demo-gate",
-        version: "0.1.0",
-        why: "An app of ONE box is MOUNTED, never composed into an image — it reaches the kernel through FORGE_EXTENSIONS_DIR. That is why it is here and not on `composition`."
-      }
-    ]
+    offerable: false,
+    why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."
   }' > "$lock"
 
 echo >&2
