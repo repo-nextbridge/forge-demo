@@ -1,0 +1,38 @@
+{
+  "forgeVersion": "v0.3.0-pre.32405140a",
+  "provenance": {
+    "origin": "local build",
+    "built_from": "d2/d1-repo@32405140a",
+    "built_at": "2026-09-01T02:25:59Z",
+    "built_on": "ms-s1",
+    "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
+    "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
+    "how": "bash bin/build-local.sh <path to the forge monorepo> — rebuilds the four images here and rewrites this file."
+  },
+  "composition": {
+    "id": "demo-instance",
+    "apps": [
+      "banners",
+      "shelves",
+      "reviews",
+      "recommendations",
+      "subscriptions",
+      "payment-reference",
+      "payment-mercadopago"
+    ]
+  },
+  "images": {
+    "kernel": "forge-demo-kernel@sha256:9dd9cd016eaeccde4a44ca844465f5433de01721540cb8d4302ae8d13a54c262",
+    "storefront": "forge-demo-storefront@sha256:5455e9af62ef073a6e1d03a885d9d5ad99e1e6ec06be2a31b91d1bb08cc4d376",
+    "checkout": "forge-demo-checkout@sha256:dbf6f60396925279e5bb0984f7572af16f7bb33a480d8ad9ed608391f74b5b87",
+    "admin": "forge-demo-admin@sha256:26e4bef1ef7fb0b5688551d964455afe9ffb513badecb46c51bf281f4100b3a7"
+  },
+  "extensions": [
+    {
+      "id": "demo-gate",
+      "source": "./extensions/demo-gate",
+      "version": "0.1.0",
+      "why": "An app of ONE box is MOUNTED, never composed into an image — it reaches the kernel through FORGE_EXTENSIONS_DIR. That is why it is here and not on `composition`."
+    }
+  ]
+}

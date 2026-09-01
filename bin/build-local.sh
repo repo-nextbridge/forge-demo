@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# ★ PRE-RELEASE MODE — build the four images from a Forge CHECKOUT on this machine and write `forge.lock`
+# from what came out. EXECUTE it (it writes a file); do not source it.
+#
+#   bash bin/build-local.sh ~/nextbridge/projetos/forge
+#   bash bin/build-local.sh ~/path/to/forge v0.3.0-pre
+#
+# ⚠️ WHY THIS EXISTS AT ALL, AND WHEN IT SHOULD STOP EXISTING.
+#
+# The normal way to fill `forge.lock` is to download the one published with a Forge release: the digests are
+# read back FROM the registry, so what the lock names is what a `docker pull` gets. That is what
+# `templates/instance/README.md` §1 tells a customer to do, and it is right.
+#
+# This demo cannot do that YET. The features it is built on — the store's own vocabulary, the theme's fonts,
+# the anonymous list face's publication rule, the subscriptions app — live on a branch that has not been
+# merged or promoted, so the digests in the registry belong to an older `main` and do NOT contain them. A
+# lock pinning the registry today would be honest about bytes and useless as a demo: it would come up and
+# not be able to run the thing it exists to show. (Decision of 2026-08-31, recorded in the epic's
+# `_DECISOES.md`: build locally, and SAY SO.)
+#
+# So the lock this writes carries a `provenance` block naming the branch and commit it was built from, and
+# `README.md` carries the obligation: THE FIRST REAL DEPLOY RE-STAMPS IT with registry digests. That is not a
+# reminder, it is part of that deploy's definition of done.
+#
+# WHAT DOES NOT BEND: the images are still pinned BY DIGEST. `bin/images-from-lock.sh` refuses a tag-pinned
+# lock, and it is not relaxed here — measured on this daemon, `<repo>@sha256:<local image id>` resolves and
+# runs for a locally built image exactly as a registry digest does. The pre-release mode costs a paragraph of
+# honesty and zero weakening of the pin.
+
+set -euo pipefail
+
+forge="${1:?usage: build-local.sh <path to the forge monorepo checkout> [version label]}"
+version="${2:-}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+lock="$here/forge.lock"
+
+command -v jq >/dev/null || {
+  echo '[build-local] `jq` is required to write the lock as valid JSON.' >&2
+  exit 1
+}
+[ -d "$forge/infra" ] || {
+  echo "[build-local] '$forge' does not look like the Forge monorepo (no infra/)." >&2
+  exit 1
+}
+
+# THE LIST THE IMAGES ARE BAKED FROM. It is `composition.json` in THIS repo — and the build reads the COPY of
+# it that lives in the monorepo, because `apply-composition.ts` runs inside the build context and can only
+# see paths under it. That copy is `infra/fleet/lists/demo-instance.json`, and the `fleet-oven` job bakes it
+# on every push to main so this combination is proven before a release is offered.
+#
+# ⚠️ THE TWO COPIES ARE KEPT IN STEP BY HAND. Nothing crosses repositories. This check is the cheap half —
+# it compares the app sets and refuses to build images from a list that is not the one this repo maintains.
+composition_id='demo-instance'
+composition_path='infra/fleet/lists/demo-instance.json'
+mine="$(jq -S '[.apps[] | {id, package}]' "$here/composition.json")"
+theirs="$(jq -S '[.apps[] | {id, package}]' "$forge/$composition_path" 2>/dev/null || echo 'null')"
+if [ "$mine" != "$theirs" ]; then
+  echo "[build-local] THE LIST IN THE MONOREPO IS NOT THE LIST THIS REPO MAINTAINS." >&2
+  echo "[build-local]   here:  composition.json" >&2
+  echo "[build-local]   there: $forge/$composition_path" >&2
+  echo "[build-local] They are two copies of one decision and CI cannot compare them — it does not cross" >&2
+  echo "[build-local] repositories. Copy this repo's list over that one (and commit it there), or fix this" >&2
+  echo "[build-local] one if the monorepo's is the newer. Building now would bake apps this box never asked" >&2
+  echo "[build-local] for, and \`bin/verify-composition.sh\` would only tell you after the fact." >&2
+  exit 1
+fi
+
+# The release the images report. Read from the monorepo's contracts package, with the same `v` convention the
+# platform's own tooling uses, and marked as a pre-release build of a branch.
+branch="$(git -C "$forge" rev-parse --abbrev-ref HEAD)"
+sha="$(git -C "$forge" rev-parse --short HEAD)"
+dirty=''
+git -C "$forge" diff --quiet || dirty=' (working tree DIRTY — this build is not reproducible from any commit)'
+if [ -z "$version" ]; then
+  version="v$(jq -r '.version' "$forge/packages/contracts/package.json")-pre.${sha}"
+fi
+
+echo "[build-local] forge:       $forge" >&2
+echo "[build-local] branch:      ${branch}@${sha}${dirty}" >&2
+echo "[build-local] version:     $version" >&2
+echo "[build-local] composition: $composition_id ($composition_path)" >&2
+echo >&2
+
+# name:dockerfile — the same four the platform's release builds and `bin/images-from-lock.sh` demands. A box
+# that came up with three of the four serves a store whose "Finalizar compra" leads to a 404.
+build() { # <lock key> <image name> <dockerfile>
+  local key="$1" name="$2" dockerfile="$3"
+  echo "[build-local] building $name …" >&2
+  docker build \
+    -f "$forge/$dockerfile" \
+    --build-arg "FORGE_COMPOSITION=$composition_path" \
+    --build-arg "FORGE_COMPOSITION_ID=$composition_id" \
+    --build-arg "FORGE_RELEASE=$version" \
+    -t "$name:$composition_id" \
+    "$forge" >&2
+  # The digest of what we just built. `docker image inspect .Id` is the content address of the image config —
+  # the same string a registry digest carries, and the same one `<name>@sha256:…` resolves by locally.
+  local id
+  id="$(docker image inspect "$name:$composition_id" --format '{{.Id}}')"
+  printf '%s' "$name@$id"
+}
+
+kernel_ref="$(build kernel forge-demo-kernel infra/Dockerfile)"
+storefront_ref="$(build storefront forge-demo-storefront infra/storefront.Dockerfile)"
+checkout_ref="$(build checkout forge-demo-checkout infra/checkout.Dockerfile)"
+admin_ref="$(build admin forge-demo-admin infra/admin.Dockerfile)"
+
+jq -n \
+  --arg version "$version" \
+  --arg id "$composition_id" \
+  --argjson apps "$(jq '[.apps[].id]' "$here/composition.json")" \
+  --arg kernel "$kernel_ref" \
+  --arg storefront "$storefront_ref" \
+  --arg checkout "$checkout_ref" \
+  --arg admin "$admin_ref" \
+  --arg origin "local build" \
+  --arg built_from "${branch}@${sha}${dirty}" \
+  --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg host "$(hostname)" \
+  '{
+    forgeVersion: $version,
+    provenance: {
+      origin: $origin,
+      built_from: $built_from,
+      built_at: $built_at,
+      built_on: $host,
+      why: "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
+      restamp: "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
+      how: "bash bin/build-local.sh <path to the forge monorepo> — rebuilds the four images here and rewrites this file."
+    },
+    composition: { id: $id, apps: $apps },
+    images: { kernel: $kernel, storefront: $storefront, checkout: $checkout, admin: $admin },
+    extensions: [
+      {
+        id: "demo-gate",
+        source: "./extensions/demo-gate",
+        version: "0.1.0",
+        why: "An app of ONE box is MOUNTED, never composed into an image — it reaches the kernel through FORGE_EXTENSIONS_DIR. That is why it is here and not on `composition`."
+      }
+    ]
+  }' > "$lock"
+
+echo >&2
+echo "[build-local] wrote $lock" >&2
+jq -r '"[build-local] " + .forgeVersion + " × " + .composition.id + " — " + (.provenance.origin) + " from " + .provenance.built_from' "$lock" >&2
+echo "[build-local] next: source ./env-source.sh && source bin/images-from-lock.sh && docker compose up -d" >&2
