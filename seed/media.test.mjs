@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { reuseKey, sha256 } from './media.mjs';
+import { planRepoint, reuseKey, sha256 } from './media.mjs';
 
 const OLD = sha256(Buffer.from('the 1024x1536 frame'));
 const NEW = sha256(Buffer.from('the 733x1266 re-cut'));
@@ -31,4 +31,56 @@ test('same bytes under a DIFFERENT name → no reuse: the name is half the ident
 test('a name the library has never seen → no reuse', () => {
   assert.equal(reuseKey(index(), 'brand-new.png', NEW), null);
   assert.equal(reuseKey(new Map(), 'alvorada.png', OLD), null);
+});
+
+// ── what to do about the product's reference ───────────────────────────────────────────────────────────
+
+test('the product already points at the wanted key → NOTHING happens, no command is spent', () => {
+  const plan = planRepoint([{ id: 'media_1', provider_key: 'k-new', kind: 'image' }], 'k-new');
+  assert.deepEqual(plan, { attach: false, detach: [] });
+});
+
+test('★ the product points at the OLD key → attach the new one and detach the old', () => {
+  const plan = planRepoint([{ id: 'media_1', provider_key: 'k-old', kind: 'image' }], 'k-new');
+  assert.deepEqual(plan, { attach: true, detach: ['media_1'] });
+});
+
+test('a product with NO picture yet → attach, and there is nothing to detach', () => {
+  assert.deepEqual(planRepoint([], 'k-new'), { attach: true, detach: [] });
+});
+
+test('several stale references are all detached — one attach, not one per stale row', () => {
+  const plan = planRepoint(
+    [
+      { id: 'media_1', provider_key: 'k-old', kind: 'image' },
+      { id: 'media_2', provider_key: 'k-older', kind: 'image' },
+    ],
+    'k-new',
+  );
+  assert.deepEqual(plan, { attach: true, detach: ['media_1', 'media_2'] });
+});
+
+test('a video reference is not an image and is left alone', () => {
+  const plan = planRepoint(
+    [
+      { id: 'media_1', provider_key: 'k-old', kind: 'image' },
+      { id: 'media_2', provider_key: 'https://youtu.be/x', kind: 'video_external' },
+    ],
+    'k-new',
+  );
+  assert.deepEqual(plan, { attach: true, detach: ['media_1'] });
+});
+
+test('★ the wanted key present ALONGSIDE a stale one: no second attach, but the stale one still goes', () => {
+  // The interrupted window: a run that died between the attach and the detach leaves BOTH. Answering
+  // "the wanted key is there, nothing to do" would leave the stale reference forever, behind a picture
+  // that looks right — the same silence this whole slice exists to end.
+  const plan = planRepoint(
+    [
+      { id: 'media_1', provider_key: 'k-new', kind: 'image' },
+      { id: 'media_2', provider_key: 'k-old', kind: 'image' },
+    ],
+    'k-new',
+  );
+  assert.deepEqual(plan, { attach: false, detach: ['media_2'] });
 });

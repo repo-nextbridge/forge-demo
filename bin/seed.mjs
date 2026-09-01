@@ -30,7 +30,7 @@ import { seedCoffee } from '../seed/coffee.mjs';
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
 import { mimeOf, seedForge } from '../seed/forge.mjs';
-import { reuseKey, sha256 } from '../seed/media.mjs';
+import { planRepoint, reuseKey, sha256 } from '../seed/media.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
 
@@ -534,6 +534,9 @@ async function upload(file, { library = true } = {}) {
   return key;
 }
 
+/** handle -> product id, filled by products() and read by repointMedia(). */
+let existingIds = new Map();
+
 // ── 4. the products ─────────────────────────────────────────────────────────────────────────────────────────
 async function products() {
   // ★ `products_admin` AND NOT `products`, and the difference is the whole question this read is asked.
@@ -542,12 +545,18 @@ async function products() {
   // store yet, so asking the store's list would report "not there" for a product that IS there and create it
   // twice. `products_admin` is the tenant's WHOLE catalogue, drafts and unpublished included, and no store to
   // scope by — which is exactly the question "did I already make this?".
-  const existing = new Set((await readAll('products_admin')).map((p) => p.handle));
+  const catalogue = await readAll('products_admin');
+  const existing = new Set(catalogue.map((p) => p.handle));
+  // The ids too: re-pointing a photograph needs the product, and `products_admin` is the only read here
+  // that answers for a product which may not be published anywhere yet.
+  existingIds = new Map(catalogue.map((p) => [p.handle, p.product_id ?? p.id]));
   const photos = new Set(readdirSync(join(SEED, 'photos')));
 
   for (const product of catalog.products) {
     if (existing.has(product.handle)) {
-      log(`product ${product.handle} — already there`);
+      // ★ ALREADY THERE IS NOT THE SAME AS UNCHANGED. Its photograph may have been re-cut since; the step
+      // below is the only thing in this file that ever looks at a product it did not just create.
+      await repointMedia(product, photos);
       continue;
     }
     if (!photos.has(product.photo)) {
@@ -585,6 +594,57 @@ async function products() {
   }
 }
 
+
+/**
+ * ★★ THE PHOTOGRAPH OF A PRODUCT THAT ALREADY EXISTS — the half `products()` did not have.
+ *
+ * A product is created ONCE, with its media inline, and from then on this file never looked at its pictures
+ * again. So when the six coffee photographs were re-cut (1024x1536 -> 733x1266, less transparent margin)
+ * re-running the seed changed nothing at all, and the shop kept serving the old frame. That is not the seed
+ * being idempotent; it is the seed being blind.
+ *
+ * The desired state is the FILE ON DISK. `upload()` resolves it to a provider_key — the existing one when
+ * the bytes match, a new one when they do not (see the content index above). If the product's current
+ * reference already names that key, nothing happens and no command is spent. If it names another, the new
+ * one is ATTACHED FIRST and the old one detached after: for the width of one command the product carries
+ * two pictures, which is a strictly better failure than carrying none.
+ *
+ * ⚠️ THE OLD ASSET IS NOT DELETED, deliberately. Detaching drops the REFERENCE; the library row and the
+ * bytes stay. An orphan costs a few MB on a demo box; deleting is destructive and irreversible, and this
+ * script has no way to know who else points at those bytes.
+ */
+async function repointMedia(product, photos) {
+  const id = existingIds.get(product.handle);
+  if (!id) return; // never created here — nothing this file knows how to re-point
+  if (!product.photo) return;
+  if (!photos.has(product.photo)) {
+    fail(`product ${product.handle} names photo "${product.photo}", which seed/photos/ does not have.`);
+  }
+
+  const want = await upload(product.photo);
+  const refs = rows(await read('product_media', { product_id: id }));
+  const plan = planRepoint(refs, want);
+  if (!plan.attach && plan.detach.length === 0) {
+    log(`product ${product.handle} — already there, photo unchanged`);
+    return;
+  }
+
+  if (plan.attach) {
+    await command('catalog.media.attach', {
+      owner_type: 'product',
+      owner_id: id,
+      provider_key: want,
+      kind: 'image',
+      position: 0,
+      alt: product.title,
+    });
+  }
+  for (const mediaId of plan.detach) await command('catalog.media.detach', { media_id: mediaId });
+  log(
+    `product ${product.handle} — photo RE-POINTED (${plan.detach.length} old reference(s) detached; ` +
+      'the old assets are KEPT, not deleted)',
+  );
+}
 
 /**
  * ★ PUBLISHING — the second act, and D1 did only the first.

@@ -29,3 +29,29 @@ export function sha256(bytes) {
 export function reuseKey(index, filename, sha) {
   return index.get(filename)?.get(sha) ?? null;
 }
+
+/**
+ * WHAT TO DO ABOUT A PRODUCT'S PICTURE, given what it carries and what the file on disk resolves to.
+ *
+ * ★ ATTACH BEFORE DETACH, and the order is the whole design. For the width of one command the product
+ * carries two references; the alternative — detach first — carries NONE, and a run that dies in that
+ * window leaves a product with no picture at all. Two pictures for a moment is a strictly better failure
+ * than zero pictures for good.
+ *
+ * ⚠️ AND `detach` IS NOT `delete`. It drops the reference. The library row and the bytes behind it stay,
+ * because this script cannot know who else points at them and because deleting is the one move on a bench
+ * somebody is testing that cannot be taken back.
+ *
+ * @param refs the product's current image references (`{id, provider_key}`)
+ * @param want the provider_key the file on disk resolves to
+ * @returns `{ attach: boolean, detach: string[] }` — media ids to detach, in the order to detach them.
+ */
+export function planRepoint(refs, want) {
+  const images = refs.filter((m) => m.kind === undefined || m.kind === 'image');
+  const stale = images.filter((m) => m.provider_key !== want);
+  // ★ `attach` and `detach` are decided SEPARATELY, and the case that forced it is the interrupted window
+  // this header describes: a run that died between the attach and the detach leaves BOTH references. The
+  // next run must not attach a third — but it must still finish the job, or the stale reference lives
+  // forever behind a picture that looks right. "The wanted key is present" answers only half the question.
+  return { attach: !images.some((m) => m.provider_key === want), detach: stale.map((m) => m.id) };
+}
