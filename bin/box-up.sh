@@ -18,6 +18,7 @@
 #   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
 #   9. seed-demo      × TENANT   the MASSIVE catalogue — the one-shot that fills, run once per tenant
 #  10. seed.mjs       × TENANT   the WINDOW (--phase window): the promotions, the blocks, the cache bust
+#  11. seed-history  × TENANT   the PAST — 180 days of it, so the dashboard has a business and not a spike
 #
 # ⚠️ 8, 9 AND 10 ARE ONE DIRECTION AND NOT A CYCLE, and it only looks circular if you read 8 and 10 as one
 # step. The window promotes products of the MASSIVE catalogue, so it must follow 9; 9 publishes an assortment
@@ -491,6 +492,141 @@ for t in $TENANTS; do
   FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
     || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
 done
+
+# ── 11 · THE PAST — and it is TWO halves, because the refusal is about an INSTANT, not about the box ─────────
+#
+# ★ WHY THIS STEP EXISTS. Without it the box has 39 orders per tenant and every one of them is stamped TODAY:
+# all the statuses of the lifecycle, one single day. The admin dashboard then draws a spike on one date and
+# calls it a business. `seed-history` travels the clock (`deps.clock.travel`) and spreads a real past —
+# 180 days ending today — which is the whole point of §9 of the spec.
+#
+# ★★ THE REFUSAL, AND WHY WE MOVE THE INSTANT INSTEAD OF THE BOX. `seed-history` stops dead when a tenant has
+# more than one ACTIVE delivery method:
+#
+#     history: this tenant has 2 active delivery shipping methods ("Entrega Expressa", "Entrega Padrão")
+#     and nothing to choose between them by — [it] will not pick one at random. Leave one active.
+#
+# ⇒ AND IT IS RIGHT. Step 9 had the identical fork — two delivery methods, nothing to choose by — and chose
+# SILENTLY with `order by id limit 1`. In `forgecafe` the oldest id belonged to "Retirar no balcão", born in
+# the totem wave, so the seeder picked PICKUP, wrote a delivery address, never set a pickup location, and the
+# kernel refused the order. Same data, same junction, two opposite behaviours: one guessed and was wrong for
+# a whole afternoon, one stops and names the ambiguity. This step is written to keep the second kind.
+#
+# So we do NOT satisfy the seeder by impoverishing the box. Two delivery options is something the demo WANTS
+# to show; dropping one permanently is the tail wagging the dog. The refusal is about the MOMENT this script
+# runs, not about the box's final state — so the moment is what we change: SILENCE the extra method, seed the
+# past, RE-ARM it. Exactly the pattern the curated seed already uses for notification channels.
+#
+# ⚠️ THE RE-ARM IS IN A `finally`, NOT ON THE HAPPY PATH. A box left with one delivery method because this
+# step died halfway is a defect nobody would ever connect back to a seed — they would find it weeks later in
+# a checkout. The EXIT/INT/TERM trap below restores whatever was silenced no matter how we leave: a `die`, a
+# Ctrl-C, or success. `rearm_history` clears its own list, so it is idempotent and the normal path's explicit
+# call makes the trap a no-op.
+#
+# ⚠️ AND IT IS A WORKAROUND, NAMED AS ONE. The durable answer is for the history to SPREAD across the methods
+# available — a real past has a mix — which kills the ambiguity by enriching the plan instead of narrowing
+# the data. That lives in the monorepo and is not this slice's to write. Recorded so the next reader knows
+# this block is a bridge and not a design.
+#
+# ── PLACEMENT, AND WHICH HALF OF IT IS MEASURED ──────────────────────────────────────────────────────────
+#   MEASURED: it runs here, AFTER the window. That is the order this box was proven in.
+#   STATED (by the tech lead, not measured by me): it needs the published catalogue and the logistics, and
+#     the window is not among its needs — so it could sit between 9 and 10. Proving that takes a fresh box,
+#     and this box was not born again to find out.
+# The two are written apart on purpose: a comment that declares what it knows and what it assumes is worth
+# more than one that merely sounds certain.
+say '11 · the past (seed-history — 180 days, once per tenant)'
+
+HISTORY_KEEP="${FORGE_HISTORY_KEEP_METHOD:-Entrega Padrão}"
+SILENCED=''; REARM_TENANT=''; REARM_TOKEN=''
+
+# `internal/shipping_methods_admin` is the read face that answers with `active` and `kind`; the box asks the
+# kernel rather than the database, so this step works against any box it can reach.
+history_methods() { # <tenant> <token>  →  id \t name \t active   (delivery only)
+  curl -fsS -m 15 "$FORGE_PUBLIC_ORIGIN/v1/read/internal/shipping_methods_admin" \
+    -H "authorization: Bearer $2" -H "x-forge-tenant: $1" \
+    | jq -r '.[] | select(.kind=="delivery") | [.id, .name, (.active|tostring)] | @tsv'
+}
+
+# ⚠️ THE FIELD IS `method_id`, NOT `id` — measured against the running kernel, which answered
+# `validation_failed · method_id (expected string, received undefined)` when asked with `id`.
+set_method_active() { # <tenant> <token> <method_id> <true|false>
+  curl -fsS -m 15 -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/shipping.method.update" \
+    -H "authorization: Bearer $2" -H "x-forge-tenant: $1" -H 'content-type: application/json' \
+    -d "{\"method_id\":\"$3\",\"active\":$4}" >/dev/null
+}
+
+rearm_history() {
+  local id
+  for id in $SILENCED; do
+    if set_method_active "$REARM_TENANT" "$REARM_TOKEN" "$id" true; then
+      note "re-armed $id in $REARM_TENANT"
+    else
+      # This is the one failure this step cannot repair for you, so it must be impossible to miss.
+      printf '\n[box-up] ⛔ COULD NOT RE-ARM shipping method %s in tenant %s.\n   That tenant is left with fewer delivery methods than it started with. Re-arm it by hand:\n   POST %s/v1/commands/shipping.method.update  {"method_id":"%s","active":true}\n\n' \
+        "$id" "$REARM_TENANT" "$FORGE_PUBLIC_ORIGIN" "$id" >&2
+    fi
+  done
+  SILENCED=''
+}
+trap 'rearm_history' EXIT INT TERM
+
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the history step."
+  REARM_TENANT="$t"; REARM_TOKEN="$tokval"
+
+  before="$(history_methods "$t" "$tokval" | awk -F'\t' '$3=="true"' | wc -l)"
+  keep_seen=0
+  while IFS=$'\t' read -r id name active; do
+    [ "$active" = true ] || continue
+    if [ "$name" = "$HISTORY_KEEP" ]; then keep_seen=1; continue; fi
+    set_method_active "$t" "$tokval" "$id" false \
+      || die "could not silence delivery method \"$name\" ($id) in \"$t\"."
+    SILENCED="$SILENCED $id"
+    note "silenced \"$name\" for the history run"
+  done < <(history_methods "$t" "$tokval")
+
+  # If the method we meant to keep is not there, we have silenced things toward a state nobody chose. Say so
+  # and let the trap put them back, rather than seed a past through whatever happens to be left.
+  [ "$keep_seen" = 1 ] || die "tenant \"$t\" has no active delivery method named \"$HISTORY_KEEP\" — set
+     \$FORGE_HISTORY_KEEP_METHOD to the one the past should sell through. Nothing was seeded; the trap is
+     restoring what this step silenced."
+
+  during="$(history_methods "$t" "$tokval" | awk -F'\t' '$3=="true"' | wc -l)"
+  note "$t · active delivery methods: $before → $during (seeding the past through \"$HISTORY_KEEP\")"
+
+  # The same ceiling reasoning as step 9: this is a bulk write nobody is watching, not an interactive action.
+  #
+  # ⚠️⚠️ AND THE OUTPUT IS INSPECTED, NOT JUST ITS EXIT CODE — because THIS step has a green that means nothing
+  # happened. `seed-history` is RESET+SEED by nature: if the tenant already holds one order older than half the
+  # window (90 of the 180 days), it prints "SKIPPING", writes NOTHING, and exits 0 with `"skipped":true` in its
+  # summary. Measured, not assumed: run twice against a tenant left with 7 past orders by a failed run, the
+  # second run changed 46 rows to 46 rows and returned success. A step that treated that as done would report
+  # a past this box does not have — the exact false green this script was already caught by once, when a health
+  # check answered 200 from somebody else's box.
+  hlog="$(mktemp)"
+  dc run --rm -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
+    kernel node dist/seed-history.js --tenant "$t" >"$hlog" 2>&1
+  hrc=$?
+  tail -6 "$hlog" >&2
+  if [ "$hrc" != 0 ]; then
+    note "⚠️ the past failed for \"$t\" — the kernel's own words are the six lines above. The box and its
+     catalogue are standing; only the history did not land. The delivery methods are restored either way."
+  elif grep -q '"skipped":true' "$hlog"; then
+    note "⛔ THE PAST WAS SKIPPED FOR \"$t\", AND THAT IS NOT A SUCCESS — it exited 0 having written nothing.
+     This step is reset+seed: it refuses to add a past to a tenant that already has one. The tenant keeps
+     whatever history it had, INCLUDING a partial one left by an earlier failed run. To rebuild it, the
+     history's own remedy is the only one it offers: wipe the tenant and run this again."
+  fi
+  rm -f "$hlog"
+
+  rearm_history
+  after="$(history_methods "$t" "$tokval" | awk -F'\t' '$3=="true"' | wc -l)"
+  [ "$after" = "$before" ] || note "⚠️ $t ended with $after active delivery methods, not the $before it began with."
+done
+trap - EXIT INT TERM
 
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"

@@ -102,6 +102,30 @@ map of how the box is born:
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
 | 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
 | 10 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust |
+| 11 | **`seed-history` × tenant** | the **past** — 180 days of it, so the dashboard shows a business and not a spike |
+
+### Step 11 has two halves, and the second one is in a `finally`
+
+`seed-history` refuses to run when a tenant has **more than one active delivery method** — it will not pick
+one at random. That refusal is right, and it is the exact fork where step 9 once chose *silently* by
+`order by id limit 1`: in `forgecafe` the oldest id was the totem wave's pickup counter, so the seeder picked
+PICKUP, wrote a delivery address, never set a pickup location, and the kernel refused every order. **Same
+data, same junction, two opposite behaviours — one guessed and was wrong for an afternoon, one stops and
+names the ambiguity.**
+
+So the box does not satisfy the seeder by shrinking: two delivery options is something the demo *wants* to
+show. The refusal is about the **moment** the script runs, not the box's final state, so step 11 changes the
+moment — **silence** the extra method, **seed** the past, **re-arm** it — the same pattern the curated seed
+already uses for notification channels. The re-arm is on an `EXIT INT TERM` trap rather than the happy path,
+because a box left with one delivery method by a step that died halfway is a defect nobody would ever trace
+back to a seed. It was proven on the path that matters: a run where `seed-history` **failed** mid-way still
+ended with the tenant's methods exactly as it found them.
+
+⚠️ **`seed-history` is reset+seed, and its skip is a green.** If the tenant already holds one order older
+than half the window (90 of the 180 days), it prints `SKIPPING`, writes nothing, and **exits 0** with
+`"skipped": true`. A step that trusted the exit code would report a past this box does not have. Step 11
+therefore reads the **summary**, not the status — the same discipline the credential check above applies, one
+layer down. There is no `--force`; the only remedy the history offers is to wipe the tenant and run it again.
 
 ⚠️ **8 → 9 → 10 is one direction, not a cycle** — it only reads as circular if 8 and 10 are taken for one
 step. The window seeds the dataset's promotions and resolves each target through the **public** read (the
