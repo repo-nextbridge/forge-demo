@@ -12,3 +12,4 @@ storefront-coffee/vendor/
 # The vitrine's build output.
 storefront-coffee/.next/
 storefront-coffee/next-env.d.ts
+storefront-coffee/tsconfig.tsbuildinfo
