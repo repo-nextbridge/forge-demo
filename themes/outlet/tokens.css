@@ -1,0 +1,55 @@
+/* themes/outlet/tokens.css — the Forge Outlet's skin. An OVERRIDE, never a copy.
+ *
+ * The reference theme is loaded ABOVE this file (the root layout's static import of
+ * `@forgecommerce/theme-storefront-vanilla/tokens.css`); this stylesheet is inlined by the store-scoped
+ * layout, after it, at the same specificity. So it only has to carry what DIFFERS — measured against the
+ * reference file, that is seven declarations, and every one of them is a value the design's own artboard
+ * sets on itself.
+ *
+ * SOURCE OF TRUTH: `Home Outlet.dc.html` and `Produto Outlet.dc.html` in the design project
+ * ("Tema E-commerce Forge"). Their `applyTheme()` writes exactly three things — an accent, a roundness
+ * preset and a family — and the defaults it writes them from are what is below.
+ *
+ * ⚠️ THE ROUNDNESS IS `Suave` (10/8/6), NOT `Arredondado` (16/12/8). The D2 card says the second; the
+ * artboard's own prop defaults to `Suave` and its `:root` carries `--r: 10px`. The mandate is fidelity to
+ * the design, so the design won — and the divergence is named in the slice report rather than worked
+ * around in silence.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: everything else. A theme that copies the reference file inherits its bugs
+ * and stops inheriting its fixes; the base is 17 KB and this is 7 lines of value.
+ */
+:root {
+  /* --- The accent --------------------------------------------------------------------------------- */
+  /* `--color-accent` and `--color-accent-soft` are defined as `var(--copper-600)` / `var(--copper-100)`,
+   * so re-pointing the two PRIMITIVES re-accents links, focus rings, the cart badge, the discount tag and
+   * every hover — with no semantic token restated and no component edited. This is the swap the base file
+   * documents under "Accent tweaks"; the outlet's value simply is not one of the four it lists. */
+  --copper-600: #be123c; /* the artboard's `--accent` */
+  /* The soft companion (focus halo, selected wash, tag ground). Derived, not picked: it sits at the SAME
+   * lightness as the base's copper wash (#fdeee6 and #ffe4e6 are both L=94.7%), moved to the accent's hue,
+   * so a focus ring reads as faint here exactly as faint as it reads on the reference theme. */
+  --copper-100: #ffe4e6;
+
+  /* --- The corners -------------------------------------------------------------------------------- */
+  /* The base is "Reto" — square, `--r*: 0`. The artboard's `applyTheme` maps `Suave` to 10/8/6, and the
+   * contrast with the reference vitrine's square corners is deliberate: it is half of what makes the two
+   * stores look like two stores rather than one store twice. `--ri` (the checkout's inputs) is already
+   * 10px in the base and needs no line here.
+   * The artboard also sets a fourth var, `--r-dot: 3px`. It has no counterpart in this theme's vocabulary
+   * (it is the design tool's own dot), so it is not invented here. */
+  --r: 10px;
+  --r-sm: 8px;
+  --r-xs: 6px;
+
+  /* --- The typeface ------------------------------------------------------------------------------- */
+  /* Every `--type-*-family` in the base derives from this one var, so a single line moves the whole page —
+   * and `globals.css` sets it to the app's own Urbanist, which is why this declaration has to exist and
+   * why it lands after that one.
+   *
+   * Written out rather than `var(--tweak-font-figtree)`: that tweak is defined as `"Figtree",
+   * var(--font-sans)`, so assigning it to `--font-sans` is a reference CYCLE, and CSS resolves a cycle by
+   * discarding BOTH declarations — a store that would have silently rendered in the fallback stack.
+   *
+   * The faces themselves are declared in `fonts.css` beside this file and served from `fonts/`. */
+  --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
