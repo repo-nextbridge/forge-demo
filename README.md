@@ -21,11 +21,12 @@ forge.lock             the pin: which Forge this box runs, by digest, and where 
 composition.json       WHICH APPS the images compose. An instance's answer, not the product's.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
-apps/                  the apps THIS box wrote. `demo-gate` today; composed into the images (see §4).
+apps/                  the apps THIS box wrote: `demo-gate` (§4) and `payment-pos` (§4b). Composed into the images.
 extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
                        composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
 seed/                  the birth data: the stores, the coffee catalogue, the photos.
+docs/                  the capability pages: what this box can DO that it could not before, one page each.
 bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
 ```
@@ -277,6 +278,46 @@ release gate refuses it. This is a property of what this box asked for, not a de
 ⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URL` are now read by the FRONTS, not by the kernel.** The gate's
 entry is a Server Component in the storefront and the checkout, so its wiring lives where the component runs
 (`compose.yml` sets both on those two services). They never reach the browser.
+
+---
+
+## 4b. The counter's payment app — this box's own payment DRIVER
+
+`payment-pos` (`apps/payment-pos/`) is the second app this repository owns, and the first that is not a
+screen. It serves the totem's two ways to pay: the card machine (`card`, settled the moment the kernel is
+told, because the machine already took the money) and the totem's PIX QR (`pix`, which waits for a scan).
+
+**It exists instead of a config change on `payment-reference` for two measured reasons**, both the reference
+app's own: that app's PIX mode is UNIVERSAL config, so auto-approving for the counter would also settle the
+coffee store's PIX (the live "aguardando pagamento" the demo exists to show), and its settlement door needs a
+`provider_ref` its own `initiate` never returns. `payment-pos` returns the ref inside its own `next_action`,
+which is the whole difference, and it cost zero kernel.
+
+It reaches the image exactly like `demo-gate`: `instanceApps` in `composition.json`, staged into the build
+context by `bin/build-local.sh`, and the image it composes is stamped not offerable.
+
+The capability page is `docs/capabilities/payment-pos.md`; the field-level contract is the app's own README.
+
+⚠️ **IT OPENS A PUBLIC, UNAUTHENTICATED DOOR THAT APPROVES A PAYMENT** — the totem's "tap the QR to simulate
+the scan" is a `POST /webhooks/payment/<store>/payment-pos` with no auth. It is acceptable only because this
+app is never offered to anybody. What holds it is the ref being opaque plus two refusals that belong to the
+KERNEL (a ref naming no attempt; a second settlement of the same intent). The app's README names all three
+and says why an app-side copy of the kernel's two would be worse than none.
+
+⚠️ **INSTALLING IT OFFERS IT IN EVERY STORE OF THIS TENANT, and nothing can scope it.** Installation is per
+tenant by construction — `extension_installation` has a unique index on `(extension_id, tenant_id)`
+(`system/0008`) — and a payment provider is offered straight from the installation, never from a per-store
+placement. So `read.payment_methods` lists it for the coffee store and the Outlet too; the checkout's
+provider chooser filters only by method; and `active: false`, the one lever that removes it, is tenant-wide
+config, so it would switch the counter off as well.
+
+**Measured on this box: no payment provider is installed at all today** (`read.payment_methods` answers
+`{"methods":[],"providers":[]}` for every store). So installing `payment-pos` does not add one option among
+several — it becomes the tenant's ONLY provider for `pix` and `card`, with no chooser rendered, and its
+`card` settles instantly and free. This is a known property of this box, not a defect of the app, and no
+change inside this repository can fix it: a per-store offer gate would be a kernel change. The mitigation
+that does exist is the name: the app is called after a PLACE ("Pagar no balcão"), so that seeing it in the
+coffee store's checkout reads as a misconfiguration and never as a legitimate option.
 
 ---
 
