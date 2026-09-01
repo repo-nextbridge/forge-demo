@@ -28,6 +28,28 @@ const tracingRoot = fileURLToPath(
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ★★ D2-C1 — THIS SHOP'S ASSETS GET THEIR OWN NAMESPACE, and the failure it prevents is the silent one.
+  //
+  // This box serves THREE Next apps on ONE origin: the reference vitrine (the fall-through), the checkout
+  // (`/_checkout`), and this fork under `/s/cafe`. All three ask the browser for their JavaScript and CSS at
+  // `/_next/static/…` by default — the SAME namespace — and the edge can only send that path to ONE of them.
+  // The other two then load chunks from a server that has never heard of their build id.
+  //
+  // It is NOT an error anywhere: the HTML arrives, no server logs a thing, and the shopper meets an UNSTYLED
+  // SHOP. The checkout paid for this lesson in CHECKOUT-APP C3; this front would have paid for it again,
+  // because splitting by path prefix (`/s/cafe`) does nothing for an asset URL that starts at the root.
+  //
+  // ⚠️⚠️ AND THE EDGE HAS TO STRIP IT — `handle_path`, never `handle`. Measured on the real image in C3: a
+  // Next server with an `assetPrefix` set EMITS the prefixed URL into its HTML and then answers 404 to it;
+  // it serves those files at `/_next/static/…` and nowhere else. The prefix is an instruction to the edge,
+  // not a route this app owns. See `caddy/extra/coffee.local.caddy`, which carries the other half.
+  //
+  // ⚠️ IT DOES NOT MOVE `/_next/image` (measured in D2-F3: Next keeps `images.path` at the bare path with a
+  // prefix set). This shop never mints such a URL — its photographs go through the derivative door
+  // (`/api/img/...`), which is this container's own route under `/s/cafe`'s neighbour paths — so there is
+  // nothing here to route. A `next/image` added to this fork later would need its own edge block.
+  assetPrefix: '/_coffee',
+
   // The storefront is a pure read-port consumer; nothing here touches a DB.
   reactStrictMode: true,
   // ⚠️ DO NOT REMOVE AS DEAD WEIGHT — it looks like a no-op in here, and it is: pnpm links the block packages

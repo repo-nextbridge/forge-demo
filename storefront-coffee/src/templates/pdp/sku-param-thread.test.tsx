@@ -96,14 +96,34 @@ test('★★ the catch-all route hands `?sku=` all the way to the PDP template',
   expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: 'TEN-40' });
 });
 
-test('★★ the /p/<handle> alias too — an uncategorized product has no other PDP', async () => {
+// ★★ D2-C1 — THIS ARM CHANGED SUBJECT BECAUSE THE SHOP DID, and the old assertion is kept in the sentence
+// below rather than deleted quietly.
+//
+// It used to assert that `/p/<handle>` threads `?sku=` down to the reference PDP template. That route now
+// renders THIS SHOP'S product page (`PdpCoffeeView`), which has no swatch grid and no PLP behind it —
+// nothing in this storefront mints a URL naming a SKU — so honouring the parameter would be answering a
+// question nobody asks. The catch-all arm above still proves the chain for the reference template, which is
+// still what a CATEGORIZED product renders.
+//
+// ⚠️ AND IT COSTS SOMETHING REAL, NAMED HERE SO IT IS NOT DISCOVERED LATER: the reference PDP's variant
+// picker works with JavaScript OFF (the swatches submit `?sku=` and the SERVER answers with that variant —
+// `nojs-variant.e2e.test.tsx` is the other half). This shop's buy box is a client component and holds its
+// selection in React state, so with JS off the page renders and reads correctly and CANNOT BE BOUGHT FROM.
+// That is a deliberate trade of the design (a two-axis picker, a mode switch and a stepper in one panel),
+// not an oversight — and it is a card, not a silence.
+test('★★ the /p/<handle> alias renders THIS shop`s page for an uncategorized product', async () => {
   const element = await ProductAliasPage({
     params: Promise.resolve({ store: 'demo', handle: 'tenis-esportivo' }),
     searchParams: Promise.resolve({ sku: 'TEN-39' }),
   });
-  await walk(element);
 
-  expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: 'TEN-39' });
+  // The route must resolve the product and return a page rather than 404 — the property this arm has always
+  // protected. It is NOT walked: the coffee page's buy box is a client component, and invoking one the way
+  // the framework invokes a Server Component is what this walker cannot do (`useState` of a null dispatcher).
+  expect(element).toBeTruthy();
+  expect(productByHandle).toHaveBeenCalledWith('demo', 'tenis-esportivo');
+  // And the reference template is NOT what answered: this route stopped being its host.
+  expect(templateProps).not.toHaveBeenCalled();
 });
 
 test('★ no `?sku=` → the template is told nothing, and renders the default variant as it always did', async () => {

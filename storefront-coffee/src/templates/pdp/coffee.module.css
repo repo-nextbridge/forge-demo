@@ -1,0 +1,679 @@
+/* The coffee PDP. Every colour is a token from `themes/coffee-store/tokens.css`. */
+
+.page {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.top {
+  padding: clamp(26px, 4vw, 44px) clamp(18px, 4vw, 32px) clamp(46px, 7vw, 72px);
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(28px, 4vw, 52px);
+  align-items: stretch;
+}
+
+/* ── The shot, with the notes and the facts beside it ───────────────────────────────────────────────────── */
+.shotSide {
+  flex: 2 1 520px;
+  display: flex;
+  gap: clamp(12px, 1.6vw, 22px);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.aside {
+  flex: 0 1 auto;
+  max-width: 164px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--color-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  border-radius: var(--radius-full);
+  padding: 7px 13px 7px 8px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--color-ink) 80%, transparent);
+}
+
+.noteDisc {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-surface-sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+}
+
+.facts {
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.fact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.fact svg {
+  flex: 0 0 auto;
+  color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+}
+
+.shot {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  max-width: 360px;
+  position: relative;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.shot::before {
+  content: '';
+  position: absolute;
+  inset: 4% 0 16%;
+  background: radial-gradient(
+    56% 50% at 50% 46%,
+    color-mix(in srgb, var(--coffee-sand) 55%, transparent),
+    transparent 70%
+  );
+  border-radius: 50%;
+}
+
+.shotImg {
+  position: relative;
+  width: 100%;
+  height: auto;
+}
+
+/* ── The buy box ────────────────────────────────────────────────────────────────────────────────────────── */
+.panel {
+  flex: 1 1 380px;
+  max-width: 490px;
+  align-self: flex-start;
+  background: var(--color-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border-radius: 12px;
+  padding: clamp(20px, 2.1vw, 26px);
+}
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.title {
+  margin: 12px 0 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(30px, 3.4vw, 44px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  margin-top: 10px;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.rule {
+  height: 1px;
+  background: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  margin: 18px 0;
+}
+
+.blurb {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+.buybox {
+  margin-top: 22px;
+}
+
+.axis {
+  margin-bottom: 18px;
+}
+
+.axisLabel {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ink) 50%, transparent);
+  margin-bottom: 10px;
+}
+
+.axisValues {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.chip,
+.chipOn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11.5px;
+  text-align: center;
+  transition: 0.15s;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.chipOn {
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  border-color: var(--coffee-deep);
+}
+
+.pill,
+.pillOn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 15px;
+  height: 56px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 15px;
+  white-space: nowrap;
+  transition: 0.15s;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.pillOn {
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  border-color: var(--coffee-deep);
+}
+
+.unavailable {
+  margin: 0 0 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-danger);
+}
+
+.modes {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mode,
+.modeOn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.modeOn {
+  border-color: var(--coffee-deep);
+}
+
+.modeBox,
+.modeBoxOn {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--color-canvas);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 14%, transparent);
+}
+
+.modeBoxOn {
+  border-color: var(--coffee-deep);
+}
+
+.modeInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.modeLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.modeName {
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+
+.modePrice {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 19px;
+  white-space: nowrap;
+}
+
+.was {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.subPrice {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 19px;
+  color: var(--coffee-deep);
+}
+
+.dotOn,
+.dotOff {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.dotOn {
+  box-shadow: inset 0 0 0 5px var(--coffee-deep);
+  background: var(--color-canvas-soft);
+}
+
+.dotOff {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-ink) 30%, transparent);
+  background: transparent;
+}
+
+.freqs,
+.freqsOff {
+  transition: 0.2s;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Dimmed and inert, never removed: the rhythms are what the "Assinatura" option MEANS, and a shopper has to
+ * see what they are choosing between before choosing. */
+.freqsOff {
+  opacity: 0.42;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+
+.freqRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.freq,
+.freqOn {
+  padding: 8px 15px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: 0.15s;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.freqOn {
+  background: var(--color-ink);
+  color: var(--color-canvas);
+  border-color: var(--color-ink);
+}
+
+.perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.buyRow {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-full);
+  padding: 5px;
+}
+
+.stepBtn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  font-family: inherit;
+  font-size: 17px;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.stepBtn:hover {
+  background: color-mix(in srgb, var(--color-ink) 9%, transparent);
+}
+
+.qty {
+  min-width: 26px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.add {
+  flex: 1 1 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 15px 24px;
+  font-family: inherit;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.add:hover:not(:disabled) {
+  background: var(--coffee-deep-hover);
+}
+
+.add:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ── The rich half: photos, seals, the spec panel, the producer story ───────────────────────────────────── */
+.rich {
+  background: var(--color-surface-sunken);
+  padding: clamp(52px, 7vw, 88px) clamp(18px, 4vw, 32px);
+}
+
+.richGrid {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: clamp(20px, 3vw, 32px);
+  align-items: start;
+}
+
+/* ★ THE GALLERY IS DRIVEN BY WHAT EXISTS. One extra photo fills the wide cell; two or more fill the pair
+ * below it. With no extras the whole grid is absent — see PdpCoffee. */
+.gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.galleryWide {
+  grid-column: span 2;
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.gallerySquare {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.seals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: 12px;
+}
+
+.seal {
+  background: var(--color-canvas-soft);
+  border-radius: var(--r-sm);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--color-ink) 68%, transparent);
+}
+
+.seal svg {
+  color: var(--coffee-deep);
+}
+
+.card {
+  background: var(--color-canvas-soft);
+  border-radius: 10px;
+  padding: clamp(22px, 2.6vw, 30px);
+}
+
+.cardTitle {
+  margin: 0 0 18px;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(24px, 2.6vw, 30px);
+}
+
+.spec {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 9%, transparent);
+  font-size: 12.5px;
+}
+
+.specKey {
+  color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+
+.specValue {
+  text-align: right;
+  color: var(--color-ink);
+}
+
+.story p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+.story p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── The product's own review wall ──────────────────────────────────────────────────────────────────────── */
+.reviews {
+  padding: clamp(52px, 7vw, 88px) clamp(18px, 4vw, 32px);
+}
+
+.reviewsHead {
+  text-align: center;
+  max-width: 620px;
+  margin: 0 auto clamp(32px, 4vw, 48px);
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(27px, 3.4vw, 42px);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 5px;
+  vertical-align: middle;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coffee-deep);
+  display: block;
+}
+
+.dotEmpty {
+  composes: dot;
+  background: color-mix(in srgb, var(--coffee-deep) 22%, transparent);
+}
+
+.wall {
+  columns: 290px 3;
+  column-gap: 20px;
+}
+
+.review {
+  break-inside: avoid;
+  background: var(--color-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 7%, transparent);
+  border-radius: var(--r-sm);
+  padding: 22px 22px 20px;
+  margin-bottom: 20px;
+}
+
+.reviewDots {
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.reviewDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coffee-deep);
+  display: block;
+}
+
+.reviewDotEmpty {
+  composes: reviewDot;
+  background: color-mix(in srgb, var(--coffee-deep) 22%, transparent);
+}
+
+.reviewBody {
+  margin: 12px 0 16px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--color-ink) 82%, transparent);
+}
+
+.reviewWho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--coffee-sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.reviewMeta {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-ink) 62%, transparent);
+}

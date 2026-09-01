@@ -19,7 +19,7 @@ import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.serv
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { pdpMetadata } from '@/templates/pdp/meta';
-import { PdpView } from '@/templates/pdp/PdpView';
+import { PdpCoffeeView } from '@/templates/pdp/PdpCoffeeView';
 
 // No generateStaticParams: its mere presence marks the route SSG (● in the build), which force-dynamic does
 // NOT override — and an SSG page that calls headers() at request time is the "static to dynamic" 500. Dropping
@@ -56,12 +56,10 @@ export default async function ProductAliasPage({
   if (primaryCategory(product)) storePermanentRedirect(base, canonicalProductPath(product));
   // ★ QA16 — an UNCATEGORIZED product has no canonical category path, so this file IS its PDP: the `?sku=`
   // deep link has to be honoured here too, or exactly those products stay unbuyable without JS.
-  return (
-    <PdpView
-      store={store}
-      base={base}
-      product={product}
-      sku={skuParamFromSearch(await searchParams)}
-    />
-  );
+  // ★ THIS SHOP'S OWN PRODUCT PAGE. The `?sku=` deep link the reference PDP honours is not read here: this
+  // page's buy box opens on the merchant's starred SKU (or the first of each axis) and the shopper picks
+  // from there. A link that names a SKU is a link a shop with a PLP and a swatch grid mints; this shop has
+  // neither, and honouring a parameter nothing produces would be a promise with no source.
+  void searchParams;
+  return <PdpCoffeeView store={store} base={base} product={product} />;
 }

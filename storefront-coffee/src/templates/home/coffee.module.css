@@ -1,0 +1,652 @@
+/* The coffee shop's home — the design's own layout, in tokens.
+ *
+ * Every colour is a token defined in `themes/coffee-store/tokens.css`. Nothing here is a literal value, which
+ * is both the inherited rule (`src/structure.test.ts`) and what lets the checkout wear the same shop.
+ */
+
+.page {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* ── The hero ───────────────────────────────────────────────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  padding: clamp(28px, 4vw, 44px) clamp(18px, 4vw, 32px) clamp(56px, 8vw, 96px);
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.heroCopy {
+  text-align: center;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-size: 11.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 18px;
+}
+
+.h1 {
+  margin: 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(34px, 6.4vw, 88px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 20px auto 0;
+  max-width: 760px;
+  font-size: clamp(13.5px, 1.6vw, 15px);
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-ink) 66%, transparent);
+  text-wrap: balance;
+}
+
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 26px;
+}
+
+.ctaPrimary,
+.ctaGhost {
+  border-radius: var(--radius-full);
+  padding: 14px 28px;
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.ctaPrimary {
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  letter-spacing: 0.02em;
+}
+
+.ctaPrimary:hover {
+  background: var(--coffee-deep-hover);
+  color: var(--color-canvas);
+}
+
+.ctaGhost {
+  border: 1px solid color-mix(in srgb, var(--color-ink) 22%, transparent);
+  color: var(--color-ink);
+}
+
+.ctaGhost:hover {
+  border-color: var(--color-ink);
+}
+
+.scrollHint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 30px 0 -22px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ink) 50%, transparent);
+}
+
+.scrollHint svg {
+  animation: fgNudge 2.4s ease-in-out infinite;
+}
+
+@keyframes fgNudge {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateY(7px);
+    opacity: 1;
+  }
+}
+
+/* ── The three-column band: two value props, the bag, two more ──────────────────────────────────────────── */
+.band {
+  margin-top: 34px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(26px, 3vw, 36px);
+  align-items: center;
+}
+
+.props {
+  flex: 1 1 240px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(28px, 5vw, 64px);
+  padding-top: clamp(0px, 3vw, 40px);
+}
+
+.propsLeft {
+  text-align: right;
+}
+
+.propHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+  color: var(--color-accent);
+}
+
+.propsLeft .propHead {
+  justify-content: flex-end;
+}
+
+.propTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 19px;
+  color: var(--color-ink);
+}
+
+.propBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.heroShot {
+  flex: 1.7 1 340px;
+  min-width: 250px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* The warm halo the bag floats over. */
+.heroShot::before {
+  content: '';
+  position: absolute;
+  inset: 8% 4% 12%;
+  background: radial-gradient(
+    60% 50% at 50% 45%,
+    color-mix(in srgb, var(--coffee-sand) 55%, transparent),
+    transparent 70%
+  );
+  border-radius: 50%;
+}
+
+.heroShotImg {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  filter: drop-shadow(0 40px 60px color-mix(in srgb, var(--color-ink) 22%, transparent));
+  /* ★ THE FLOAT. Slow and shallow on purpose — 7s and 10px. It is on the hero's ONE photo, which is where
+   * the design puts it: six cards drifting at once is noise competing for the same eye. */
+  animation: fgFloat 7s ease-in-out infinite;
+}
+
+@keyframes fgFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ── The subscription section ───────────────────────────────────────────────────────────────────────────── */
+.band2 {
+  padding: clamp(56px, 8vw, 88px) clamp(18px, 4vw, 32px);
+  background: var(--color-surface-sunken);
+}
+
+.sectionHead {
+  max-width: 720px;
+  margin: 0 auto 56px;
+  text-align: center;
+}
+
+.h2 {
+  margin: 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(28px, 3.6vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.sectionLede {
+  margin: 18px auto 0;
+  max-width: 560px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--color-ink) 62%, transparent);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 20px;
+}
+
+.step {
+  position: relative;
+  background: var(--color-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border-radius: var(--r-sm);
+  padding: 34px 30px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stepDark {
+  composes: step;
+  background: var(--color-ink);
+  color: var(--color-canvas);
+  border-color: transparent;
+}
+
+.stepNumber {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 46px;
+  line-height: 1;
+  color: var(--coffee-sand);
+}
+
+.stepNumberAccent {
+  composes: stepNumber;
+  color: var(--color-accent);
+}
+
+.stepTitle {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 25px;
+  line-height: 1.15;
+}
+
+.stepBody {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--color-ink) 65%, transparent);
+  max-width: 230px;
+}
+
+.stepBodyOnDark {
+  composes: stepBody;
+  color: color-mix(in srgb, var(--color-canvas) 70%, transparent);
+  max-width: none;
+}
+
+.seal {
+  position: absolute;
+  top: -20px;
+  right: clamp(-16px, 0.5vw, 0px);
+  width: clamp(78px, 8vw, 96px);
+  height: clamp(78px, 8vw, 96px);
+  border-radius: 50%;
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+  transform: rotate(-8deg);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.sealBig {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 26px;
+}
+
+.sealSmall {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.freqPills {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.freqPill {
+  border: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
+  border-radius: var(--radius-full);
+  padding: 6px 13px;
+  font-size: 11.5px;
+}
+
+.stepCta {
+  margin-top: auto;
+  align-self: flex-start;
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  border-radius: var(--radius-full);
+  padding: 12px 22px;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.stepCta:hover {
+  background: color-mix(in srgb, var(--coffee-deep) 80%, var(--color-canvas));
+  color: var(--color-canvas);
+}
+
+/* ── The products ───────────────────────────────────────────────────────────────────────────────────────── */
+.products {
+  padding: clamp(56px, 8vw, 100px) clamp(18px, 4vw, 32px);
+}
+
+.productsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 44px;
+  flex-wrap: wrap;
+}
+
+/* The grid's top padding and the row gap make room for the bag that overhangs each card. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 172px 20px;
+  padding-top: 170px;
+}
+
+.card {
+  position: relative;
+  background: var(--color-canvas-soft);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  border-radius: var(--r-sm);
+  padding: 158px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--color-ink) 24%, transparent);
+}
+
+.cardShot {
+  position: absolute;
+  top: -152px;
+  left: 0;
+  right: 0;
+  height: 310px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.cardShot img {
+  height: 310px;
+  width: auto;
+  filter: drop-shadow(0 22px 30px color-mix(in srgb, var(--color-ink) 18%, transparent));
+}
+
+.cardSca {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.cardSub {
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 16px;
+}
+
+.note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 16%, transparent);
+  border-radius: var(--radius-full);
+  padding: 5px 11px 5px 9px;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+.note svg {
+  color: var(--color-accent);
+}
+
+.cardFoot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.cardVariants {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--color-ink) 50%, transparent);
+}
+
+.cardPrices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cardPrice {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 22px;
+}
+
+.cardWas {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+  text-decoration: line-through;
+}
+
+.cardCta {
+  display: inline-block;
+  background: var(--coffee-deep);
+  color: var(--color-canvas);
+  border-radius: var(--radius-full);
+  padding: 11px 20px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.card:hover .cardCta {
+  background: var(--coffee-deep-hover);
+}
+
+/* ── The trust strip ────────────────────────────────────────────────────────────────────────────────────── */
+.trust {
+  padding: clamp(26px, 4vw, 34px) clamp(18px, 4vw, 32px) clamp(24px, 4vw, 30px);
+  background: var(--color-surface-sunken);
+}
+
+.trustRow {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.trustItem {
+  flex: 1 0 min(78%, 230px);
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 clamp(14px, 1.8vw, 22px);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-ink) 72%, transparent);
+}
+
+.trustItem + .trustItem {
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+.trustItem svg {
+  color: var(--coffee-deep);
+  flex: 0 0 auto;
+}
+
+/* ── The review wall ────────────────────────────────────────────────────────────────────────────────────── */
+.reviews {
+  clear: both;
+  padding: clamp(52px, 7vw, 84px) clamp(18px, 4vw, 32px) clamp(56px, 8vw, 88px);
+  background: var(--color-surface-sunken);
+}
+
+.reviewsHead {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 48px;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 5px;
+  vertical-align: middle;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--coffee-deep);
+  display: block;
+}
+
+.dotEmpty {
+  composes: dot;
+  background: color-mix(in srgb, var(--coffee-deep) 22%, transparent);
+}
+
+.wall {
+  columns: 280px 3;
+  column-gap: 20px;
+}
+
+.review {
+  break-inside: avoid;
+  background: var(--color-canvas-soft);
+  border-radius: var(--r-sm);
+  padding: 22px 22px 20px;
+  margin-bottom: 20px;
+}
+
+.reviewDots {
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.reviewDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coffee-deep);
+  display: block;
+}
+
+.reviewDotEmpty {
+  composes: reviewDot;
+  background: color-mix(in srgb, var(--coffee-deep) 22%, transparent);
+}
+
+.reviewBody {
+  margin: 12px 0 16px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--color-ink) 82%, transparent);
+}
+
+.reviewWho {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.initials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--coffee-sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.reviewMeta {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--color-ink) 62%, transparent);
+}
+
+/* ── ⚠️ THE MOTION RULE. Both of this page's loops stop; nothing the page SAYS depends on them. ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  .heroShotImg,
+  .scrollHint svg {
+    animation: none;
+  }
+}

@@ -1,0 +1,49 @@
+# THE COFFEE STORE'S OWN VITRINE — the one deployable this repository BUILDS instead of pinning.
+#
+# `docker compose` merges this file into `compose.yml` automatically whenever it exists, which is the seam
+# that file left open: the coffee front is a FORK (slice C1 — `pack-surface` cut `storefront-coffee/` out of
+# the Forge storefront and this repository owns every line of it), so it is not one of the four images
+# `forge.lock` pins. Whoever creates a deployable wires it.
+#
+# ⚠️ IT IS BUILT, NOT PINNED, AND THAT IS THE WHOLE DIFFERENCE BETWEEN THE TWO KINDS OF FRONT HERE.
+# `storefront`, `checkout`, `admin` and `kernel` are the PRODUCT: pinned by digest, upgraded by re-stamping
+# the lock, never patched locally. This one is OURS — its source is in this repo, it has no upstream, and
+# `forge.lock` has nothing to say about it. Pinning it would be claiming a provenance it does not have.
+#
+# ── BEFORE `docker compose up`, THE IMAGE HAS TO EXIST ───────────────────────────────────────────────────
+# The Dockerfile is thin ON PURPOSE (it copies a build instead of running one), so the build happens outside:
+#
+#     bash bin/vendor-packages.sh ~/nextbridge/projetos/forge   # once, and again when the monorepo moves
+#     bash bin/install-storefront.sh
+#     cd storefront-coffee && FORGE_BUILD_STANDALONE=1 npm run build && cd ..
+#     docker compose build storefront-coffee
+#
+# The build that ships is the build that was tested, byte for byte — not a second one that ran in a layer.
+
+services:
+  storefront-coffee:
+    build:
+      context: ./storefront-coffee
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # The SAME kernel as every other front on this box, and it has to be: the cart a shopper fills here is
+      # a cookie holding a kernel cart id, so a vitrine pointed elsewhere hands the checkout an empty bag.
+      FORGE_READ_BASE_URL: http://kernel:3000
+      FORGE_COMMAND_BASE_URL: http://kernel:3000
+      FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
+      # Product photographs are resolved in THIS process (the port answers with refs; the base makes them
+      # addresses), so it needs the same media base the kernel and the reference vitrine carry. Without it
+      # the six coffees render as placeholders and nothing logs an error.
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
+      # ★ THE THEME, AND IT IS THE SAME MOUNT THE OTHER TWO FRONTS TAKE. The store names `coffee-store` in
+      # its own row (`theme_key`), and a front that cannot find the folder falls back to the base theme — it
+      # never fails. So a missing mount here is not an outage, it is a shop quietly wearing the wrong
+      # clothes, which is exactly the kind of thing nobody notices in a demo until it is on a screen.
+      FORGE_THEMES_DIR: ${FORGE_THEMES_DIR:-/app/themes-instance}
+    volumes:
+      - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
+    depends_on:
+      - kernel

@@ -1,35 +1,30 @@
-// The store home's render, shared by its two route entries (PERF-B): the dynamic tree's
-// `s/[store]/(storefront)/page.tsx` and the edge-cacheable twin `c/[store]/page.tsx`. Next fixes
-// cacheability per route file, so the entries are two files; the home itself is written once, here.
+// The store home's render. It READS; `HomeCoffee` draws.
 //
-// It is PURE COMPOSITION: the page mounts the declared slots and whatever the merchant composed fills them
-// (S6-FIXPACK — the theme no longer hardcodes a hero or a shelf of recent products; an uncomposed home is an
-// empty home). Every read below is ISR-cached through the read client, and nothing reads a cookie or a
-// header — which is what lets the twin be prerendered and served from the edge.
+// The split is what lets the whole page be asserted without a port: everything below this file is a pure
+// function of what these three reads returned, including the two rules that only show up on thin data — a
+// card with no SCA and a store with no reviews.
+//
+// ⚠️ EVERY READ HERE IS ISR-CACHED AND NONE OF THEM READS A COOKIE. That is not a performance note: the
+// route this renders is `force-dynamic`, but the reads are the same ones the cacheable twin would make, and
+// a `no-store` fetch introduced here would be a per-visitor call on the most-visited page of the shop.
 
 import { readClient } from '@forgecommerce/storefront-kit/config';
 import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { fetchPublishedReviews } from '@forgecommerce/ext-reviews/reviews';
+import { fetchRatingSummaries } from '@forgecommerce/ext-reviews/ratings';
 import type { Metadata } from 'next';
-import { BrandsGrid } from '@/components/BrandsGrid';
-import { CategoryTiles } from '@/components/CategoryTiles';
 import { ExtensionOutlet } from '@/lib/extensions/ExtensionOutlet';
 import { NEUTRAL_STORE_TITLE } from '@/lib/site-metadata';
-import { HomeTemplate } from '@/templates/home/template';
+import { storeRating, wallReviews } from '@/lib/coffee/reviews-view';
+import { HomeCoffee } from '@/templates/home/HomeCoffee';
 
-// S6-IMAGES — the home had NO metadata at all (it inherited the layout's static title). It now declares its
-// canonical and og:type. It carries NO og:image: the S6-FIXPACK home is 100% Compose (no product shelf), so a
-// product cover would advertise something the page does not even show. The honest image is a store-level logo
-// (not in the kernel yet) or the composed banner — declared limit, follow-up.
-//
-// QA-PACK-1 C3 — and it now carries the STORE'S NAME. It used to declare no title at all, so the value fell
-// through to the root layout's `Forge Storefront` placeholder: the developer's English string, on the most
-// linked page of a Brazilian store, in the two places that travel furthest (Google's result and the share
-// card). Every other page already named the store; the home was the one that did not.
-//
-// The name comes from read.store_flags — the store's own public fact, the same read the theme already makes
-// for the store clock. It MUST stay the ISR-cached read: `/c/[store]` is the edge-cacheable twin of this page,
-// and one uncached fetch anywhere in its render, `generateMetadata` included, makes Next serve the whole route
-// dynamically. A store whose flags cannot be read degrades to the neutral title rather than to the placeholder.
+/** How many coffees the home lists. There is no PLP in this shop — this page IS the catalogue — so the
+ *  number is a ceiling on the design rather than a page size: a seventh coffee appears here or nowhere. */
+const HOME_PRODUCTS = 24;
+
+/** The wall's page. The export refuses anything above its own ceiling of 100 rather than clamping. */
+const WALL_REVIEWS = 24;
+
 export async function homeMetadata(store: string): Promise<Metadata> {
   const flags = await readClient().storeFlags(store);
   const name = flags?.name?.trim();
@@ -42,18 +37,37 @@ export async function homeMetadata(store: string): Promise<Metadata> {
   };
 }
 
-export function HomeView({ store, base }: { store: string; base: StoreBase }) {
+export async function HomeView({ store, base }: { store: string; base: StoreBase }) {
+  // The three reads, in parallel: they answer independent questions and nothing here needs the other's
+  // result to ask its own.
+  const [catalog, wall, ratings] = await Promise.all([
+    readClient().products(store, { limit: HOME_PRODUCTS }),
+    fetchPublishedReviews({ store, limit: WALL_REVIEWS }),
+    fetchRatingSummaries(store),
+  ]);
+
+  const products = catalog?.items ?? [];
+  // ⚠️ `null` FROM THE WALL MEANS THE READ FAILED, and it is deliberately distinct from a store with no
+  // reviews. Both draw no wall — but only one of them is a shop that has nothing to show, and the export's
+  // type is what keeps this page from printing "ninguém avaliou" during an outage.
+  const titles = Object.fromEntries(products.map((p) => [p.product_id, p.title]));
+  const reviews = wall === null ? [] : wallReviews(wall.reviews, titles);
+
+  const slots = {
+    hero: <ExtensionOutlet name="home.hero" store={store} storeBase={base} />,
+    bannerStrip: <ExtensionOutlet name="home.banner_strip" store={store} storeBase={base} />,
+    belowShelf: <ExtensionOutlet name="home.below_shelf" store={store} storeBase={base} />,
+    belowCategories: <ExtensionOutlet name="home.below_categories" store={store} storeBase={base} />,
+    belowBrands: <ExtensionOutlet name="home.below_brands" store={store} storeBase={base} />,
+  };
+
   return (
-    <HomeTemplate
-      hero={<ExtensionOutlet name="home.hero" store={store} storeBase={base} />}
-      bannerStrip={<ExtensionOutlet name="home.banner_strip" store={store} storeBase={base} />}
-      belowShelf={<ExtensionOutlet name="home.below_shelf" store={store} storeBase={base} />}
-      belowCategories={
-        <ExtensionOutlet name="home.below_categories" store={store} storeBase={base} />
-      }
-      belowBrands={<ExtensionOutlet name="home.below_brands" store={store} storeBase={base} />}
-      categories={<CategoryTiles store={store} base={base} />}
-      brands={<BrandsGrid store={store} base={base} />}
+    <HomeCoffee
+      base={base}
+      products={products}
+      reviews={reviews}
+      rating={storeRating(ratings)}
+      slots={slots}
     />
   );
 }

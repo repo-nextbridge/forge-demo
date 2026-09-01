@@ -1,14 +1,15 @@
-// The (storefront) route group's layout — the DEFAULT chrome for home / PLP / PDP / search, on the DYNAMIC
-// tree (the one that may read cookies/searchParams: a filtered PLP, the search page, a gated store).
+// The (storefront) route group's layout — the chrome for this shop's pages, on the DYNAMIC tree.
 //
-// The chrome itself lives in <StorefrontChrome> (components/StorefrontChrome.tsx) because PERF-B gave it a
-// second host — `c/[store]/layout.tsx`, the edge-cacheable twin. One implementation, two layout files: Next
-// fixes cacheability per route file, so the split is structural, and a guard asserts neither side grows its
-// own chrome. Route groups don't change the URL — these pages still resolve at `/s/<store>/...`.
+// ★ THE CHROME IS THIS SHOP'S OWN (`components/coffee/CoffeeChrome.tsx`), not the reference vitrine's. The
+// design has two links, a logo, an account button and a bag, and no drawer at all — a shape that is written
+// rather than configured. What is KEPT from what we inherited is the cart state machine underneath it; see
+// the header of CoffeeChrome for why replacing that too would be the expensive mistake.
+//
+// Route groups don't change the URL — these pages still resolve at `/s/<store>/...`.
 
 import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
 import type { ReactNode } from 'react';
-import { StorefrontChrome } from '@/components/StorefrontChrome';
+import { CoffeeChrome } from '@/components/coffee/CoffeeChrome';
 
 export default async function StorefrontLayout({
   children,
@@ -22,8 +23,8 @@ export default async function StorefrontLayout({
   // `force-dynamic` (the cacheable twin is `c/[store]`, which never asks).
   const base = await requestStoreBase(store);
   return (
-    <StorefrontChrome store={store} base={base}>
+    <CoffeeChrome store={store} base={base}>
       {children}
-    </StorefrontChrome>
+    </CoffeeChrome>
   );
 }
