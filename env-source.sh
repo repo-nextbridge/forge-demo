@@ -56,7 +56,67 @@ export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5
 require FORGE_VAULT_KEY forge-vault-key || return 1
 
 # Minted by `provision-ref` at bootstrap and shown ONCE. Without it the admin boots and nobody can log in.
+#
+# ⚠️ ON THIS BOX IT IS NOW INERT, AND THAT IS DELIBERATE — read before "fixing" it. This is the SINGULAR
+# service token, and `loginTarget()` (apps/admin/src/lib/login-command-client.ts) consults it ONLY on the
+# PINNED branch, i.e. when `FORGE_ADMIN_TENANT` has a value. This box runs in HOST mode with that variable
+# EMPTY, so the singular is never read; host mode looks at the PLURAL map `FORGE_ADMIN_SERVICE_TOKENS` and,
+# finding nothing, mints a driver per hostname from the platform credential below. Left exported because a box
+# that goes back to pinning one tenant needs it, and because deleting it would make the next reader think host
+# mode requires deleting it.
 export FORGE_ADMIN_SERVICE_TOKEN="$(optional_secret forge-admin-service-token)"
+
+# ★★ THE BOX'S OWN PLATFORM CREDENTIAL — what makes ONE admin container serve BOTH tenants (PRE-SEED · P-A).
+#
+# Minted by `docker compose run --rm kernel node dist/admin-platform-token.js`, which prints it once on stdout;
+# capture it into `.secrets` as `forge-admin-platform-token`. It holds exactly ONE scope
+# (`platform.admin_driver.mint`) — deliberately NOT `platform.iam.write`, so it cannot reach generic credential
+# issuance, and NOT `platform.read`, so it cannot read another tenant's rows.
+#
+# WITHOUT IT, HOST MODE IS A MODE THAT LOOKS CONFIGURED AND IS NOT: the compose declares the variable with an
+# empty default, the admin boots, and every login answers `not_configured` — measured on this box before this
+# line existed. That is the shape this file's whole doctrine is against, so it is `optional_secret` (a box
+# that pins one tenant needs none) with the failure named here rather than discovered at a login screen.
+export FORGE_ADMIN_PLATFORM_TOKEN="$(optional_secret forge-admin-platform-token)"
+
+# ★ THE MAILBOX (PRE-SEED · P-A) — Resend, the same account Staging uses, so a local test is the real test.
+#
+# ⚠️ ALL FOUR OR NONE. `FORGE_SMTP_HOST`, `USER` and `FROM` are not secrets and live in `.env`; only the
+# password is here. A PARTIAL set is a FATAL BOOT ERROR by design (smtp-channel-driver.ts) — the driver names
+# the missing one, which is the whole reason a half-configured mailer refuses instead of limping.
+#
+# ⚠️ AND WITHOUT ANY OF THEM THIS BOX HAS NO MAIL AT ALL — it does NOT fall back to printing the code. This
+# compose declares `NODE_ENV: production`, and under production the transport that writes to the terminal is
+# never constructed; what is built instead FAILS BY NAME on every message. No OTP reaches anyone and nobody
+# logs in. `optional_secret` keeps a box without mail bootable; it does not make it loginable.
+FORGE_SMTP_PASS="$(optional_secret forge-smtp-pass)"
+
+# ★★ THE FOUR TRAVEL TOGETHER, FROM HERE, AND THAT IS THE WHOLE POINT OF THIS BLOCK.
+#
+# The kernel's rule is ALL FOUR OR NONE, enforced as a FATAL BOOT ERROR naming the missing one. Putting the
+# three non-secret halves in `.env` and the password here looked tidier and was a trap: `.env` is static, the
+# password is conditional, so a box whose owner had not added the key yet declared three of four and REFUSED
+# TO BOOT — measured on this box, exactly that:
+#
+#     Error: refusing to boot: FORGE_SMTP_* is partially configured — missing FORGE_SMTP_PASS.
+#
+# The set is therefore assembled in ONE place, and the presence of the password is what decides whether the
+# set exists at all. A box with no key boots with no mail; a box with a key boots with all four.
+if [ -n "$FORGE_SMTP_PASS" ]; then
+  export FORGE_SMTP_PASS
+  export FORGE_SMTP_HOST="${FORGE_SMTP_HOST:-smtp.resend.com}"
+  export FORGE_SMTP_USER="${FORGE_SMTP_USER:-resend}"
+  export FORGE_SMTP_FROM="${FORGE_SMTP_FROM:-hi@forgecommerce.pro}"
+else
+  # Explicitly EMPTY, not merely unset: a value inherited from the surrounding shell would rebuild the partial
+  # set this block exists to prevent.
+  export FORGE_SMTP_PASS='' FORGE_SMTP_HOST='' FORGE_SMTP_USER='' FORGE_SMTP_FROM=''
+  echo "[env-source] ⚠️  no 'forge-smtp-pass' secret — this box boots WITHOUT e-mail." >&2
+  echo "[env-source]     It does NOT fall back to printing the code: this compose runs NODE_ENV=production," >&2
+  echo "[env-source]     where the terminal transport is never built and every message FAILS BY NAME. No OTP" >&2
+  echo "[env-source]     is delivered and nobody can log in. Add the Resend key to .secrets as" >&2
+  echo "[env-source]     'forge-smtp-pass' and re-source this file." >&2
+fi
 
 # ★ THE SEED'S CREDENTIAL — and it already exists on this box.
 #
@@ -74,6 +134,16 @@ export FORGE_ADMIN_SERVICE_TOKEN="$(optional_secret forge-admin-service-token)"
 # With the header, this credential drives the whole first day: the seed, `iam.api_key.create` (so a narrower
 # key needs no admin either) and `extension.install`.
 export FORGE_SEED_TOKEN="$(optional_secret forge-seed-token)"
+
+# ★★ AND THE SECOND TENANT'S (PRE-SEED · P-A). A credential belongs to ONE tenant and the cross-tenant guard
+# refuses it against any other — that refusal is the boundary working, not a misconfiguration. So a box with
+# two tenants has two seed credentials, and a seeding run names which it is:
+#
+#   node bin/seed-box.mjs --tenant forgeco
+#   FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe
+#
+# Both are printed once by their own `provision-ref` run and captured into `.secrets`; neither is ever echoed.
+export FORGE_SEED_TOKEN_FORGECAFE="$(optional_secret forge-seed-token-forgecafe)"
 
 # WHICH TENANT the seed writes to. It is NOT a secret and it already lives in `.env` — but `.env` is read by
 # COMPOSE and not by your shell, so a script you run by hand would not see it. One line, so `node

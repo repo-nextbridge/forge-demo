@@ -76,8 +76,22 @@ services:
       FORGE_STORAGE_BUCKET: ${FORGE_STORAGE_BUCKET:-}
       FORGE_STORAGE_CLIENT_EMAIL: ${FORGE_STORAGE_CLIENT_EMAIL:-}
       FORGE_STORAGE_PRIVATE_KEY: ${FORGE_STORAGE_PRIVATE_KEY:-}
-      # Login e-mail. ALL FOUR or NONE: unset → the kernel LOGS the code instead of sending it (which is what
-      # a demo wants — `docker compose logs kernel` is the inbox); a partial set is a fatal boot error.
+      # ★★ LOGIN E-MAIL. ALL FOUR OR NONE — a partial set is a FATAL BOOT ERROR that names the missing one.
+      #
+      # ⚠️ THIS BLOCK USED TO PROMISE THAT LEAVING THEM UNSET MAKES THE KERNEL LOG THE CODE TO THE TERMINAL,
+      # AND THAT WAS NEVER TRUE HERE. This file declares `NODE_ENV: production` four blocks up, and the
+      # transport that writes a message to stderr is constructible ONLY under `!production`
+      # (apps/api/src/smtp-channel-driver.ts) — deliberately, because printing a credential to a terminal must
+      # be impossible in production BY CONSTRUCTION rather than by a flag. What a production box with no mail
+      # actually gets is the transport that FAILS BY NAME on every message: no OTP reaches anyone, and nobody
+      # can log in. The two sentences sat in one file contradicting each other for a whole wave, and the cost
+      # was an afternoon on a bench nobody could enter.
+      #
+      # So: this box CONFIGURES the full set. The values are assembled in `env-source.sh`, where the presence
+      # of the `forge-smtp-pass` secret decides whether the set exists at all — three here and a conditional
+      # password would rebuild the partial set that refuses to boot.
+      # WHERE THE CODE ARRIVES: the mailbox of `FORGE_ADMIN_SEED_EMAIL`. There is no terminal inbox on this box.
+      # `bin/dev-mail-promise.guard.mjs` holds this comment to the code that would have to keep it.
       FORGE_SMTP_HOST: ${FORGE_SMTP_HOST:-}
       FORGE_SMTP_PORT: ${FORGE_SMTP_PORT:-}
       FORGE_SMTP_USER: ${FORGE_SMTP_USER:-}
@@ -243,6 +257,10 @@ services:
       # answers here and the published port is inert. On the bench it is the admin's own origin — a path
       # prefix does not work (the admin is a Next app with no basePath; see caddy/Caddyfile.local).
       - '${FORGE_ADMIN_HTTP_PORT:-8081}:81'
+      # ★ THE SECOND TENANT'S ADMIN DOOR (PRE-SEED · P-A). Same container as `:81`; the PORT is what
+      # `read.admin.by_host` keys on, so two tenants on one `localhost` need two published ports. See
+      # caddy/Caddyfile.local, `:83`.
+      - '${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
     environment:
       FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
       FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}
