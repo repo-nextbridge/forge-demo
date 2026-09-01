@@ -15,7 +15,7 @@
 // What this shop does NOT mount from it: the drawer, the search box, the account modal. The bag is a LINK to
 // the checkout, and the badge is the only feedback — see SacolaBadge.tsx.
 
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';
 import {
@@ -87,11 +87,26 @@ export function CoffeeChrome({
 
           <div className={styles.actions}>
             {/* The account door is the CHECKOUT's, on the same hostname by a path the edge routes there.
-             * The vitrine never served it and does not start now. */}
-            <a href="/account" className={styles.account} aria-label="Minha conta">
+             * The vitrine never served it and does not start now.
+             *
+             * ⚠️⚠️ AND IT STILL CARRIES THE STORE BASE, which is the whole of this fix. These two were
+             * written as bare `/account` and `/checkout` — correct on a store with its own hostname, and
+             * WRONG the moment one origin serves more than one store: the checkout then resolves the store
+             * from the HOST, and this bench's host is the SHOE shop. Measured before the fix, on the
+             * coffee PDP: `/checkout` answered with store sto_01M1DE555DZ… (the shoes, no theme) while
+             * `/s/<café>/checkout` answered with sto_01M1DE555TJ… and `data-forge-theme="coffee-store"`.
+             * A shopper clicking the bag in the coffee shop landed in the shoe shop's checkout.
+             *
+             * `storeHref` is the same helper every other link in this fork already uses, and it is right in
+             * BOTH worlds: it yields a bare `/checkout` when the base is host-resolved (production, where
+             * each store has its own DNS) and `/s/<store>/checkout` when the URL is path-scoped. The edge
+             * routes both to the checkout container — `caddy/Caddyfile.local` carries a `handle` block for
+             * the store-scoped checkout and account prefixes for exactly this reason.
+             * (The glob is not spelled out here on purpose: its star-slash would close this comment.) */}
+            <a href={storeHref(base, '/account')} className={styles.account} aria-label="Minha conta">
               <Icon name="user" size={16} strokeWidth={1.5} />
             </a>
-            <a href="/checkout" className={styles.bag}>
+            <a href={storeHref(base, '/checkout')} className={styles.bag}>
               <Icon name="bag" size={15} strokeWidth={1.5} />
               Sacola
               <SacolaBadge />
@@ -108,7 +123,7 @@ export function CoffeeChrome({
           <nav className={styles.footerNav}>
             <a href={`${home}#produtos`}>Nossos cafés</a>
             <a href={`${home}#assinatura`}>Assinatura</a>
-            <a href="/checkout">Minha sacola</a>
+            <a href={storeHref(base, '/checkout')}>Minha sacola</a>
           </nav>
           <div className={styles.copy}>© 2026 forge.co · Cafés que conectam</div>
         </div>
