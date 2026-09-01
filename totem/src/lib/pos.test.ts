@@ -100,3 +100,16 @@ describe('the simulated scan reads the BODY, not the status', () => {
     expect(JSON.parse(String(init.body))).toEqual({ provider_ref: 'pospix_abc', event: 'approved' });
   });
 });
+
+describe('the charge is opened on the method the customer chose', () => {
+  it('★ passes the method through instead of assuming pix', async () => {
+    const initiatePayment = vi.fn().mockResolvedValue({ payment_id: 'pay_1', next_action: { type: 'settled', data: {} } });
+    vi.doMock('./port', () => ({ totemCommand: () => ({ initiatePayment }) }));
+    vi.resetModules();
+    const { initiateCounterPayment } = await import('./pos');
+    await initiateCounterPayment('ord_1', 'card');
+    expect(initiatePayment).toHaveBeenCalledWith('sto_test', 'ord_1', 'card');
+    vi.doUnmock('./port');
+    vi.resetModules();
+  });
+});

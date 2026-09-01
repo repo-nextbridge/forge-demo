@@ -131,7 +131,7 @@ export async function payWith(name: string, method: CounterMethod): Promise<PayR
     await chooseCounterMethod(cartId, method);
     const bag = await currentBag();
     const { order_id } = await totemCommand().placeOrder(store.id, cartId, cartId);
-    const outcome = await initiateCounterPayment(order_id);
+    const outcome = await initiateCounterPayment(order_id, method);
 
     const confirmation = await totemRead().orderConfirmation(store.id, order_id);
     return {

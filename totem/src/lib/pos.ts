@@ -62,10 +62,20 @@ export async function chooseCounterMethod(cartId: string, method: CounterMethod)
   await totemCommand().setPaymentMethod(store.id, cartId, method, POS_APP_ID);
 }
 
-/** Start the charge for a placed order and read the envelope for what the screen must do next. */
-export async function initiateCounterPayment(orderId: string): Promise<PosOutcome> {
+/**
+ * Start the charge for a placed order and read the envelope for what the screen must do next.
+ *
+ * ⚠️ THE METHOD IS PASSED THROUGH, NEVER ASSUMED. This was written with `'pix'` hard-coded — the contract's
+ * example call shows only `{order_id}` and it is easy to read that as "the method comes from the cart". It
+ * does not: `payment.initiate` takes the neutral method, and a card order initiated as a pix is a charge
+ * against the wrong rail that nothing on the screen would reveal.
+ */
+export async function initiateCounterPayment(
+  orderId: string,
+  method: CounterMethod,
+): Promise<PosOutcome> {
   const store = resolveTotemStore();
-  const { next_action } = await totemCommand().initiatePayment(store.id, orderId, 'pix');
+  const { next_action } = await totemCommand().initiatePayment(store.id, orderId, method);
   return readOutcome(next_action);
 }
 
