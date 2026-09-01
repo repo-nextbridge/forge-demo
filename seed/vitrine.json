@@ -1,0 +1,95 @@
+{
+  "_readme": [
+    "THE FORGE STORE'S SHOP WINDOW — and this file holds no content, only the two decisions that are the",
+    "INSTANCE'S rather than the dataset's.",
+    "",
+    "The window itself (which banner in which slot, which shelf over which source, the institutional pages)",
+    "is declared by the mounted dataset's `storefront.json`, exactly like the catalogue is declared by its",
+    "`catalog.json`. Copying it in here would make this repository the author of a page the platform's own",
+    "example data already describes. See seed/forge.json's `_readme` for the same reasoning about the catalogue.",
+    "",
+    "What IS this instance's own answer is below."
+  ],
+
+  "store": "forge",
+  "dataset": "demo",
+
+  "apps": ["banners"],
+  "_apps_why": [
+    "The apps this window needs that a fresh box would not already carry. `shelves`, `reviews`,",
+    "`subscriptions` and `banners` itself are installed on this bench already (measured); the entry stays",
+    "because a clone of this repository against an empty box needs it, and a block cannot be placed by an app",
+    "that is not installed.",
+    "",
+    "★ `banners` IS SAFE TO INSTALL ON A SHARED TENANT AND `recommendations` IS NOT — see `_apps_held`. The",
+    "difference is `manifest.contact.hooks`: `banners` declares NONE, so installing it places nothing anywhere",
+    "and every tile in this window is a deliberate placement."
+  ],
+
+  "_apps_held": {
+    "recommendations": [
+      "APPROVED BY THE TECH LEAD AND HELD ANYWAY, because the premise the approval rested on is FALSE and this",
+      "file is where the next reader will look for why the PDP has no 'related' shelf.",
+      "",
+      "The approval read: it is already on this instance's composition list, so installing it on the `forge`",
+      "store is operating a shop, not widening the product. Measured, THERE IS NO SUCH THING AS INSTALLING IT",
+      "ON ONE STORE. `extension.install` is TENANT-scoped, and `seedDefaultPlacements`",
+      "(packages/core/src/commands/extension.ts:527) writes one `hook_placement` row PER STORE for every",
+      "storefront hook the manifest declares. This app declares three — `related` and `bought-together` on the",
+      "PDP, `bt-curator` in the admin — so installing it puts two new blocks into the COFFEE store and two into",
+      "the OUTLET as well.",
+      "",
+      "And they are not inert. An unconfigured `related` does not abstain: it reads `config?.source === 'brand'",
+      "? 'brand' : 'category'` (extensions/recommendations/block.related.tsx:139), so ABSENT means category, and",
+      "it renders a real titled section of siblings on every product page of all three stores.",
+      "",
+      "The brief for this slice says, in bold: coffee and outlet UNTOUCHED, the Renan is testing. Two visible",
+      "new sections in two stores he is looking at is not that. So the app stays out until he says otherwise,",
+      "the dataset's `related_item_count: 6` goes unapplied, and the seed says so in a line rather than",
+      "silently doing nothing."
+    ]
+  },
+
+  "promotions": {
+    "apply": [
+      "PROMO-04-SOCKS-BUY3PAY2",
+      "PROMO-05-GIFT-SHINE-SPONGE",
+      "PROMO-06-FREE-SHIPPING-CAPPED",
+      "PROMO-08-PIX-BELT"
+    ],
+    "_why": [
+      "THE DATASET'S promotions.json IS A PRICING BENCH, NOT A SORTIMENT, and the difference decides which of",
+      "its sixteen scenarios a SHOP may carry. Most of them exist in deliberately conflicting PAIRS on one",
+      "product — 20% against 10% on the same shoe, an exclusive against a willing one — because what they are",
+      "there to prove is which promotion the engine picks and in what order. That is the right content for a",
+      "bench somebody drives on purpose. In a shop somebody is being shown, a contradictory price does not read",
+      "as 'the promotion engine works', it reads as a broken store.",
+      "",
+      "So the four above are the ones that are honest merchandising on their own: a buy-3-pay-2, an automatic",
+      "gift over a threshold, capped free shipping, and a Pix discount. Two of them carry `show_progress`, which",
+      "is what puts 'faltam R$ X' in the cart — a capability nobody sees if no promotion has a threshold.",
+      "",
+      "The twelve left out are NAMED, not silently dropped, in `_excluded` below: a demo with no promotion at",
+      "all hides a capability that exists, and one with contradictory prices lies about it.",
+      "",
+      "⚠️ EVERY ONE OF THESE IS SCOPED TO THIS STORE (`store_id`). `promotion.create` takes a nullable store,",
+      "and a promotion created without one is TENANT-WIDE — it would price the coffee shop and the Outlet too.",
+      "The platform's own bench runner (apps/api/scripts/seed-promotions.ts) omits it, which is right for the",
+      "single-store instance it was written for and wrong for this box's three."
+    ],
+    "_excluded": {
+      "PROMO-01A-ADISTAR-20": "half of a pair — 20% against PROMO-01B's 10% on the same shoe",
+      "PROMO-01B-ADISTAR-10": "half of a pair — see PROMO-01A",
+      "PROMO-02A-CLOUDRUNNER-20-STACKABLE": "half of a stackable pair on one shoe (20% + 10% stack)",
+      "PROMO-02B-CLOUDRUNNER-10-STACKABLE": "half of a stackable pair — see PROMO-02A",
+      "PROMO-03A-SUPERNOVA-20-EXCLUSIVE": "half of a pair proving exclusive-beats-willing on one shoe",
+      "PROMO-03B-SUPERNOVA-10-WILLING": "half of a pair — see PROMO-03A",
+      "PROMO-07A-NB840-20": "one of a triple proving min_subtotal measured BEFORE vs AFTER discounts",
+      "PROMO-07B-BEFORE-30-OFF": "one of a triple — see PROMO-07A",
+      "PROMO-07C-AFTER-30-OFF": "one of a triple — see PROMO-07A",
+      "PROMO-09-COUPON-LAST-ONE": "usage_limit 1 — a coupon that dies on the first person who tries it, which is a fixture for 'limit reached' and a dead end in a shop being demonstrated",
+      "PROMO-10A-SOCKS-CATEGORY-25-EXCLUSIVE": "half of a pair — 25% against PROMO-10B's 15% on the same category",
+      "PROMO-10B-SOCKS-CATEGORY-15-EXCLUSIVE": "half of a pair — see PROMO-10A"
+    }
+  }
+}

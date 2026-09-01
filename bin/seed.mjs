@@ -29,10 +29,14 @@ import { seedCoffee } from '../seed/coffee.mjs';
 // The FORGE store (S1) — the sports shop, filled from the platform's example dataset by PATH rather than
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
-import { mimeOf, seedForge } from '../seed/forge.mjs';
+import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
 import { planRepoint, reuseKey, sha256 } from '../seed/media.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
+// The FORGE store's SHOP WINDOW (S4) — banners, shelves, pages and the merchandising promotions. A module of
+// its own beside the catalogue's, and it runs AFTER it for a reason the commands enforce: a shelf sourced from
+// a category and a promotion targeting a handle both resolve against products that have to be published first.
+import { seedVitrine } from '../seed/vitrine.mjs';
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SEED = join(HERE, 'seed');
@@ -779,6 +783,23 @@ await seedForge({
   log,
   fail,
   upload: (file) => upload(file, { library: false }),
+});
+// The FORGE store's WINDOW, after its catalogue. `uploadAsset` and not `upload`: a banner tile references the
+// asset LIBRARY by id, so those seven files ARE curated inventory an operator sees in the admin — the opposite
+// of the 18582 catalogue photographs above, which carry no asset row on purpose.
+await seedVitrine({
+  api,
+  token,
+  tenant,
+  command,
+  read,
+  readAll,
+  publicRead,
+  rows,
+  log,
+  fail,
+  uploadAsset: (file) => upload(file, { library: true }),
+  resolveMedia: resolveMediaFile,
 });
 log('done. Re-running this is a no-op.');
 log(

@@ -127,9 +127,29 @@ export function resolveMediaFile(key, { namespace, manifest, artDir, photoDir, h
     return rel ? join(artDir, rel) : null;
   }
   // A category's wide strip — `category-banner-<name>.jpg`, listed under `categoryBanners` by name.
+  // ⚠️ IT IS TESTED BEFORE THE HOME BANNER BELOW AND THE ORDER IS LOAD-BEARING: two different species share
+  // the word `banner` and the same folder on disk. This one is a CATEGORY page's strip; the next one is the
+  // home's campaign art. Matching `banner-` loosely would answer a strip out of `manifest.banners`, where it
+  // is not, and the seed would refuse art it is holding.
   const strip = /^category-banner-(.+)\.[a-z]+$/.exec(rest);
   if (strip) {
     const rel = manifest.categoryBanners?.[strip[1]];
+    return rel ? join(artDir, rel) : null;
+  }
+  // ★ S4 — a HOME banner: `banner-<name>.jpg` for the desktop frame, `banner-<name>-M.jpg` for the narrow one,
+  // listed under `banners` by name with a `desktop` and an optional `mobile`. Shared art, so it resolves in
+  // `artDir` and never follows the photo-tree override, exactly like the icons and strips above.
+  //
+  // ⚠️ A `-M` THE CURATOR DID NOT SHIP ANSWERS NULL, and falling back to the desktop file here would be the
+  // wrong kindness. The banner block's own contract is that a BLANK mobile ref means "use the desktop art at
+  // narrow widths"; handing the desktop path back under the phone's name uploads the same 1600px frame twice
+  // and makes the block stop falling back and start serving the wide art deliberately. Three of this dataset's
+  // seven banners ship no `-M`, so this is the ordinary case and not the edge.
+  const banner = /^banner-(.+)\.[a-z]+$/.exec(rest);
+  if (banner) {
+    const mobile = banner[1].endsWith('-M');
+    const entry = manifest.banners?.[mobile ? banner[1].slice(0, -2) : banner[1]];
+    const rel = mobile ? entry?.mobile : entry?.desktop;
     return rel ? join(artDir, rel) : null;
   }
   // Everything else is a PRODUCT photo: `<handle>-<file>`. The handle contains hyphens and so does the file,
