@@ -75,36 +75,46 @@ dc() {
 # which is the half that keeps this from going stale: the list in (1) is what I know, (2) is what I do not.
 CONTAINER_PATH_VARS='FORGE_SEED_DATASET_DIR:FORGE_SEED_DATASET_HOST_DIR FORGE_SEED_PHOTOS_DIR:'
 host_node() { # <script> [args…]
-  local pair name host_name value overrides='' offenders=''
+  local pair name host_name value overrides='' blanked=''
+  # (1) THE KNOWN PAIRS — remapped to their host sibling. A pair whose sibling is EMPTY is the one case that
+  #     is genuinely fatal: something has declared it needs this on the host, and there is no host value to
+  #     give it. Guessing one is how a seeder ends up writing into the wrong place instead of failing.
   for pair in $CONTAINER_PATH_VARS; do
     name="${pair%%:*}"; host_name="${pair#*:}"
     if [ -n "$host_name" ]; then
       eval "value=\${$host_name:-}"
+      eval "cur=\${$name:-}"
+      case "$cur" in
+        /app|/app/*|/data|/data/*)
+          [ -n "$value" ] || { die "$name is a container path ($cur) and its host sibling $host_name is EMPTY.
+     A host process cannot be given either. Set $host_name, or take $name out of CONTAINER_PATH_VARS."; return 1; }
+          ;;
+      esac
       overrides="$overrides $name=$(printf '%q' "$value")"
     else
-      # No host counterpart exists — the value belongs to a docker volume and has no honest host address.
-      # Blank it: a host process that needs it should fail saying it is UNSET, not chase a path into /data.
+      # No host counterpart can exist (a named volume has no honest host address). Blank it: a host process
+      # that needs it must fail saying UNSET, never chase a path into /data.
       overrides="$overrides $name="
     fi
   done
-  # (2) — the part that survives me. Anything still pointing into a container's filesystem is refused BY NAME.
+  # (2) EVERYTHING ELSE THAT LOOKS LIKE A CONTAINER PATH IS BLANKED, NOT REFUSED — and this is the correction
+  #     that the box itself taught. The first version REFUSED on any FORGE_* under /app or /data, and the run
+  #     died on `FORGE_THEMES_DIR=/app/themes-instance` and `FORGE_EXTENSIONS_DIR=/app/extensions` — container
+  #     paths that are perfectly correct for the kernel and that NO host script reads. The rule was stated one
+  #     notch too wide: what must never happen is a host process RECEIVING a container path, not one EXISTING
+  #     in the environment. Blanking is strictly stronger than the old refusal (it covers every such variable
+  #     rather than the two named above) and it stops nothing that does not need stopping. A host process that
+  #     genuinely wanted one now fails with UNSET, which names itself.
   while IFS='=' read -r name value; do
     case "$name" in FORGE_*) ;; *) continue;; esac
     case " ${overrides} " in *" $name="*) continue;; esac
     case "$value" in
       /app|/app/*|/data|/data/*)
-        offenders="$offenders\n     $name=$value" ;;
+        overrides="$overrides $name="
+        blanked="$blanked $name" ;;
     esac
   done < <(env)
-  if [ -n "$offenders" ]; then
-    die "REFUSING to start a host process with CONTAINER paths in its environment:$(printf "$offenders")
-     These are true inside the kernel and false here. Either give the variable a \`..._HOST_DIR\` sibling and
-     add the pair to CONTAINER_PATH_VARS, or blank it for host runs. See the header above this function."
-    # ⚠️ AN EXPLICIT RETURN, not a reliance on `die` exiting. A guard whose refusal depends on ANOTHER
-    # function's control flow is one edit away from printing a refusal and then doing the thing anyway —
-    # measured exactly that while testing this, with a `die` that returned instead of exiting.
-    return 1
-  fi
+  [ -z "$blanked" ] || note "host run: blanked container path(s) —$blanked"
   env $overrides node "$@"
 }
 
