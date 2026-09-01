@@ -1,0 +1,85 @@
+{
+  "_readme": [
+    "THE BOX ITSELF — which tenants this bench has, which stores live in each, and the instance settings every",
+    "screen inherits. Applied by `bin/seed-box.mjs`, ONE TENANT PER RUN (the write face takes the tenant as a",
+    "header, so a run is scoped to one by construction).",
+    "",
+    "★ WHY THIS FILE EXISTS INSTEAD OF `stores` IN `catalog.json`. That list has NO TENANT AXIS — it is a flat",
+    "array from the days this bench had one tenant, and it cannot say which of two tenants a store belongs to.",
+    "The topology it could not express is now the point: two brands, four stores, one admin container. So the",
+    "TERRAIN (tenants, stores, settings) is declared here and the CATALOGUE stays over there.",
+    "",
+    "⚠️ `catalog.json` STILL CARRIES A `stores` ARRAY and it is now SUPERSEDED. It is not deleted here because",
+    "that file is being restructured by another slice in this same wave, and two hands in one file is how a",
+    "merge eats a decision. Until it goes, `bin/seed.mjs` may still create a store from it — which is",
+    "IDEMPOTENT (it skips a handle that exists) but would put it in whichever tenant that run is pointed at.",
+    "Point that script at the right tenant, or let this one run first.",
+    "",
+    "★ `require_shipping_document` LIVES HERE FOR A REASON WORTH READING. It is what makes the shipping",
+    "widget grow its fiscal block, and it used to be switched on at the end of a LOGISTICS function inside the",
+    "history executor. It is tenant configuration, like the three settings beside it, and tenant configuration",
+    "written by a data seeder is the thing that surprises somebody in three months looking for where it was",
+    "turned on. Same reason the currency is declared even though it is already the default: the place a switch",
+    "is declared should be the place a reader would look for it.",
+    "",
+    "WHAT IS NOT HERE, and deliberately: the FIRST store of each tenant. `provision-ref` creates it at",
+    "bootstrap (`FORGE_REF_STORE_HANDLE`), before any credential exists to drive the port with — so listing it",
+    "here would be a second author for a row that already has one. It is named below only so a reader can see",
+    "the whole shape, with `bootstrap: true` marking who really makes it."
+  ],
+  "version": 1,
+  "tenants": [
+    {
+      "id": "forgeco",
+      "why": "T1, the footwear brand. The tenant this bench was born with, kept under its own name so nothing that already refers to it has to move.",
+      "admin_host": "localhost:8201",
+      "settings": {
+        "tenant_name": "Forge",
+        "default_locale": "pt-BR",
+        "default_timezone": "America/Sao_Paulo",
+        "default_currency": "BRL",
+        "require_shipping_document": true
+      },
+      "stores": [
+        {
+          "handle": "forge",
+          "name": "Forge",
+          "bootstrap": true,
+          "why": "The reference storefront, unforked and unthemed. It is the control: every other store's thesis is that a theme plus data plus composition is enough, and a thesis needs something to be compared against."
+        },
+        {
+          "handle": "outlet",
+          "name": "Forge Outlet",
+          "theme_key": "outlet",
+          "why": "The same catalogue under a theme of its own. Second store of T1, created through the port."
+        }
+      ]
+    },
+    {
+      "id": "forgecafe",
+      "why": "T2, the coffee business. A SECOND TENANT, which this bench never had — and the thing that makes it possible is not a second admin container: `read.admin.by_host` resolves the tenant from the request's host:port and `platform.admin_host.set` writes that map, so one admin serves both.",
+      "admin_host": "localhost:8202",
+      "settings": {
+        "tenant_name": "Forge Café",
+        "default_locale": "pt-BR",
+        "default_timezone": "America/Sao_Paulo",
+        "default_currency": "BRL",
+        "require_shipping_document": true
+      },
+      "stores": [
+        {
+          "handle": "cafe",
+          "name": "Forge Café",
+          "theme_key": "coffee-store",
+          "bootstrap": true,
+          "why": "The coffee e-commerce, on its forked storefront. Born in T2 rather than moved into it: data does not travel sideways between tenants, so on a virgin box this is simply where it is created."
+        },
+        {
+          "handle": "balcao",
+          "name": "Forge Café · Balcão",
+          "why": "The counter the totem serves. No `theme_key` on purpose: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps. Same tenant as `cafe` — one catalogue, two assortments."
+        }
+      ]
+    }
+  ]
+}

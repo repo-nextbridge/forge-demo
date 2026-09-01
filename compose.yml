@@ -243,6 +243,10 @@ services:
       # answers here and the published port is inert. On the bench it is the admin's own origin — a path
       # prefix does not work (the admin is a Next app with no basePath; see caddy/Caddyfile.local).
       - '${FORGE_ADMIN_HTTP_PORT:-8081}:81'
+      # ★ THE SECOND TENANT'S ADMIN DOOR (PRE-SEED · P-A). Same container as `:81`; the PORT is what
+      # `read.admin.by_host` keys on, so two tenants on one `localhost` need two published ports. See
+      # caddy/Caddyfile.local, `:83`.
+      - '${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
     environment:
       FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
       FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}
