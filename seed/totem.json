@@ -1,0 +1,404 @@
+{
+  "_readme": [
+    "THE COUNTER'S MENU, AS DATA — the totem's store, its four menu bands, and the fifteen products the",
+    "counter sells that nothing else in this instance sells. `seed/totem.mjs` reads this file and drives the",
+    "port; nothing here is code, and no rule about a product lives in the module.",
+    "",
+    "IT IS THE SIBLING OF `seed/catalog.json`, deliberately — same money-in-cents, same `options`/`skus`",
+    "shape, same `custom_fields` bag — so a merchant who has read one can edit the other. What it adds is the",
+    "half a single-store catalogue never needed: a `category` per product, and a list of products it does NOT",
+    "create but PUBLISHES (`publish_also`).",
+    "",
+    "MONEY IS IN CENTS, always, and never a float. `amount: 1350` is R$ 13,50.",
+    "",
+    "★ THE DELTA BETWEEN SIZES IS A PRICE PER SKU AND NEVER A CALCULATION. A cappuccino G with oat milk is",
+    "one row with one number, not `base + size + milk`. The moment a delta is arithmetic, the shop can no",
+    "longer be re-priced by a person editing a file — which is the whole reason this file exists.",
+    "",
+    "★ THE OPTION VALUES ARE THE PROTOTYPE'S OWN STRINGS ('P 200ml', 'Com tônica e limão', 'Porção c/ 3') and",
+    "not dry letters. The totem prints them on the chips, so they are copy, and fidelity to the prototype is a",
+    "mandate. ⚠️ AND THEY TRAVEL: an order line freezes its option values, so the admin's order screen reads",
+    "'Cappuccino · G · Aveia' from exactly these words. Renaming one later does not rewrite an order already",
+    "placed.",
+    "",
+    "⚠️ THE CATEGORY `path` IS NOT THE HANDLE, FOR ONE OF THE FOUR, AND THE KERNEL IS WHY. A category path is",
+    "an ltree label path — `[A-Za-z0-9_]`, dots between labels (packages/core/src/commands/catalog.ts, the",
+    "`ltreePathFloor` regex, with `::ltree` itself as the authority behind it). A hyphen is refused. So the",
+    "frozen handle `pra-levar` keeps its hyphen and its PATH is `pra_levar`, which is what a reader filtering",
+    "the menu passes to `read.products?store=…&category=…`. The other three spell the same either way.",
+    "",
+    "⚠️ `tag_balcao` IS THE SEAL ON THE CARD, AND IT IS DATA — the prototype carries one per product. What is",
+    "NOT here is its COLOUR: the prototype derives that from the tag itself in its view builder, so the colour",
+    "belongs to the totem app and the word belongs to the product. One word, one owner.",
+    "",
+    "⚠️ THE SIX COFFEES AND THE MUG ARE IN `publish_also` AND NOT IN `products`, WHICH IS THE POINT OF THE",
+    "WHOLE FILE. They already exist — `seed/catalog.json` created them for the coffee shop. Re-creating them",
+    "here would be a second product with a second price to keep equal by hand; publishing them into a second",
+    "store is one command, and the price the counter charges is then the SAME SKU the e-commerce sells. (The",
+    "mug is the exception that proves it: it is new, so it is in `products` AND listed for the `pra-levar`",
+    "band.)"
+  ],
+
+  "store": {
+    "handle": "balcao",
+    "name": "Forge Café · Balcão",
+    "why": "The counter of the same coffee shop, on the same tenant — a second STORE and not a second tenant, because the whole demonstration is one catalogue serving two assortments. No `theme_key`: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps."
+  },
+
+  "categories": [
+    {
+      "path": "cafes",
+      "handle": "cafes",
+      "name": "Cafés",
+      "why": "The four bands of the menu are KERNEL CATEGORIES and not a field of this file, so the totem reads the menu with the mechanism every other reader already has (`read.products?category=…`, `read.category_paths`). ⚠️ They are TENANT-wide — `catalog.category.create` takes no store — so what answers 'which of these does the COUNTER fill?' is `read.category_paths?store=<balcao>`, never this list."
+    },
+    { "path": "especiais", "handle": "especiais", "name": "Especiais da casa" },
+    { "path": "comidas", "handle": "comidas", "name": "Comidas" },
+    {
+      "path": "pra_levar",
+      "handle": "pra-levar",
+      "name": "Pra levar",
+      "why": "The path may not carry the handle's hyphen — ltree refuses it. See the readme above."
+    }
+  ],
+  "_categories_order_why": "The order of this list is the order of the menu strip. The kernel has no position on a category, so a reader that wants the merchant's order reads it from here or sorts by name; `read.categories` answers a MAP and a map has none.",
+
+  "custom_fields": [
+    {
+      "key": "cafe_da_semana",
+      "label": "Café da semana",
+      "type": "text",
+      "facetable": false,
+      "why": "The thread that ties the counter to the retail shelf. The menu promises the pour-over is 'made with this week's coffee', and this holds the HANDLE of one of the six the e-commerce sells — so changing the week is editing one word in this file, not re-writing a description. Declared before any product writes it: an undeclared key is accepted and then read by nobody."
+    },
+    {
+      "key": "tag_balcao",
+      "label": "Selo do balcão",
+      "type": "text",
+      "facetable": false,
+      "why": "The word on the seal over the photograph ('quente', 'gelado', 'do forno'…). It is on the PRODUCT and not in the totem's source so the merchant can change it from the admin, and so the seed and the app cannot drift into two vocabularies."
+    }
+  ],
+  "_custom_fields_why": "Portuguese keys, like `regiao`/`torra`/`notas` in seed/catalog.json. These are a merchant's vocabulary in a Brazilian shop's admin, not identifiers of this repository's code — the code around them is English, as the house rule says.",
+
+  "products": [
+    {
+      "handle": "espresso-forge",
+      "title": "Espresso Forge",
+      "category": "cafes",
+      "photo": "espresso-forge.png",
+      "description": "Simples. Intenso. Essencial.",
+      "tag": "quente",
+      "options": [{ "name": "Dose", "values": ["Simples", "Duplo"] }],
+      "skus": [
+        { "options": ["Simples"], "amount": 700 },
+        { "options": ["Duplo"], "amount": 950 }
+      ]
+    },
+    {
+      "handle": "coado-do-dia",
+      "title": "Coado do dia · V60",
+      "category": "cafes",
+      "photo": "coado-do-dia.png",
+      "description": "Feito com o Forge Alvorada, o café desta semana",
+      "tag": "da semana",
+      "custom_fields": { "cafe_da_semana": "forge-alvorada" },
+      "_custom_fields_why": "Rotate the week by changing this handle (and the description's name with it). The six candidates are the coffees of seed/catalog.json.",
+      "options": [{ "name": "Tamanho", "values": ["P 200ml", "G 350ml"] }],
+      "skus": [
+        { "options": ["P 200ml"], "amount": 1100 },
+        { "options": ["G 350ml"], "amount": 1400 }
+      ]
+    },
+    {
+      "handle": "cappuccino",
+      "title": "Cappuccino",
+      "category": "cafes",
+      "photo": "cappuccino.png",
+      "description": "Espresso, leite vaporizado e espuma densa",
+      "tag": "quente",
+      "options": [
+        { "name": "Tamanho", "values": ["P", "M", "G"] },
+        { "name": "Leite", "values": ["Integral", "Aveia"] }
+      ],
+      "skus": [
+        { "options": ["P", "Integral"], "amount": 1100 },
+        { "options": ["M", "Integral"], "amount": 1300 },
+        { "options": ["G", "Integral"], "amount": 1500 },
+        { "options": ["P", "Aveia"], "amount": 1350 },
+        { "options": ["M", "Aveia"], "amount": 1550 },
+        { "options": ["G", "Aveia"], "amount": 1750 }
+      ]
+    },
+    {
+      "handle": "latte",
+      "title": "Latte",
+      "category": "cafes",
+      "photo": "latte.png",
+      "description": "Mais leite, textura sedosa e desenho na superfície",
+      "tag": "quente",
+      "options": [
+        { "name": "Tamanho", "values": ["P", "M", "G"] },
+        { "name": "Leite", "values": ["Integral", "Aveia"] }
+      ],
+      "skus": [
+        { "options": ["P", "Integral"], "amount": 1200 },
+        { "options": ["M", "Integral"], "amount": 1400 },
+        { "options": ["G", "Integral"], "amount": 1600 },
+        { "options": ["P", "Aveia"], "amount": 1450 },
+        { "options": ["M", "Aveia"], "amount": 1650 },
+        { "options": ["G", "Aveia"], "amount": 1850 }
+      ]
+    },
+    {
+      "handle": "mocha",
+      "title": "Mocha",
+      "category": "cafes",
+      "photo": "mocha.png",
+      "description": "Chocolate meio amargo, espresso e leite",
+      "tag": "quente",
+      "options": [{ "name": "Tamanho", "values": ["P", "M", "G"] }],
+      "skus": [
+        { "options": ["P"], "amount": 1400 },
+        { "options": ["M"], "amount": 1600 },
+        { "options": ["G"], "amount": 1800 }
+      ]
+    },
+    {
+      "handle": "cold-brew",
+      "title": "Cold Brew",
+      "category": "cafes",
+      "photo": "cold-brew.png",
+      "description": "24h de infusão a frio, doce e sem acidez",
+      "tag": "gelado",
+      "options": [{ "name": "Versão", "values": ["Puro", "Com tônica e limão"] }],
+      "skus": [
+        { "options": ["Puro"], "amount": 1500 },
+        { "options": ["Com tônica e limão"], "amount": 1800 }
+      ]
+    },
+
+    {
+      "handle": "frappe-forge-chocolate",
+      "title": "Frappé Forge de Chocolate",
+      "category": "especiais",
+      "photo": "frappe-forge-chocolate.png",
+      "description": "Feito com o Forge Noturno, cacau e chantilly",
+      "tag": "gelado",
+      "custom_fields": { "cafe_da_semana": "forge-noturno" },
+      "_custom_fields_why": "The second window onto the same mechanism: the house special names a retail coffee too, and the menu says so. Two readers of one field beat one.",
+      "options": [{ "name": "Tamanho", "values": ["P 400ml", "G 550ml"] }],
+      "skus": [
+        { "options": ["P 400ml"], "amount": 1900 },
+        { "options": ["G 550ml"], "amount": 2300 }
+      ]
+    },
+    {
+      "handle": "frappe-caramelo-salgado",
+      "title": "Frappé de Caramelo Salgado",
+      "category": "especiais",
+      "photo": "frappe-caramelo-salgado.png",
+      "description": "Caramelo cremoso com flor de sal",
+      "tag": "gelado",
+      "options": [{ "name": "Tamanho", "values": ["P 400ml", "G 550ml"] }],
+      "skus": [
+        { "options": ["P 400ml"], "amount": 1900 },
+        { "options": ["G 550ml"], "amount": 2300 }
+      ]
+    },
+    {
+      "handle": "frappe-morango-chocolate-branco",
+      "title": "Frappé de Morango c/ Chocolate Branco",
+      "category": "especiais",
+      "photo": "frappe-morango-chocolate-branco.png",
+      "description": "Morango batido e ganache de chocolate branco",
+      "tag": "gelado",
+      "options": [{ "name": "Tamanho", "values": ["P 400ml", "G 550ml"] }],
+      "skus": [
+        { "options": ["P 400ml"], "amount": 1900 },
+        { "options": ["G 550ml"], "amount": 2300 }
+      ]
+    },
+    {
+      "handle": "chai-cremoso-gelado",
+      "title": "Chai Cremoso Gelado",
+      "category": "especiais",
+      "photo": "chai-cremoso-gelado.png",
+      "description": "Especiarias, equilíbrio e conforto",
+      "tag": "gelado",
+      "options": [{ "name": "Tamanho", "values": ["P 400ml", "G 550ml"] }],
+      "skus": [
+        { "options": ["P 400ml"], "amount": 1800 },
+        { "options": ["G 550ml"], "amount": 2200 }
+      ]
+    },
+
+    {
+      "handle": "pao-de-queijo",
+      "title": "Pão de queijo",
+      "category": "comidas",
+      "photo": "pao-de-queijo.png",
+      "description": "Mineiro, casquinha crocante e miolo puxa-puxa",
+      "tag": "do forno",
+      "options": [{ "name": "Porção", "values": ["Unidade", "Porção c/ 3"] }],
+      "skus": [
+        { "options": ["Unidade"], "amount": 600 },
+        { "options": ["Porção c/ 3"], "amount": 1500 }
+      ]
+    },
+    {
+      "handle": "croissant",
+      "title": "Croissant",
+      "category": "comidas",
+      "photo": "croissant.png",
+      "description": "Folhado em 27 camadas de manteiga",
+      "tag": "do forno",
+      "options": [{ "name": "Sabor", "values": ["Manteiga", "Chocolate"] }],
+      "skus": [
+        { "options": ["Manteiga"], "amount": 1400 },
+        { "options": ["Chocolate"], "amount": 1600 }
+      ]
+    },
+    {
+      "handle": "bolo-do-dia",
+      "title": "Fatia do bolo do dia",
+      "category": "comidas",
+      "photo": "bolo-do-dia.png",
+      "description": "Caseiro, fatia generosa",
+      "tag": "do dia",
+      "options": [
+        { "name": "Sabor", "values": ["Banana com canela", "Cenoura com brigadeiro"] }
+      ],
+      "skus": [
+        { "options": ["Banana com canela"], "amount": 1200 },
+        { "options": ["Cenoura com brigadeiro"], "amount": 1200 }
+      ],
+      "_skus_why": "Two flavours at the SAME price, written twice rather than as one SKU with a note. The axis is what the shopper picks and the order line has to freeze which slice was sold — a single SKU would sell 'a cake' and the counter would not know which one to hand over."
+    },
+    {
+      "handle": "cookie-forge",
+      "title": "Cookie Forge",
+      "category": "comidas",
+      "photo": "cookie-forge.png",
+      "description": "Bordas crocantes, centro macio",
+      "tag": "do forno",
+      "options": [{ "name": "Sabor", "values": ["Baunilha com gotas", "Duplo chocolate"] }],
+      "skus": [
+        { "options": ["Baunilha com gotas"], "amount": 900 },
+        { "options": ["Duplo chocolate"], "amount": 900 }
+      ]
+    },
+
+    {
+      "handle": "caneca-esmaltada",
+      "title": "Caneca esmaltada forge.co",
+      "category": "pra_levar",
+      "photo": "caneca-esmaltada.png",
+      "description": "350ml, esmalte verde com borda branca",
+      "tag": "souvenir",
+      "options": [],
+      "skus": [{ "options": [], "amount": 6900 }],
+      "on_hand": 40,
+      "_why": "The one NEW product of the 'pra levar' band, and the only one here with no axis at all: a mug is a mug. Its stock is a real count (40) and not the drinks' figure — see `default_on_hand` below."
+    }
+  ],
+
+  "publish_also": {
+    "category": "pra_levar",
+    "handles": [
+      "forge-alvorada",
+      "forge-serra-do-caparao",
+      "forge-cerrado-mineiro",
+      "forge-noturno",
+      "forge-descafeinado",
+      "forge-edicao-do-produtor"
+    ],
+    "tags": {
+      "forge-alvorada": "blend",
+      "forge-serra-do-caparao": "single origin",
+      "forge-cerrado-mineiro": "denominação",
+      "forge-noturno": "torra escura",
+      "forge-descafeinado": "descafeinado",
+      "forge-edicao-do-produtor": "lote numerado"
+    },
+    "why": "MULTISTORE, in one list. These six are NOT created here: they are the e-commerce's own products, put on sale in a second store and filed under the counter's 'Pra levar' band. The price the totem prints is the same SKU the shop sells, live from the kernel — which is the thing that cannot be faked by a second catalogue.",
+    "_tags_why": "The seal each of the six wears on the totem's card. Writing it means EDITING a product of the coffee shop, so `seed/totem.mjs` merges it into the metadata it reads rather than replacing the bag — `catalog.product.update` replaces `metadata` wholesale, and a replacement here would erase `regiao`/`torra`/`notas`/`sca`."
+  },
+
+  "default_on_hand": 9999,
+  "_stock_why": [
+    "★ THE DRINKS' 'KEEP SELLING' POLICY, AND WHY IT IS A BIG NUMBER RATHER THAN THE POLICY ITSELF.",
+    "",
+    "The menu says a counter drink is made to order and never sells out. The kernel HAS that idea, and it is",
+    "called `oversell_policy: 'allow'` — but it lives on the WAREHOUSE (packages/core/src/commands/inventory.ts,",
+    "`warehouse.create`/`warehouse.update`), never on a SKU or a product.",
+    "",
+    "⚠️ AND IT IS NOT SCOPED BY WHAT THE WAREHOUSE STOCKS, which is what makes a second 'counter warehouse'",
+    "the wrong answer rather than a clever one. The router's candidate set is `cross join warehouse where",
+    "active` (packages/core/src/inventory/purchasable.ts) — EVERY active warehouse is a candidate for EVERY",
+    "sku, with `available: 0` where it has never counted one — and its second pass is 'nobody covers the line",
+    "and some active warehouse allows overselling → backorder there' (packages/core/src/inventory/routing.ts).",
+    "So one warehouse set to `allow` makes every SKU OF THE TENANT sellable past zero, the six retail coffees",
+    "of the e-commerce included. That is a decision about the whole shop and not about the counter's milk.",
+    "",
+    "So: this bench's single warehouse stays on `block`, and the drinks carry a stock figure large enough that",
+    "the counter never runs out. It is honest about what it is — a number, not a policy — and it is written",
+    "here rather than in the module so it can be raised without touching code."
+  ],
+
+  "pickup": {
+    "location": {
+      "name": "Balcão · Forge Café",
+      "addr_line1": "Rua Fradique Coutinho, 1188",
+      "district": "Vila Madalena",
+      "city": "São Paulo",
+      "uf": "SP",
+      "postal_code": "05416-011",
+      "instructions": "Retire no balcão quando chamarmos o seu nome."
+    },
+    "method": { "name": "Retirar no balcão" },
+    "zone": { "name": "Retirada — todo o Brasil", "postal_code_from": "00000000", "postal_code_to": "99999999" },
+    "why": [
+      "★ THE COUNTER DOES NOT DELIVER, AND `checkout.place_order` STILL DEMANDS A SHIPPING METHOD.",
+      "Its completeness check lists `buyer`, `shipping_method` and `payment_method`",
+      "(packages/core/src/commands/checkout.ts), so an order placed at a totem needs a method like any other.",
+      "The honest one is RETRIEVAL: the kernel has a method KIND for it (`pickup`, in",
+      "packages/core/src/commands/shipping.ts) and a pickup POINT to go with it",
+      "(`pickup_location.create`), and the order then freezes the point's name, address and instructions —",
+      "which is exactly what 'retire no balcão quando chamarmos' means, said in the kernel's own words.",
+      "",
+      "⚠️ SHIPPING CONFIG IS TENANT-WIDE, NOT PER STORE. Neither `shipping.method.create` nor",
+      "`shipping.zone.create` nor `pickup_location.create` takes a `store_id` — measured against the source",
+      "and against this bench, where the whole tenant had ZERO methods, zones, rates and points before this",
+      "seed. So this pickup option appears in the coffee shop's and the outlet's checkouts too. It is",
+      "additive (there was nothing to displace) and it is honest (it is the same shop), but it is a fact",
+      "about the TENANT that a file about the counter had better say out loud.",
+      "",
+      "⚠️ AND THE ADDRESS IS STILL REQUIRED. Choosing a pickup method does NOT exempt a cart from carrying a",
+      "shipping address: the completeness check asks for `ship_line1`/`city`/`region`/`postal_code`/",
+      "`country_code` on any cart nobody is recognized on, pickup or not. The address above is therefore the",
+      "one the totem sends — the counter's own — so the order says the shop's address rather than a fiction.",
+      "Note it goes through `cart.set_delivery`; `cart.set_buyer` carries only e-mail, name, tax id and phone.",
+      "",
+      "The zone spans every Brazilian postal code because a retrieval has no destination to price: the",
+      "shopper comes here. Price 0, window 0–0 days, one weight bracket wide enough that no basket misses it."
+    ]
+  },
+
+  "promotions": {
+    "coupon": {
+      "name": "Primeiro café 10%",
+      "label": "PRIMEIROCAFE · 10% OFF",
+      "code": "PRIMEIROCAFE",
+      "percent_bp": 1000,
+      "why": "★ SCOPED TO THE COUNTER by `store_id`, which is what the DoD asks to be proven. ⚠️ MEASURE WHAT 'does not work in the coffee shop' ACTUALLY MEANS: `cart.apply_coupon` does not filter by store (packages/core/src/commands/coupon.ts resolves the code and only asks whether the cart holds something the TARGET covers), while the pricing engine does (packages/core/src/promo/context.ts — `p.store_id is null or p.store_id = $n`). So the same code on a coffee-shop cart is ACCEPTED and discounts NOTHING. It is scoped; it is not refused."
+    },
+    "combo": {
+      "name": "Combo da manhã",
+      "label": "Combo da manhã · R$ 3,00 OFF",
+      "amount": 300,
+      "contains": ["espresso-forge", "pao-de-queijo"],
+      "why": "'Cart contains' is a CONDITION and the kernel spells it exactly (`cart_contains`, packages/contracts/src/promotion.ts): EVERY product listed must be in the cart — which is what a combo means, and not 'any of', which is what a target already expresses. The benefit is a FIXED AMOUNT and not a percentage because a totem screen has one line to explain itself: 'R$ 3,00 OFF' is a number a person checks against the total, while '12%' is arithmetic they have to trust. ⚠️ It is created AFTER the products: the condition names product IDs, so the targets have to exist first."
+    }
+  }
+}
