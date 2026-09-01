@@ -1,9 +1,9 @@
 {
-  "forgeVersion": "v0.3.0-pre.da4172de4",
+  "forgeVersion": "v0.3.0-pre.15e096fab",
   "provenance": {
     "origin": "local build",
-    "built_from": "d2/onda1@da4172de4",
-    "built_at": "2026-09-01T08:00:19Z",
+    "built_from": "HEAD@15e096fab",
+    "built_at": "2026-09-01T17:39:55Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -12,6 +12,8 @@
   "composition": {
     "id": "demo-instance",
     "apps": [
+      "demo-gate",
+      "payment-pos",
       "banners",
       "shelves",
       "reviews",
@@ -22,17 +24,11 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:4e7ee6214e3e1ec659e76c28ad74c79a39e908deedc76bc019f04d9ecbc97b02",
-    "storefront": "forge-demo-storefront@sha256:594e985d8ee3424b36fa920ccbec5c227a28378ec1f901c3a1d6a45a4c161afb",
-    "checkout": "forge-demo-checkout@sha256:ffc5380a415a0c63954642da9137a2ab810d848812a02241a6a38f25702403e5",
-    "admin": "forge-demo-admin@sha256:c5b45772d8733662de811e65c20f64f310feb77437097c2e6f70c690ddddff59"
+    "kernel": "forge-demo-kernel@sha256:3a852eef8c96ef9a31419942ba4a593fb686348f1e5486820567576249835830",
+    "storefront": "forge-demo-storefront@sha256:36861aa36d43dab06fbd2fadb9c253f9d32f41363a3ee21ff05c13b26bdd2e43",
+    "checkout": "forge-demo-checkout@sha256:9d874aab3f060e745781c3d5cec13e407b008ea7969e6719e67928af0c47d059",
+    "admin": "forge-demo-admin@sha256:9bf8417c9b6159f54b97f78c02895101934e3b77a7fb80f292f5071026fa5a1f"
   },
-  "extensions": [
-    {
-      "id": "demo-gate",
-      "source": "./extensions/demo-gate",
-      "version": "0.1.0",
-      "why": "An app of ONE box is MOUNTED, never composed into an image — it reaches the kernel through FORGE_EXTENSIONS_DIR. That is why it is here and not on `composition`."
-    }
-  ]
+  "offerable": false,
+  "why_not_offerable": "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer's app must never be handed to another. That is a property of what this box asked for, not a defect."
 }
