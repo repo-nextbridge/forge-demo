@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# OUR APPS, PACKED INTO WHAT THE KERNEL LOADS. EXECUTE it (it writes files); do not source it.
+#
+#   bash bin/pack-apps.sh ~/nextbridge/projetos/forge
+#
+# `apps/<id>/` is the SOURCE — TypeScript, a `manifest.ts`, React blocks. `extensions/<id>/` is the ARTIFACT
+# — a manifest as JSON, the icon as a file, every declared script bundled self-contained — and it is what
+# `FORGE_EXTENSIONS_DIR` mounts and the kernel scans at boot.
+#
+# ⚠️ THE TWO ARE NOT INTERCHANGEABLE, and mounting the wrong one fails in a way that reads like a broken app
+# rather than a missing step. Measured on this bench, with `apps/demo-gate` mounted directly:
+#
+#     /health → "invalid manifest: ENOENT … open '/app/extensions/demo-gate/forge-extension.json'"
+#
+# The kernel READS manifests, it never RUNS them: an extension directory is scanned at boot, long before
+# anybody installs anything, so nothing in it may execute at that moment. A `.ts` manifest is refused with a
+# message saying exactly that. (Node also refuses to strip types under `node_modules`, so a raw `.ts` could
+# not be loaded at runtime even if the kernel wanted to.)
+#
+# THE ARTIFACT IS COMMITTED, and that is the template's own shape — `templates/instance/extensions/` ships the
+# packed form of its example decision. It means this box can be brought up from a clone with no build step
+# and no monorepo. The price is that `extensions/` is GENERATED: change anything under `apps/` and run this
+# again, or the box goes on serving the app you had before.
+#
+# ⚠️ IT NEEDS THE MONOREPO because the producer (`pnpm pack:extension`) lives there, along with the contracts
+# the manifest compiles against. That is the same pre-release dependency `bin/build-local.sh` has, and it
+# leaves at the same moment: once a Forge release publishes `@forgecommerce/contracts`, an app can be built
+# with npm and no monorepo at all.
+
+set -euo pipefail
+
+forge="${1:?usage: pack-apps.sh <path to the forge monorepo checkout>}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+[ -d "$forge/scripts/publishing" ] || {
+  echo "[pack-apps] '$forge' does not look like the Forge monorepo (no scripts/publishing/)." >&2
+  exit 1
+}
+[ -d "$here/apps" ] || {
+  echo "[pack-apps] no apps/ directory — this repo owns no app, and there is nothing to pack." >&2
+  exit 1
+}
+
+# ⚠️ THE CONTRACTS PACKAGE, LINKED — the pre-release shape of a dependency that will be an `npm install`.
+#
+# The producer IMPORTS each app's `manifest.ts` (it has to: a manifest is TypeScript here and JSON in the
+# artifact, and something must evaluate it once to make that trip). That import reaches for
+# `@forgecommerce/contracts`, which inside the monorepo is a workspace link and in this repository is
+# nothing at all. Measured, before this block existed:
+#
+#     Cannot find package '@forgecommerce/contracts' imported from …/apps/demo-gate/manifest.ts
+#
+# So it is linked at this repo's root, where Node's upward resolution finds it from any app. It is
+# GITIGNORED and rebuilt by this script every run: it points into a checkout on THIS machine and would be a
+# broken link in anybody else's clone.
+#
+# THE DAY THIS GOES AWAY is the day a Forge release publishes the package: then it is
+# `npm install @forgecommerce/contracts@<the release>` in this repo, pinned like everything else, and the
+# monorepo argument to this script disappears with it.
+contracts="$forge/packages/contracts"
+[ -d "$contracts" ] || {
+  echo "[pack-apps] '$contracts' is missing — cannot link the contracts an app's manifest compiles against." >&2
+  exit 1
+}
+mkdir -p "$here/node_modules/@forgecommerce"
+rm -f "$here/node_modules/@forgecommerce/contracts"
+ln -s "$contracts" "$here/node_modules/@forgecommerce/contracts"
+echo "[pack-apps] linked @forgecommerce/contracts → $contracts (gitignored, pre-release only)" >&2
+
+packed=0
+for source in "$here"/apps/*/; do
+  id="$(basename "$source")"
+  [ -f "$source/package.json" ] || continue
+  out="$here/extensions/$id"
+  echo "[pack-apps] $id → extensions/$id" >&2
+  # The producer takes the extension as INPUT and names none of its own — it is run from the monorepo (its
+  # own tooling lives there) against an absolute path into this repo.
+  ( cd "$forge" && pnpm exec tsx scripts/publishing/pack-extension.ts "$source" "$out" ) >&2
+  packed=$((packed + 1))
+done
+
+[ "$packed" -gt 0 ] || {
+  echo "[pack-apps] apps/ holds no package — nothing packed." >&2
+  exit 1
+}
+
+echo "[pack-apps] packed ${packed} app(s). They are mounted read-only at \$FORGE_EXTENSIONS_DIR; the kernel" >&2
+echo "[pack-apps]   scans them at boot, so: docker compose up -d kernel" >&2

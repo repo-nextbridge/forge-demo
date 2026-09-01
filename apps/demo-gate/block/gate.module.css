@@ -1,0 +1,235 @@
+/* DEMO-GATE — the full-screen gate screen, faithful to design-base/Forge Demo.dc.html. A deliberate, fixed dark
+ * surface (not a themed light/dark component), so literal design values are correct here. No bundled font rule,
+ * no CDN, no imported font: the H1 uses the theme's own type stack (Urbanist self-hosted), inherited from the
+ * storefront body — the design's own display face is intentionally dropped (spec item 8). Responsive is pure CSS
+ * (@media 760px), the breakpoint of the design's own matchMedia. */
+
+.backdrop {
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh fallback, then 100dvh where supported (mobile chrome) */
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background: #17181a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  color: #ffffff;
+}
+
+.shell {
+  width: 100%;
+  max-width: 920px;
+  animation: dmIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dmIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.frame {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.header {
+  padding: clamp(38px, 5.5vw, 64px) clamp(22px, 4vw, 52px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  text-align: center;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin-bottom: 26px;
+}
+.brandName {
+  font-weight: 700;
+  color: #ffffff;
+}
+.brandDot {
+  color: #c2410c;
+}
+.brandDemo {
+  font-weight: 500;
+  color: #a6a6a6;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+.eyebrowDot {
+  color: #c2410c;
+}
+
+.title {
+  /* Theme typography (Urbanist), inherited from the storefront body — display face dropped, no font imported. */
+  margin: 16px 0 0;
+  font-size: clamp(30px, 4.6vw, 52px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.intro {
+  margin: 18px auto 0;
+  max-width: 520px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.6;
+  color: #a6a6a6;
+  text-wrap: pretty;
+}
+
+/* The body row: hatched side gutters framing the two-card middle. */
+.grid {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+}
+.hatch {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.07) 0 1px,
+    transparent 1px 8px
+  );
+}
+.hatchLeft {
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+}
+.hatchRight {
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.card {
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  padding: clamp(22px, 3vw, 32px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+.cardDivided {
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.mockWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.cardDesc {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #8a8478;
+  text-wrap: pretty;
+}
+
+.cta {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  font-weight: 600;
+  padding: 13px 20px;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cta:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #17181a;
+}
+
+.footer {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.backLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a8478;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.backLink:hover {
+  color: #ffffff;
+}
+.langWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.langBtn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  color: #6e6a63;
+}
+.langBtn:hover {
+  color: #ffffff;
+}
+.langActive {
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 18px 1fr 18px;
+  }
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card {
+    aspect-ratio: auto;
+  }
+  .cardDivided {
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+  }
+}

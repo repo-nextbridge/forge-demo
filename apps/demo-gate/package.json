@@ -1,0 +1,40 @@
+{
+  "name": "@forge/ext-demo-gate",
+  "version": "0.3.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Forge extension (DEMO-GATE): the public demo's gate app. Fills the neutral theme slot `storefront:gate` with a full-screen interstitial (\"Demo store\" — a fictional-environment notice + the two paths, store and admin). \"Open the store\" sets the dismissal cookie and continues (deep link preserved); \"Open the admin\" hands off to the admin's /enter route, which redeems an operator access key server-side (the key never reaches the browser). PT/EN/ES embedded. The theme owns the slot; this app is its first consumer.",
+  "forge": {
+    "origin": "instance"
+  },
+  "exports": {
+    "./manifest": "./manifest.ts",
+    "./i18n": "./i18n.ts",
+    "./wiring": "./wiring.ts",
+    "./block/gate": "./block/gate.tsx",
+    "./block/ribbon": "./block/ribbon.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@forgecommerce/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
