@@ -849,6 +849,47 @@ const slug = (text) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
+/**
+ * ★ THE PLACEHOLDER ART, INTO THE ASSET LIBRARY — where the curation happens.
+ *
+ * Order of the Renan: *"onde precisa de banner mas não tem imagem, cria uma imagem qualquer e sobe. Eu depois
+ * faço a curadoria."* `bin/make-placeholders.mjs` DRAWS them (deterministic, captioned with their own slot,
+ * store and size); this puts them where a person can find and replace them.
+ *
+ * ⚠️ `library: true` IS THE WHOLE POINT. A product photograph needs no asset row — but these exist to be
+ * BROWSED and swapped one at a time, which is exactly what the Asset Library is. One search for
+ * `placeholder-` returns the set.
+ *
+ * ⚠️ AND ONLY THIS TENANT'S SHOPS. The file name carries the store handle, so a run uploads the art of the
+ * stores it owns and leaves the other tenant's to the other run. The alternative — every tenant holding every
+ * shop's placeholder — is a library where the search returns other people's shops.
+ *
+ * Idempotent for free: `upload()` matches on name AND bytes, and the generator is byte-stable, so a re-run
+ * uploads nothing. That pairing is the reason the generator pins the PNG time chunk.
+ */
+async function placeholders() {
+  let dir;
+  try {
+    dir = readdirSync(join(SEED, 'placeholder-media'));
+  } catch {
+    log('placeholders — seed/placeholder-media/ is not there; run `node bin/make-placeholders.mjs`');
+    return;
+  }
+  const handles = storesOfThisTenant.map((s) => s.handle);
+  const mine = dir.filter(
+    (file) => file.startsWith('placeholder-') && handles.some((h) => file.startsWith(`placeholder-${h}-`)),
+  );
+  if (mine.length === 0) {
+    log('placeholders — none for this tenant\'s shops');
+    return;
+  }
+  for (const file of mine) await upload(join(SEED, 'placeholder-media', file), { library: true });
+  log(
+    `placeholders — ${mine.length} in the Asset Library for [${handles.join(', ')}]. ` +
+      'To curate: search "placeholder-" there and replace them one at a time.',
+  );
+}
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
 // ★ ONCE PER TENANT, and each step runs only where its store lives. The same shape the box already uses for
@@ -869,6 +910,7 @@ await assertCredentialTenant();
 const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
 await stores();
 await customFields();
+await placeholders();
 await vocabulary();
 // The six coffees are the COFFEE store's, so they are created on that tenant's run and nowhere else.
 if (here(catalog.products_store)) {
@@ -917,7 +959,31 @@ if (here('cafe')) {
 // The FORGE store — the sports shop. Last, and it is the only one whose content does not live in this repo:
 // it comes from the dataset directory FORGE_SEED_DATASET_DIR points at. Unset → one line and a no-op.
 // Its uploads are NOT library assets: 2790 products' photographs are catalogue, not curated inventory.
-if (here('forge')) {
+// ⛔⛔ THE SPORTS CATALOGUE IS NOT THIS SCRIPT'S ANY MORE — AND IT WAS ABOUT TO BE FILLED TWICE.
+//
+// Measured on the bench, step 8 of the box script: `[seed] forge — 33 categories, 351 brands, 2790 products`
+// and `0 of 2790 already on sale`. The one-shot at step 9 fills the SAME 2 790 from the SAME dataset. Two
+// pieces filling one thing is the shape this repository has already paid for twice — it is how one of them
+// rots without anybody seeing (`stock()` was the last one), and here it would also have every product created
+// by whichever ran first and re-published by the other.
+//
+// ★ THE BOUNDARY DECIDES, and it is the one the spec now carries (§3.3): the demo repo owns the CURATED — what
+// a HUMAN wrote, the six coffees with their descriptions, the counter's menu, the outlet's eight, the curated
+// promotions — and the dataset + `demo-data`'s `populate` own the MASSIVE and the ASSORTMENT: what a GENERATOR
+// produced. `seedForge` fills the massive. It is therefore not called.
+//
+// ⚠️ THE FILE IS NOT DELETED, AND THAT IS DELIBERATE. Retiring it is a COMPARISON, not a decision: the one-shot
+// published 2 555 into this shop and this would have published 2 790, and until that difference is EXPLAINED
+// nothing gets deleted. What is measured so far (see RELATORIO-P-B §8): the assortment rule excludes nothing —
+// it matches all 2 790 — and the dataset holds no duplicate handle, no product without a sku and no product in
+// an undeclared category. So the two numbers are not the same measurement: 2 790 is what this would DISPATCH,
+// 2 555 is what the public feed REPORTS, and that read is gated by an active sku and by projection freshness.
+// The comparison finishes on the box; the call stops now because the collision is real either way.
+//
+// ★ AND THE SYMPTOM THAT BLOCKED THE BOX GOES WITH IT: no host process needs the dataset's 3,6 GB of photos
+// any more, so the ENOENT on `/data/seed-photos` — a CONTAINER path handed to a HOST process — stops existing.
+// That was ownership wearing a wiring costume, exactly like the custom-field collision.
+if (false) {
   await seedForge({
   api,
   token,
@@ -933,7 +999,11 @@ if (here('forge')) {
     upload: (file) => upload(file, { library: false }),
   });
 } else {
-  log('forge — the sports store is not on this tenant, skipped');
+  log(
+    'forge — the sports catalogue is the dataset\'s and the one-shot fills it (`dist/seed-demo.js`). This ' +
+      'script owns the CURATED half only. Run the one-shot AFTER this one: it publishes curated handles it ' +
+      'does not define.',
+  );
 }
 // The FORGE store's WINDOW, after its catalogue. `uploadAsset` and not `upload`: a banner tile references the
 // asset LIBRARY by id, so those seven files ARE curated inventory an operator sees in the admin — the opposite
