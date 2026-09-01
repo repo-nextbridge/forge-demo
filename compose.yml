@@ -1,0 +1,248 @@
+# THE DEMO INSTANCE'S STACK — Forge cliente 1, on our own box.
+#
+# It began as a copy of `templates/instance/compose.yml` from the Forge monorepo and it is OURS to edit, which
+# is the whole deal: the images are pinned, everything else here is a decision of this repository. Where it
+# DIFFERS from the template, it says why — three places, all marked ★.
+#
+# Where each value comes from:
+#   • the four images   → forge.lock, via `source bin/images-from-lock.sh` (pinned by digest, never a tag)
+#   • the boring config → .env (copy .env.example), read automatically by compose from this directory
+#   • every secret      → env-source.sh, exported into the shell before compose runs (never written to disk)
+# Shell values win over .env, so sourcing env-source.sh is what makes the secrets reach the containers.
+#
+# Migrations are a one-shot step, never a boot hook. ALWAYS migrate before `up`:
+#   docker compose run --rm kernel node dist/migrate.js
+#   docker compose up -d
+#
+# ★ WHERE A FRONT THIS FILE DOES NOT KNOW ABOUT GOES. The coffee store's vitrine is a FORK of the reference
+# storefront (slice C1: `pack-surface` → a Next project of this repo's own, built into an image of its own).
+# It is a deployable, and whoever creates a deployable wires it — so its service is NOT guessed at here.
+#
+# The seam is `compose.override.yml`, which `docker compose` merges automatically when the file exists, next
+# to a routing file in `caddy/extra/` (one `*.local.caddy` on the bench, one `*.caddy` in a deployment — both
+# folders are already mounted below). Adding that front therefore costs C1 two NEW files and no edit to any
+# file committed here, which is the same deal the platform gives this repo about the kernel.
+
+services:
+  # ★ DIFFERENCE 1 — POSTGRES IS HERE, AND THE TEMPLATE SAYS IT SHOULD NOT BE.
+  #
+  # The template is right for a customer: "use a MANAGED Postgres 18 and point DATABASE_URL at it", because
+  # the entire store lives in that database and you want somebody else taking the backups. This box is a
+  # DEMO — a bench that is rebuilt on purpose and holds nothing anyone would mourn — so it carries its own,
+  # pinned to the same major the platform pins (18, parity dev↔prod) and mounted at /var/lib/postgresql (the
+  # PG 18+ convention).
+  #
+  # ⚠️ THE DAY THIS DEMO HOLDS SOMETHING REAL, THIS SERVICE COMES OUT and DATABASE_URL points at a managed
+  # instance. That is not a refactor; it is deleting eleven lines and changing one variable.
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-forge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (env-source.sh) — the demo's database is still a database}
+      POSTGRES_DB: ${POSTGRES_DB:-forge}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      # From INSIDE is acceptable HERE and is not what the platform's oven does: `depends_on` gates the
+      # kernel's start, and if the probe answers early the kernel simply retries its connection. The oven's
+      # rule (probe from another container, over TCP) exists because a MIGRATION that runs too early fails
+      # for good — which is why `migrate` is a one-shot you run by hand, after `up`.
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-forge} -d ${POSTGRES_DB:-forge}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kernel:
+    image: ${FORGE_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # The version the running kernel reports (read.platform_info) — from forge.lock's forgeVersion.
+      FORGE_KERNEL_VERSION: ${FORGE_KERNEL_VERSION:-unpinned}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL (env-source.sh) to this box's Postgres connection string}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Encrypts the connection secrets apps store. Rotating it re-keys them — keep it somewhere you can restore.
+      FORGE_VAULT_KEY: ${FORGE_VAULT_KEY:?set FORGE_VAULT_KEY (env-source.sh) to a stable random key}
+      # ★ DIFFERENCE 2 — MEDIA ON THIS BOX'S DISK, not a bucket. The demo's product photos are seeded through
+      # the port (bin/seed.mjs) and served by the kernel's own local-driver route. FORGE_MEDIA_BASE_URL stays
+      # EMPTY on purpose: with no base the local driver DERIVES the URL from FORGE_PUBLIC_ORIGIN, which is the
+      # one address a browser can reach this stack at. Point a bucket at it the day the demo needs a CDN.
+      FORGE_MEDIA_LOCAL_DIR: /data/media
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:?set FORGE_PUBLIC_ORIGIN (.env) to the address a browser reaches this stack at — the local media URLs are derived from it}
+      FORGE_STORAGE_DRIVER: ${FORGE_STORAGE_DRIVER:-}
+      FORGE_STORAGE_BUCKET: ${FORGE_STORAGE_BUCKET:-}
+      FORGE_STORAGE_CLIENT_EMAIL: ${FORGE_STORAGE_CLIENT_EMAIL:-}
+      FORGE_STORAGE_PRIVATE_KEY: ${FORGE_STORAGE_PRIVATE_KEY:-}
+      # Login e-mail. ALL FOUR or NONE: unset → the kernel LOGS the code instead of sending it (which is what
+      # a demo wants — `docker compose logs kernel` is the inbox); a partial set is a fatal boot error.
+      FORGE_SMTP_HOST: ${FORGE_SMTP_HOST:-}
+      FORGE_SMTP_PORT: ${FORGE_SMTP_PORT:-}
+      FORGE_SMTP_USER: ${FORGE_SMTP_USER:-}
+      FORGE_SMTP_PASS: ${FORGE_SMTP_PASS:-}
+      FORGE_SMTP_FROM: ${FORGE_SMTP_FROM:-}
+      # Read only by the one-shot bootstrap (`run --rm kernel node dist/provision-ref.js`): the tenant, store
+      # and first operator this instance is created with. The demo's OTHER stores are created by bin/seed.mjs,
+      # through the port, because a second store is data and not bootstrap.
+      FORGE_REF_TENANT: ${FORGE_REF_TENANT:-}
+      FORGE_REF_STORE_HANDLE: ${FORGE_REF_STORE_HANDLE:-}
+      FORGE_REF_STORE_NAME: ${FORGE_REF_STORE_NAME:-}
+      FORGE_ADMIN_SEED_EMAIL: ${FORGE_ADMIN_SEED_EMAIL:-}
+      FORGE_ADMIN_SEED_NAME: ${FORGE_ADMIN_SEED_NAME:-}
+      # OUR extensions — the apps this instance owns. `demo-gate` is the only one, and it is here rather than
+      # on `composition.json` because an app of ONE box is MOUNTED, never composed into an image.
+      FORGE_EXTENSIONS_DIR: ${FORGE_EXTENSIONS_DIR:-}
+      # Busting the storefront's cache when something a shopper can see changes. Both are needed.
+      FORGE_STOREFRONT_URL: ${FORGE_STOREFRONT_URL:-http://storefront:3000}
+      FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
+      FORGE_RATE_LIMIT_PER_CREDENTIAL: ${FORGE_RATE_LIMIT_PER_CREDENTIAL:-}
+      FORGE_RATE_LIMIT_WINDOW_SECONDS: ${FORGE_RATE_LIMIT_WINDOW_SECONDS:-}
+      # The gate app's own wiring, read when its block renders. Both optional: with no admin URL the gate
+      # simply does not offer the admin door.
+      FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+    volumes:
+      # Our extensions, read-only: the kernel loads this code, it never writes it.
+      - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
+      - media:/data/media
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  storefront:
+    image: ${FORGE_STOREFRONT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FORGE_READ_BASE_URL: http://kernel:3000
+      FORGE_COMMAND_BASE_URL: http://kernel:3000
+      FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
+      FORGE_BULK_READ_TOKEN: ${FORGE_BULK_READ_TOKEN:-}
+      # ★ DIFFERENCE 3 — THE THEMES DIRECTORY, AND THE TEMPLATE DOES NOT WIRE IT.
+      #
+      # A store names its theme with `theme_key`, and the front looks for `<FORGE_THEMES_DIR>/<key>`
+      # (packages/storefront-kit/src/theme/resolve.ts). `templates/instance/.env.example` documents the
+      # variable — and `templates/instance/compose.yml` passes it to no container and mounts no directory, so
+      # setting it there does NOTHING. Measured, and reported upstream as template debt. The demo needs it for
+      # real (`outlet`, `coffee-store`), so both fronts get the mount and the variable.
+      FORGE_THEMES_DIR: ${FORGE_THEMES_DIR:-/app/themes-instance}
+    volumes:
+      - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
+    depends_on:
+      - kernel
+
+  # The CHECKOUT — the other half of the shop's front, on the SAME hostname, split by path at the edge.
+  # Ours, unforked, and it stays that way: the vitrine is what the demo dresses up (C1), the checkout is what
+  # it dresses up with a THEME (C2).
+  checkout:
+    image: ${FORGE_CHECKOUT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FORGE_READ_BASE_URL: http://kernel:3000
+      FORGE_COMMAND_BASE_URL: http://kernel:3000
+      FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      FORGE_GOOGLE_CLIENT_ID: ${FORGE_GOOGLE_CLIENT_ID:-}
+      FORGE_GOOGLE_CLIENT_SECRET: ${FORGE_GOOGLE_CLIENT_SECRET:-}
+      FORGE_GOOGLE_REDIRECT_URI: ${FORGE_GOOGLE_REDIRECT_URI:-}
+      FORGE_APPLE_SERVICE_ID: ${FORGE_APPLE_SERVICE_ID:-}
+      FORGE_APPLE_TEAM_ID: ${FORGE_APPLE_TEAM_ID:-}
+      FORGE_APPLE_KEY_ID: ${FORGE_APPLE_KEY_ID:-}
+      FORGE_APPLE_PRIVATE_KEY: ${FORGE_APPLE_PRIVATE_KEY:-}
+      FORGE_APPLE_REDIRECT_URI: ${FORGE_APPLE_REDIRECT_URI:-}
+      FORGE_APPLE_DOMAIN_ASSOCIATION: ${FORGE_APPLE_DOMAIN_ASSOCIATION:-}
+      # ⚠️ THIS KEY BELONGS TO THIS CONTAINER AND TO NO OTHER — never copy it up to the storefront.
+      FORGE_CUSTOMER_ASSERTION_PRIVATE_KEY: ${FORGE_CUSTOMER_ASSERTION_PRIVATE_KEY:-}
+      # ★ DIFFERENCE 3, second half. The checkout resolves the store's theme too (C2 dresses `/checkout` and
+      # `/account` in `coffee-store`), so it needs the same folder mounted at the same path. A themes mount on
+      # the vitrine alone gives a shop that changes clothes at the "Finalizar compra" button.
+      FORGE_THEMES_DIR: ${FORGE_THEMES_DIR:-/app/themes-instance}
+    volumes:
+      - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
+    depends_on:
+      - kernel
+
+  admin:
+    image: ${FORGE_ADMIN_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FORGE_API_BASE_URL: http://kernel:3000
+      FORGE_API_PUBLIC_URL: ${FORGE_PUBLIC_ORIGIN}
+      FORGE_STOREFRONT_URL: http://storefront:3000
+      FORGE_STOREFRONT_PUBLIC_URL: ${FORGE_PUBLIC_ORIGIN}
+      FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
+      FORGE_ADMIN_TENANT: ${FORGE_ADMIN_TENANT?set FORGE_ADMIN_TENANT in .env to the tenant id this admin manages, or leave it EMPTY for a box that serves several brands by hostname}
+      FORGE_ADMIN_SERVICE_TOKEN: ${FORGE_ADMIN_SERVICE_TOKEN:-}
+      FORGE_ADMIN_PLATFORM_TOKEN: ${FORGE_ADMIN_PLATFORM_TOKEN:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      FORGE_ADMIN_OPS_LOGIN: ${FORGE_ADMIN_OPS_LOGIN:-}
+      FORGE_ADMIN_I18N_DIR: ${FORGE_ADMIN_I18N_DIR:-}
+      FORGE_ADMIN_DEFAULT_LOCALE: ${FORGE_ADMIN_DEFAULT_LOCALE:-}
+    volumes:
+      - ${FORGE_ADMIN_I18N_HOST_DIR:-./i18n}:/app/i18n:ro
+    depends_on:
+      - kernel
+
+  # TLS + routing.
+  #
+  # ⚠️ WHICH CADDYFILE IS A CHOICE, AND THE DEFAULT IS THE SAFE ONE. `./caddy/Caddyfile` is the real edge:
+  # automatic TLS and a CLOSED control face. `./caddy/Caddyfile.local` is the bench edge: plain HTTP on one
+  # port, no TLS, no perimeter. The default is the production file so that FORGETTING to choose gives you the
+  # closed door — `.env.example` (which is the bench's config) points at the local one explicitly.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '${FORGE_HTTP_PORT:-80}:80'
+      - '${FORGE_HTTPS_PORT:-443}:443'
+      # BENCH ONLY, and harmless in a deployment: the production Caddyfile has no `:81` site, so nothing
+      # answers here and the published port is inert. On the bench it is the admin's own origin — a path
+      # prefix does not work (the admin is a Next app with no basePath; see caddy/Caddyfile.local).
+      - '${FORGE_ADMIN_HTTP_PORT:-8081}:81'
+    environment:
+      FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
+      FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}
+      FORGE_CONTROL_ALLOW_CIDR: ${FORGE_CONTROL_ALLOW_CIDR:-127.0.0.1/32}
+    volumes:
+      - ${FORGE_CADDYFILE:-./caddy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ${FORGE_TLS_CERT_DIR:-./caddy/certs}:/etc/caddy/certs:ro
+      - ${FORGE_CADDY_EXTRA_DIR:-./caddy/extra}:/etc/caddy/extra:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - kernel
+      - storefront
+      - checkout
+      - admin
+
+  # Cache + sessions. Degradable: if redis is down the store gets slower, not wrong.
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:
+  media:

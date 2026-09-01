@@ -1,0 +1,173 @@
+# TLS + routing for this instance. Both hostnames come from the environment ({$FORGE_DOMAIN},
+# {$FORGE_ADMIN_DOMAIN}), so nothing here names your domain and this file needs no edit to move.
+#
+# Caddy provisions a Let's Encrypt certificate for each host automatically — which means the DNS records must
+# already point at this box when you first bring the stack up, and ports 80 and 443 must be reachable.
+#
+# The root domain serves TWO fronts, split by path. Most of it is the STOREFRONT — the vitrine, the half you
+# are free to fork. `/checkout`, `/account`, `/.well-known/` and the checkout's own assets go to the CHECKOUT
+# container: the part that handles money and sign-in, that we keep evolving, and that you do not have to
+# maintain to own your storefront. Same hostname on purpose — a subdomain would put the cart and the session
+# cookies on a different origin, and a shopper would lose their cart on the way to paying.
+#
+# The browser never reaches /v1/*: the fronts and the admin talk to the kernel server-side over the compose
+# network. What IS public are the doors meant for callers that are not browsers — an ERP with an API key, an
+# agent over MCP, the CLI:
+#   /v1/*                — the port: public reads, the command face, the internal read face (the kernel
+#                          authenticates every request; an anonymous call to an authenticated face is refused
+#                          by the kernel, not by this file)
+#   /webhooks/payment/*  — the payment provider POSTs here
+#   /webhooks/channel/*  — a channel provider POSTs delivery receipts here (the address a channel app's
+#                          ficha prints for you to paste into the provider's console)
+#   /health              — liveness, for your monitoring
+#
+# And ONE door that is deliberately shut: /v1/control/*, the platform face. It carries cross-tenant power, so
+# it answers 403 from the public interface unless you name a source range for it. The full map, and what to do
+# if you want it reachable from your VPN, is in docs/conventions/surface-exposure.md.
+#
+# ⚠️ Coarse per-IP protection (an abuse cap in front of everything) is NOT in this file: the stock `caddy:2`
+# image has no rate-limit module, and a directive this binary does not know would not degrade one route — it
+# would stop the whole file loading, and your STORE with it. The per-credential cap is inside the kernel and
+# is always on. The recipe for the edge layer, if you want it, is in the doc above.
+
+{$FORGE_DOMAIN} {
+	# Certificates you were GIVEN, rather than ones Caddy issues. If a CDN sits in front of this box in
+	# full-strict mode, it terminates TLS and the ACME challenge can never reach here — so automatic
+	# renewal cannot work and the certificate expires ~90 days after it was issued. The way out is the
+	# CDN's Origin Certificate: `cat origin.crt origin.key > caddy/certs/origin.pem` and restart.
+	#
+	# An EMPTY folder is the normal state and changes nothing — Caddy keeps issuing its own certificates.
+	# One declaration covers BOTH hostnames: the certificate pool is process-wide, not per-site.
+	tls {
+		load /etc/caddy/certs
+	}
+	# Who may reach the control face. Empty is not something `remote_ip` accepts, so "nobody" is written as
+	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
+	# in FORGE_CONTROL_ALLOW_CIDR (space-separated) if you want it reachable, and leave it alone otherwise.
+	@control_allowed remote_ip {$FORGE_CONTROL_ALLOW_CIDR:127.0.0.1/32}
+	handle /v1/control/* {
+		route {
+			reverse_proxy @control_allowed kernel:3000
+			respond "the control face is not exposed on this interface" 403
+		}
+	}
+	handle /v1/* {
+		reverse_proxy kernel:3000
+	}
+	# ★ SURFACES-EXT S2 — THE REMOTE MCP ENDPOINT, AND IT IS ITS OWN PATH ON PURPOSE. MCP negotiates its
+	# version in-band (the `MCP-Protocol-Version` header), so the route carries none — which is exactly why it
+	# does not live under /v1/* and has to be named here. It was NOT, and that is the defect this block closes:
+	# S2 mounted it in the kernel, S3 drew the edge, and the seam between the two slices had no owner. The
+	# comment at the top of this file already promised "an MCP agent" among the callers reaching the kernel,
+	# so the file was asserting a route it did not carry. Measured on Staging 2026-08-24: POST /mcp answered
+	# 405 from the STOREFRONT (Next refusing a method on a page that is not there), never reaching the kernel,
+	# while /health and /v1/read/internal/* both landed correctly. `infra/cicd/control-exposure-selftest.sh`
+	# now lists /mcp among the faces that MUST answer, so an edge that forgets it again fails the build.
+	handle /mcp {
+		reverse_proxy kernel:3000
+	}
+	handle /webhooks/payment/* {
+		reverse_proxy kernel:3000
+	}
+	# ★★ QA17/FM3 — THE CHANNEL CALLBACK SEAM, and it was missing while the admin was already telling
+	# merchants to paste its address into their provider's console. The provider POSTs delivery receipts here
+	# (apps/api/src/channel-webhook-adapter.ts, keyed on the INSTALLATION so two merchants on one box hold two
+	# different addresses). Without this block the request fell through to the storefront and came back as its
+	# 404 — an integration that can only fail, from an address a screen handed out.
+	handle /webhooks/channel/* {
+		reverse_proxy kernel:3000
+	}
+	handle /health {
+		reverse_proxy kernel:3000
+	}
+	# ★★ CHECKOUT-APP (C3) — THE SECOND FRONT ON THIS HOST, AND THE ONLY THING THAT PUTS IT THERE.
+	#
+	# `apps/checkout` is a deployable of its own (checkout, account, login, orders); `apps/storefront` is the
+	# vitrine a customer forks. They share ONE hostname and split by PATH — never by subdomain, because a
+	# subdomain would put `forge_cart` and `forge_customer_session` on another origin and the shopper would
+	# lose the cart on the way to paying for it. These five blocks ARE that split; without them the checkout
+	# container is running and unreachable, and every address below answers the vitrine's 404.
+	#
+	# Declared in packages/codegen/src/control-exposure.ts (EDGE_HANDLES) and compared against this file in
+	# BOTH directions by infra/cicd/control-exposure-selftest.sh — a handle here that the declaration has not
+	# heard of is red, and so is one there that this file does not carry.
+	#
+	# ⚠️ ORDER IS NOT WHAT DECIDES THIS. Caddy matches `handle` blocks by how SPECIFIC their path is, not by
+	# where they appear, so these win over the bare fall-through below wherever they are written. They are
+	# written here because a reader needs to see them before the fall-through, not because Caddy does.
+	handle /checkout* {
+		reverse_proxy checkout:3000
+	}
+	handle /account* {
+		reverse_proxy checkout:3000
+	}
+	# ⚠️ `/api/account/orders/*` AND NOT `/api/account*`, AND THE DIFFERENCE IS A MEASURED ONE.
+	# `/api/account/status` is STILL the vitrine's route (apps/storefront/src/app/api/account/status/route.ts)
+	# — the header asks it after hydration to choose between "Entrar" and the shopper's name, and reading a
+	# session is exactly what the vitrine is allowed to do. Widen this to the whole prefix and that fetch
+	# lands on a deployable that does not serve it: the header is permanently signed out, the 404 happens
+	# where no human is looking, and the account page itself still works, so nobody reports it. The selftest
+	# probes `/api/account/status` as a STOREFRONT path for this reason.
+	handle /api/account/orders/* {
+		reverse_proxy checkout:3000
+	}
+	# RFC 8615: the whole prefix is host-level, never per-store. It is the CHECKOUT's because the social login
+	# is — Apple fetches `apple-developer-domain-association.txt` at the bare host before it will trust the
+	# Services ID whose handshake starts at `/account/social/<provider>/start`.
+	handle /.well-known/* {
+		reverse_proxy checkout:3000
+	}
+	# ★★ THE ASSETS, AND THIS IS THE ONE THAT FAILS IN SILENCE. Two Next servers on one origin both ask the
+	# browser for `/_next/static/…`; whichever container wins that namespace serves chunks the other build has
+	# never heard of. `assetPrefix: '/_checkout'` (apps/checkout/next.config.mjs) moves this app's assets to
+	# their own prefix, and this block is the half at the edge. Without it the shopper meets an UNSTYLED
+	# checkout holding their card number: the HTML arrives, no server logs anything, and the only trace is a
+	# 404 for a stylesheet nobody was watching.
+	#
+	# ⚠️⚠️ `handle_path`, NOT `handle`, AND THE DIFFERENCE IS SIX CHARACTERS AND THE WHOLE THING. `handle_path`
+	# STRIPS the matched prefix before proxying. MEASURED on the real image (C3): a Next server with
+	# `assetPrefix: '/_checkout'` emits the prefixed URL into its HTML and then answers **404** to it — it
+	# serves those files at `/_next/static/…` and nothing else. The prefix is an instruction to THIS FILE, not
+	# a route the app owns. With a bare `handle` every chunk reaches the right container and comes back 404,
+	# which is the same unstyled checkout the prefix exists to prevent, one layer further in.
+	handle_path /_checkout/* {
+		reverse_proxy checkout:3000
+	}
+	# ★★ THE GENERATED ROUTES OF THE APPS WHOSE SLOTS LIVE HERE (slice C2, spec §2.3b). `forge.wiring.publicRoutes`
+	# lets an app declare a public URL, and the composition writes it into the consumer where that app's SLOTS
+	# are: `reviews` draws "Avaliar produtos" in the `order.*` slots, so `/apps/reviews/submit` is generated
+	# into apps/checkout — and it asks for account-class injections, which is why it may not live in the
+	# deployable a customer forks. Without this block the form POSTs to the vitrine, which does not serve it:
+	# a shopper writes a review of something they bought and gets a 404 on submit.
+	#
+	# ⚠️ WHOLE-PREFIX, AND WHAT MAKES THAT SAFE IS A FACT ABOUT TODAY'S COMPOSITION. The one generated app
+	# route that stays with the vitrine is the feed's, and it is `/feeds/google.xml` — outside this prefix (the
+	# selftest probes it as a STOREFRONT path for exactly that reason). An app whose slots live in the vitrine
+	# and that declared a route under `/apps/` would be silently taken by this block.
+	handle /apps/* {
+		reverse_proxy checkout:3000
+	}
+	# ★ THE CHECKOUT'S COMPONENT GALLERY (slice C4), the sibling of the vitrine's `/ui-storefront`. That one
+	# needs no block because the vitrine is the fall-through; this one is on the other side of the split.
+	handle /ui-checkout* {
+		reverse_proxy checkout:3000
+	}
+	handle {
+		reverse_proxy storefront:3000
+	}
+}
+
+# The admin on its own hostname, with its own DNS record and its own certificate.
+{$FORGE_ADMIN_DOMAIN} {
+	reverse_proxy admin:3000
+}
+
+# Hostnames beyond those two — the case being a SECOND ADMIN, for a second tenant this instance holds. They
+# go in caddy/extra/, one file each, instead of here: this file needs no edit to move between boxes, and an
+# empty folder is the normal state. Caddy accepts a pattern that matches nothing (one `warn` line in the log
+# and it carries on), so leaving the folder empty changes nothing at all.
+#
+# A hostname added there behaves like the two above — Caddy matches site blocks by how specific they are,
+# not by where they appear — and gets its certificate automatically. See caddy/extra/README.md for the whole
+# recipe (the container, the hostname, the reload).
+import /etc/caddy/extra/*.caddy

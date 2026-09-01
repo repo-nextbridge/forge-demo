@@ -1,0 +1,116 @@
+# ★ THE BENCH EDGE — plain HTTP, one port, no TLS. It exists so this stack can be exercised on a laptop
+# before it has DNS records and a certificate.
+#
+# ⚠️ THIS IS NOT THE PRODUCTION EDGE AND MUST NOT BE READ AS ONE. It carries no TLS and — the part that
+# matters — no CONTROL-FACE PERIMETER: `/v1/control/*` is simply not routed here, so it falls through to the
+# storefront's 404 rather than being refused. On a box reachable from the internet that is the wrong shape,
+# which is why `compose.yml` DEFAULTS to `./caddy/Caddyfile` (the real one, with the 403) and this file is
+# opted into explicitly by `.env`. Forgetting to choose gives you the closed door, never this one.
+#
+# The PATH SPLIT is the same as production's, and that is the whole reason this file exists rather than
+# pointing a browser at a container port: the shop's front is TWO Next servers on ONE origin, and the
+# vitrine's own "Finalizar compra" is a relative `/checkout`. Two ports do not reproduce that — the browser
+# follows the link and never learns there is a second server.
+#
+# Bring it up with `.env` carrying:
+#   FORGE_CADDYFILE=./caddy/Caddyfile.local
+#   FORGE_HTTP_PORT=8080        (or any free port)
+#   FORGE_PUBLIC_ORIGIN=http://localhost:8080
+# then open http://localhost:8080.
+#
+# ⚠️ THE ADMIN GETS ITS OWN PORT, AND A PATH PREFIX WAS TRIED FIRST AND MEASURED BROKEN. `handle /admin*
+# { reverse_proxy admin:3000 }` returns HTTP 307 to `/login` — an ABSOLUTE path with no prefix on it, because
+# the admin is a Next app with no `basePath` and every address it mints is rooted. The edge then routes
+# `/login` to the vitrine, which answers 404. Measured on this bench:
+#
+#     GET /admin  → 307  Location: http://localhost:8080/login
+#     GET /login  → 404  (the vitrine's)
+#
+# So it listens on a second port instead. In production it gets `{$FORGE_ADMIN_DOMAIN}` and a certificate of
+# its own anyway — an admin sharing an origin with the shop shares its cookies too.
+
+{
+	# Plain HTTP. A self-signed certificate would make the browser treat the bench as hostile; `auto_https off`
+	# also stops Caddy trying to reach Let's Encrypt from a laptop.
+	auto_https off
+	admin off
+}
+
+:80 {
+	# ── the kernel's own faces, on the same paths production uses ──────────────────────────────────────────
+	handle /v1/* {
+		reverse_proxy kernel:3000
+	}
+	handle /mcp {
+		reverse_proxy kernel:3000
+	}
+	handle /webhooks/payment/* {
+		reverse_proxy kernel:3000
+	}
+	handle /webhooks/channel/* {
+		reverse_proxy kernel:3000
+	}
+	handle /health {
+		reverse_proxy kernel:3000
+	}
+
+	# ── the CHECKOUT half of the front. Same five blocks as production, same reasons ───────────────────────
+	handle /checkout* {
+		reverse_proxy checkout:3000
+	}
+	handle /account* {
+		reverse_proxy checkout:3000
+	}
+	# ⚠️ `/api/account/orders/*` and NOT `/api/account*`: `/api/account/status` is still the VITRINE's route
+	# (the header asks it after hydration to choose between "Entrar" and the shopper's name). Widen this and
+	# the header is permanently signed out, in a 404 nobody is looking at.
+	handle /api/account/orders/* {
+		reverse_proxy checkout:3000
+	}
+	handle /.well-known/* {
+		reverse_proxy checkout:3000
+	}
+	# ⚠️ `handle_path`, NOT `handle`, and the difference is six characters and the whole thing: it STRIPS the
+	# prefix before proxying, because a Next server with `assetPrefix: '/_checkout'` emits that URL into its
+	# HTML and then answers 404 to it — it serves those files at `/_next/static/…` and nowhere else. With a
+	# bare `handle` every chunk reaches the right container and comes back 404: an UNSTYLED checkout holding
+	# somebody's card number, with nothing in any log.
+	handle_path /_checkout/* {
+		reverse_proxy checkout:3000
+	}
+	handle /apps/* {
+		reverse_proxy checkout:3000
+	}
+	handle /ui-checkout* {
+		reverse_proxy checkout:3000
+	}
+
+	# ── ★ THE SEAM FOR A FRONT THIS REPO DOES NOT SHIP YET ─────────────────────────────────────────────────
+	#
+	# The coffee store's vitrine is a FORK of the reference storefront (slice C1: `pack-surface` → a Next
+	# project of this repo's own, built into an image of its own). It is a deployable, and whoever creates a
+	# deployable wires it: its compose service and its routing are C1's to write, not this file's to guess.
+	#
+	# What is here is the HOLE it drops into. One file in `caddy/extra/` ending in `.local.caddy` — say
+	# `coffee.local.caddy` holding `handle /s/cafe* { reverse_proxy coffee-storefront:3000 }` — and its
+	# service in `compose.override.yml` (see compose.yml's own note), and nothing in this repository's
+	# committed files has to change.
+	#
+	# ⚠️ IT MUST BE IMPORTED BEFORE THE FALL-THROUGH BELOW is REACHED — not because Caddy reads top to
+	# bottom (it matches `handle` by how SPECIFIC the path is, wherever it appears), but because a reader
+	# needs to see that the last block is the DEFAULT and not the only answer.
+	#
+	# An empty folder is the normal state: Caddy accepts a pattern matching nothing with one `warn` line.
+	import /etc/caddy/extra/*.local.caddy
+
+	# ── everything else is the reference vitrine ───────────────────────────────────────────────────────────
+	handle {
+		reverse_proxy storefront:3000
+	}
+}
+
+# THE ADMIN, on its own listener — see the header for the measurement that put it here rather than under a
+# path. Published as ${FORGE_ADMIN_HTTP_PORT} by compose.yml.
+:81 {
+	reverse_proxy admin:3000
+}

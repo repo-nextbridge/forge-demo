@@ -1,0 +1,6 @@
+# The secrets accessor's bench backend. NEVER committed — see env-source.sh.
+.secrets
+# The instance's own configuration, copied from .env.example and edited per box.
+.env
+node_modules/
+node_modules/
