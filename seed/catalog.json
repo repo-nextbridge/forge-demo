@@ -1,0 +1,197 @@
+{
+  "_readme": [
+    "THE DEMO'S BIRTH DATA — the stores and the coffee catalogue, as DATA. `bin/seed.mjs` reads this file and",
+    "drives the port; nothing here is code, and no rule about products lives in the script.",
+    "",
+    "⚠️ THIS IS NOT A SEED, AND THE DIFFERENCE IS DELIBERATE (decision of Renan, 2026-08-31: 'sem seed",
+    "completo — fica mais claro como rechear' once the whole demo stands up). What is here is the MINIMUM that",
+    "makes the demo stand: the stores, and the six coffees the coffee store lists on its home. There is no",
+    "importer, no generated mass, no customers, no orders. The real seed is a later slice, and it will be",
+    "written from what the finished demo turns out to need rather than from a guess made now.",
+    "",
+    "⚠️ WHAT THE SOURCE DOCUMENT PROMISES AND DOES NOT CARRY. `DEMO2-CATALOGO-CAFE.md` opens with '6 cafés",
+    "listados DIRETO na home + 3 coadjuvantes para o compre-junto' and then tables only the six. The three",
+    "supporting products are named nowhere in it, and the photo folder holds six images. They are NOT invented",
+    "here: `recommendations` is on this box's composition list and its bought-together pairing has nothing to",
+    "pair with until somebody writes those three down.",
+    "",
+    "MONEY IS IN CENTS, always, and never a float. `amount: 4290` is R$ 42,90.",
+    "",
+    "THE SKU AXES are the product's own options, and 'Moagem' is the one the demo exists to show: it is",
+    "labelled by the customer's METHOD ('Grãos' · 'Filtrado' · 'Espresso'), not by particle size, because the",
+    "shopper knows how they brew and does not know what 'fina' means."
+  ],
+
+  "stores": [
+    {
+      "handle": "outlet",
+      "name": "Forge Outlet",
+      "tenant": "forgeco",
+      "theme_key": "outlet",
+      "bootstrap": true,
+      "why": "Created by `provision-ref` at bootstrap, not by this script — a first store is bootstrap, a second is data. It is listed here so the file is the whole picture, and the script CHECKS it rather than creating it."
+    },
+    {
+      "handle": "forge",
+      "name": "Forge",
+      "tenant": "forgeco",
+      "theme_key": null,
+      "why": "Tenant 1's second store, on the vanilla theme. It is the control: the Outlet's whole thesis is that a theme plus data plus composition is enough, and a thesis with nothing to be compared against is a claim."
+    },
+    {
+      "handle": "cafe",
+      "name": "Forge Café",
+      "tenant": "forgeco",
+      "theme_key": "coffee-store",
+      "why": "The coffee store. ⚠️ THE SPEC PUTS IT ON A SECOND TENANT and this script puts it on the first — see README, 'One tenant on the bench'. The reason is the admin: it is pinned to ONE tenant by FORGE_ADMIN_TENANT, so a second tenant needs a second admin container on a hostname of its own, and the bench has one origin. Nothing about the STOREFRONT needs the split; nothing in the catalogue below changes when it happens."
+    }
+  ],
+
+  "products": [
+    {
+      "handle": "forge-alvorada",
+      "title": "Forge Alvorada",
+      "subtitle": "O blend da casa",
+      "photo": "alvorada.png",
+      "description": "O café de todo dia. Torra média, corpo redondo e doçura fácil — chocolate ao leite, caramelo e nozes. Vem da Mogiana Paulista, onde a altitude e a colheita tardia dão ao grão o açúcar que sustenta a xícara sem precisar de nada.",
+      "custom_fields": {
+        "regiao": "Mogiana Paulista",
+        "processo": "natural",
+        "torra": "média",
+        "notas": "chocolate ao leite, caramelo, nozes"
+      },
+      "options": [
+        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
+        { "name": "Peso", "values": ["250g", "1kg"] }
+      ],
+      "skus": [
+        { "options": ["Grãos", "250g"], "amount": 4290 },
+        { "options": ["Filtrado", "250g"], "amount": 4290 },
+        { "options": ["Espresso", "250g"], "amount": 4290 },
+        { "options": ["Grãos", "1kg"], "amount": 14900 },
+        { "options": ["Filtrado", "1kg"], "amount": 14900 },
+        { "options": ["Espresso", "1kg"], "amount": 14900 }
+      ]
+    },
+    {
+      "handle": "forge-serra-do-caparao",
+      "title": "Forge Serra do Caparaó",
+      "subtitle": "Microlote single origin",
+      "photo": "serra-do-caparao.png",
+      "description": "Um microlote da Serra do Caparaó, no Espírito Santo, a 1.200 metros. Catuaí amarelo, lavado, torra clara: mel, maçã verde e um floral que aparece quando a xícara esfria um pouco. 86 pontos SCA.",
+      "custom_fields": {
+        "regiao": "Serra do Caparaó (ES)",
+        "altitude": "1.200 m",
+        "variedade": "Catuaí amarelo",
+        "processo": "lavado",
+        "torra": "clara",
+        "notas": "mel, maçã verde, floral",
+        "sca": "86"
+      },
+      "options": [{ "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] }],
+      "skus": [
+        { "options": ["Grãos"], "amount": 6900 },
+        { "options": ["Filtrado"], "amount": 6900 },
+        { "options": ["Espresso"], "amount": 6900 }
+      ]
+    },
+    {
+      "handle": "forge-cerrado-mineiro",
+      "title": "Forge Cerrado Mineiro",
+      "subtitle": "Denominação de origem",
+      "photo": "cerrado-mineiro.png",
+      "description": "Do Cerrado Mineiro, a primeira denominação de origem do café brasileiro. Natural, torra média: chocolate 70%, avelã e um fundo de cana que fica na boca. O café que combina com qualquer coisa que você já tenha na despensa.",
+      "custom_fields": {
+        "regiao": "Cerrado Mineiro",
+        "processo": "natural",
+        "torra": "média",
+        "notas": "chocolate 70%, avelã, cana"
+      },
+      "options": [
+        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
+        { "name": "Peso", "values": ["250g", "1kg"] }
+      ],
+      "skus": [
+        { "options": ["Grãos", "250g"], "amount": 4890 },
+        { "options": ["Filtrado", "250g"], "amount": 4890 },
+        { "options": ["Espresso", "250g"], "amount": 4890 },
+        { "options": ["Grãos", "1kg"], "amount": 16900 },
+        { "options": ["Filtrado", "1kg"], "amount": 16900 },
+        { "options": ["Espresso", "1kg"], "amount": 16900 }
+      ]
+    },
+    {
+      "handle": "forge-noturno",
+      "title": "Forge Noturno",
+      "subtitle": "Blend intenso",
+      "photo": "noturno.png",
+      "description": "Torra escura, feita para o leite e para o espresso curto. Cacau, melaço e especiarias; corpo alto e amargor limpo. É o café que não some debaixo de meio litro de leite.",
+      "custom_fields": {
+        "processo": "natural",
+        "torra": "escura",
+        "notas": "cacau, melaço, especiarias"
+      },
+      "options": [
+        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
+        { "name": "Peso", "values": ["250g", "1kg"] }
+      ],
+      "skus": [
+        { "options": ["Grãos", "250g"], "amount": 4490 },
+        { "options": ["Filtrado", "250g"], "amount": 4490 },
+        { "options": ["Espresso", "250g"], "amount": 4490 },
+        {
+          "options": ["Grãos", "1kg"],
+          "amount": 11900,
+          "compare_at_amount": 15900,
+          "why": "The de/por promotion the catalogue asks for. `compare_at_amount` is the SKU's own field, so the discount is a fact about the price and not a rule an app has to be installed to see."
+        },
+        { "options": ["Filtrado", "1kg"], "amount": 11900, "compare_at_amount": 15900 },
+        { "options": ["Espresso", "1kg"], "amount": 11900, "compare_at_amount": 15900 }
+      ]
+    },
+    {
+      "handle": "forge-descafeinado",
+      "title": "Forge Descafeinado",
+      "subtitle": "Swiss Water",
+      "photo": "descafeinado.png",
+      "description": "Descafeinado pelo processo Swiss Water — água, tempo e paciência, sem solvente. Torra média, biscoito e chocolate. O café das nove da noite que continua sendo café.",
+      "custom_fields": {
+        "processo": "Swiss Water",
+        "torra": "média",
+        "notas": "biscoito, chocolate"
+      },
+      "options": [{ "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] }],
+      "skus": [
+        { "options": ["Grãos"], "amount": 5490 },
+        { "options": ["Filtrado"], "amount": 5490 },
+        { "options": ["Espresso"], "amount": 5490 }
+      ]
+    },
+    {
+      "handle": "forge-edicao-do-produtor",
+      "title": "Forge Edição do Produtor",
+      "subtitle": "Sítio Boa Vista · Dona Cida · Mantiqueira de Minas",
+      "photo": "edicao-do-produtor.png",
+      "description": "Dona Cida colhe no Sítio Boa Vista, na Mantiqueira de Minas, e seca o café em terreiro suspenso por catorze dias. Bourbon amarelo, honey, 88 pontos SCA: jasmim, pêssego e rapadura. Lote numerado, e quando acaba, acabou.",
+      "custom_fields": {
+        "regiao": "Mantiqueira de Minas",
+        "produtor": "Dona Cida",
+        "fazenda": "Sítio Boa Vista",
+        "variedade": "Bourbon amarelo",
+        "processo": "honey",
+        "torra": "clara",
+        "notas": "jasmim, pêssego, rapadura",
+        "sca": "88"
+      },
+      "options": [{ "name": "Moagem", "values": ["Grãos"] }],
+      "skus": [
+        {
+          "options": ["Grãos"],
+          "amount": 9800,
+          "on_hand": 14,
+          "why": "The scarcity the catalogue asks for — 'restam 14'. It is real stock and not a label: the shelf that says 'Acabando!' reads the same number the checkout refuses to oversell."
+        }
+      ]
+    }
+  ]
+}
