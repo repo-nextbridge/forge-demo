@@ -1,0 +1,533 @@
+/* Minicart — the cart dropdown ANCHORED to the header cart icon (§2.3). Semantic tokens only — re-skin =
+ * tokens.css, zero edits here. */
+
+/* Icon-open mode: a transparent full-screen backdrop that closes the panel on an outside click. It sits ABOVE
+   the SearchBox's scrim/field/panel band (globals/SearchBox 250–260) so the cart is never covered by an open
+   suggest panel and an outside click (incl. over the search) closes the cart — and BELOW the .overlay. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 280;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+/* The FadeLayer box — anchored under the cart icon (the trigger wraps this in a position:relative container). */
+.overlay {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  /* Above the SearchBox's suggest panel (z 260): a just-added item's cart dropdown must never render UNDER the
+     open search panel on mobile (the stacking bug). Paired with the SearchBox closing its panel when the cart
+     opens, so the two dropdowns are never both live. */
+  z-index: 290;
+  width: min(368px, calc(100vw - 40px));
+  /* Cap the panel so a cart with many lines can't run past the fold: it becomes a flex column and its .lines
+     scroll internally while .head + .footer (the checkout CTA) stay pinned. 70vh keeps the dropdown compact on a
+     tall desktop; the dvh term is the floor on a short phone (tracks the browser chrome) so the footer is never
+     cut off — min() takes whichever is smaller. */
+  max-height: min(70vh, calc(100dvh - 88px));
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-dropdown);
+}
+
+/* The little rotated square that connects the box to the cart icon (top-right). */
+.arrow {
+  position: absolute;
+  top: -5px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-canvas);
+  border-top: 1px solid var(--color-hairline);
+  border-left: 1px solid var(--color-hairline);
+  transform: rotate(45deg);
+}
+
+/* §2.3 — the 4s auto-close countdown: a 2px line that shrinks left→right at the box's top edge. Driven by a
+ * KEYFRAME animation (not a transition): the span is (re)mounted with a fresh key on every add-open, so the
+ * animation always plays from scaleX(1). A transition would NOT play here — the element mounts already at its
+ * final state (data-running), so there is no start frame to animate from (why Staging showed no line). */
+.timer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--color-disabled);
+  transform-origin: left center;
+  transform: scaleX(1);
+}
+.timer[data-running] {
+  animation: minicartTimer var(--dur-timer) linear forwards;
+}
+/* Hovering the panel pauses the countdown (the JS auto-close pauses in lockstep). */
+.timer[data-paused] {
+  animation-play-state: paused;
+}
+@keyframes minicartTimer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  /* Fill the capped overlay and allow the inner .lines to shrink+scroll (min-height:0 defeats the flex
+     min-content floor that would otherwise let the list push the footer off-screen). */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.head {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-md);
+}
+
+.eyebrow {
+  font-family: var(--type-label-caps-family);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-faint);
+}
+
+.headline {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+/* MINICART-ERRO — the refused command's sentence, at the top of the panel. Quiet but unmistakable: the house
+ * danger ink on its own tinted band (the same token every inline error in the storefront uses), so it reads as
+ * a state of the cart and not as a line of it. Semantic tokens only. */
+.error {
+  flex-shrink: 0;
+  margin: 0 0 var(--space-md);
+  padding: var(--space-sm);
+  font-size: var(--font-size-13-5);
+  line-height: 1.35;
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+  /* There is no `--color-danger-border` in the palette (the warning family has one, danger does not), and
+     minting a token is a THEME decision, not this card's. Same treatment OrderStatusChip.danger takes: the
+     danger ink doubles as the border. */
+  border: 1px solid var(--color-danger);
+  border-radius: var(--r-xs);
+}
+
+.empty {
+  margin: var(--space-xs) 0 var(--space-sm);
+  font-size: var(--font-size-13-5);
+  color: var(--color-subtle);
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  /* The only scroll region — the header above and the checkout footer below stay put. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* A line is a swipe container (§10.3): a red delete background revealed as the content slides left. */
+.line {
+  position: relative;
+  /* Keep each line's natural height: as a flex child of the scroll column, the default flex-shrink:1 let a long
+     cart COMPRESS the rows until they overlapped instead of scrolling. flex-shrink:0 makes .lines overflow (scroll). */
+  flex-shrink: 0;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+}
+
+.swipeBg {
+  position: absolute;
+  /* r4 #20 — inset 1px top/bottom so the resting .swipeSurface (a transformed, composited layer) always covers
+   * the red fill vertically: at translateX(0) a sub-pixel seam used to expose a thin red line under the row.
+   * Left/right stay flush so the leftward swipe still reveals the full-width delete background on the right. */
+  inset: 1px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-lg);
+  background: var(--color-danger);
+  border-radius: var(--r-xs);
+}
+
+.swipeIcon {
+  color: var(--color-on-primary);
+}
+
+.swipeSurface {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 12px;
+  background: var(--color-canvas-soft);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-xs);
+  /* Let vertical scroll pass through; the pointer handlers own horizontal drag (§10.3 axis lock). */
+  touch-action: pan-y;
+  transition:
+    transform var(--dur-slide) var(--ease),
+    border-color var(--dur-hover) var(--ease);
+}
+
+/* The 42px slot the expanding qty box lives over (so its growth never reflows the row). */
+.qtySlot {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+}
+
+/* §2.3 — the compact "un N" box: 42px collapsed → 118px on click, revealing − / + (they stay in the DOM; the
+ * expand is a width + opacity animation). */
+.qtyBox {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  width: 42px;
+  height: 42px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  transition: width var(--dur-expand) var(--ease);
+}
+
+.qtyBox[data-expanded] {
+  width: 118px;
+}
+
+.qtyLabel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.qtyUn {
+  font-size: var(--font-size-9-5);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-faint);
+}
+
+.qtyNum {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.stepGroup {
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--dur-expand) var(--ease);
+}
+
+.qtyBox[data-expanded] .stepGroup {
+  opacity: 1;
+}
+
+.stepBtn {
+  width: 28px;
+  height: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-15);
+  cursor: pointer;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.stepBtn:hover:not(:disabled) {
+  color: var(--color-accent);
+}
+
+.stepBtn:disabled {
+  color: var(--color-faint);
+  cursor: default;
+}
+
+.qtyStatic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-subtle);
+  font-size: var(--font-size-13-5);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.lineTitle {
+  font-size: var(--font-size-13-5);
+  font-weight: var(--font-weight-semibold);
+  /* r4 #25 — the title is the normal ink at rest and warms to forge orange ONLY on row hover (rule below). When
+   * linked it is an <a>: reset the underline, keep it a shrinkable flex child so the ellipsis truncation works. */
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: color var(--dur-hover) var(--ease);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* r4 #25 — DESKTOP-ONLY hover: the row's border darkens (same cue as the product card's hover) AND the title
+ * warms to the forge accent — BOTH only on hover, nothing changes at rest. Gated on `hover: hover` so a touch
+ * device (the swipe surface) never gets it, keeping the swipe-to-delete gesture untouched.
+ * Placed AFTER both base rules (`.swipeSurface`, `.lineTitle`) rather than next to `.line`: specificity already
+ * decides this — (0,3,0) beats (0,1,0) whatever the order — but reading a state rule before the rest state it
+ * overrides is what noDescendingSpecificity is about. Nothing rendered changed when it moved. */
+@media (hover: hover) {
+  .line:hover .swipeSurface {
+    border-color: var(--color-border-strong);
+  }
+  .line:hover .lineTitle {
+    color: var(--color-accent);
+  }
+}
+
+.variant {
+  flex-shrink: 0;
+  font-size: var(--font-size-12);
+  color: var(--color-faint);
+  white-space: nowrap;
+}
+
+/* PACK item 14 — the "de" inside the price chip, when an item-class promotion landed on the line. */
+.chipWas {
+  color: var(--color-faint);
+  text-decoration: line-through;
+  font-weight: var(--font-weight-regular);
+}
+
+.chip {
+  align-self: flex-start;
+  padding: 3px var(--space-sm);
+  background: var(--color-surface-sunken);
+  border-radius: var(--r-xs);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-muted);
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-xs);
+  background: var(--color-surface-sunken);
+}
+
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--color-surface-sunken);
+}
+
+/* Accessible removal (keyboard/AT) — the visual removal is the mobile swipe / zeroing the qty. Visually hidden. */
+/* ★ QA29 · s2b-8 — the line's remove, VISIBLE. It existed as a 1×1 clipped button: a screen reader could
+   remove a line and a pair of eyes could not, so the only pointer path was the "−" at quantity 1, which is the
+   destructive reading of a gesture the cart page treats as inert. Same treatment as the cart row's × — a faint
+   icon button that reddens on hover. */
+.remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-xs);
+  color: var(--color-faint);
+  cursor: pointer;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.remove:not(:disabled):hover {
+  color: var(--color-danger);
+}
+
+.remove:disabled {
+  cursor: default;
+}
+
+.footer {
+  flex-shrink: 0;
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* PROMO item 13 — the kernel's rows above the total: subtotal, the merchant-named discounts, delivery.
+   Discreet by design (the size the single "Subtotal" line had), so the total still reads as the total.
+   Geometry comes from the shared [data-money-row] rule (styles/globals.css) — a merchant's label wraps here
+   and the amount stays anchored right, which in a ~300px drawer is the whole game. */
+.totalRow {
+  font-size: var(--font-size-13);
+  color: var(--color-subtle);
+}
+
+.totalLabel {
+  /* Long merchant labels are allowed two lines; past that the row would eat the drawer. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.totalValue {
+  color: var(--color-ink);
+}
+
+/* The grand total — the emphasis the old (mislabelled) "Subtotal" row carried. */
+.subtotalRow {
+  margin-top: 2px;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.subtotalLabel {
+  font-size: var(--font-size-13);
+  color: var(--color-subtle);
+}
+
+.subtotalAmount {
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.checkout {
+  display: block;
+  width: 100%;
+  padding: 10px var(--space-md);
+  text-align: center;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-radius: var(--r-sm);
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-13-5);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--dur-hover) var(--ease);
+}
+
+.checkout:hover {
+  background: var(--color-accent);
+}
+
+/* PROMO — the near-miss bars, above the subtotal in the drawer footer. */
+.progress {
+  padding-bottom: var(--space-sm);
+}
+
+/* PROMO — the gift block, between the lines and the slot fills. */
+.gifts {
+  padding-block: var(--space-sm);
+}
+
+/* PACK item 14-bis — "Você economizou", the closing line under the total. Discreet and positive: it repeats,
+   as one number, money the shopper has already read line by line above it. */
+.savingsRow {
+  margin-top: 2px;
+}
+
+.savingsLabel,
+.savingsAmount {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-success);
+}
+
+/* ★ QA9 · A5 — the "sob encomenda" notice, above the lines. Same amber vocabulary as the checkout column and
+   the PDP buybox, for the same fact: a shopper meets one design for one promise. */
+.backorder {
+  margin: 0 0 var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-ink);
+  font-family: var(--type-caption-family);
+  font-size: var(--type-caption-size);
+  line-height: var(--line-height-loose);
+}
+
+/* ★ QA21 · G1C-7 — the merchant's label for the promotion that discounted this line. It is a NOTE, not a
+   badge: the price pair beside it is what carries the weight, and a second coloured chip on every discounted
+   line would compete with it. Brand colour is the one signal that separates it from the variant above. */
+.linePromo {
+  display: block;
+  color: var(--color-brand);
+  font-size: var(--font-size-12);
+  line-height: var(--line-height-tight);
+}

@@ -1,0 +1,21 @@
+/* o4-PDP #17 — the stage's desktop hover loupe (no mobile zoom, no lightbox). Semantic tokens only. */
+.stage {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Only a pointer-fine desktop shows the zoom-in cursor; on touch the stage is inert (data-can-zoom="false"). */
+.stage[data-can-zoom="true"] {
+  cursor: zoom-in;
+}
+
+/* The image wrapper that the loupe scales in place (the parent .main clips the overflow). */
+.zoomInner {
+  position: absolute;
+  inset: 0;
+  transform: scale(1);
+  transition: transform 0.25s ease;
+  will-change: transform;
+}

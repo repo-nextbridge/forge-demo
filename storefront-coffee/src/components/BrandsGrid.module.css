@@ -1,0 +1,80 @@
+/* "Marcas" (HANDOVER §3): a 4-column grid (2 on mobile) of brand tiles with the same 1px hairline lines and
+   gray hover as the category tiles. Semantic tokens only. */
+.section {
+  margin: var(--space-section-gap) 0;
+}
+.title {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--type-headline-lg-size);
+  font-weight: var(--type-headline-lg-weight);
+  line-height: var(--type-headline-lg-line);
+  letter-spacing: var(--type-headline-lg-tracking);
+  color: var(--color-ink);
+  margin: 0 0 var(--space-lg);
+}
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 1px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--color-hairline);
+  border: 1px solid var(--color-hairline);
+}
+.cell {
+  display: flex;
+}
+.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 104px;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: background-color var(--dur-hover) ease;
+}
+.tile:hover {
+  background: var(--color-surface-sunken);
+}
+.logo {
+  /* o4 #13 (round 5) — the seeded wordmark PNGs are now TIGHT-CROPPED (the baked-in transparent padding, ~75%
+     of the old canvas, was trimmed), so a fixed render HEIGHT gives every brand a consistent, prominent size;
+     width follows the aspect and is capped to the tile (object-fit letterboxes a very wide wordmark, never
+     distorts). */
+  height: 15px;
+  max-width: 100%;
+  object-fit: contain;
+}
+.label {
+  font-family: var(--type-ui-family);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  color: var(--color-ink-soft);
+}
+
+@media (max-width: 768px) {
+  /* Mobile: a horizontal scroll-snap of TWO rows — ~2 columns (4 tiles) fully visible + a peek of the next
+     column, swiped with the finger (like the category tiles, but two rows tall). The 1px hairline background
+     still shows through the grid gap as the dividing rules. */
+  .grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 45%;
+    grid-template-rows: repeat(2, auto);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .grid::-webkit-scrollbar {
+    display: none;
+  }
+  .cell {
+    scroll-snap-align: start;
+  }
+}

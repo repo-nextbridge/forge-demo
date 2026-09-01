@@ -1,0 +1,297 @@
+/* The bought-together pair — the "Compre junto" prototype (Produto.dc.html): a bordered card holding the two
+ * products (72px thumb + name/price, the color axis as photo swatches, sizes as text chips), a copper "+" disc
+ * between them, and a footer with the honest SUM (no fabricated discount) + the "Adicionar os 2" CTA. Two cards
+ * sit side by side in the block's grid; on mobile a card stacks its products. Semantic tokens only. */
+.bundle {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-hairline);
+  min-width: 0;
+}
+
+/* The products row: DESKTOP the two sides sit side by side with the "+" between; MOBILE they stack. */
+.prods {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
+@media (max-width: 767.98px) {
+  .prods {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+/* One side: a vertical stack — the thumb+name row, then the swatch row, then the chip row (the prototype). */
+.side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline-soft);
+  overflow: hidden;
+}
+
+.thumbImg {
+  object-fit: contain;
+}
+
+.thumbPlaceholder {
+  position: absolute;
+  inset: 0;
+  background: var(--color-surface-sunken);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--type-body-family);
+  font-size: var(--font-size-13-5);
+  font-weight: 600;
+  color: var(--color-ink);
+  /* A long title ("KEEN Kids Zionic Mid Height Waterproof All Terrain…") clamps to 2 lines so both sides of the
+     "+" stay the same height and the pair never grows into a 4-line tower. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.variant {
+  font-family: var(--type-caption-family);
+  font-size: var(--font-size-12);
+  color: var(--color-faint);
+}
+
+.price {
+  font-family: var(--type-body-family);
+  font-size: var(--font-size-14);
+  font-weight: 700;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* de/por on the LINE — the same shape the card and the buybox use, so the three read alike. */
+.was {
+  font-weight: 400;
+  color: var(--color-faint);
+  text-decoration: line-through;
+}
+
+.now {
+  color: var(--color-ink);
+}
+
+/* Color axis → photo swatches; size axis → text chips. Both wrap. */
+.swatches,
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  flex-shrink: 0;
+  border: 1.5px solid var(--color-hairline);
+  background: var(--color-canvas);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--dur-hover, 0.18s) ease;
+}
+
+.swatch[data-active="true"] {
+  border-color: var(--color-accent);
+}
+
+.swatchImg {
+  object-fit: contain;
+}
+
+.swatchPlaceholder {
+  position: absolute;
+  inset: 0;
+  background: var(--color-surface-sunken);
+}
+
+.chip {
+  min-width: 26px;
+  height: 22px;
+  padding: 0 5px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-11);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-hover, 0.18s) ease,
+    color var(--dur-hover, 0.18s) ease;
+}
+
+.chip[data-active="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-surface-sunken);
+}
+
+/* A swatch/chip no surviving sku carries (cross-axis unreachable, item 11a): dimmed; the chip also strikes so it
+ * reads as "this combination doesn't exist", not merely busy-disabled. */
+.swatch:disabled,
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chip[data-offered="false"] {
+  text-decoration: line-through;
+}
+
+/* The "+" — a copper disc between the two products. Desktop: centered beside them. Mobile: a full-width row. */
+.plus {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+@media (max-width: 767.98px) {
+  .plus {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.plusDisc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  font-weight: 700;
+  font-size: var(--font-size-20);
+  line-height: 1;
+}
+
+/* The footer: the sum on the left, "Adicionar os 2" on the right — wrapping when narrow. */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.offer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.offerLabel {
+  font-family: var(--type-caption-family);
+  font-size: var(--font-size-13);
+  color: var(--color-subtle);
+}
+
+.prices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wasTotal {
+  font-family: var(--type-body-family);
+  font-size: var(--font-size-14);
+  color: var(--color-faint);
+  text-decoration: line-through;
+}
+
+/* The held-and-marked state while a new selection is being quoted: dimmed, and the label says why. Never a
+   swap to a different number — a wrong price for 300ms is a wrong price. */
+.offer[data-stale] .prices {
+  opacity: 0.55;
+}
+
+.updating {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--type-caption-family);
+  font-size: var(--font-size-12);
+  color: var(--color-faint);
+}
+
+.total {
+  font-family: var(--type-headline-md-family);
+  font-size: var(--font-size-20);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+}
+
+.installments {
+  font-family: var(--type-caption-family);
+  font-size: var(--font-size-12);
+  color: var(--color-muted);
+}
+
+.add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-13-5);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-slide, 0.2s) ease;
+}
+
+.add:hover:not(:disabled) {
+  background: var(--color-accent);
+}
+
+.add:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

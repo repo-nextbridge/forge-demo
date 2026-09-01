@@ -1,0 +1,43 @@
+# THE COFFEE STORE'S VITRINE, ON THE BENCH EDGE.
+#
+# `caddy/Caddyfile.local` ends with `import /etc/caddy/extra/*.local.caddy`, and this is the file that hole
+# was left for. It adds a front the committed edge does not know about, and it edits nothing.
+#
+# ── WHY A PATH AND NOT A HOSTNAME ────────────────────────────────────────────────────────────────────────
+# On this bench a store is reached at `/s/<handle>` (host -> store is DATA, and the bench has one origin).
+# The coffee store's handle is `cafe`, so everything under `/s/cafe` is this shop and goes to its own
+# container; every other store on the box keeps falling through to the reference vitrine. In a real
+# deployment the same block is written against `{$FORGE_COFFEE_DOMAIN}` instead, and the container does not
+# change: the front resolves its store from the request either way.
+#
+# ⚠️ SPECIFICITY, NOT ORDER. Caddy matches `handle` blocks by how SPECIFIC the path is, wherever they appear
+# — so this wins over `Caddyfile.local`'s bare fall-through no matter which file is read first. It is written
+# here because that is where the seam is, not because position decides anything.
+#
+# ⚠️ AND WHAT IS DELIBERATELY *NOT* ROUTED HERE — this is the part that fails silently if got wrong:
+#
+#   · `/checkout*`, `/account*`, `/_checkout/*`, `/apps/*` — the CHECKOUT's, and more specific than this
+#     block, so they already win. Written down anyway because "why does the coffee checkout look like the
+#     vanilla one" has exactly one right answer: it is supposed to. It wears the THEME, not the fork.
+handle /s/cafe* {
+	reverse_proxy storefront-coffee:3000
+}
+
+# ★★ THE ASSETS, AND THIS IS THE BLOCK THAT FAILS IN SILENCE IF IT IS WRONG.
+#
+# Splitting the vitrines by PATH does nothing for an asset URL, because an asset URL starts at the ROOT:
+# every Next app on this origin asks the browser for `/_next/static/…` by default, and the edge can send
+# that to only one container. The other one then loads chunks from a server that never emitted them — and
+# nothing anywhere says so. The HTML arrives, no server logs a thing, and the shop is UNSTYLED. This front
+# therefore sets `assetPrefix: '/_coffee'` (storefront-coffee/next.config.mjs) and this block is the half at
+# the edge.
+#
+# ⚠️⚠️ `handle_path`, NOT `handle` — six characters and the whole thing. `handle_path` STRIPS the matched
+# prefix before proxying. MEASURED on the real image in CHECKOUT-APP C3: a Next server with an `assetPrefix`
+# EMITS the prefixed URL into its HTML and then answers **404** to it — it serves those files at
+# `/_next/static/…` and nowhere else. The prefix is an instruction to THIS FILE, not a route the app owns.
+# With a bare `handle` every chunk reaches the right container and comes back 404, which is the same
+# unstyled shop the prefix exists to prevent, one layer further in.
+handle_path /_coffee/* {
+	reverse_proxy storefront-coffee:3000
+}

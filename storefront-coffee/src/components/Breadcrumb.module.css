@@ -1,0 +1,34 @@
+/* caption type; muted links / faint separator / ink current. Semantic tokens only. */
+.breadcrumb {
+  font-family: var(--type-caption-family);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.link {
+  color: var(--color-muted);
+}
+
+/* CAT-CRUMB-GAP — an ancestor the store no longer serves: same voice as the rest of the trail, no affordance
+   of a link (no pointer, no underline on hover). It names where the product sits; it goes nowhere. */
+.unlinked {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.sep {
+  color: var(--color-faint);
+  margin: 0 var(--space-sm);
+}
+
+.current {
+  color: var(--color-ink);
+}

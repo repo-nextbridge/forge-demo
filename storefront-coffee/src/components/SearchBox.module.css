@@ -1,0 +1,243 @@
+/* Search box — a pill field (NO submit button) + the two-column suggest panel (§2.2). The field's border,
+ * radius and hover→focus fade come from the shared [data-input-box] rule (globals.css §2.7). Semantic tokens
+ * only. */
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* #11 — the focus scrim: a full-viewport dim+blur BEHIND the search while it is active. It lives inside the header
+   stacking context (z 300), so at z 250 it covers the page AND the header's own logo/nav/cart, while the field
+   (255) and the panel (260) stay crisp above it — the command-palette focus effect. Never intercepts clicks. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(23, 24, 26, 0.35);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.scrim[data-open] {
+  opacity: 1;
+}
+
+.box {
+  position: relative;
+  z-index: 255;
+  width: 100%;
+}
+
+/* The pill field: icon + input on a soft ground. Border/radius/hover-fade are the global [data-input-box] rule. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 7px var(--space-md);
+  background: var(--color-canvas-soft);
+  color: var(--color-faint);
+  overflow: hidden;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--color-ink);
+  font-family: var(--type-body-family);
+  font-size: var(--font-size-13-5);
+}
+
+.input::placeholder {
+  color: var(--color-faint);
+}
+
+/* The suggest panel — a FadeLayer (its .layer supplies opacity/visibility/fade). Desktop: 640px, anchored to the
+ * field's right edge, a results column + a featured column. Mobile: full width, single column (no featured). */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  left: 0;
+  z-index: 260;
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-dropdown);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .panel {
+    left: auto;
+    width: 640px;
+    grid-template-columns: 1.05fr 1fr;
+  }
+  /* No featured product (e.g. a category-only match like "tenis") → collapse to a single column so the panel
+     doesn't show an empty featured half. */
+  .panel[data-single] {
+    width: 420px;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Matching categories (SEARCH-3 front) — a compact list above the product rows: the category name + a muted
+   "Categoria" tag, each a link to its PLP. Reuses the row paddings/hover of the product rows. */
+.catList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-sm);
+}
+
+.catRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 10px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+}
+
+.catRow:hover {
+  background: var(--color-surface-sunken);
+}
+
+.catTag {
+  flex-shrink: 0;
+  font-family: var(--type-label-caps-family);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-faint);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-lg) var(--space-sm) var(--space-lg) var(--space-lg);
+}
+
+.resultsHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 10px var(--space-sm);
+}
+
+.resultsTitle {
+  font-family: var(--type-label-caps-family);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--color-faint);
+}
+
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-subtle);
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.seeAll:hover {
+  color: var(--color-accent);
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 10px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+}
+
+.row[data-active] {
+  background: var(--color-surface-sunken);
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background-color: var(--color-surface-sunken);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r-xs);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: var(--font-size-13-5);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: var(--font-size-12);
+  color: var(--color-subtle);
+  white-space: nowrap;
+}
+
+.rowOld {
+  text-decoration: line-through;
+  color: var(--color-faint);
+}
+
+.noResults {
+  padding: 10px;
+  font-size: var(--font-size-13-5);
+  color: var(--color-subtle);
+}
+
+/* Featured column — desktop only; a display-only ProductCard of the focused product. */
+.featured {
+  display: none;
+  flex-direction: column;
+  padding: var(--space-lg);
+  border-left: 1px solid var(--color-hairline);
+  background: var(--color-canvas-soft);
+}
+
+@media (min-width: 768px) {
+  .featured {
+    display: flex;
+  }
+}

@@ -1,0 +1,56 @@
+/* Reserved height so the buybox never dances whether or not a rating is published (no hole). */
+.row {
+  min-height: 1.2em;
+  display: flex;
+  align-items: center;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-decoration: none;
+  color: var(--color-subtle);
+  cursor: pointer;
+}
+
+/* Fractional stars: a gray row of canonical <Star> SVGs with a gold overlay clipped to width = average/5.
+ * Both rows render the SAME five stars; the overlay overflow-clips to reveal the exact fraction. */
+.stars {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  color: var(--color-star-empty);
+  line-height: 0;
+}
+
+.starsFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  overflow: hidden;
+  color: var(--color-star);
+}
+
+/* Each star keeps its intrinsic size so the overlay clip reveals a true fraction (never shrinks to fit). */
+.star {
+  flex: none;
+}
+
+.score {
+  font-family: var(--type-ui-family);
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.count {
+  font-size: var(--type-caption-size);
+  color: var(--color-subtle);
+  text-decoration: underline;
+}

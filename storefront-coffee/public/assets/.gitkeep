@@ -1,0 +1,8 @@
+Your storefront's own static files go in this directory — a logo, an og-image, a favicon you own.
+
+They are served at `/assets/<name>`, and that address is load-bearing in two places you would otherwise
+have to discover: the Dockerfile next to this tree COPYies `public/`, and `src/middleware.ts` excludes
+`assets/` from host->store rewriting. A file dropped at the ROOT of `public/` instead gets rewritten into
+the store tree and 404s, with the file sitting in the image the whole time.
+
+This placeholder only keeps the directory in git. Delete it once you have put something real here.

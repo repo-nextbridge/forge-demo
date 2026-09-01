@@ -1,0 +1,17 @@
+/* The PLP/search result grid (design source): 2-up on mobile, 4-up on desktop. Fixed tracks (not auto-fill) so
+   the card count per row matches the prototype exactly at each breakpoint. Semantic tokens only. */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-sm);
+  /* o4 #6a — align rows to the top so a card whose quick-add panel expands grows alone; its row-mates keep their
+     resting height (the card reserves a fixed two-line title, so resting heights already match). */
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .shelf {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-md);
+  }
+}

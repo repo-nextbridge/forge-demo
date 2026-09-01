@@ -1,0 +1,1300 @@
+{
+  "components": [
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "AddToCartFormExamples",
+      "id": "add-to-cart-form",
+      "name": "AddToCartForm",
+      "path": "apps/storefront/src/components/minicart/AddToCartForm.tsx",
+      "props": [
+        {
+          "name": "action",
+          "optional": false,
+          "type": "() => Promise<void>"
+        },
+        {
+          "name": "skuId",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "AnnouncementBarExamples",
+      "id": "announcement-bar",
+      "name": "AnnouncementBar",
+      "path": "packages/storefront-kit/src/subtemplates/header/AnnouncementBar.tsx",
+      "props": [],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "BrandsGridExamples",
+      "id": "brands-grid",
+      "name": "BrandsGrid",
+      "path": "apps/storefront/src/components/BrandsGrid.tsx",
+      "props": [
+        {
+          "name": "store",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "BreadcrumbExamples",
+      "id": "breadcrumb",
+      "name": "Breadcrumb",
+      "path": "apps/storefront/src/components/Breadcrumb.tsx",
+      "props": [
+        {
+          "name": "crumbs",
+          "optional": false,
+          "type": "Crumb[]"
+        },
+        {
+          "name": "current",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "BundlePairExamples",
+      "id": "bundle-pair",
+      "name": "BundlePair",
+      "path": "apps/storefront/src/components/BundlePair.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "ProductDoc"
+        },
+        {
+          "name": "paired",
+          "optional": false,
+          "type": "ProductDoc"
+        },
+        {
+          "name": "addToCart",
+          "optional": true,
+          "type": "(skuIds: string[]) => Promise<void>"
+        },
+        {
+          "name": "optimized",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "maxInstallments",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "quote",
+          "optional": true,
+          "type": "PriceTogether | null"
+        },
+        {
+          "name": "requote",
+          "optional": true,
+          "type": "(skuIds: string[]) => Promise<PriceTogether | null>"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "BuyButtonExamples",
+      "id": "buy-button",
+      "name": "BuyButton",
+      "path": "apps/storefront/src/components/BuyButton.tsx",
+      "props": [
+        {
+          "name": "store",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "skuId",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "BuyboxRatingExamples",
+      "id": "buybox-rating",
+      "name": "BuyboxRating",
+      "path": "apps/storefront/src/components/BuyboxRating.tsx",
+      "props": [
+        {
+          "name": "average",
+          "optional": false,
+          "type": "number"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "CategoryTilesExamples",
+      "id": "category-tiles",
+      "name": "CategoryTiles",
+      "path": "apps/storefront/src/components/CategoryTiles.tsx",
+      "props": [
+        {
+          "name": "store",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "CepBoxExamples",
+      "id": "cep-box",
+      "name": "CepBox",
+      "path": "apps/storefront/src/components/pdp/CepBox.tsx",
+      "props": [
+        {
+          "name": "store",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "initialCep",
+          "optional": true,
+          "type": "string | null"
+        },
+        {
+          "name": "skuId",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "CouponFieldExamples",
+      "id": "coupon-field",
+      "name": "CouponField",
+      "path": "packages/storefront-kit/src/components/promo/CouponField.tsx",
+      "props": [
+        {
+          "name": "apply",
+          "optional": false,
+          "type": "(code: string) => Promise<CouponResult>"
+        },
+        {
+          "name": "remove",
+          "optional": false,
+          "type": "(code: string) => Promise<CouponResult>"
+        },
+        {
+          "name": "applied",
+          "optional": true,
+          "type": "CartPricing['applied_coupons']"
+        },
+        {
+          "name": "discountLines",
+          "optional": true,
+          "type": "CartPricing['discount_lines']"
+        },
+        {
+          "name": "classes",
+          "optional": false,
+          "type": "CouponFieldClasses"
+        },
+        {
+          "name": "currency",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "onChanged",
+          "optional": false,
+          "type": "() => void"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "DefaultExamples",
+      "id": "default",
+      "name": "Default",
+      "path": "packages/storefront-kit/src/subtemplates/header/variants/default.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "store",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "outlet",
+          "optional": true,
+          "type": "ChromeOutlet"
+        },
+        {
+          "name": "account",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "minicart",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "search",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "vocabulary",
+          "optional": true,
+          "type": "StoreVocabularyContent"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "EmptyStateExamples",
+      "id": "empty-state",
+      "name": "EmptyState",
+      "path": "apps/storefront/src/components/EmptyState.tsx",
+      "props": [
+        {
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "action",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": ["Props"],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "FadeLayerExamples",
+      "id": "fade-layer",
+      "name": "FadeLayer",
+      "path": "packages/storefront-kit/src/components/FadeLayer.tsx",
+      "props": [],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "FilterDrawerExamples",
+      "id": "filter-drawer",
+      "name": "FilterDrawer",
+      "path": "apps/storefront/src/components/FilterDrawer.tsx",
+      "props": [
+        {
+          "name": "count",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "children",
+          "optional": false,
+          "type": "React.ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "FiltersExamples",
+      "id": "filters",
+      "name": "Filters",
+      "path": "apps/storefront/src/components/Filters.tsx",
+      "props": [
+        {
+          "name": "facets",
+          "optional": false,
+          "type": "Facets | undefined"
+        },
+        {
+          "name": "state",
+          "optional": false,
+          "type": "FilterState"
+        },
+        {
+          "name": "basePath",
+          "optional": false,
+          "type": "StorePath"
+        },
+        {
+          "name": "extra",
+          "optional": true,
+          "type": "Record<string, string>"
+        },
+        {
+          "name": "swatchImages",
+          "optional": true,
+          "type": "SwatchImages"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "FooterShowcaseExamples",
+      "id": "footer-showcase",
+      "name": "FooterShowcase",
+      "path": "packages/storefront-kit/src/subtemplates/footer/FooterShowcase.tsx",
+      "props": [],
+      "tokens": ["--color-subtle", "--type-body-family"],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "GalleryExamples",
+      "id": "gallery",
+      "name": "Gallery",
+      "path": "apps/storefront/src/components/Gallery.tsx",
+      "props": [
+        {
+          "name": "media",
+          "optional": false,
+          "type": "MediaRef[]"
+        },
+        {
+          "name": "alt",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "optimized",
+          "optional": false,
+          "type": "boolean"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "GiftBlockExamples",
+      "id": "gift-block",
+      "name": "GiftBlock",
+      "path": "packages/storefront-kit/src/components/promo/GiftBlock.tsx",
+      "props": [
+        {
+          "name": "gifts",
+          "optional": false,
+          "type": "GiftLine[]"
+        },
+        {
+          "name": "catalog",
+          "optional": false,
+          "type": "GiftCatalog"
+        },
+        {
+          "name": "compact",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "onChoose",
+          "optional": true,
+          "type": "(promotionId: string, skuId: string) => Promise<GiftResult | unknown>"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "HomeShowcaseExamples",
+      "id": "home-showcase",
+      "name": "HomeShowcase",
+      "path": "apps/storefront/src/components/HomeShowcase.tsx",
+      "props": [],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "LoadMoreExamples",
+      "id": "load-more",
+      "name": "LoadMore",
+      "path": "apps/storefront/src/components/LoadMore.tsx",
+      "props": [
+        {
+          "name": "page",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "from",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "shown",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "total",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "basePath",
+          "optional": false,
+          "type": "StorePath"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MarkdownExamples",
+      "id": "markdown",
+      "name": "Markdown",
+      "path": "apps/storefront/src/components/Markdown.tsx",
+      "props": [
+        {
+          "name": "children",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MediaBlocksExamples",
+      "id": "media-blocks",
+      "name": "MediaBlocks",
+      "path": "apps/storefront/src/components/MediaBlocks.tsx",
+      "props": [
+        {
+          "name": "media",
+          "optional": false,
+          "type": "MediaRef[]"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": true,
+      "examplesExport": "MediaImageExamples",
+      "id": "media-image",
+      "name": "MediaImage",
+      "path": "packages/storefront-kit/src/components/MediaImage.tsx",
+      "props": [
+        {
+          "name": "src",
+          "optional": false,
+          "type": "string | undefined"
+        },
+        {
+          "name": "providerKey",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "alt",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "placeholderClassName",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "fill",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "width",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "name": "height",
+          "optional": true,
+          "type": "number"
+        },
+        {
+          "name": "sizes",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "priority",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MegaMenuExamples",
+      "id": "mega-menu",
+      "name": "MegaMenu",
+      "path": "packages/storefront-kit/src/subtemplates/header/MegaMenu.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MinicartDrawerExamples",
+      "id": "minicart-drawer",
+      "name": "MinicartDrawer",
+      "path": "apps/storefront/src/components/minicart/MinicartDrawer.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "top",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "belowItems",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MinicartTriggerExamples",
+      "id": "minicart-trigger",
+      "name": "MinicartTrigger",
+      "path": "apps/storefront/src/components/minicart/MinicartTrigger.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "top",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "belowItems",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MobileNavExamples",
+      "id": "mobile-nav",
+      "name": "MobileNav",
+      "path": "packages/storefront-kit/src/subtemplates/header/MobileNav.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "MobileNavDrawerExamples",
+      "id": "mobile-nav-drawer",
+      "name": "MobileNavDrawer",
+      "path": "packages/storefront-kit/src/subtemplates/header/MobileNavDrawer.tsx",
+      "props": [
+        {
+          "name": "open",
+          "optional": false,
+          "type": "boolean"
+        },
+        {
+          "name": "onClose",
+          "optional": false,
+          "type": "() => void"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "NotFoundContentExamples",
+      "id": "not-found-content",
+      "name": "NotFoundContent",
+      "path": "apps/storefront/src/components/NotFoundContent.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "brand",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "categories",
+          "optional": true,
+          "type": "{ name: string; href: string }[]"
+        },
+        {
+          "name": "chips",
+          "optional": true,
+          "type": "ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "PdpBuyRowExamples",
+      "id": "pdp-buy-row",
+      "name": "PdpBuyRow",
+      "path": "apps/storefront/src/components/pdp/PdpBuyRow.tsx",
+      "props": [
+        {
+          "name": "action",
+          "optional": false,
+          "type": "() => Promise<void>"
+        },
+        {
+          "name": "skuId",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "soldOut",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "needsColor",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": ["string"],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "PdpShowcaseExamples",
+      "id": "pdp-showcase",
+      "name": "PdpShowcase",
+      "path": "apps/storefront/src/components/pdp/PdpShowcase.tsx",
+      "props": [],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "PriceExamples",
+      "id": "price",
+      "name": "Price",
+      "path": "packages/storefront-kit/src/components/Price.tsx",
+      "props": [
+        {
+          "name": "amount",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "currency",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "compareAt",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "sku",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "PriceSliderExamples",
+      "id": "price-slider",
+      "name": "PriceSlider",
+      "path": "apps/storefront/src/components/PriceSlider.tsx",
+      "props": [
+        {
+          "name": "min",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "max",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "state",
+          "optional": false,
+          "type": "FilterState"
+        },
+        {
+          "name": "basePath",
+          "optional": false,
+          "type": "StorePath"
+        },
+        {
+          "name": "extra",
+          "optional": true,
+          "type": "Record<string, string>"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "ProductCardExamples",
+      "id": "product-card",
+      "name": "ProductCard",
+      "path": "apps/storefront/src/components/ProductCard.tsx",
+      "props": [
+        {
+          "name": "product",
+          "optional": false,
+          "type": "ProductDoc"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "freeShippingThreshold",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "maxInstallments",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "rating",
+          "optional": true,
+          "type": "CardRating"
+        },
+        {
+          "name": "isNew",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "badges",
+          "optional": true,
+          "type": "ReactNode"
+        },
+        {
+          "name": "cart",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "compact",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "sizes",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "priority",
+          "optional": true,
+          "type": "boolean"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "ProductCustomFieldsExamples",
+      "id": "product-custom-fields",
+      "name": "ProductCustomFields",
+      "path": "apps/storefront/src/components/ProductCustomFields.tsx",
+      "props": [
+        {
+          "name": "metadata",
+          "optional": false,
+          "type": "unknown"
+        },
+        {
+          "name": "className",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "ProductListingExamples",
+      "id": "product-listing",
+      "name": "ProductListing",
+      "path": "apps/storefront/src/components/ProductListing.tsx",
+      "props": [
+        {
+          "name": "products",
+          "optional": false,
+          "type": "ProductDoc[]"
+        },
+        {
+          "name": "page",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "total",
+          "optional": false,
+          "type": "number"
+        },
+        {
+          "name": "basePath",
+          "optional": false,
+          "type": "StorePath"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "facets",
+          "optional": false,
+          "type": "Facets | undefined"
+        },
+        {
+          "name": "state",
+          "optional": false,
+          "type": "FilterState"
+        },
+        {
+          "name": "extra",
+          "optional": true,
+          "type": "Record<string, string>"
+        },
+        {
+          "name": "sortAvailable",
+          "optional": true,
+          "type": "readonly SortKey[]"
+        },
+        {
+          "name": "empty",
+          "optional": false,
+          "type": "ReactNode"
+        },
+        {
+          "name": "renderCard",
+          "optional": true,
+          "type": "(product: ProductDoc) => ReactNode"
+        },
+        {
+          "name": "swatchImages",
+          "optional": true,
+          "type": "SwatchImages"
+        },
+        {
+          "name": "title",
+          "optional": true,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "SearchBoxExamples",
+      "id": "search-box",
+      "name": "SearchBox",
+      "path": "apps/storefront/src/components/SearchBox.tsx",
+      "props": [
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "defaultValue",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "placeholder",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "previewResult",
+          "optional": true,
+          "type": "SuggestResult"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "SearchSuggestionsExamples",
+      "id": "search-suggestions",
+      "name": "SearchSuggestions",
+      "path": "apps/storefront/src/components/SearchSuggestions.tsx",
+      "props": [
+        {
+          "name": "title",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "optional": false,
+          "type": "string"
+        },
+        {
+          "name": "catmap",
+          "optional": false,
+          "type": "CategoryMap"
+        },
+        {
+          "name": "products",
+          "optional": false,
+          "type": "ProductDoc[]"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "ShelfExamples",
+      "id": "shelf",
+      "name": "Shelf",
+      "path": "apps/storefront/src/components/Shelf.tsx",
+      "props": [
+        {
+          "name": "products",
+          "optional": false,
+          "type": "ProductDoc[]"
+        },
+        {
+          "name": "base",
+          "optional": false,
+          "type": "StoreBase"
+        },
+        {
+          "name": "renderCard",
+          "optional": true,
+          "type": "(product: ProductDoc) => ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "SkuSelectorExamples",
+      "id": "sku-selector",
+      "name": "SkuSelector",
+      "path": "apps/storefront/src/components/SkuSelector.tsx",
+      "props": [
+        {
+          "name": "product",
+          "optional": false,
+          "type": "ProductDoc"
+        },
+        {
+          "name": "store",
+          "optional": true,
+          "type": "string"
+        },
+        {
+          "name": "base",
+          "optional": true,
+          "type": "StoreBase"
+        },
+        {
+          "name": "selected",
+          "optional": true,
+          "type": "Selected"
+        },
+        {
+          "name": "onSelect",
+          "optional": true,
+          "type": "(next: Selected, optionId: string) => void"
+        },
+        {
+          "name": "colorPicked",
+          "optional": true,
+          "type": "boolean"
+        },
+        {
+          "name": "freeShippingThreshold",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "maxInstallments",
+          "optional": true,
+          "type": "number | null"
+        },
+        {
+          "name": "availability",
+          "optional": true,
+          "type": "Record<string, number>"
+        },
+        {
+          "name": "backorder",
+          "optional": true,
+          "type": "BackorderMap"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": false,
+      "examplesExport": "ThresholdProgressExamples",
+      "id": "threshold-progress",
+      "name": "ThresholdProgress",
+      "path": "packages/storefront-kit/src/components/promo/ThresholdProgress.tsx",
+      "props": [
+        {
+          "name": "nearMisses",
+          "optional": false,
+          "type": "NearMiss[]"
+        },
+        {
+          "name": "currency",
+          "optional": false,
+          "type": "string"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    },
+    {
+      "baseTypes": [],
+      "category": "blocks",
+      "client": true,
+      "examplesExport": "ZoomableImageExamples",
+      "id": "zoomable-image",
+      "name": "ZoomableImage",
+      "path": "apps/storefront/src/components/ZoomableImage.tsx",
+      "props": [
+        {
+          "name": "children",
+          "optional": false,
+          "type": "React.ReactNode"
+        }
+      ],
+      "tokens": [],
+      "variants": []
+    }
+  ]
+}

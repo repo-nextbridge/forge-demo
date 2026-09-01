@@ -1,0 +1,331 @@
+/* Filters — sidebar (desktop, 236px) / drawer (mobile, via FilterDrawer). Semantic tokens only; works without
+ * JS. Groups are native <details> with a +/− marker; colors are photo swatches, sizes a 4-up text grid. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── chips (active filters, above the shelf) ─────────────────────────────── */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-surface, var(--color-canvas));
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  text-decoration: none;
+}
+
+.chip:hover {
+  border-color: var(--color-accent);
+}
+
+.chipX {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* "✕ Limpar filtros" (design source): an icon + label row, vertically CENTERED (the label used to sit low as a
+   baseline-aligned text link). 12px accent glyph, 6px gap. */
+.clearAll {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-13);
+  font-weight: var(--type-ui-weight);
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.clearAll:hover {
+  text-decoration: underline;
+}
+
+/* ── sort (underlined tabs) — a horizontal strip, "Ordenar:" + tabs (design source §1) ───────────────────── */
+.sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.sort::-webkit-scrollbar {
+  display: none;
+}
+
+.sortLabel {
+  flex-shrink: 0;
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-13);
+  color: var(--color-faint);
+}
+
+.sortLink {
+  flex-shrink: 0;
+  font-family: var(--type-ui-family);
+  font-size: var(--type-caption-size);
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--color-subtle);
+  text-decoration: none;
+  padding-bottom: var(--space-xs);
+  border-bottom: 2px solid transparent;
+  transition:
+    color var(--dur-hover) var(--ease),
+    border-color var(--dur-hover) var(--ease);
+}
+
+.sortLink:hover {
+  color: var(--color-accent);
+}
+
+.sortLink[data-active="true"] {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-ink);
+  font-weight: var(--type-ui-weight-strong, 600);
+}
+
+/* ── the panel + groups ──────────────────────────────────────────────────── */
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The sidebar-top "Limpar filtros" (only when a filter is active) needs its own breathing room since the groups
+   own their dividers. */
+.panel > .clearAll {
+  padding-bottom: var(--space-md);
+}
+
+/* Every filter block carries a top hairline divider + vertical padding (design source: `border-top` per group).
+   `.group` is the always-open block (Cor/Tamanho/Preço/Marca); `.groupCollapsible` is a <details> (the cf axes). */
+.group,
+.groupCollapsible {
+  border: 0;
+  margin: 0;
+  padding: var(--space-md) 0;
+  border-top: 1px solid var(--color-hairline);
+}
+
+/* The uppercase, letter-spaced group label (COR, TAMANHO, …) — a static caption, never a toggle. */
+.groupLabel {
+  display: block;
+  margin-bottom: var(--space-sm);
+  font-family: var(--type-ui-family);
+  font-size: 0.78rem;
+  font-weight: var(--type-ui-weight-strong, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+/* The cf group's clickable summary — the same caps label with a right-aligned +/− marker (only cf collapses). */
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--type-ui-family);
+  font-size: 0.78rem;
+  font-weight: var(--type-ui-weight-strong, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.groupCollapsible[open] > .summary {
+  margin-bottom: var(--space-sm);
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+/* +/− affordance (HANDOVER §5): + when collapsed, − when open. */
+.summary::after {
+  content: "+";
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-subtle);
+}
+
+.groupCollapsible[open] > .summary::after {
+  content: "−";
+}
+
+/* ── text grid (Tamanho grade 4) — square cells, 1.5px ring, light digits (L3-9) ─────────────────────────── */
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  /* auto-fill so the chips size to fit "34(346)" and long labels ("LG (59cm)") without a fixed 4-up squeeze. */
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 6px;
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* min-height (not fixed height): a long size label — "MD (34\" Waist)", "SM-MD (25.5-31.5\")" — wraps and the
+     chip grows instead of the text overflowing the box. Short numeric sizes keep the 34px pill. */
+  min-height: 34px;
+  padding: 4px var(--space-xs);
+  text-align: center;
+  line-height: 1.15;
+  /* wrap long labels at spaces/hyphens (["LG (59cm)"]) but NEVER mid-token ("34" must not split to "3/4"). */
+  overflow-wrap: break-word;
+  background: var(--color-canvas);
+  border: 1.5px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-family: var(--type-ui-family);
+  /* L3-9 — lighter, smaller size chips (Renan: the bold digits read too coarse). Only the size .value, not the
+     colour swatch. Deliberate departure from the design source, which asked for bold. */
+  font-size: var(--font-size-13);
+  font-weight: var(--type-ui-weight);
+  transition: border-color var(--dur-hover) var(--ease);
+}
+
+.value:hover {
+  border-color: var(--color-subtle);
+}
+
+.value[data-active="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* ── color swatches (SOLID hue from the theme dictionary, selection = accent ring) ───────────────────────── */
+.swatches {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-sm);
+}
+
+.swatch {
+  display: block;
+  padding: 0;
+  border: 1.5px solid var(--color-hairline);
+  border-radius: 0;
+  line-height: 0;
+  transition: border-color var(--dur-hover) var(--ease);
+}
+
+.swatch:hover {
+  border-color: var(--color-subtle);
+}
+
+.swatch[data-active="true"] {
+  border-color: var(--color-accent);
+}
+
+.swatchImg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background-color: var(--color-canvas-soft, var(--color-hairline));
+  background-size: cover;
+  background-position: center;
+}
+
+/* ── brand + cf checkboxes (square box + label + grey count) ──────────────── */
+.checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+  color: var(--color-ink);
+  text-decoration: none;
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+}
+
+.checkbox {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-hairline);
+  border-radius: 0; /* square, per the design source (no rounded exception on the PLP) */
+  background: var(--color-canvas);
+  transition: border-color var(--dur-hover) var(--ease);
+}
+
+.check:hover .checkbox {
+  border-color: var(--color-subtle);
+}
+
+.check[data-active="true"] .checkbox {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* The white check mark (design source): a rotated ✓ drawn with two borders, shown only when checked. */
+.check[data-active="true"] .checkbox::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--color-canvas);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.checkLabel {
+  flex: 1;
+  color: var(--color-muted);
+}
+
+.check[data-active="true"] .checkLabel {
+  color: var(--color-ink);
+  font-weight: var(--type-ui-weight-strong, 600);
+}
+
+/* S6-IMAGES — the facet count ("Verde (12)"): quieter than the value it qualifies. */
+.count {
+  opacity: 0.65;
+  font-variant-numeric: tabular-nums;
+}
+
+/* In swatch mode the count lives inside the sr-only label — never shown, always in the DOM. */

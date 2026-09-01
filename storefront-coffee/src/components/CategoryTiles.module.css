@@ -1,0 +1,127 @@
+/* "Compre por categoria" (HANDOVER §3): white tiles on a hairline grid — the 1px lines are the grid's
+   background showing through a 1px gap; hover fills the tile with the sunken gray. 8 columns on desktop (one
+   row), 4 on mobile (the tiles are low). Semantic tokens only. */
+.section {
+  margin: var(--space-section-gap) 0;
+}
+/* Section header — title left, "Ver todas →" right, baseline-aligned (matches the shelves' header). */
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-lg);
+}
+.title {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--type-headline-lg-size);
+  font-weight: var(--type-headline-lg-weight);
+  line-height: var(--type-headline-lg-line);
+  letter-spacing: var(--type-headline-lg-tracking);
+  color: var(--color-ink);
+  margin: 0;
+}
+/* "Ver todas →": the muted link that fades to accent on hover, with a trailing arrow glyph. */
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: none;
+  font-family: var(--type-caption-family);
+  font-size: var(--type-caption-size);
+  font-weight: var(--type-caption-weight);
+  color: var(--color-subtle);
+  transition: color var(--dur-hover) var(--ease);
+}
+.seeAll:hover {
+  color: var(--color-accent);
+}
+/* The 1px lines: the grid paints a hairline background and each tile sits on canvas with a 1px gap. */
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 1px;
+  display: grid;
+  grid-template-columns: repeat(var(--tiles, 8), 1fr);
+  gap: 1px;
+  background: var(--color-hairline);
+  border: 1px solid var(--color-hairline);
+}
+.cell {
+  display: flex;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 8px 12px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  text-decoration: none;
+  transition: background-color var(--dur-hover) ease;
+}
+.tile:hover {
+  background: var(--color-surface-sunken);
+}
+.icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  /* The prototype's icons are dark art on white; multiply blends them onto the tile (incl. the hover gray). */
+  mix-blend-mode: multiply;
+}
+/* IMAGEM-DE-CATEGORIA-NO-SEED — the category with NO art. It used to be this same 44x44 box with nothing in it,
+   which on a row of tiles reads as a broken image rather than as a choice. It is the normal case (the seed
+   declares an icon for the 5 roots and for nothing else), so it gets a deliberate look: the initial, in the tile
+   label's own type, on the sunken surface. Same box as .icon, so the row's baseline never shifts between a tile
+   that has art and one that does not. */
+.iconEmpty {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink-soft);
+  font-family: var(--type-label-caps-family);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+/* The tile's hover fills with the sunken gray, which would swallow a sunken badge — lift it onto the canvas so
+   the empty state stays legible in both states, exactly as the art does. */
+.tile:hover .iconEmpty {
+  background: var(--color-canvas);
+}
+.label {
+  font-family: var(--type-label-caps-family);
+  font-size: var(--type-label-caps-size);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-ink-soft);
+}
+
+@media (max-width: 768px) {
+  /* Mobile: a horizontal scroll-snap row showing ~3 tiles + a peek of the 4th (swipe with the finger), instead
+     of a wrapping 4-col grid. The 1px hairline background still shows through the flex gap as vertical rules. */
+  .grid {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .grid::-webkit-scrollbar {
+    display: none;
+  }
+  .cell {
+    flex: 0 0 calc(100% / 3.3);
+    scroll-snap-align: start;
+  }
+}

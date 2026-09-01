@@ -1,0 +1,129 @@
+/* CSS-only tabs: hidden radios drive the label strip + panels via the GENERAL-sibling `:checked ~` combinator and
+   nth correspondence — so the label strip is its own container and can SCROLL horizontally (o4 #25) instead of
+   wrapping. Semantic tokens only. */
+.tabs {
+  border-top: 1px solid var(--color-hairline);
+  padding-top: var(--space-xl);
+  margin-top: var(--space-section-gap);
+}
+
+/* The radio is the state holder — visually gone, but focusable (keyboard: arrows move between tabs). */
+.radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The label strip: a single row that SWIPES when it overflows (never wraps to a second line). Scrollbar hidden. */
+.tablist {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tablist::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: var(--space-sm) var(--space-lg);
+  margin-right: var(--space-xs);
+  border-bottom: 2px solid transparent;
+  color: var(--color-subtle);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  font-weight: var(--type-ui-weight);
+  cursor: pointer;
+  transition:
+    color var(--dur-hover),
+    border-color var(--dur-hover);
+}
+
+.tab:hover {
+  color: var(--color-ink);
+}
+
+/* Panels: all in the DOM, only the checked one shown (revealed by nth correspondence, below the strip). */
+.panel {
+  display: none;
+  padding-top: var(--space-lg);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--color-ink-soft);
+}
+
+/* nth correspondence: the k-th checked radio lights the k-th label and reveals the k-th panel. Generic up to a
+   generous ceiling (10) — far past any realistic content_section count (+ the automatic Detalhes tab). */
+.radio:nth-of-type(1):checked ~ .tablist .tab:nth-child(1),
+.radio:nth-of-type(2):checked ~ .tablist .tab:nth-child(2),
+.radio:nth-of-type(3):checked ~ .tablist .tab:nth-child(3),
+.radio:nth-of-type(4):checked ~ .tablist .tab:nth-child(4),
+.radio:nth-of-type(5):checked ~ .tablist .tab:nth-child(5),
+.radio:nth-of-type(6):checked ~ .tablist .tab:nth-child(6),
+.radio:nth-of-type(7):checked ~ .tablist .tab:nth-child(7),
+.radio:nth-of-type(8):checked ~ .tablist .tab:nth-child(8),
+.radio:nth-of-type(9):checked ~ .tablist .tab:nth-child(9),
+.radio:nth-of-type(10):checked ~ .tablist .tab:nth-child(10) {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-accent);
+}
+
+.radio:nth-of-type(1):checked ~ .panels .panel:nth-child(1),
+.radio:nth-of-type(2):checked ~ .panels .panel:nth-child(2),
+.radio:nth-of-type(3):checked ~ .panels .panel:nth-child(3),
+.radio:nth-of-type(4):checked ~ .panels .panel:nth-child(4),
+.radio:nth-of-type(5):checked ~ .panels .panel:nth-child(5),
+.radio:nth-of-type(6):checked ~ .panels .panel:nth-child(6),
+.radio:nth-of-type(7):checked ~ .panels .panel:nth-child(7),
+.radio:nth-of-type(8):checked ~ .panels .panel:nth-child(8),
+.radio:nth-of-type(9):checked ~ .panels .panel:nth-child(9),
+.radio:nth-of-type(10):checked ~ .panels .panel:nth-child(10) {
+  display: block;
+}
+
+/* Keyboard focus ring on the active tab, driven by the hidden radio's focus. */
+.radio:nth-of-type(1):focus-visible ~ .tablist .tab:nth-child(1),
+.radio:nth-of-type(2):focus-visible ~ .tablist .tab:nth-child(2),
+.radio:nth-of-type(3):focus-visible ~ .tablist .tab:nth-child(3),
+.radio:nth-of-type(4):focus-visible ~ .tablist .tab:nth-child(4),
+.radio:nth-of-type(5):focus-visible ~ .tablist .tab:nth-child(5),
+.radio:nth-of-type(6):focus-visible ~ .tablist .tab:nth-child(6),
+.radio:nth-of-type(7):focus-visible ~ .tablist .tab:nth-child(7),
+.radio:nth-of-type(8):focus-visible ~ .tablist .tab:nth-child(8),
+.radio:nth-of-type(9):focus-visible ~ .tablist .tab:nth-child(9),
+.radio:nth-of-type(10):focus-visible ~ .tablist .tab:nth-child(10) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The automatic "Detalhes" key/value table. */
+.specs {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.specs th,
+.specs td {
+  text-align: left;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-hairline-soft);
+  font-size: var(--type-caption-size);
+  vertical-align: top;
+}
+
+.specs th {
+  width: 40%;
+  color: var(--color-subtle);
+  font-weight: 600;
+}
+
+.specs td {
+  color: var(--color-ink);
+}

@@ -1,0 +1,109 @@
+/* FilterDrawer — mobile "Filtrar (N)" trigger + left slide-in; inline sidebar on desktop. Tokens only.
+ * FLASH FIX (#16): the mobile panel is off-canvas CLOSED at first paint (no [data-enhanced] gate any more), so
+ * SSR and the hydrated client agree and the drawer never flashes open on reload. No-JS still reaches every
+ * filter via the `:target` fallback (the trigger is a real anchor). DESKTOP (≥48rem) is always inline. */
+
+/* ── desktop baseline: inline filters, no drawer chrome (mobile re-shows the chrome below) ── */
+.trigger,
+.overlay,
+.head {
+  display: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.headTitle {
+  font-family: var(--type-label-caps-family);
+  font-size: var(--type-label-caps-size);
+  font-weight: var(--type-label-caps-weight);
+  letter-spacing: var(--type-label-caps-tracking);
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+.close {
+  padding: 0 var(--space-xs);
+  background: none;
+  border: none;
+  color: var(--color-subtle);
+  font-family: var(--type-headline-md-family);
+  font-size: var(--type-headline-md-size);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ── mobile: the drawer (off-canvas closed by default, on server + client alike — no flash) ── */
+@media (max-width: 767.98px) {
+  /* Full-width, 42px, centered — the design source's mobile "▤ Filtrar (N)" trigger (icon + label). */
+  .trigger {
+    display: flex;
+    width: 100%;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: 0 var(--space-md);
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-control);
+    font-family: var(--type-ui-family);
+    font-size: var(--font-size-14);
+    font-weight: var(--type-ui-weight);
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color var(--dur-hover) var(--ease);
+  }
+
+  .trigger:hover {
+    border-color: var(--color-subtle);
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    background: var(--color-overlay);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1051;
+    height: 100%;
+    width: min(320px, 85%);
+    padding: var(--space-lg);
+    background: var(--color-canvas);
+    border-right: 1px solid var(--color-hairline);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform var(--dur-slide) var(--ease);
+  }
+
+  /* Open via JS (`data-open`) or, with JS off, via the `:target` fallback the trigger anchors to. */
+  .panel[data-open],
+  .panel:target {
+    transform: translateX(0);
+  }
+}
