@@ -52,8 +52,15 @@ export const EMPTY_BAG: Bag = {
  * true when the promotion changes.
  */
 function totals(view: CheckoutView) {
-  const items = view.totalizers.find((t) => t.id === 'items');
+  // ⚠️ THE ID IS `subtotal`, MEASURED. It was written as `items` here first, from memory, and a cart on the
+  // counter store answered `[('subtotal', 1400)]` — so the subtotal silently fell through to a computed
+  // fallback that happened to agree. It agrees until a totalizer this screen has never seen appears.
+  const items = view.totalizers.find((t) => t.id === 'subtotal' || t.id === 'items');
   const discounts = view.totalizers.filter((t) => t.id.startsWith('discount:'));
+  // ⚠️ AND A DISCOUNT ARRIVES NEGATIVE. Measured on the same cart: applying PRIMEIROCAFE added
+  // `('discount:promo_…', 'PRIMEIROCAFE · 10% OFF', -140)` and moved `total_amount` from 1400 to 1260 —
+  // exactly ten per cent, taken by the kernel. Reading the sign wrong is how a screen ends up ADDING a
+  // discount to the subtotal and printing a bigger number than the customer is about to pay.
   const discountAmount = discounts.reduce((n, t) => n + t.amount, 0);
   return {
     subtotal: items?.amount ?? view.total_amount - discountAmount,
@@ -98,8 +105,9 @@ export function toBag(view: CheckoutView | null, products: ProductDoc[]): Bag {
     lines,
     count: lines.reduce((n, l) => n + l.qty, 0),
     subtotalLabel: money(t.subtotal),
-    discountLabel: t.discountAmount > 0 ? money(-t.discountAmount) : null,
-    discountTitle: t.discountAmount > 0 ? t.discountLabel : null,
+    // Printed as the reduction it is, whatever sign the kernel used to say it.
+    discountLabel: t.discountAmount === 0 ? null : money(-Math.abs(t.discountAmount)),
+    discountTitle: t.discountAmount === 0 ? null : t.discountLabel,
     totalLabel: money(t.total),
     couponCode: coupon?.code ?? null,
   };
