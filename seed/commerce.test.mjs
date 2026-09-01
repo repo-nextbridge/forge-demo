@@ -17,10 +17,12 @@ import { test } from 'node:test';
 import {
   BUYER_ORDER_TYPES,
   SILENT_STORE_HANDLES,
+  assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
   reviewSplit,
   sellingStores,
+  SEED_NOISE_TYPES,
 } from './commerce.mjs';
 
 const STORES = [
@@ -124,4 +126,53 @@ test('the verified ones are the MINORITY — they are expensive, and that is the
   const split = reviewSplit(rows);
   assert.ok(split.verified.length < split.open.length);
   assert.equal(split.verified.length + split.open.length, rows.length);
+});
+
+// ── ⛔ THE COUNTER SENDS NOTHING AT ALL — his word was "as mensagens", not "as do comprador" ──────────────
+test('★ the counter is not re-armed for the OPERATOR notice either', () => {
+  const on = channelPlan(STORES, { enabled: true });
+  assert.equal(
+    on.some((r) => r.store_id === 'sto_balcao'),
+    false,
+    'one e-mail per coffee is noise nobody reads — inverting this is one line, on purpose',
+  );
+});
+
+test('the seed silences the two non-buyer types it found by READING the port', () => {
+  const off = channelPlan(STORES, { enabled: false });
+  for (const type of SEED_NOISE_TYPES)
+    for (const store of STORES)
+      assert.ok(off.some((r) => r.store_id === store.id && r.type_key === type && !r.enabled));
+});
+
+test('the other three stores DO get the operator notice back', () => {
+  const on = channelPlan(STORES, { enabled: true });
+  for (const handle of ['forge', 'outlet', 'cafe'])
+    assert.ok(on.some((r) => r.handle === handle && r.type_key === 'order.placed.operator' && r.enabled));
+});
+
+// ── ⛔ THE WRONG CREDENTIAL ANSWERS 200 WITH THE WRONG SHOP ──────────────────────────────────────────────
+test('★ a credential that cannot see the stores this run touches is refused', () => {
+  // The measured case: the forgeco token, pointed at the coffee tenant, answers 200 with forge + outlet.
+  assert.throws(
+    () => assertCredentialTenant(['cafe', 'balcao'], [{ handle: 'forge' }, { handle: 'outlet' }]),
+    /cannot see "cafe", "balcao"/,
+  );
+});
+
+test('and the message names the mechanism, because the symptom looks like missing data', () => {
+  assert.throws(
+    () => assertCredentialTenant(['cafe'], [{ handle: 'forge' }]),
+    /resolves the tenant from the CREDENTIAL and ignores/,
+  );
+});
+
+test('the right credential passes', () => {
+  assert.doesNotThrow(() =>
+    assertCredentialTenant(['cafe', 'balcao'], [{ handle: 'cafe' }, { handle: 'balcao' }]),
+  );
+});
+
+test('a credential that sees NOTHING is refused too — an empty 200 is not a pass', () => {
+  assert.throws(() => assertCredentialTenant(['cafe'], []), /no stores at all/);
 });

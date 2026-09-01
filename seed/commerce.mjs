@@ -39,23 +39,35 @@ export const BUYER_ORDER_TYPES = [
 ];
 
 /**
- * The other two the seed silences while it runs, and they are NOT buyer messages — which is why they are a
- * separate list and get a separate pass.
+ * The other two the seed silences, and they are NOT buyer messages — which is why they are named separately
+ * even though they now follow the same rule.
  *
- * `order.placed.operator` goes to the OPERATOR, and on this bench the operator is Renan: a hundred seeded
- * orders is a hundred real e-mails in the same inbox the buyer mail was being kept out of. `review_request`
- * is a customer message the reviews app sends when an order is delivered — seeding delivered orders would
- * fire it. Both are re-armed for EVERY store afterwards, the counter included: a totem does not e-mail its
- * BUYER, but whoever runs the counter still wants to know an order came in.
+ * ⭐ BOTH WERE FOUND BY READING `read.notification_types`, NOT BY REMEMBERING. The wave's brief named the
+ * `order.*` buyer types; the port also declares `order.placed.operator` (audience: operator — and on this
+ * bench the operator is the same inbox the buyer mail was being kept out of: a hundred seeded orders is a
+ * hundred real e-mails) and `ext.reviews.review_request` (audience: customer, fired when an order is
+ * delivered — which the history seeds by the dozen). A hand-written list and a read of the port cost the
+ * same; only one of them ages.
  */
 export const SEED_NOISE_TYPES = ['order.placed.operator', 'ext.reviews.review_request'];
 
+/** Everything the seed switches. Two lists because they mean different things; one rule because, after
+ * Renan's literal word (below), they are treated the same. */
+export const SEED_MANAGED_TYPES = [...BUYER_ORDER_TYPES, ...SEED_NOISE_TYPES];
+
 /**
- * ⛔ THE STORE THAT STAYS QUIET FOR THE BUYER, FOREVER — not just during the seed.
+ * ⛔ THE STORE THAT SENDS NO E-MAIL AT ALL, FOREVER — not just during the seed.
  *
- * Renan's own words: a totem does not send e-mail; the number is called at the counter. The shopper at a
- * kiosk typed a name, not an address — the synthetic `balcao+…@forge.demo` the totem mints exists so the
- * kernel has an e-mail field, and mailing it would be mailing nobody.
+ * Renan's own words, and they are literal: *"a loja totem não faz sentido mandar email; ela pode nascer com
+ * as mensagens desligadas, só as de account ligada"*. The shopper at a kiosk typed a name, not an address —
+ * the synthetic `balcao+…@forge.demo` the totem mints exists so the kernel has an e-mail field, and mailing
+ * it would be mailing nobody. The number is called out loud at the counter, which is the whole point of it.
+ *
+ * ⚠️ AND THAT INCLUDES THE OPERATOR'S OWN "an order came in". An earlier draft of this file re-armed it here,
+ * reasoning that whoever runs the counter would want to know — a defensible inference, and wrong: his word
+ * was "as mensagens", not "as mensagens do comprador". One e-mail per coffee is noise nobody reads.
+ * **Inverting it is one line** — take the handle out of this list — and it is the report's job to say so, so
+ * that testing the bench and wanting the notice back costs a sentence rather than an investigation.
  */
 export const SILENT_STORE_HANDLES = ['balcao'];
 
@@ -95,25 +107,12 @@ export function sellingStores(stores) {
  * counter is never re-armed. Written as one function with a flag rather than two, because two functions
  * drift and the drift is invisible until somebody's inbox fills up.
  */
-export function channelPlan(stores, { enabled }) {
+export function channelPlan(stores, { enabled, types = SEED_MANAGED_TYPES }) {
   const targets = enabled
     ? stores.filter((s) => !SILENT_STORE_HANDLES.includes(s.handle))
     : stores;
   return targets.flatMap((store) =>
-    BUYER_ORDER_TYPES.map((type_key) => ({
-      store_id: store.id,
-      handle: store.handle,
-      type_key: assertSeedableChannel(type_key),
-      channel_key: EMAIL_CHANNEL,
-      enabled,
-    })),
-  );
-}
-
-/** The same, for the two non-buyer types — and these are re-armed everywhere. See `SEED_NOISE_TYPES`. */
-export function noisePlan(stores, { enabled }) {
-  return stores.flatMap((store) =>
-    SEED_NOISE_TYPES.map((type_key) => ({
+    types.map((type_key) => ({
       store_id: store.id,
       handle: store.handle,
       type_key: assertSeedableChannel(type_key),
@@ -140,4 +139,39 @@ export function reviewSplit(rows) {
   const verified = rows.filter((r) => Boolean(r.order_id));
   const open = rows.filter((r) => !r.order_id).map(({ order_id, ...rest }) => rest);
   return { verified, open };
+}
+
+/**
+ * ⛔⛔ THE TENANT A CREDENTIAL IS IN IS NOT THE TENANT YOU ASKED FOR, AND THE READ FACE WILL NOT TELL YOU.
+ *
+ * Measured on the pre-seed box, both directions, `read.internal/stores`:
+ *
+ *     token of forgeco   + `x-forge-tenant: forgeco`    → 200  ['forge', 'outlet']
+ *     token of forgeco   + `x-forge-tenant: forgecafe`  → 200  ['forge', 'outlet']   ← the header is IGNORED
+ *     token of forgecafe + `x-forge-tenant: forgecafe`  → 200  ['cafe', 'balcao']
+ *
+ * The INTERNAL READ resolves the tenant from the CREDENTIAL and ignores the header; only the WRITE honours
+ * it. And this seed — like every seed in this repository — is "idempotent by construction": it asks the read
+ * face first and skips what is already there. So a run with the wrong token asks "does this exist?", is
+ * answered confidently about the OTHER tenant, and carries on. Green. Every skip decision it makes after that
+ * is made against a shop it is not in.
+ *
+ * ⚠️ THE FIX IS NOT TO TRUST A 200. A 200 with real data in it is exactly what the wrong credential returns.
+ * The fix is to make the ANSWER the proof: ask which stores this credential can see, and require the ones
+ * this run is about to touch to be among them. A wrong token cannot fake that, because it can only ever show
+ * its own tenant's shops.
+ *
+ * Call it ONCE, before the first read that decides anything.
+ */
+export function assertCredentialTenant(expectedHandles, visibleStores) {
+  const visible = visibleStores.map((s) => s.handle);
+  const missing = expectedHandles.filter((h) => !visible.includes(h));
+  if (missing.length === 0) return;
+  throw new Error(
+    `the seed credential cannot see ${missing.map((h) => `"${h}"`).join(', ')} — it sees ` +
+      `${visible.length ? visible.map((h) => `"${h}"`).join(', ') : 'no stores at all'}. ` +
+      'The INTERNAL read face resolves the tenant from the CREDENTIAL and ignores `x-forge-tenant`, so a ' +
+      'token from the other tenant answers 200 with the wrong shops and every "does this already exist?" ' +
+      'check after it is answered about the wrong tenant. Use the token of the tenant you are seeding.',
+  );
 }
