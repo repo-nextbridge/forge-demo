@@ -1,0 +1,62 @@
+{
+  "name": "@forge/ext-payment-pos",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Forge extension (PAY-POS): the COUNTER's payment app, written by this box and offered to nobody. Two methods — `pos_card` (the card machine already approved; the kernel only records it) and `pos_pix` (a QR on the totem's screen, settled when the app's own webhook is called). No PSP is ever contacted. Enable per store via PAY-TOGGLES.",
+  "forge": {
+    "origin": "instance",
+    "wiring": {
+      "blocks": {
+        "payment-options": {
+          "surface": "storefront",
+          "role": "options",
+          "module": "./payment-options",
+          "export": "default"
+        },
+        "after-payment": {
+          "surface": "storefront",
+          "role": "after-payment",
+          "module": "./after-payment",
+          "export": "default"
+        }
+      },
+      "drivers": {
+        "payment": {
+          "module": "./provider",
+          "export": "provider"
+        }
+      }
+    }
+  },
+  "exports": {
+    "./manifest": "./manifest.ts",
+    "./provider": "./provider.ts",
+    "./simulation": "./simulation.ts",
+    "./payment-options": "./payment-options.tsx",
+    "./after-payment": "./after-payment.tsx"
+  },
+  "files": [
+    "after-payment.tsx",
+    "notice.module.css",
+    "payment-options.tsx"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@forgecommerce/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

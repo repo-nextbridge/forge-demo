@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "manifest.ts",
+    "provider.ts",
+    "simulation.ts",
+    "drivers/payment.ts",
+    "payment-options.tsx",
+    "after-payment.tsx",
+    "global.d.ts",
+    "*.test.ts"
+  ],
+  "exclude": ["node_modules"]
+}

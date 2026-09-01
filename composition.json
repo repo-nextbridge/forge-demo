@@ -29,6 +29,17 @@
     "THIS REPOSITORY WROTE — code no release of ours has ever seen — and it reaches the bake by being copied",
     "into the build context (`bin/build-local.sh` stages it; the oven adopts it with --instance-apps).",
     "",
+    "★★ `payment-pos` IS THE SECOND ONE, AND IT IS WHAT THE SPECIES WAS MISSING. `demo-gate` is a screen; this is",
+    "a payment DRIVER — the counter's `pos_card` and `pos_pix`, written here because the alternative was editing",
+    "an app the platform offers to everybody. `payment-reference` could almost do it and was measured: its PIX",
+    "mode is UNIVERSAL app config, so auto-approving for the counter would take the coffee store's live",
+    "'aguardando pagamento' away, and its webhook needs a `provider_ref` its own `initiate` never hands back.",
+    "This app returns that ref inside its own `next_action`, which is the whole difference and cost no kernel.",
+    "",
+    "⚠️ IT OPENS A PUBLIC DOOR THAT APPROVES A PAYMENT (the totem's 'tap the QR to simulate the scan'), and that",
+    "is only acceptable because of the line below: this app is never offered to anybody. See its README and",
+    "`docs/capabilities/payment-pos.md`.",
+    "",
     "⚠️ AND THE IMAGE THAT COMES OUT IS NOT OFFERABLE, BY CONSTRUCTION. The oven stamps it, and the platform's",
     "release gate refuses to promote such an image. That is correct and it is not a limitation of this box: an",
     "image carrying OUR app must never be handed to anybody else. See `docs/concepts/instance-owned-apps.md`",
@@ -82,6 +93,12 @@
       "package": "@forge/ext-demo-gate",
       "source": "./apps/demo-gate",
       "why": "the demo's own gate: the full-screen 'Demo store' interstitial and the ribbon under it. Composed, not mounted, since Forge P1 — which is what gives it a screen on the reference storefront the Outlet runs."
+    },
+    {
+      "id": "payment-pos",
+      "package": "@forge/ext-payment-pos",
+      "source": "./apps/payment-pos",
+      "why": "the counter's two ways to pay: `pos_card` (the card machine already said yes) and `pos_pix` (the QR on the totem's screen). It is on THIS list and not on `apps` because no Forge release carries it — and it had to be written rather than reused, because `payment-reference`'s PIX mode is UNIVERSAL app config: turning it to auto-approve for the counter would take the live 'aguardando pagamento' away from the coffee store, which is a thing this demo exists to show. It is also the species' second specimen and its stronger one — `demo-gate` is UI, this is a payment DRIVER."
     }
   ]
 }

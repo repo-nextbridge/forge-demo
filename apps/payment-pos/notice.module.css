@@ -1,0 +1,37 @@
+/* The two blocks' skin. SEMANTIC THEME TOKENS only: this app is composed into images whose themes it has
+   never seen, and a hard-coded colour here is a block that clashes on every one of them. The totem does not
+   render these at all (it draws its own screens), so nothing here is the counter's design. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--color-border, currentColor);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-surface, transparent);
+  color: var(--color-text, inherit);
+}
+
+.title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-text-muted, inherit);
+}
+
+.approved {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-success, inherit);
+}
+
+.code {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm, 0.875rem);
+}

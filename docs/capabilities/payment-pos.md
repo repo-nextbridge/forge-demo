@@ -1,0 +1,85 @@
+# Esta caixa cobra no balcão
+
+> Uma capacidade nova desta instância: o pedido feito no totem é **pago ali**, na maquininha ou no QR da
+> tela, e entra na mesma fila do admin que todos os outros. Sem PSP, sem integração nova, sem tocar no kernel.
+
+Esta página **nomeia o poder**. Os campos, os envelopes e as respostas exatas estão no
+`README.md` do app (`apps/payment-pos/`) e no `CONTRATO-POS.md` da onda; aqui está o que passou a ser
+possível, e o que isso custa.
+
+## O que passou a existir
+
+Até agora esta caixa sabia cobrar de um jeito só: pela internet, com um provedor de pagamento que a
+plataforma oferece. Um balcão não é isso. No balcão o dinheiro **já se moveu** quando o software fica
+sabendo: o cliente encostou o cartão na maquininha, ou apontou a câmera para um QR na tela do totem.
+
+`payment-pos` é o app que traduz essas duas cenas para a porta única do kernel:
+
+| a cena no balcão | o método neutro | o que o kernel registra |
+|---|---|---|
+| "pague na maquininha" | `card` | **pago, na hora** |
+| "aponte a câmera no QR" | `pix` | **aguardando**, até o pagamento ser reconhecido |
+
+O pedido resultante não é especial em nada: mesmo `order.number`, mesma loja, mesma fila do admin, mesmo
+nome de quem retira. É essa a prova — **uma experiência de venda inteiramente nova não precisou de um kernel
+diferente.**
+
+## Por que é um app desta caixa, e não uma configuração
+
+A plataforma já traz um app de pagamento de teste (`payment-reference`) que chega perto. Duas medições
+fecharam a porta, e as duas são do app, não do kernel:
+
+1. **O modo do PIX dele é config UNIVERSAL.** Ligar o auto-aprovar para o balcão ligaria também para a loja
+   de cafés, e o "aguardando pagamento" vivo dela é uma das coisas que a demo existe para mostrar.
+2. **A porta de liquidação dele é inalcançável por uma tela.** Ela precisa de um `provider_ref` que o
+   `initiate` dele nunca devolve.
+
+O `payment-pos` resolve a segunda com **um campo**: ele devolve o ref dentro do próprio envelope. E resolve
+a primeira por existir separado. Custo total no kernel: zero linha.
+
+## A espécie que isto prova
+
+Esta caixa já tinha um app seu, o `demo-gate` — mas o `demo-gate` é **tela**. Um *driver de pagamento* é a
+outra ponta: ele participa da parte do kernel que move dinheiro, com o mesmo mecanismo de composição e sem
+nenhuma permissão especial.
+
+A doutrina que sustenta isso é a dos **dois eixos**: o que a plataforma OFERECE e o que uma caixa COMPÕE são
+listas diferentes. Um app da instância entra só na segunda, e a imagem que o compõe sai carimbada
+`offerable: false` — o portão de release recusa promovê-la. Ver `docs/concepts/instance-owned-apps.md` no
+monorepo.
+
+## ⚠️ O que esta capacidade custa, dito antes de alguém descobrir
+
+### 1. Uma porta pública que aprova pagamento
+
+A simulação do escaneio ("toque no QR") é um `POST` **sem autenticação** que liquida um pedido de verdade.
+Ela só é aceitável porque este app **nunca é ofertado a ninguém**. O que a segura é o ref ser opaco e sair do
+kernel num lugar só, mais duas recusas que são **do kernel** (ref que não existe; segunda liquidação do mesmo
+pedido). Está tudo escrito, com as linhas, no README do app.
+
+**Numa caixa que a plataforma vende, isto seria uma vulnerabilidade.** Não copie o padrão para um app OOTB.
+
+### 2. Instalar oferece em TODAS as lojas do tenant
+
+Instalação é **por tenant**, por construção: `extension_installation` tem índice único
+`(extension_id, tenant_id)` (`system/0008`). O que é por loja é a *colocação* de bloco — e um provedor de
+pagamento não passa por colocação para ser oferecido, ele é resolvido direto da instalação.
+
+Consequência concreta nesta caixa: com o `payment-pos` instalado, ele aparece como provedor **também** no
+checkout da loja de cafés e do outlet. E — medido — como hoje **nenhum** provedor de pagamento está instalado
+no tenant, ele não vira "mais um chip numa lista": vira o **único** provedor de `pix` e `card` de todas as
+lojas, sem linha de escolha na tela, e o `card` dele **liquida na hora, de graça**.
+
+Não há conserto dentro desta onda: um portão de oferta por loja seria mudança de kernel. Está aceito e
+carimbado como propriedade conhecida desta caixa, e carded como trabalho de produto. A mitigação que existe é
+honesta e pequena: **o app se chama por um lugar** ("Pagar no balcão"), para que a aparição dele fora do
+balcão leia como configuração errada e nunca como oferta legítima.
+
+## Onde isto é provado
+
+* `apps/payment-pos/provider.test.ts` — `card` liquida no `initiate`; `pix` não liquida e devolve o ref; a
+  porta do escaneio recusa o que não é uma cobrança PIX aberta deste app.
+* `apps/payment-pos/manifest.test.ts` — os métodos neutros, as janelas em minutos, os toggles, e a regra de
+  cópia que o guard do monorepo não alcança um app da instância para cobrar.
+* `RELATORIO-T-B.md` (nos briefs da onda) — as sabotagens medidas e o pedido de verdade pago pelos dois
+  métodos.
