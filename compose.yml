@@ -122,7 +122,18 @@ services:
       FORGE_READ_BASE_URL: http://kernel:3000
       FORGE_COMMAND_BASE_URL: http://kernel:3000
       FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
-      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      # ★ DIFFERENCE 4 (D2) — THE FRONTS NEED THE MEDIA BASE EVEN WHEN THE KERNEL DOES NOT.
+      #
+      # The kernel's stays EMPTY on this box (see DIFFERENCE 2): it mints a public media address from the
+      # public origin and the local driver, and giving it an internal host would put `http://kernel:3000/…`
+      # in a shopper's HTML. The FRONTS join base+key themselves, server-side, for a different job — the
+      # DERIVATIVE door (`/api/img`), which is how a composed banner is served since the F3 slice.
+      #
+      # MEASURED, and it is why this line exists: with the base unset, `/api/img/orig/…` answers
+      # `404 media base not configured` and every tile of the Outlet's banner mosaic is a broken image,
+      # while product photos beside it are fine (those render the kernel's own minted url). The default is
+      # the kernel's local-driver route on the compose network — server-to-server, never in a page.
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-http://kernel:3000/v1/media/local}
       FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
       FORGE_BULK_READ_TOKEN: ${FORGE_BULK_READ_TOKEN:-}
       # ★ DIFFERENCE 3 — THE THEMES DIRECTORY, AND THE TEMPLATE DOES NOT WIRE IT.
@@ -150,7 +161,9 @@ services:
       FORGE_READ_BASE_URL: http://kernel:3000
       FORGE_COMMAND_BASE_URL: http://kernel:3000
       FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
-      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      # The same base, for the same reason, on the other front: it renders the cart's product photos and
+      # its own theme's banners through the same door. See DIFFERENCE 4 on the storefront above.
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-http://kernel:3000/v1/media/local}
       FORGE_GOOGLE_CLIENT_ID: ${FORGE_GOOGLE_CLIENT_ID:-}
       FORGE_GOOGLE_CLIENT_SECRET: ${FORGE_GOOGLE_CLIENT_SECRET:-}
       FORGE_GOOGLE_REDIRECT_URI: ${FORGE_GOOGLE_REDIRECT_URI:-}
