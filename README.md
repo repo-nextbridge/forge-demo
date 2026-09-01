@@ -264,6 +264,50 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
 
 ---
 
+## 3b. ⭐ THE SEED HAS TWO STEPS, AND THE SECOND ONE RUNS INSIDE THE CONTAINER
+
+Everything in §3 drives the port from outside, which is the right shape for almost all of it. There is
+exactly one thing it cannot do, and it is not a matter of effort:
+
+> **An order created through the port is dated TODAY.** `sales_order.created_at` takes the `default now()` of
+> its migration. The kernel's clock IS injectable — but on the DISPATCHER (`createDispatcher({ now })`), and
+> only the process that BUILDS one can move it. There is no backdating parameter on the port and there never
+> will be: a caller that could choose when an order happened is a caller that could rewrite the books.
+
+So a box seeded only from outside gets its whole past on ONE calendar day. Measured on the isolated bench
+before this existed: every order the port had created was dated the day it ran — 2 orders across 1 calendar
+day, which is the same shape an older bench showed at scale (**64 orders across three days**, one per time
+somebody ran the seed). A dashboard drawn from that is a spike, not a shop.
+
+The second step is therefore a **one-shot inside the container**, the same shape this box already uses for
+`migrate` and `provision-ref`:
+
+```bash
+# 1. from OUTSIDE — the catalogue, the commerce, the stores' own data
+node bin/seed.mjs --api http://localhost:8200
+
+# 2. from INSIDE — the dated past, one tenant at a time
+docker compose run --rm kernel node dist/seed-history.js --tenant forgeco
+docker compose run --rm kernel node dist/seed-history.js --tenant forgecafe
+```
+
+⚠️ **THE ORDER IS NOT A PREFERENCE.** Step 2 SELLS what step 1 published — it refuses to start on a tenant
+with no sellable shelf — and it RESOLVES the logistics step 1 created rather than creating any of its own. It
+also needs a payment app installed for the tenant, or the first order is answered `no payment provider for
+method`. Run it first and it fails, correctly and loudly, naming what is missing.
+
+⚠️ **`--tenant`, AND NOT `--schema`.** A tenant provisioned by `platform.tenant.provision` gets a MINTED
+schema name recorded in `forge_control.tenant.schema_name`, and **no port publishes it** — so there is no way
+for an operator to discover the value except from provisioning output they may never have seen. The one-shot
+therefore resolves it from the registry itself, and `--schema` exists only as an override. It used to default
+to the tenant id, which is true of the legacy `demo` tenant and of nothing else; the symptom was
+`relation "promotion" does not exist`, which reads like a broken database and is in fact a missing flag.
+
+⚠️ **IT IS RESET-AND-SEED BY NATURE.** On a tenant that already carries a history it stops and says so rather
+than laying a second past on top. Wipe and re-run to rebuild it.
+
+---
+
 ## 4. The gate — this box's own app, with a screen
 
 `demo-gate` is this box's own app: the first one, and the reason the species exists. It fills
