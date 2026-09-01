@@ -1017,16 +1017,66 @@ const commerceCommand = async (name, input, { store } = {}) => {
     name,
   );
   const text = await res.text();
-  if (!res.ok) fail(`${name} → HTTP ${res.status}\n  ${text.slice(0, 900)}`);
+  if (!res.ok) fail(`${name} → ${refusalOf(res.status, text)}`);
   return text ? JSON.parse(text) : {};
 };
 
-// One read for both faces: the commerce module writes `internal/…` when it means the credentialed face and a
-// bare capability when it means the public one, so the prefix it wrote IS the routing.
-const commerceRead = async (name, params = {}) =>
-  name.startsWith('internal/')
-    ? read(name.slice('internal/'.length), params)
-    : publicRead(name, params);
+/**
+ * ⛔ THE PORT ALREADY NAMES THE MISSING FIELDS AND THE CALLER WAS THROWING THEM AWAY.
+ *
+ * `checkout.place_order` refuses with `{"code":"validation_failed","message":"checkout incomplete",
+ * "details":{"missing":["buyer","shipping_method","payment_method","shipping_address"]}}`. The MESSAGE says
+ * nothing useful; the DETAILS say everything. Printing only the message is how three people spent an
+ * afternoon inferring a field the door was naming all along.
+ *
+ * This is the same family as the other message defects of this wave, with one difference worth stating: the
+ * others said something FALSE about the category of the problem. This one says nothing at all — it is not a
+ * lie, it is a silence, and a silence costs the same.
+ */
+function refusalOf(status, text) {
+  let body = null;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return `HTTP ${status}\n  ${text.slice(0, 900)}`;
+  }
+  const missing = body?.details?.missing;
+  const named = Array.isArray(missing) ? `\n  MISSING: ${missing.join(', ')}` : '';
+  const reason = body?.details?.reason ? `\n  reason: ${body.details.reason}` : '';
+  return `HTTP ${status} ${body?.code ?? ''} ${body?.message ?? ''}${named}${reason}\n  ${text.slice(0, 600)}`;
+}
+
+/**
+ * One read for both faces: the commerce module writes `internal/…` when it means the credentialed face and a
+ * bare capability when it means the public one, so the prefix it wrote IS the routing.
+ *
+ * ⚠️ AND A 404 IS AN ANSWER HERE, NOT A FAILURE — which is why this does not delegate to `read()` above.
+ * That helper treats any non-2xx as fatal, which is right for the catalogue: a category that should exist and
+ * does not is a defect. It is wrong for this pass, because `read.extension_config` answers **404 for an app
+ * that has simply never been configured**, and that is an ordinary state. Measured, on an installed app of
+ * each kind:
+ *
+ *     extension_config?extension=reviews        → 200  {moderation, open_reviews, …}
+ *     extension_config?extension=banners        → 404  {"kind":"not_found"}
+ *     extension_config?extension=subscriptions  → 404
+ *
+ * A fresh box has no config row for anything, so the hard read killed the whole run on step 10 — on a box
+ * that was perfectly correct. `null` here means "nothing stored", and the caller falls back to the app's own
+ * declared defaults, which is what the app itself does.
+ */
+const commerceRead = async (name, params = {}) => {
+  const internal = name.startsWith('internal/');
+  const path = internal ? `internal/${name.slice('internal/'.length)}` : name;
+  const qs = new URLSearchParams(params).toString();
+  const res = await paced(
+    `${api}/v1/read/${path}${qs ? `?${qs}` : ''}`,
+    internal ? { headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant } } : {},
+    `read.${name}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) fail(`read.${name} → HTTP ${res.status}\n  ${(await res.text()).slice(0, 500)}`);
+  return res.json();
+};
 
 /** A raw POST, for the two app faces: the tenant action face and the ANONYMOUS public data face — which
  *  carries no credential and therefore needs the store in a header, having nothing else to resolve one from. */

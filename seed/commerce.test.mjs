@@ -293,3 +293,33 @@ test('the expectation is what SELECTS the stores it works on — never the whole
   });
   assert.deepEqual([...new Set(seen)].sort(), ['c', 'd']);
 });
+
+// ── ⛔ AN APP THAT WAS NEVER CONFIGURED ANSWERS 404, AND THAT IS AN ORDINARY STATE ───────────────────────
+//
+// Measured on a bench, per installed app: `extension_config?extension=reviews` → 200, `…=banners` → 404,
+// `…=subscriptions` → 404. A fresh box has no config row for anything. The orchestrator's own `read()`
+// treats every non-2xx as fatal — right for the catalogue, wrong here — so the pass takes a read whose 404
+// is `null`, and falls back to the app's declared defaults exactly as the app itself does.
+test('★ a missing config row is defaults, not death', async () => {
+  const wrote = [];
+  const read = async (name) => {
+    if (name === 'internal/stores') return [{ handle: 'cafe', id: 'c' }];
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null; // never configured
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+  await seedCommerce({
+    expect: ['cafe'],
+    read,
+    command: async (n, input) => { wrote.push([n, input]); return {}; },
+    log: () => {},
+    fail: (m) => { throw new Error(m); },
+    post: async () => ({}),
+  });
+  // It turned the open form ON without carrying a stored row, and put it back OFF afterwards.
+  const configWrites = wrote.filter(([n]) => n === 'extension.config.set');
+  assert.equal(configWrites.length, 2, 'on, then back off');
+  assert.equal(configWrites[0][1].values.open_reviews, true);
+  assert.equal(configWrites[1][1].values.open_reviews, false);
+});
