@@ -166,3 +166,37 @@ test('the plan keeps the order the seed declared, so a run reads like the file',
     ['a-1', 'b-1', 'c-1'],
   );
 });
+
+// ── ★★ THE PROJECTION RACE, AS THE PLANNER SEES IT ──────────────────────────────────────────────────────
+//
+// MEASURED on a fresh box, and it is the third time this repository has paid for this class in one day: the
+// stock step died with `declares 25 sku code(s) the catalogue has no sku for`, and minutes later the SAME
+// read answered `products: 6 | sku codes: 25` — exactly those codes. The skus existed; the PROJECTION did
+// not, at the instant of the question.
+//
+// The caller's fix is to append what `catalog.product.create` RETURNED to what the read answered — one
+// synthetic row carrying the minted skus. These two tests pin that contract from the planner's side: with
+// the row, the sku is planned; without it, the planner is RIGHT to report it missing (it cannot tell a
+// lagging read from a typo, and guessing is what an error message must not do).
+
+test('★★ a sku the read has not caught up with is PLANNED when the run minted it', () => {
+  const want = new Map([['forge-alvorada-graos-250g', 100]]);
+  // The catalogue read came back EMPTY — the projection is behind the commit.
+  const lagging = [];
+  const minted = { skus: [{ code: 'forge-alvorada-graos-250g', id: 'sku_minted' }] };
+
+  const { adjustments, missing } = planStock(want, [...lagging, minted], []);
+  assert.deepEqual(missing, [], 'the run holds the id; there is nothing to report as missing');
+  assert.deepEqual(adjustments, [
+    { sku_id: 'sku_minted', sku_code: 'forge-alvorada-graos-250g', on_hand: 100 },
+  ]);
+});
+
+test('and WITHOUT the minted row the planner reports it missing — which is correct, not a bug', () => {
+  // The planner must not paper over this: from here, "the read is behind" and "the code is a typo" are
+  // indistinguishable. Reporting is right; what must not happen is the CALLER asserting which one it was.
+  const want = new Map([['forge-alvorada-graos-250g', 100]]);
+  const { adjustments, missing } = planStock(want, [], []);
+  assert.deepEqual(missing, ['forge-alvorada-graos-250g']);
+  assert.deepEqual(adjustments, []);
+});
