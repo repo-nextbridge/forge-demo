@@ -1,0 +1,42 @@
+/* THE COUNTER'S PALETTE AND TYPE — the artboard's, in one place, so "is this still the design?" is a
+ * question a test can answer.
+ *
+ * ★ WHY THE TOTEM HAS ITS OWN TOKENS AND NOT A KERNEL THEME. The counter's store carries no `theme_key` (the
+ * frozen contract of this wave says so), because this app is not a themed storefront resolving a skin at
+ * runtime — it is one client's own screen. The palette is therefore SOURCE, and its authority is
+ * `design-base/Totem forge.co.dc.html`.
+ *
+ * ⚠️ EVERY ONE OF THESE NINE VALUES IS PINNED BY `src/palette.test.ts` AGAINST THE ARTBOARD ITSELF, not
+ * against a copy of the list. Change a colour here and the guard reads the design base, fails, and names the
+ * token — which is the only way "fidelity is a mandate" survives contact with a hurried afternoon.
+ */
+
+:root {
+  /* The frame the 1080×1920 panel floats in — the dark edge of the physical screen. */
+  --totem-frame: #1b1512;
+  /* The page. */
+  --totem-bg: #F3EDE3;
+  /* The header band, the attract screen, the payment screens. */
+  --totem-header: #2F3B31;
+  /* The side rail and every footer bar. */
+  --totem-rail: #EDE5D8;
+  /* A card, a modal, a key on the virtual keyboard. */
+  --totem-card: #F8F4EC;
+  /* Text. */
+  --totem-ink: #2F2620;
+  /* Amber: the kicker over a band, the caret, the bag badge, a link. */
+  --totem-amber: #B0793C;
+  /* Deep green: the primary action, a selected chip, the "retire no balcão" footer. */
+  --totem-green: #3C4A3E;
+  /* Sand: the order-number card, the rail's accents, the chips. */
+  --totem-sand: #DCC7A6;
+
+  /* The two families of the artboard. The fallbacks are REAL and declared: the woff2 ship in the image, but
+   * a font that fails to decode must not drop the counter to Times. */
+  --totem-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --totem-text: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* The panel the whole flow is laid out on. Portrait, and scaled to fit whatever glass it lands on. */
+  --totem-width: 1080px;
+  --totem-height: 1920px;
+}

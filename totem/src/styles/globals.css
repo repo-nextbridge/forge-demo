@@ -1,0 +1,152 @@
+/* The counter's global sheet: the reset the artboard assumes, its nine animations, and the one rule that
+ * turns all nine off. */
+
+@import './tokens.css';
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--totem-frame);
+}
+
+* {
+  box-sizing: border-box;
+  /* A kiosk is touched all day; the grey flash of a tap highlight is the artboard's own removal. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* No scrollbars on a panel nobody scrolls with a mouse. */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ── THE NINE ANIMATIONS OF THE ARTBOARD, by the names it gave them ────────────────────────────────────── */
+
+@keyframes fgPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(6px);
+  }
+}
+@keyframes fgArrow {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(10px);
+    opacity: 0.9;
+  }
+}
+@keyframes fgIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fgFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fgSlide {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fgToast {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  18% {
+    opacity: 1;
+    transform: none;
+  }
+  82% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes fgGlow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+@keyframes fgWait {
+  0% {
+    transform: scale(0.94);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.94);
+    opacity: 0.5;
+  }
+}
+@keyframes fgCaret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── ⚠️ AND THE RULE THAT TURNS ALL NINE OFF ───────────────────────────────────────────────────────────────
+ *
+ * A totem is a public screen: whoever stands in front of it did not choose this page and cannot leave it.
+ * Someone with vestibular disorder gets the pulsing attract screen, the sliding steps and the breathing
+ * "waiting" square whether they asked for them or not — so the operating-system preference is honoured
+ * WHOLESALE rather than animation by animation.
+ *
+ * It is written as one blanket rule ON PURPOSE. A per-animation opt-out is a list somebody has to remember to
+ * add to, and the tenth animation is exactly the one that would be forgotten; `src/reduced-motion.test.ts`
+ * reads this file and the sheet above and fails if any declared keyframe escapes it.
+ *
+ * `transition` goes too: the bag's spring on "Adicionar" and the press states are motion by another name. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

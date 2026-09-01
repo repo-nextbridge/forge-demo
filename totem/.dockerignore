@@ -1,0 +1,8 @@
+# The Dockerfile next to this file copies only `.next/standalone` and `.next/static`. Everything else would be
+# uploaded to the daemon as build context and then ignored — node_modules alone is hundreds of megabytes, which
+# is the difference between an image that builds in seconds and one that looks broken.
+node_modules
+.next/cache
+src
+.git
+*.log

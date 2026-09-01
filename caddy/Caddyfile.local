@@ -136,3 +136,19 @@
 :81 {
 	reverse_proxy admin:3000
 }
+
+# ★★ THE COUNTER'S TOTEM (T2·S2), on a listener of its own — and it is a WHOLE SITE, not a path, because the
+# totem is the fourth posture of the customisation table: ONE app of the client's own serving every path of
+# the counter's host. There is no second Next server behind this hostname and no store in the URL, so there
+# is nothing to split. Published as ${FORGE_TOTEM_HTTP_PORT} (8102 by default) by compose.override.yml.
+#
+# It mirrors the admin's `:81` for the same reason the admin got one: on this bench three stores share ONE
+# origin and the store comes from the PATH, which is a shape a whole-host app cannot live in.
+#
+# ⚠️ ADDING A SITE HERE IS THE CHEAP HALF; THE RISK IS THAT A PARSE ERROR TAKES THE WHOLE EDGE DOWN, not one
+# route. The D2·C1 slice measured exactly that on this file — a bad `handle` line and "todos os hosts em 000".
+# So the order is: `caddy validate` first, reload second, and only then curl all four entry points. Measured
+# after this block was added (2026-09-01) — the numbers are in RELATORIO-T-C.md.
+:82 {
+	reverse_proxy totem:3000
+}

@@ -1,4 +1,4 @@
-# THE COFFEE STORE'S OWN VITRINE — the one deployable this repository BUILDS instead of pinning.
+# THE DEPLOYABLES THIS REPOSITORY BUILDS INSTEAD OF PINNING — the coffee vitrine, and the counter's totem.
 #
 # `docker compose` merges this file into `compose.yml` automatically whenever it exists, which is the seam
 # that file left open: the coffee front is a FORK (slice C1 — `pack-surface` cut `storefront-coffee/` out of
@@ -51,3 +51,80 @@ services:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
     depends_on:
       - kernel
+
+  # ════════════════════════════════════════════════════════════════════════════════════════════════════════
+  # ★★ THE COUNTER'S TOTEM (T2·S2) — the SIXTH image of this instance, and the fourth posture of the
+  # customisation table made real: not a forked vitrine plus a forked checkout, but ONE Next app of the
+  # client's own serving every path of the counter's host, against the same port, in the same box.
+  #
+  # "Nem toda experiência extra é fork — pode ser uma imagem A MAIS." Today a totem; tomorrow an internal app.
+  #
+  # ── ⚠️ IT IS NOT IN `forge.lock`, AND THE REASON IS A FACT ABOUT THAT FILE, NOT AN ANALOGY ───────────────
+  #
+  # The vitrine above is absent from the lock because it is ours and has no upstream, and all of that is true
+  # of the totem too. But there is a second reason, and it is the one that settles it: `bin/build-local.sh`
+  # REWRITES `forge.lock` from scratch (`jq -n`, from a fixed four-image template). A `totem` key written
+  # there by hand is deleted, silently, by the next oven run — so the lock cannot hold the claim even if we
+  # wanted it to. A lock that carries an assertion its own generator discards is not provenance; it is a
+  # comment with an expiry date.
+  #
+  # So the answer is written HERE, where it is executed, and `totem/src/lock-provenance.test.ts` fails if
+  # anybody ever puts it in the lock without changing this paragraph first.
+  #
+  # (This makes the architect's spec line "forge.lock ganha a 6ª imagem" false. Recorded, and carried back to
+  # the architect by the tech lead — this repository does not edit somebody else's spec.)
+  #
+  # ── BEFORE `docker compose up`, THE IMAGE HAS TO EXIST ───────────────────────────────────────────────────
+  #
+  #     bash bin/build-totem.sh ~/nextbridge/projetos/wt-v03/t-forno
+  #
+  # Same thin-Dockerfile bargain as the vitrine: the build that ships is the build that was tested.
+  totem:
+    # ★ NAMED EXPLICITLY, so the image `bin/build-totem.sh` produces and the one compose starts are the same
+    # thing under the same tag — and so a `-p` on the command line cannot make compose invent another name.
+    image: forge-demo-totem:local
+    build:
+      context: ./totem
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # The SAME kernel as every other front on this box. The counter's basket is a kernel cart behind a
+      # cookie, so a totem pointed elsewhere is a till that cannot take an order.
+      FORGE_READ_BASE_URL: http://kernel:3000
+      FORGE_COMMAND_BASE_URL: http://kernel:3000
+      # Product photographs are resolved in THIS process (the port answers with refs; the base makes them
+      # addresses). Without it the menu renders as empty frames and nothing logs an error.
+      FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
+      # ★★ THE STORE, AND IT TAKES TWO VARIABLES ON PURPOSE — see `totem/src/lib/store.ts` for the
+      # measurement. The public read face resolves a store by ID or by HOST and has no `store.by_handle`
+      # (the only capability returning a handle is on the internal face, behind the admin service token,
+      # which this app deliberately does not hold). So the ID is what the process uses and the HANDLE is
+      # what a human reads to know which shop that id is. The app refuses to boot if either is missing, or
+      # if the handle was pasted into the id.
+      FORGE_TOTEM_STORE_ID: ${FORGE_TOTEM_STORE_ID:?set FORGE_TOTEM_STORE_ID (.env) to the counter store's sto_… id}
+      FORGE_TOTEM_STORE_HANDLE: ${FORGE_TOTEM_STORE_HANDLE:-balcao}
+      # How long the screen waits before it decides the customer has walked away, clears the basket and
+      # returns to "Toque para começar". Seconds.
+      FORGE_TOTEM_IDLE_SECONDS: ${FORGE_TOTEM_IDLE_SECONDS:-90}
+      # ★ THE GATE'S OWN WIRING, and it is read by the FRONT that renders it — the same two variables
+      # `compose.yml` gives the storefront and the checkout, for the same reason: the gate's entry is a
+      # Server Component, so its links live where the component runs. They never reach the browser.
+      FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+    depends_on:
+      - kernel
+
+  # ★ THE EDGE PUBLISHES ONE MORE PORT, AND THAT IS THE WHOLE ROUTING CHANGE.
+  #
+  # `caddy/Caddyfile.local` gains a `:82` site pointing at `totem:3000`, mirroring the `:81` the admin already
+  # has, and this block is what makes it reachable from the host. It is written HERE rather than in
+  # `compose.yml` because the totem is this repository's deployable and `compose.yml` is the product's file —
+  # the same split the vitrine's service above lives by. Compose MERGES sequences like `ports`, so this adds
+  # to the three that file publishes instead of replacing them.
+  #
+  # ⚠️ Harmless in a deployment, exactly like the admin's `:81`: the production Caddyfile serves the counter
+  # on `{$FORGE_TOTEM_DOMAIN}` with TLS, has no `:82` site, and nothing answers on this published port.
+  caddy:
+    ports:
+      - '${FORGE_TOTEM_HTTP_PORT:-8102}:82'

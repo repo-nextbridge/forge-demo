@@ -13,3 +13,11 @@ storefront-coffee/vendor/
 storefront-coffee/.next/
 storefront-coffee/next-env.d.ts
 storefront-coffee/tsconfig.tsbuildinfo
+
+# The same tarballs, for the counter's kiosk. `bin/vendor-packages.sh <forge checkout> totem` writes them and
+# `totem/` installs from them — same pre-release mechanism as the vitrine above, same reason they stay out.
+totem/vendor/
+# The totem's build output.
+totem/.next/
+totem/next-env.d.ts
+totem/tsconfig.tsbuildinfo
