@@ -160,6 +160,41 @@ async function settings() {
   );
 }
 
+/**
+ * ★★ WHOSE CREDENTIAL IS THIS? — asked before anything is touched, because the box can answer it and
+ * because getting it wrong is silent.
+ *
+ * THE TRAP, measured on this bench: the INTERNAL READ FACE IGNORES `x-forge-tenant` and resolves the tenant
+ * from the CREDENTIAL. T1's token asking for `forgecafe` answered HTTP 200 with T1's OWN stores. So a seeder
+ * that reads before it writes sees a plausible shelf belonging to the wrong tenant, and every conclusion it
+ * draws from that is wrong while looking fine. This script once reported "the bootstrap store is missing" and
+ * sent a reader off to re-provision a tenant that was perfectly healthy.
+ *
+ * ★ AND THE FIX IS AN ASSERTION, NOT AN ORDERING. The first defence was "do a write first, so a mismatch
+ * 403s" — that works and depends on somebody remembering to keep the write first forever. This asks the
+ * question directly: `whoami` on the internal face returns the tenant the CREDENTIAL belongs to, and a token
+ * from the wrong tenant cannot answer anything but its own. The response IS the proof, so it holds whatever
+ * order the steps run in. (The shape is P-C's, arrived at independently on the same trap.)
+ *
+ * The store cross-check below is the corroboration: the tenant we are about to build must be one whose
+ * bootstrap store this credential can actually see. Two independent facts, one refusal.
+ */
+async function assertCredentialTenant() {
+  const who = await read('whoami');
+  const actual = who?.tenant_id;
+  if (actual !== tenant) {
+    fail(
+      `THIS CREDENTIAL BELONGS TO "${actual ?? '(unknown)'}", NOT "${tenant}".\n` +
+        '  Nothing has been written. The internal read face resolves the tenant from the CREDENTIAL and\n' +
+        '  IGNORES the `x-forge-tenant` header, so without this check the run would have read the other\n' +
+        "  tenant's stores, found this tenant's bootstrap store missing, and blamed the bootstrap.\n" +
+        '  Each tenant has its own token: forgeco → forge-seed-token, forgecafe → forge-seed-token-forgecafe.\n' +
+        '    FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe',
+    );
+  }
+  log(`credential → ${actual} ✓`);
+}
+
 /** The admin hostname this tenant answers on. VERIFIED, never written — see the header for why the write is
  * not reachable from here. A mismatch is loud because the symptom otherwise is a login screen that refuses
  * with `unknown_admin_host` and says nothing about which host it wanted. */
@@ -181,19 +216,9 @@ async function verifyAdminHost() {
 
 async function main() {
   log(`tenant ${tenant} · ${api}`);
-  // ★★ SETTINGS FIRST, AND THE ORDER IS THE GUARD — measured, after this script told a lie.
-  //
-  // `read.internal.stores` IGNORES the `x-forge-tenant` header and resolves the tenant from the CREDENTIAL.
-  // Measured on this box: T1's token asking for `forgecafe` answered HTTP 200 with T1's OWN stores. So the
-  // read cannot confirm which tenant we are in — pointing this script at T2 with T1's token read T1's shelf,
-  // failed to find T2's bootstrap store in it, and blamed the bootstrap. The message was wrong and would have
-  // sent somebody to re-provision a tenant that was perfectly fine.
-  //
-  // The WRITE face does honour the header (403 `forbidden` on a mismatch), so doing a write FIRST turns the
-  // ambiguity into a refusal that names the real cause. `tenant.settings.update` is the right one: idempotent,
-  // cheap, and something this script has to do anyway.
-  await settings();
+  await assertCredentialTenant();
   await stores();
+  await settings();
   await verifyAdminHost();
   log('done.');
 }

@@ -82,26 +82,74 @@ bash bin/build-local.sh ~/path/to/forge     # PRE-RELEASE ONLY — builds the fo
 bash bin/pack-apps.sh   ~/path/to/forge     # apps/ → extensions/ (the form the kernel loads)
 bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's own front, built not pinned
 
-source ./env-source.sh
-source bin/images-from-lock.sh
-docker compose run --rm kernel node dist/migrate.js        # forward-only, idempotent, transactional
-docker compose run --rm kernel node dist/provision-ref.js  # ONE-SHOT: tenant + first store + first operator
-#   → capture BOTH tokens it prints into your secret store, as
-#     `forge-admin-service-token` and `forge-operator-access-key`. Shown once.
-source ./env-source.sh                                     # so the admin picks the service token up
-docker compose up -d
+bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
+
+### What `bin/box-up.sh` does, in order
+
+It is one command to TYPE, not one step. Seven, and each needs what the one before it produced — this is the
+map of how the box is born:
+
+| # | step | why it is where it is |
+|---|---|---|
+| 1 | `postgres` + `redis` | somewhere to put a schema before migrating one |
+| 2 | `migrate` | system schema first; "tenants: none registered yet" is correct here, not an error |
+| 3 | **`provision-ref` × tenant** | tenant + its FIRST store + FIRST operator + login driver + the admin-host claim |
+| 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
+| 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
+| 6 | **`seed-box.mjs` × tenant** | the remaining stores, and the settings every screen inherits |
+| 7 | **`seed-demo` × tenant** | the catalogue — the one-shot that fills |
+
+**Steps 3, 6 and 7 each run twice, once per tenant, and that is the shape rather than a workaround.**
+`provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — one tenant, one store, from the
+environment — and a credential belongs to one tenant, which the write face enforces with a `403`. Widening
+either entrypoint to take N tenants would move a boundary the kernel exists to hold into a script.
+
+**No token is ever printed.** Steps 3 and 4 each emit a secret exactly once; the script captures them straight
+into `.secrets` through a temp file it shreds, and reports only `filed`.
+
+**It converges.** Re-running is the supported way to repair a half-built box: migrate is a no-op,
+`provision-ref` returns the same store id, the box seeder creates nothing, `seed-demo` is idempotent.
+
+### The bench's addresses
+
+| face | address | serves |
+|---|---|---|
+| shop (all storefronts + checkout) | `http://localhost:8200` | every store, at `/s/<store id>` until a host claims one |
+| **admin · T1** | `http://localhost:8201` | tenant `forgeco` |
+| **admin · T2** | `http://localhost:8202` | tenant `forgecafe` |
+| totem (the counter) | `http://localhost:8203` | store `balcao` |
+| https (edge) | `8243` | |
+
+### ★ Two tenants, four stores, ONE admin container
+
+| tenant | stores | theme |
+|---|---|---|
+| `forgeco` | `forge` (bootstrap) · `outlet` | — · `outlet` |
+| `forgecafe` | `cafe` (bootstrap) · `balcao` | `coffee-store` · — |
+
+**A second tenant does NOT need a second admin.** With `FORGE_ADMIN_TENANT` **empty** the admin runs in HOST
+mode: it asks the kernel which tenant the request's `Host` belongs to (`read.admin.by_host`) and mints a
+1-hour login-driver for it from `FORGE_ADMIN_PLATFORM_TOKEN`. That lookup keys on **`host:port` first** and
+the bare host second — which is why the two admins above differ only by port, and why `:81` and `:83` in
+`caddy/Caddyfile.local` both proxy the same container. The map is DATA, claimed at bootstrap:
+
+```bash
+curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8201'   # {"tenant_id":"forgeco"}
+curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8202'   # {"tenant_id":"forgecafe"}
+```
+
+⚠️ **Each tenant has its OWN seed credential.** `.secrets` carries `forge-seed-token` (forgeco) and
+`forge-seed-token-forgecafe`; `env-source.sh` exports both. A token pointed at the other tenant is refused —
+and `bin/seed-box.mjs` asks `whoami` first so the refusal names the real cause instead of guessing.
 
 Then:
 
 ```bash
-curl -fsS http://localhost:8080/health
+curl -fsS http://localhost:8200/health
 bash bin/verify-composition.sh        # does the running image compose the apps this lock pins?
+bash bin/test.sh                      # this repo's guards
 ```
-
-The shop is `http://localhost:8080` and the admin is `http://localhost:8081`
-(**its own port, not a path** — the admin is a Next app with no `basePath`, so `/admin*` 307s to a rooted
-`/login` that the edge hands to the vitrine as a 404. Measured; `caddy/Caddyfile.local` carries it).
 
 A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
@@ -125,7 +173,7 @@ bootstrap. No admin, no browser, no second secret to mint.
 
 ```bash
 source ./env-source.sh                       # exports FORGE_SEED_TOKEN from your secret store
-node bin/seed.mjs --api http://localhost:8080
+node bin/seed.mjs --api http://localhost:8200
 ```
 
 That creates the stores, declares the `cf.*` vocabulary and creates the six coffees **with their photos**,
@@ -201,7 +249,7 @@ products, 44 427 SKUs and 18 582 photographs. It arrives by **path**, and the pa
 ```bash
 source ./env-source.sh
 FORGE_SEED_DATASET_DIR=<path to the forge monorepo>/instances/demo/dataset \
-  node bin/seed.mjs --api http://localhost:8080
+  node bin/seed.mjs --api http://localhost:8200
 ```
 
 Unset, the variable means what it means everywhere else in Forge: **no example data, and that is a legitimate
@@ -254,7 +302,7 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
   keeps its cached render until the TTL. Ask for it by hand:
 
   ```bash
-  curl -X POST "http://localhost:8080/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
+  curl -X POST "http://localhost:8200/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
        -H "x-revalidate-secret: $FORGE_REVALIDATE_SECRET"
   ```
 
@@ -406,7 +454,7 @@ Open **http://localhost:8102** (the bench) — you should land on "Toque para co
    · **Cartão**: "pague na maquininha", and the machine has already said yes by the time the screen draws.
 6. **The confirmation** shows the order number GIANT — that is `order.number`, the kernel's per-store
    sequence, the number the barista will call — plus the name, the summary and "retire no balcão".
-7. **Check the order in the admin** (`:8101`), in the counter's store: the buyer's name is the one that was
+7. **Check the order in the admin** (`:8202` — the counter belongs to tenant `forgecafe`), in the counter's store: the buyer's name is the one that was
    typed, and the items are the ones that were chosen.
 8. **Now walk away and count.** After `FORGE_TOTEM_IDLE_SECONDS` the screen returns to "Toque para começar"
    **and the bag is empty** — the cart pointer is destroyed on the server, so the next customer starts clean.
