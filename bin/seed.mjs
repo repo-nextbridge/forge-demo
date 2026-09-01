@@ -26,6 +26,11 @@ import { fileURLToPath } from 'node:url';
 // It lives beside the data it drives rather than in here, so two slices can fill two stores without
 // meeting in one file.
 import { seedCoffee } from '../seed/coffee.mjs';
+// The COMMERCE pass (pre-seed) — what happens AFTER there is a catalogue: the notification channels silenced
+// while the box fills, the reviews through whichever door each shop deserves, and one live order per selling
+// store. It creates no logistics and installs no app: those belong to the filler, and this consumes them.
+// It is TWO calls in TWO phases, and the split is not tidiness — see `silenceBuyerChannels`.
+import { seedCommerce, silenceBuyerChannels } from '../seed/commerce.mjs';
 // The FORGE store (S1) — the sports shop, filled from the platform's example dataset by PATH rather than
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
@@ -983,6 +988,73 @@ async function placeholders() {
 // ⚠️⚠️ ORDER CONTRACT, and it binds the box's script: THIS RUNS BEFORE THE ONE-SHOT. `populate` PUBLISHES the
 // curated handles it does not define — so they have to exist first. Inverted, the publication fails loudly
 // naming the handle and the shop (which is the right behaviour, and still a morning lost to wondering why).
+// ── THE COMMERCE PASS'S ADAPTERS ─────────────────────────────────────────────────────────────────────────
+//
+// ⚠️ IT NEEDS A COMMAND WITH A **STORE** AND A **FACE**, which the helper above does not have and should not
+// grow: `command()` posts to the tenant face with no store header, which is right for the catalogue. A cart
+// is per store and lives on its own faces (`/v1/cart`, `/v1/checkout`, `/v1/payment`), so the adapters are
+// written here rather than widening a helper eighty other lines depend on.
+const commerceCommand = async (name, input, { store } = {}) => {
+  const face = name.startsWith('cart.')
+    ? '/cart'
+    : name.startsWith('checkout.')
+      ? '/checkout'
+      : name.startsWith('payment.')
+        ? '/payment'
+        : '';
+  const res = await paced(
+    `${api}/v1${face}/commands/${name}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        'x-forge-tenant': tenant,
+        ...(store ? { 'x-forge-store': store } : {}),
+      },
+      body: JSON.stringify(input),
+    },
+    name,
+  );
+  const text = await res.text();
+  if (!res.ok) fail(`${name} → HTTP ${res.status}\n  ${text.slice(0, 900)}`);
+  return text ? JSON.parse(text) : {};
+};
+
+// One read for both faces: the commerce module writes `internal/…` when it means the credentialed face and a
+// bare capability when it means the public one, so the prefix it wrote IS the routing.
+const commerceRead = async (name, params = {}) =>
+  name.startsWith('internal/')
+    ? read(name.slice('internal/'.length), params)
+    : publicRead(name, params);
+
+/** A raw POST, for the two app faces: the tenant action face and the ANONYMOUS public data face — which
+ *  carries no credential and therefore needs the store in a header, having nothing else to resolve one from. */
+const commercePost = async (path, body, { store } = {}) => {
+  const anonymous = path.startsWith('/v1/ext-public/');
+  const res = await paced(
+    `${api}${path}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forge-tenant': tenant,
+        ...(store ? { 'x-forge-store': store } : {}),
+        ...(anonymous ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(body),
+    },
+    path,
+  );
+  if (!res.ok) return null;
+  return res.json().catch(() => ({}));
+};
+
+/** ⛔ The stores this run is FOR — the union already derives them from what this script DECLARES, filtered by
+ *  tenant, which is exactly the independence the commerce guard needs. Reusing it rather than recomputing:
+ *  two answers to "which shops are mine" is how one of them goes stale. */
+const commerceExpect = () => storesOfThisTenant.map((s) => s.handle);
+
 log(`against ${api} as tenant ${tenant} — phase ${phase}`);
 await assertCredentialTenant();
 const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
@@ -1089,6 +1161,18 @@ if (false) {
 // The FORGE store's WINDOW, after its catalogue. `uploadAsset` and not `upload`: a banner tile references the
 // asset LIBRARY by id, so those seven files ARE curated inventory an operator sees in the admin — the opposite
 // of the 18582 catalogue photographs above, which carry no asset row on purpose.
+// ⛔ THE BUYER'S MAIL GOES QUIET HERE, AND NOT IN THE WINDOW — the one-shots between the two phases are
+// what write the demo's ORDERS (`seed-history` writes dozens, dated), and the decision to send is taken at
+// EMIT: measured, an order placed while silenced produced no notification even after the channel was
+// re-armed and the dispatcher had seventy further seconds. Silencing in the window would silence nothing.
+await silenceBuyerChannels({
+  expect: commerceExpect(),
+  command: commerceCommand,
+  read: commerceRead,
+  log,
+  fail,
+});
+
 log('curated — done. Next: the one-shot (`dist/seed-demo.js`), then `--phase window`.');
 } // ── end of the curated phase ───────────────────────────────────────────────────────────────────────────────
 
@@ -1113,6 +1197,20 @@ if (here('forge')) {
 } else {
   log('vitrine — the sports store is not on this tenant, skipped');
 }
+// ── THE COMMERCE PASS — reviews, one live order per selling store, and the buyer's mail back on ──────────
+//
+// LAST, and after the one-shot: a cart can only hold what its store publishes, `place_order` refuses without
+// a shipping method and an address, and a method needs a payment app installed. All three arrive with the
+// massive half.
+await seedCommerce({
+  expect: commerceExpect(),
+  command: commerceCommand,
+  read: commerceRead,
+  post: commercePost,
+  log,
+  fail,
+});
+
 } // ── end of the window phase ────────────────────────────────────────────────────────────────────────────────
 log('done. Re-running this is a no-op.');
 log(
