@@ -31,8 +31,15 @@ import { seedCoffee } from '../seed/coffee.mjs';
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
 import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
 import { planRepoint, reuseKey, sha256 } from '../seed/media.mjs';
+// WHICH SKUs STILL NEED STOCKING — a function, and it takes BOTH reads on purpose. See the file: the version
+// that trusted `stock_levels` alone could not stock a product that had never been stocked, in silence.
+import { planStock } from '../seed/stock.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
+// The COUNTER (T2·S2) — the store the totem serves. A module of its own beside its data, like the two above,
+// and it runs AFTER seedCoffee for a reason the kernel enforces: six of the twenty-one things it puts on sale
+// are the coffee shop's OWN products, published into a second store rather than created a second time.
+import { seedTotem } from '../seed/totem.mjs';
 // The FORGE store's SHOP WINDOW (S4) — banners, shelves, pages and the merchandising promotions. A module of
 // its own beside the catalogue's, and it runs AFTER it for a reason the commands enforce: a shelf sourced from
 // a category and a promotion targeting a handle both resolve against products that have to be published first.
@@ -714,36 +721,57 @@ async function stock() {
     }
   }
 
-  // ⚠️ `stock_levels` AND NOT `products_admin`, and this cost a second wrong answer of the same shape as the
-  // two above. `products_admin` publishes a sku's price, code, options and media and NOT its stock — measured,
-  // its sku keys are [amount, code, compare_at_amount, currency, ean, id, is_default, media, metadata, name,
-  // option_values, ref, status]. Reading `sku.on_hand` off it gave `undefined` for every sku, so `have` was
-  // always 0, so every run re-set all 25. It was idempotent in EFFECT (an absolute `on_hand` twice is the same
-  // number) and not in ACT — 25 commands and 25 audit rows per run, for nothing.
+  // ⚠️⚠️ THIS STEP USED TO WALK `stock_levels` ALONE, AND IT COULD NOT STOCK A NEW PRODUCT AT ALL.
   //
-  // ★ Third time tonight that a field name I did not measure was a defect. The rule this file now keeps: ask
-  // the read whose NAME is the question, and look at its keys before using one.
+  // That read's SQL ends in `having present_count > 0` (packages/core/src/read/
+  // inventory-admin-capabilities.ts) and its own summary says it in words: it "lists the products this
+  // warehouse stocks something of". A SKU that has never been stocked has no `stock` row, so it is not in
+  // the answer — and a loop over the answer therefore found NOTHING to do for the six coffees, logged
+  // "stock — every sku already stocked", and exited 0 over a shop nobody could buy from.
   //
-  // ⚠️ AND IT PAGES. `stock_levels` caps `limit` at 200 and pages BY PRODUCT; asking for one page was the
-  // same coincidence-of-size defect `readAll` above documents. It also truncates `skus` past 50 per product
-  // (`skus_truncated: true`) — harmless for these two stores, whose products have 1–5 SKUs, and named here
-  // so the next person to reuse this loop on a wide catalogue knows it is there.
-  let moved = 0;
-  for (const product of await readAll('stock_levels', { limit: '200' })) {
-    for (const sku of product.skus ?? []) {
-      const want = bySku.get(sku.sku_code);
-      if (want === undefined) continue;
-      if ((sku.on_hand ?? 0) >= want) continue;
-      await command('inventory.adjust', {
-        sku_id: sku.sku_id,
-        on_hand: want,
-        reason: 'correction',
-        note: 'demo birth data',
-      });
-      moved += 1;
-    }
+  // MEASURED on the totem bench 2026-09-01: `stock_levels` answered `total: 8` (the Outlet's eight, which
+  // seed/outlet.mjs stocks by a different path — with the ids `catalog.product.create` returns — and which
+  // is why it never met this), the six coffees were absent, and `cart.add_line` on the Alvorada answered
+  // `conflict · insufficient_stock · available: 0`.
+  //
+  // ⚠️ AND IT DID NOT REPRODUCE ON A BENCH THAT HAD BEEN RUNNING FOR A WHILE — a box carrying stock from
+  // earlier rounds has the rows, so the loop tops them up and looks right. Day one of a real customer is
+  // exactly the case it fails, which is what makes it worth fixing here rather than working around it.
+  //
+  // ★ THE SHAPE OF THE FIX IS THE LESSON THIS FILE ALREADY WROTE TWICE — ask the read whose NAME is the
+  // question. "Which SKUs exist?" is `products_admin`; "what are the stocked ones at?" is `stock_levels`;
+  // neither answers the other. `planStock` requires BOTH, so the blind version is not writable through it.
+  //
+  // ⚠️ `stock_levels` PAGES (limit caps at 200, by PRODUCT) and truncates `skus` past 50 per product
+  // (`skus_truncated: true`) — harmless for products with 1–6 SKUs, and named so the next person to grow
+  // one knows it is there.
+  const { adjustments, missing } = planStock(
+    bySku,
+    await readAll('products_admin'),
+    await readAll('stock_levels', { limit: '200' }),
+  );
+  if (missing.length > 0) {
+    // A declared sku code that no product answers to is a catalogue bug, and skipping it in silence is how
+    // a product ends up published, priced and permanently unbuyable.
+    fail(
+      `stock — seed/catalog.json declares ${missing.length} sku code(s) the catalogue has no sku for: ` +
+        `${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}.\n` +
+        '  Either the product was never created, or its option values were renamed after it was.',
+    );
   }
-  log(moved === 0 ? 'stock — every sku already stocked' : `stock — ${moved} sku(s) set`);
+  for (const adjustment of adjustments) {
+    await command('inventory.adjust', {
+      sku_id: adjustment.sku_id,
+      on_hand: adjustment.on_hand,
+      reason: 'correction',
+      note: 'demo birth data',
+    });
+  }
+  log(
+    adjustments.length === 0
+      ? `stock — every one of the ${bySku.size} sku(s) already stocked`
+      : `stock — ${adjustments.length} of ${bySku.size} sku(s) set`,
+  );
 }
 
 const slug = (text) =>
@@ -767,6 +795,24 @@ await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail }
 // The COFFEE store's own half: the subscription mark on the SKUs the merchant curated, and the promotion
 // that prices it. Same shape as the Outlet's — one store, one file, the seed keeps deciding the order.
 await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail });
+// The COUNTER's own half: its store, the four bands of the menu, the fifteen products only it sells, the
+// publication of the six coffees it re-sells, the pickup point every order needs, and its two promotions.
+// `uploadAsset` and not the bare `upload`: fifteen photographs an operator curates ARE Asset Library rows —
+// the opposite of the catalogue photographs below, which carry no asset row on purpose.
+await seedTotem({
+  api,
+  token,
+  tenant,
+  command,
+  read,
+  readAll,
+  publicRead,
+  publicReadAll,
+  rows,
+  log,
+  fail,
+  uploadAsset: (file) => upload(file, { library: true }),
+});
 // The FORGE store — the sports shop. Last, and it is the only one whose content does not live in this repo:
 // it comes from the dataset directory FORGE_SEED_DATASET_DIR points at. Unset → one line and a no-op.
 // Its uploads are NOT library assets: 2790 products' photographs are catalogue, not curated inventory.

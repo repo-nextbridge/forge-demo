@@ -25,7 +25,7 @@ apps/                  the apps THIS box wrote. `demo-gate` today; composed into
 extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
                        composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
-seed/                  the birth data: the stores, the coffee catalogue, the photos.
+seed/                  the birth data: the stores, the coffee and counter catalogues, the photos.
 bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
 ```
@@ -136,6 +136,22 @@ two apps that store composes with, uploads its photographs and campaign art, pub
 their prices and their stock, pins the two collections its shelves are sourced from, and places the four
 Compose blocks that are its home page. Not one line of front-end code — a theme, data, and a composition.
 
+The same run also stands the **Balcão** up (`seed/totem.mjs`, its data in `seed/totem.json`) — the counter
+store the totem serves, handle `balcao`, on the same tenant and with no theme (the totem is an app of its
+own and resolves none). It creates the four bands of the menu as **kernel categories** (`cafes` ·
+`especiais` · `comidas` · `pra_levar`), the fifteen drinks and foods only the counter sells, with their
+photographs and with their size/milk/flavour axes as ordinary variants, a pickup point and the pickup
+shipping method every order needs, the `PRIMEIROCAFE` coupon scoped to that store, and the "Combo da manhã"
+promotion. ⚠️ **It creates no coffee.** The six the counter sells "pra levar" are the coffee shop's OWN
+products, PUBLISHED into a second store — so the price the totem prints is the same SKU the e-commerce
+sells, live from the kernel. That is the multistore assortment, and it is the one thing a second catalogue
+could not fake. It runs after the coffee step and says so if they are not there.
+
+⚠️ **The pickup point and its shipping method are TENANT-WIDE, not per store.** Neither
+`shipping.method.create` nor `pickup_location.create` takes a `store_id`, so "Retirar no balcão" appears in
+the other stores' checkouts too. On this box that is additive — the tenant had no shipping configuration at
+all before it — and it is the same shop; it is written here so nobody discovers it from a checkout screen.
+
 Installing the app is one call on the same credential:
 
 ```bash
@@ -162,7 +178,7 @@ reachable on the same door. Mint one with only `tenant.store.write`, `catalog.pr
 `catalog.sku.write`, `custom_fields.write` and `media.write`, and keep the bootstrap operator credential for
 the things that really need an operator.
 
-⚠️ **`bin/seed.mjs` holds no catalogue of its own beyond these two stores.** The three supporting products
+⚠️ **`bin/seed.mjs` holds no catalogue of its own beyond these three stores.** The three supporting products
 the catalogue document promises for bought-together are **not** invented here — they are named as a gap in
 `seed/catalog.json`. The `forge` store is filled from the platform's example dataset instead of from a
 catalogue written here; the section below says where that comes from and why.
