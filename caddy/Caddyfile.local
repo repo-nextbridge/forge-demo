@@ -127,6 +127,10 @@
 
 	# ── everything else is the reference vitrine ───────────────────────────────────────────────────────────
 	handle {
+		# ★ WHO SERVED. Set by the ROUTE, so a reader can prove which front the edge chose instead of inferring
+		# it from a theme attribute — which proves the THEME and misled two people into believing the café's
+		# fork was serving a page the vanilla front was rendering. See caddy/extra/coffee.local.caddy.
+		header X-Forge-Served-By "storefront"
 		reverse_proxy storefront:3000
 	}
 }
