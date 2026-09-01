@@ -254,10 +254,18 @@ export function storesWithReviews(stores) {
 // Everything above is a pure decision; this is the part that talks. It receives the port `bin/seed.mjs`
 // already built (same shape as `seed/totem.mjs` and `seed/coffee.mjs`) and knows nothing about transport.
 
-/** The apps this slice needs INSTALLED to do its work. It installs none of them — that is the filler's act,
- * one owner per gesture — so this list exists to FAIL LOUDLY and early rather than three steps later, when a
- * missing app shows up as "no payment provider for method" on the first order. */
-const REQUIRED_APPS = ['payment-reference', 'reviews'];
+/**
+ * The apps this slice needs INSTALLED to do its work. It installs none of them — that is the filler's act,
+ * one owner per gesture — so this list exists to fail early and by name rather than three steps later.
+ *
+ * ⚠️ IT NAMES NO PAYMENT APP, AND THE FIRST DRAFT DID (`payment-reference`). That was the same mistake this
+ * slice already killed twice: naming a thing instead of asking for the CAPABILITY. Which payment app a
+ * tenant runs is the tenant's business — the isolated bench has `payment-pos` and no `payment-reference`,
+ * and a check by name would have refused a box that sells perfectly well. Payment is therefore asked per
+ * store, where it is used, through `read.payment_methods`, which answers "can this shop be paid?" instead
+ * of "is this particular app here?".
+ */
+const REQUIRED_APPS = ['reviews'];
 
 /** An app action on the tenant face. ⚠️ The tenant is the CREDENTIAL's — `tenant_id` in the body is ignored
  * by construction (action-adapter.ts), which is the write side of the same rule `assertCredentialTenant`
@@ -286,8 +294,14 @@ export async function seedCommerce({ stores, command, read, log, fail, post }) {
   );
   log(`commerce — credential proven in the tenant holding ${visible.map((s) => s.handle).join(', ')}`);
 
-  const installed = (await read('internal/extensions')) ?? [];
-  const absent = REQUIRED_APPS.filter((id) => !installed.some((e) => e.extension_id === id));
+  // ⚠️ `installed_extensions`, NOT `extensions` — and this file fell into its own finding. `read.extensions`
+  // takes a STORE and lists apps with a block PLACEMENT there; `read.installed_extensions` is the tenant's
+  // installations, which is the question being asked. The first draft used the former, got a 400 for a
+  // missing `store`, and would otherwise have reported a perfectly installed app as absent.
+  const installed = (await read('internal/installed_extensions')) ?? [];
+  const absent = REQUIRED_APPS.filter(
+    (id) => !installed.some((e) => e.extension_id === id && e.status === 'active'),
+  );
   if (absent.length)
     fail(
       `commerce needs ${absent.join(', ')} installed and this slice does not install apps — the filler does. ` +
@@ -308,7 +322,7 @@ export async function seedCommerce({ stores, command, read, log, fail, post }) {
   log(`commerce — ${SEED_MANAGED_TYPES.length} message types silenced in ${stores.length} store(s)`);
 
   try {
-    await seedReviews({ stores, command, read, log, action: appAction(post) });
+    await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
   } finally {
     const on = channelPlan(stores, { enabled: true });
@@ -331,7 +345,7 @@ export async function seedCommerce({ stores, command, read, log, fail, post }) {
  * dimension — and it is why the restore is in a `finally`: a seed that dies in the middle must not leave a
  * bench with the open form silently switched on.
  */
-async function seedReviews({ stores, read, log, action }) {
+async function seedReviews({ stores, command, read, log, post, action }) {
   const byDoor = new Map();
   for (const store of storesWithReviews(stores)) {
     const door = reviewDoorFor(store.handle);
@@ -362,7 +376,14 @@ async function seedReviews({ stores, read, log, action }) {
   // look would find a store accepting anonymous reviews and no note anywhere saying who turned it on.
   if (byDoor.has('open_form')) {
     const shops = byDoor.get('open_form');
-    const before = (await read('internal/extension_config', { extension_id: 'reviews' })) ?? {};
+    // ⚠️ THE READ RETURNS MORE THAN THE COMMAND ACCEPTS. `read.extension_config` answers the stored ROW —
+    // `{id, created_at, …}` alongside the declared keys — and handing that whole object back to
+    // `extension.config.set` answers HTTP 500 `internal`, not a validation error naming the offending field.
+    // So the row metadata is stripped, by derivation rather than by a list of key names kept here.
+    const stored = (await read('internal/extension_config', { extension: 'reviews' })) ?? {};
+    const before = Object.fromEntries(
+      Object.entries(stored).filter(([k]) => !ROW_METADATA_KEYS.includes(k)),
+    );
     const wasOpen = before.open_reviews === true;
     try {
       if (!wasOpen)
@@ -371,6 +392,7 @@ async function seedReviews({ stores, read, log, action }) {
           values: { ...before, open_reviews: true },
         });
       for (const store of shops) await openReviewsFor({ store, read, log, post });
+      await moderateSeededReviews({ read, log, action });
     } finally {
       if (!wasOpen) {
         await command('extension.config.set', {
@@ -390,15 +412,139 @@ async function seedReviews({ stores, read, log, action }) {
  * which is the only caller that can date an order; this is the proof that the box still takes an order TODAY,
  * after everything above it ran. Two populations would be two sources for one fact and a dashboard that
  * disagrees with itself.
+ *
+ * ⚠️ EXACTLY ONE `cart.set_buyer` PER STORE, and that is a budget rather than tidiness: `set_buyer` is an
+ * ORACLE-class face capped at ten a minute per store+IP, and a seed is one address. Four stores is four
+ * calls; a retry loop here would spend somebody's ceiling.
  */
-async function placeLiveOrders({ stores, log }) {
-  const shops = sellingStores(stores).map((s) => s.handle);
-  throw new Error(
-    `commerce — the live order for ${shops.join(', ')} is not wired yet. It needs the catalogue the filler ` +
-      'slice seeds (a cart can only hold what its store publishes), and the box is still empty: ' +
-      'read.products answered 0 items when this was written.',
-  );
+/** The one buyer the live proof order is placed as, per store — STABLE, so a second run recognises it.
+ *  `hi+<tag>@forgecommerce.pro` is the wave's address shape: a real mailbox, so nothing bounces. */
+function liveProofBuyer(store) {
+  return `hi+${store.handle}-liveproof@forgecommerce.pro`;
 }
+
+async function placeLiveOrders({ stores, command, read, log }) {
+  const placed = [];
+  for (const store of sellingStores(stores)) {
+    const order = await placeOneLiveOrder({ store, command, read, log });
+    if (order) placed.push(`${store.handle} #${order.number}`);
+  }
+  log(
+    placed.length
+      ? `commerce — the box still sells today: ${placed.join(' · ')}`
+      : 'commerce — no store could take a live order (see the lines above for which piece was missing)',
+  );
+  return placed;
+}
+
+/** The whole journey for one store, through the same door a shopper uses. Returns the confirmation, or null
+ *  with a reason logged — a store that cannot sell is a finding, not an exception to throw the seed away on. */
+async function placeOneLiveOrder({ store, command, read, log }) {
+  const skip = (why) => {
+    log(`commerce — ${store.handle} took no live order: ${why}`);
+    return null;
+  };
+
+  // ⭐ SECOND RUN CONVERGES, AND THE FIRST DRAFT DID NOT. Every run minted a new cart, so a re-run placed a
+  // SECOND live order in every store — measured: cafe #1 then #2. A seed that grows the bench each time it
+  // runs is a seed nobody can run twice, which is one of this wave's acceptance criteria. The proof order is
+  // therefore keyed by a STABLE synthetic buyer per store, and a store that already has one is left alone.
+  const already = ((await read('internal/orders_admin', { limit: 100 }))?.items ?? []).find(
+    (o) => o.buyer?.email === liveProofBuyer(store) || o.buyer?.email_masked === liveProofBuyer(store),
+  );
+  if (already) {
+    log(`commerce — ${store.handle} already carries its live proof order #${already.number}; leaving it`);
+    return already;
+  }
+
+  const catalogue = (await read('products', { store: store.id, limit: 5 }))?.items ?? [];
+  const sku = catalogue.flatMap((p) => p.skus.filter((k) => k.status === 'active'))[0];
+  if (!sku) return skip('it publishes nothing sellable');
+
+  const methods = await read('payment_methods', { store: store.id });
+  const method = methods?.methods?.[0];
+  const app = methods?.providers?.[0]?.app_id;
+  if (!method || !app) return skip('no payment app is installed for this tenant');
+
+  const { cart_id } = await command('cart.create', {}, { store: store.id });
+  await command('cart.add_line', { cart_id, sku_id: sku.id, qty: 1 }, { store: store.id });
+
+  // ⚠️ THE BUYER'S ADDRESS IS REQUIRED EVEN FOR PICKUP — measured in the totem wave: a cart with the pickup
+  // method, a point and a buyer still answered `missing: [shipping_address]`. So the address is always sent,
+  // and it is the PICKUP POINT'S OWN, read back from the kernel, never invented.
+  await command(
+    'cart.set_buyer',
+    { cart_id, email: liveProofBuyer(store), name: 'PRE SEED', guest: true },
+    { store: store.id },
+  );
+
+  // The quote needs a destination before it will say anything at all (`reason: 'no_destination'`), and for a
+  // pickup-only store the value is a key rather than a claim — see the totem slice's measurement.
+  const quote = await read('shipping_options', {
+    store: store.id,
+    cart_id,
+    postal_code: QUOTE_SEED_POSTAL_CODE,
+  });
+  const option = quote?.options?.[0];
+  if (!option) return skip(`the store quotes no shipping (${quote?.reason ?? 'no options'})`);
+  const point = option.pickup_locations?.[0];
+
+  const address = point
+    ? addressOfPickupPoint(point)
+    : skip('it delivers, and this proof has no address to deliver to') ?? null;
+  if (!address) return null;
+
+  await command(
+    'cart.set_delivery',
+    { cart_id, shipping_method_id: option.method_id, shipping_address: address },
+    { store: store.id },
+  );
+  if (point)
+    await command(
+      'cart.set_pickup_location',
+      { cart_id, pickup_location_id: point.id },
+      { store: store.id },
+    );
+
+  await command(
+    'cart.set_payment_method',
+    { cart_id, method, payment_app: app },
+    { store: store.id },
+  );
+  const { order_id } = await command('checkout.place_order', { cart_id }, { store: store.id });
+  await command('payment.initiate', { order_id, method }, { store: store.id, face: 'payment' });
+
+  const confirmation = await read('order_confirmation', { store: store.id, order_id });
+  log(
+    `commerce — ${store.handle} #${confirmation?.number} ${confirmation?.status} ` +
+      `(${method} via ${app}, ${point ? 'pickup' : 'delivery'})`,
+  );
+  return confirmation;
+}
+
+/**
+ * A pickup point's address, in the shape `cart.set_delivery` takes.
+ *
+ * ⚠️ THE READ SAYS `uf`; THE WRITE SAYS `region`. Same fact, two names, and mapping one to the other is the
+ * likeliest place for this to be "cleaned up" into a silent failure.
+ */
+function addressOfPickupPoint(point) {
+  const m = /^(.*),\s*([^,]+)$/.exec(point.addr_line1.trim());
+  return {
+    line1: (m?.[1] ?? point.addr_line1).trim(),
+    number: (m?.[2] ?? '').trim(),
+    ...(point.addr_line2 ? { line2: point.addr_line2 } : {}),
+    neighborhood: point.district ?? '',
+    city: point.city,
+    region: point.uf,
+    postal_code: point.postal_code,
+    country_code: 'BR',
+  };
+}
+
+/** A destination only opens the quote; for a pickup-only store its value reaches nothing. Measured in the
+ *  totem wave with three deliberately distant CEPs: one option, the same one, every time. */
+const QUOTE_SEED_POSTAL_CODE = '01310-100';
 
 /**
  * The anonymous PDP form, for one store's products.
@@ -419,27 +565,104 @@ async function openReviewsFor({ store, read, log, post }) {
     return;
   }
 
+  // ⭐ SECOND RUN WRITES NOTHING, AND THE FIRST DRAFT WROTE SIX MORE EVERY TIME. The app's own uniqueness
+  // (`publicCreate.uniqueBy: ['order_id','product_id']`) cannot bite here: an open review has NO order, so
+  // every run looked new. Measured: two runs, twelve rows.
+  //
+  // ⚠️ AND THE CHECK CANNOT USE THE PUBLIC LIST. With `moderation` on — the tenant's default — a seeded row
+  // is born `pending`, and the anonymous face only serves APPROVED rows: the public read answered 0 for a
+  // product that already carried six. So the question is asked of the app's own records, on the operator
+  // side, which is where a pending row actually is.
+  const existing = ((await read('internal/extension_records', {
+    extension: 'reviews',
+    model: 'review',
+    limit: 100,
+  }))?.items ?? []).filter((r) => SEEDED_AUTHORS.has(r.author));
+  const alreadyReviewed = new Set(existing.map((r) => r.product_id));
+
   let written = 0;
   for (const [i, product] of catalogue.entries()) {
+    if (alreadyReviewed.has(product.product_id)) continue;
     const voice = OPEN_REVIEW_VOICES[i % OPEN_REVIEW_VOICES.length];
-    const created = await post(`/v1/ext-public/reviews/review`, {
-      product_id: product.product_id,
-      rating: voice.rating,
-      body: voice.body,
-      author: voice.author,
-      // ⚠️ NO `verified`, NO `order_id`, NO `status`. All three are the face's to decide; sending them is
-      // either refused by name or overwritten, and pretending otherwise is how a seed grows a belief.
-    });
+    const created = await post(
+      '/v1/ext-public/reviews/review',
+      {
+        product_id: product.product_id,
+        rating: voice.rating,
+        body: voice.body,
+        author: voice.author,
+        // ⚠️ NO `verified`, NO `order_id`, NO `status`. All three are the face's to decide; sending them is
+        // either refused by name or overwritten, and pretending otherwise is how a seed grows a belief.
+      },
+      { store: store.id },
+    );
     if (created) written += 1;
   }
-  log(`reviews — ${written} open review(s) written for ${store.handle}, unbadged by construction`);
+  log(
+    written === 0
+      ? `reviews — ${store.handle} already carries its seeded reviews; nothing written`
+      : `reviews — ${written} open review(s) written for ${store.handle}, unbadged by construction`,
+  );
 }
+
+/**
+ * ⭐ THE MODERATION QUEUE, EXERCISED — and this is not decoration either.
+ *
+ * With `moderation` on (the tenant's default) every seeded row is born `pending`, which means the PDP shows
+ * NONE of them: the anonymous face serves approved rows only. A bench whose reviews are all pending looks
+ * like a bench with no reviews. So the seed moderates what it wrote — and, because the wave asked for the
+ * queue to be exercised rather than emptied, it leaves the three states a real queue holds: approved rows,
+ * one rejected, and one rejected-then-restored.
+ *
+ * ⚠️ IT ONLY EVER TOUCHES ROWS IT WROTE ITSELF (`SEEDED_AUTHORS`). A seed that approved whatever it found
+ * would publish a human's pending review on their behalf.
+ */
+async function moderateSeededReviews({ read, log, action }) {
+  const rows = ((await read('internal/extension_records', {
+    extension: 'reviews',
+    model: 'review',
+    limit: 100,
+  }))?.items ?? []).filter((r) => SEEDED_AUTHORS.has(r.author));
+  const pending = rows.filter((r) => r.status === 'pending');
+  if (pending.length === 0) {
+    log(`reviews — the queue holds no seeded row to moderate (${rows.length} already decided)`);
+    return;
+  }
+
+  // The majority is published; one stays refused; and one is refused, put back, and then decided.
+  //
+  // ⚠️ THE LAST STEP IS WHY THIS CONVERGES, AND THE FIRST DRAFT DID NOT. `review_restore` returns a row to
+  // `pending` — which is exactly right, it is "put it back in the queue" — so a run that ended there left a
+  // pending row behind, and the NEXT run found it and rejected it. Measured: each run flipped one more row,
+  // 1 rejected then 2. Deciding it closes the loop: after one pass no seeded row is pending, and the run
+  // after that has nothing to do. The three actions are still all exercised, and `moderated_at` keeps the
+  // trace.
+  const [toReject, toRestore, ...toApprove] = pending;
+  for (const row of toApprove) await action('reviews', 'review_approve', { id: row.id });
+  if (toReject) await action('reviews', 'review_reject', { id: toReject.id });
+  if (toRestore) {
+    await action('reviews', 'review_reject', { id: toRestore.id });
+    await action('reviews', 'review_restore', { id: toRestore.id });
+    await action('reviews', 'review_approve', { id: toRestore.id });
+  }
+  log(
+    `reviews — moderation exercised: ${toApprove.length} approved · ${toReject ? 1 : 0} rejected · ` +
+      `${toRestore ? 1 : 0} rejected-then-restored`,
+  );
+}
+
+/** The names the seed writes under. They are how it recognises its OWN rows on a second run and in the
+ *  moderation queue — a seed must never decide a review a person wrote. */
+const SEEDED_AUTHORS = new Set(['Marina R.', 'Joana P.', 'Rafael M.', 'Camila S.', 'Diego A.', 'Beatriz L.']);
 
 /**
  * The words the open reviews are written in. Plain, short, and deliberately unremarkable: a seed's job is to
  * make a screen look inhabited, not to write copy somebody will quote. They rotate, so two products never
  * carry the same sentence — which is the tell that gives a seeded shop away at a glance.
  */
+/** Columns every stored config row carries and no app declares. Stripped before a write-back. */
+const ROW_METADATA_KEYS = ['id', 'created_at', 'updated_at'];
+
 const OPEN_REVIEW_VOICES = [
   { author: 'Marina R.', rating: 5, body: 'Chegou rápido e é exatamente o que eu esperava. Já pedi de novo.' },
   { author: 'Joana P.', rating: 4, body: 'Muito bom no dia a dia. Tirei uma estrela só pelo prazo de entrega.' },
