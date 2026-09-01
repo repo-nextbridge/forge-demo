@@ -101,6 +101,19 @@ map of how the box is born:
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
 | 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
+| 10 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust |
+
+⚠️ **8 → 9 → 10 is one direction, not a cycle** — it only reads as circular if 8 and 10 are taken for one
+step. The window seeds the dataset's promotions and resolves each target through the **public** read (the
+only one that answers *"is this on sale in this store?"*, and a promotion on something nobody can buy never
+fires), so its targets are **massive** products and it must follow 9. Step 9 publishes an assortment naming
+**curated** handles, so it must follow 8. They are three moments because the massive is another **process** —
+the one-shot inside the container — not a line in the curated script.
+
+Until the sports catalogue retired from the curated seed, that script created the 2,790 itself moments before
+the window ran. **The crutch was hiding the dependency; removing it did not create one.** The revalidate
+lands in step 10, at the end, which is where a cache bust belongs: it invalidates a store that is finished
+rather than one with a step still to come.
 
 ⚠️ **Step 8 must precede step 9, and that order is forced rather than chosen.** The boundary is
 CURATED × MASSIVE: `bin/seed.mjs` owns what a human wrote (the six coffees, the counter's menu, the outlet's

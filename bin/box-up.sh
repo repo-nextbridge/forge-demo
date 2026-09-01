@@ -17,6 +17,12 @@
 #   7. totem                     LAST of the six images: it needs the counter store id step 6 resolved
 #   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
 #   9. seed-demo      × TENANT   the MASSIVE catalogue — the one-shot that fills, run once per tenant
+#  10. seed.mjs       × TENANT   the WINDOW (--phase window): the promotions, the blocks, the cache bust
+#
+# ⚠️ 8, 9 AND 10 ARE ONE DIRECTION AND NOT A CYCLE, and it only looks circular if you read 8 and 10 as one
+# step. The window promotes products of the MASSIVE catalogue, so it must follow 9; 9 publishes an assortment
+# naming CURATED handles, so it must follow 8. They are three moments because the massive is another PROCESS
+# — the one-shot in the container — not a line in the curated script.
 #
 # ⚠️ SIX IMAGES, NOT FOUR. Four are pinned by digest in `forge.lock` (kernel, storefront, checkout, admin);
 # TWO are built here and carry this box's own front code — `forge-demo-storefront-coffee:local` (the coffee
@@ -345,6 +351,34 @@ for t in $TENANTS; do
      a curated product that did not exist yet). A default of \"just run it again\" is right for the failure
      somebody imagined and wrong for the one that happened.
      What IS known: steps 1-8 completed, so the box and its curated data are standing; only this fill did not."
+done
+
+# ── 10 · THE SHOP WINDOW — AFTER the one-shot, and the order is what broke to reveal itself ────────────────
+#
+# ★ THE CIRCLE, AND THE SENTENCE THAT DISARMS IT. The window seeds the dataset's CURATED PROMOTIONS, and it
+# resolves each target through the PUBLIC read on purpose — that is the only read that answers "is this on
+# sale in THIS store?", and a promotion on something nobody can buy never fires. Those targets are products
+# of the MASSIVE catalogue. So the window needs step 9, while step 9 needs step 8's curated handles to
+# publish the counter's assortment. Run as one, that is a circle.
+#
+# It is not a circle in three moments, and it never was a new one: until the sports catalogue retired from
+# the curated seed, that script created the 2 790 itself, moments before the window ran. THE CRUTCH WAS
+# HIDING THE DEPENDENCY — REMOVING IT DID NOT CREATE IT. What the red exposed had been true all along and
+# was simply being paid for by accident.
+#
+# ⚠️ So this is a PHASE and not a reordering, because the massive is not a line in that script — it is
+# ANOTHER PROCESS, the one-shot inside the container. One direction, three moments, no cycle:
+#   8 · curated (the terrain and what a human wrote)   →   9 · massive (the one-shot)   →   10 · the window
+#
+# The revalidate lands here, at the END, which is where a cache bust belongs: it invalidates a store that is
+# finished rather than one with a step still to come.
+say '10 · the shop window (after the massive, per tenant)'
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the window phase."
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
+    || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
 done
 
 say 'the bench'
