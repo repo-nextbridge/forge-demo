@@ -17,8 +17,8 @@
 #   7. totem                     LAST of the six images: it needs the counter store id step 6 resolved
 #   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
 #   9. seed-demo      × TENANT   the MASSIVE catalogue — the one-shot that fills, run once per tenant
-#  10. seed.mjs       × TENANT   the WINDOW (--phase window): the promotions, the blocks, the cache bust
-#  11. seed-history  × TENANT   the PAST — 180 days of it, so the dashboard has a business and not a spike
+#  10. seed-history  × TENANT   the PAST — 180 days of it, and it runs INSIDE the mail silence, never after
+#  11. seed.mjs       × TENANT   the WINDOW (--phase window): promotions, blocks, cache bust, and the RE-ARM
 #
 # ⚠️ 8, 9 AND 10 ARE ONE DIRECTION AND NOT A CYCLE, and it only looks circular if you read 8 and 10 as one
 # step. The window promotes products of the MASSIVE catalogue, so it must follow 9; 9 publishes an assortment
@@ -465,35 +465,7 @@ for t in $TENANTS; do
      What IS known: steps 1-8 completed, so the box and its curated data are standing; only this fill did not."
 done
 
-# ── 10 · THE SHOP WINDOW — AFTER the one-shot, and the order is what broke to reveal itself ────────────────
-#
-# ★ THE CIRCLE, AND THE SENTENCE THAT DISARMS IT. The window seeds the dataset's CURATED PROMOTIONS, and it
-# resolves each target through the PUBLIC read on purpose — that is the only read that answers "is this on
-# sale in THIS store?", and a promotion on something nobody can buy never fires. Those targets are products
-# of the MASSIVE catalogue. So the window needs step 9, while step 9 needs step 8's curated handles to
-# publish the counter's assortment. Run as one, that is a circle.
-#
-# It is not a circle in three moments, and it never was a new one: until the sports catalogue retired from
-# the curated seed, that script created the 2 790 itself, moments before the window ran. THE CRUTCH WAS
-# HIDING THE DEPENDENCY — REMOVING IT DID NOT CREATE IT. What the red exposed had been true all along and
-# was simply being paid for by accident.
-#
-# ⚠️ So this is a PHASE and not a reordering, because the massive is not a line in that script — it is
-# ANOTHER PROCESS, the one-shot inside the container. One direction, three moments, no cycle:
-#   8 · curated (the terrain and what a human wrote)   →   9 · massive (the one-shot)   →   10 · the window
-#
-# The revalidate lands here, at the END, which is where a cache bust belongs: it invalidates a store that is
-# finished rather than one with a step still to come.
-say '10 · the shop window (after the massive, per tenant)'
-for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-  eval "tokval=\${$tokvar:-}"
-  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the window phase."
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
-    || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
-done
-
-# ── 11 · THE PAST — and it is TWO halves, because the refusal is about an INSTANT, not about the box ─────────
+# ── 10 · THE PAST — and it is TWO halves, because the refusal is about an INSTANT, not about the box ─────────
 #
 # ★ WHY THIS STEP EXISTS. Without it the box has 39 orders per tenant and every one of them is stamped TODAY:
 # all the statuses of the lifecycle, one single day. The admin dashboard then draws a spike on one date and
@@ -528,14 +500,24 @@ done
 # the data. That lives in the monorepo and is not this slice's to write. Recorded so the next reader knows
 # this block is a bridge and not a design.
 #
-# ── PLACEMENT, AND WHICH HALF OF IT IS MEASURED ──────────────────────────────────────────────────────────
-#   MEASURED: it runs here, AFTER the window. That is the order this box was proven in.
-#   STATED (by the tech lead, not measured by me): it needs the published catalogue and the logistics, and
-#     the window is not among its needs — so it could sit between 9 and 10. Proving that takes a fresh box,
-#     and this box was not born again to find out.
-# The two are written apart on purpose: a comment that declares what it knows and what it assumes is worth
-# more than one that merely sounds certain.
-say '11 · the past (seed-history — 180 days, once per tenant)'
+# ── PLACEMENT — AND IT IS LOAD-BEARING, WHICH I LEARNED THE EXPENSIVE WAY ────────────────────────────────
+#
+# ⛔ THIS STEP MUST RUN INSIDE THE SILENCE: after 8, before 11. Not a preference — a mailbox.
+#
+# `seed/commerce.mjs` silences the buyer's order mail in the CURATED phase (8) and re-arms it in the WINDOW
+# (11), and its own comment names this script: *"The one-shots are what create the demo's ORDERS —
+# `seed-history` writes dozens of them, dated. So a silencing that ran in the window would run AFTER those
+# orders were emitted, and the decision to send is taken at EMIT. Silencing late is silencing nothing."*
+# This box speaks real SMTP, and `customers.json` carries one real address among seventeen at example.com.
+# A past seeded after the re-arm mails a person, and mail cannot be un-sent.
+#
+# ★ HOW IT WAS WRONG FIRST, because the reason is worth more than the rule. This step was originally written
+# AFTER the window, and the comment here said, honestly: MEASURED that it runs after 10; STATED (by the tech
+# lead) that it only needs the catalogue and the logistics. Both halves were true and the placement was still
+# wrong, because the fact that decided it was in neither: the mail silence. **Measuring well is not measuring
+# the right thing — the measurement proved it WORKS, not that it is SAFE.** The step now sits where it is
+# safe, and the guard below is what makes that independent of whoever edits this file next.
+say '10 · the past (seed-history — 180 days, once per tenant)'
 
 HISTORY_KEEP="${FORGE_HISTORY_KEEP_METHOD:-Entrega Padrão}"
 SILENCED=''; REARM_TENANT=''; REARM_TOKEN=''
@@ -576,6 +558,37 @@ for t in $TENANTS; do
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment for the history step."
   REARM_TENANT="$t"; REARM_TOKEN="$tokval"
+
+  # ⛔ THE MAILBOX GUARD — this step REFUSES to seed a past into a tenant whose buyer mail is armed.
+  #
+  # The order above is load-bearing, so it must not depend on the order surviving in this file. If somebody
+  # moves this step after the window again, they get a refusal instead of somebody's inbox.
+  #
+  # ⚠️ AND THE PARAMETER NAME IS `store`, NOT `store_id` — measured, because the kernel IGNORES the wrong one
+  # SILENTLY and answers with the tenant's DEFAULTS. A guard asking with `store_id` reads "everything is
+  # armed" on a silenced box and refuses forever, and — far worse — would read a default of "enabled" as the
+  # truth about a store. It was caught by asking the same question with a deliberately BOGUS store id: the
+  # answer came back byte-identical, which is how you learn a filter is not being applied.
+  armed="$(curl -fsS -m 15 "$FORGE_PUBLIC_ORIGIN/v1/read/internal/stores" \
+             -H "authorization: Bearer $tokval" -H "x-forge-tenant: $t" \
+           | jq -r '.[].id' \
+           | while read -r sid; do
+               curl -fsS -m 15 "$FORGE_PUBLIC_ORIGIN/v1/read/internal/notification_types?store=$sid" \
+                 -H "authorization: Bearer $tokval" -H "x-forge-tenant: $t" \
+               | jq -r --arg s "$sid" '.[]
+                   | select((.key|startswith("order.")) or (.key|contains("review_request")))
+                   | select(.channels[] | select(.channel_key=="email") | .enabled)
+                   | "\($s) \(.key)"'
+             done)" || die "could not read the notification channels of \"$t\" — this step will not seed a
+     past it cannot prove is silent."
+  if [ -n "$armed" ]; then
+    die "REFUSING to seed the past for \"$t\": buyer order mail is still ARMED on:
+$(printf '%s\n' "$armed" | sed 's/^/       /')
+     This step writes hundreds of dated orders and the send decision is taken at EMIT, so an armed channel
+     here means real e-mail to real addresses. It runs BETWEEN the curated seed (which silences) and the
+     window (which re-arms) — if it has been moved outside that gap, move it back rather than disable this."
+  fi
+  note "$t · buyer order mail is silent — safe to write a past"
 
   before="$(history_methods "$t" "$tokval" | awk -F'\t' '$3=="true"' | wc -l)"
   keep_seen=0
@@ -627,6 +640,34 @@ for t in $TENANTS; do
   [ "$after" = "$before" ] || note "⚠️ $t ended with $after active delivery methods, not the $before it began with."
 done
 trap - EXIT INT TERM
+
+# ── 11 · THE SHOP WINDOW — AFTER the one-shot, and the order is what broke to reveal itself ────────────────
+#
+# ★ THE CIRCLE, AND THE SENTENCE THAT DISARMS IT. The window seeds the dataset's CURATED PROMOTIONS, and it
+# resolves each target through the PUBLIC read on purpose — that is the only read that answers "is this on
+# sale in THIS store?", and a promotion on something nobody can buy never fires. Those targets are products
+# of the MASSIVE catalogue. So the window needs step 9, while step 9 needs step 8's curated handles to
+# publish the counter's assortment. Run as one, that is a circle.
+#
+# It is not a circle in three moments, and it never was a new one: until the sports catalogue retired from
+# the curated seed, that script created the 2 790 itself, moments before the window ran. THE CRUTCH WAS
+# HIDING THE DEPENDENCY — REMOVING IT DID NOT CREATE IT. What the red exposed had been true all along and
+# was simply being paid for by accident.
+#
+# ⚠️ So this is a PHASE and not a reordering, because the massive is not a line in that script — it is
+# ANOTHER PROCESS, the one-shot inside the container. One direction, three moments, no cycle:
+#   8 · curated (silence + terrain)  →  9 · massive  →  10 · the past  →  11 · the window (re-arm)
+#
+# The revalidate lands here, at the END, which is where a cache bust belongs: it invalidates a store that is
+# finished rather than one with a step still to come.
+say '11 · the shop window (after the massive, per tenant)'
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the window phase."
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
+    || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
+done
 
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
