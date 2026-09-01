@@ -1,0 +1,1238 @@
+{
+  "_readme": [
+    "THE OUTLET'S CONTENT, AS DATA. `seed/outlet.mjs` reads this file and drives the port; no rule about a",
+    "product, a price or a placement lives in that script. Same division as `catalog.json` beside it.",
+    "",
+    "WHAT THIS SLICE (D2) HAD TO DECIDE, BECAUSE THE TWO SOURCES DISAGREE:",
+    "  · The ARTBOARD (`Home Outlet.dc.html`) names eight products and prices them — 'Tênis Velocity 9' at",
+    "    R$ 279,90 was R$ 909,90, and so on down both shelves. Those names are the design's own fiction: no",
+    "    catalogue in this house carries them, and the brief says not to invent product.",
+    "  · The INSTANCE's catalogue (the reference dataset the storefront's own menu was curated against) carries",
+    "    2 790 real products with real photographs, real size grids and real technical sheets.",
+    "So the PRODUCTS are real ones from that catalogue and the MERCHANDISING is the artboard's: its eight",
+    "de/por pairs, in its order, across its two shelves. Nothing is invented; the design decides what a",
+    "shopper sees and the catalogue decides what a shopper buys.",
+    "",
+    "MONEY IS IN CENTS, always, never a float. `amount: 27990` is R$ 279,90. Every pair below is one of the",
+    "artboard's, and the discounts it drew are 60–69% — which is what makes the announcement bar's 'Até 70%",
+    "OFF' a fact about this catalogue rather than a sentence somebody typed.",
+    "",
+    "`stock` IS THE SCARCITY, and it is why the second shelf can be called what it is called. A number sets",
+    "every SKU of that product; a LIST sets them one by one, in the SKU order below — that is how a shoe on",
+    "the 'Acabando!' shelf ends up with two units in 39, none in 41 and one in 43. The default warehouse's",
+    "oversell policy is `block`, so a zero really is a size a shopper cannot buy.",
+    "",
+    "WHAT IS DELIBERATELY ABSENT, AND IS NOT AN OVERSIGHT:",
+    "  · NO CATEGORIES AND NO BRANDS. The reference home renders 'Compre por categoria' and 'Marcas que",
+    "    amamos' as fixed sections whenever the store has either — and the Outlet's artboard draws NEITHER.",
+    "    Creating them would have added two sections the design does not have to the one page whose face is",
+    "    this slice's DoD. The cost is named in the slice report: the theme's hand-curated header menu points",
+    "    at category paths this store does not carry.",
+    "  · NO PROMOTION ROWS. The de/por a shopper sees is `compare_at_amount`, which is the operator's own",
+    "    figure on the SKU — not a promotion engine rule. The artboard shows struck-through prices and a",
+    "    discount tag, and that is exactly what this produces.",
+    "",
+    "THE PHOTOS in `outlet-media/` come from that same reference dataset (the artboard's own product shots",
+    "are `fotos teste/*.webp` inside the design project, and its five mosaic tiles are empty placeholders —",
+    "there is no banner artwork in the design to extract). Cover plus three gallery frames per product; the",
+    "six banners are the dataset's curated campaign art.",
+    "",
+    "⚠️ ONE TILE IS CROPPED, AND IT IS THE LIBRARY THAT IS SHORT, NOT THE GRID. The artboard's mosaic is two proportions — two near-square cells (296x300) and three wide ones — and this instance's banner art holds four campaigns, of which exactly ONE is square (`banner-bota`), plus two shelf-shaped pieces and one that carries LOREM IPSUM in the artwork itself (`banner-sportswear`, unusable in front of anybody). So the second square cell takes the adventure piece (462x373) and loses about 10% off each side of its headline. The alternative was the same campaign twice in one mosaic in its two official crops, which reads as a bug in the data rather than as merchandising — and cropping to fill is what the block's own manifest says a tile does with art of another proportion. The fix is one square campaign in the library, not a change here."
+  ],
+  "store": "outlet",
+  "apps": [
+    "banners",
+    "shelves"
+  ],
+  "custom_fields": [
+    {
+      "key": "genero",
+      "type": "select",
+      "label": "Gênero",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Masculino",
+          "label": "Masculino"
+        },
+        {
+          "key": "Feminino",
+          "label": "Feminino"
+        },
+        {
+          "key": "Unissex",
+          "label": "Unissex"
+        },
+        {
+          "key": "Infantil",
+          "label": "Infantil"
+        }
+      ]
+    },
+    {
+      "key": "material",
+      "type": "select",
+      "label": "Material",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Couro",
+          "label": "Couro"
+        },
+        {
+          "key": "Camurça",
+          "label": "Camurça"
+        },
+        {
+          "key": "Mesh",
+          "label": "Mesh"
+        },
+        {
+          "key": "Knit",
+          "label": "Knit"
+        },
+        {
+          "key": "Sintético",
+          "label": "Sintético"
+        },
+        {
+          "key": "Lona",
+          "label": "Lona"
+        }
+      ]
+    },
+    {
+      "key": "uso",
+      "type": "select",
+      "label": "Uso",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Corrida",
+          "label": "Corrida"
+        },
+        {
+          "key": "Treino",
+          "label": "Treino"
+        },
+        {
+          "key": "Casual",
+          "label": "Casual"
+        },
+        {
+          "key": "Social",
+          "label": "Social"
+        },
+        {
+          "key": "Trilha",
+          "label": "Trilha"
+        },
+        {
+          "key": "Futebol",
+          "label": "Futebol"
+        },
+        {
+          "key": "Praia",
+          "label": "Praia"
+        }
+      ]
+    },
+    {
+      "key": "solado",
+      "type": "select",
+      "label": "Solado",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Borracha",
+          "label": "Borracha"
+        },
+        {
+          "key": "EVA",
+          "label": "EVA"
+        },
+        {
+          "key": "Couro",
+          "label": "Couro"
+        },
+        {
+          "key": "Poliuretano",
+          "label": "Poliuretano"
+        }
+      ]
+    },
+    {
+      "key": "fechamento",
+      "type": "select",
+      "label": "Fechamento",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Cadarço",
+          "label": "Cadarço"
+        },
+        {
+          "key": "Velcro",
+          "label": "Velcro"
+        },
+        {
+          "key": "Elástico",
+          "label": "Elástico"
+        },
+        {
+          "key": "Zíper",
+          "label": "Zíper"
+        },
+        {
+          "key": "Sem fechamento",
+          "label": "Sem fechamento"
+        }
+      ]
+    },
+    {
+      "key": "cano",
+      "type": "select",
+      "label": "Cano",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Baixo",
+          "label": "Baixo"
+        },
+        {
+          "key": "Médio",
+          "label": "Médio"
+        },
+        {
+          "key": "Alto",
+          "label": "Alto"
+        }
+      ]
+    },
+    {
+      "key": "peso_g",
+      "type": "number",
+      "label": "Peso (g)",
+      "facetable": false
+    },
+    {
+      "key": "amortecimento",
+      "type": "select",
+      "label": "Amortecimento",
+      "facetable": true,
+      "options": [
+        {
+          "key": "Baixo",
+          "label": "Baixo"
+        },
+        {
+          "key": "Médio",
+          "label": "Médio"
+        },
+        {
+          "key": "Alto",
+          "label": "Alto"
+        }
+      ]
+    },
+    {
+      "key": "impermeavel",
+      "type": "boolean",
+      "label": "Impermeável",
+      "facetable": true
+    }
+  ],
+  "announcement": {
+    "slot": "storefront:header.announcement",
+    "text": "Outlet oficial · Até 70% OFF · Frete grátis acima de R$ 600"
+  },
+  "mosaic": {
+    "slot": "storefront:home.hero",
+    "style": "mosaic",
+    "media": [
+      {
+        "file": "banner-social2.jpg",
+        "width": 50,
+        "height": 300,
+        "link": "/collection/quase-de-graca",
+        "alt": "Sapato social clássico a partir de R$ 249,90"
+      },
+      {
+        "file": "banner-bota.jpg",
+        "width": 25,
+        "height": 300,
+        "link": "/collection/acabando",
+        "alt": "Bota pegada: de R$ 974,90 por R$ 749,90"
+      },
+      {
+        "file": "banner-shelf-aventura.jpg",
+        "width": 25,
+        "height": 300,
+        "link": "/collection/acabando",
+        "alt": "Feito para a aventura: até 25% OFF"
+      },
+      {
+        "file": "banner-grande-jordan.jpg",
+        "width": 50,
+        "height": 220,
+        "link": "/collection/quase-de-graca",
+        "alt": "Nike Jordan com 30% OFF"
+      },
+      {
+        "file": "banner-grande-rosa.jpg",
+        "width": 50,
+        "height": 220,
+        "link": "/collection/quase-de-graca",
+        "alt": "Rosa é a cor da Copa: até 50% de desconto"
+      }
+    ]
+  },
+  "shelves": [
+    {
+      "collection": "quase-de-graca",
+      "title": "Quase de graça",
+      "slot": "storefront:home.banner_strip",
+      "layout": "grid",
+      "item_count": 5
+    },
+    {
+      "collection": "acabando",
+      "title": "Acabando!",
+      "slot": "storefront:home.below_shelf",
+      "layout": "grid",
+      "item_count": 3,
+      "banner": "banner-shelf-aventura-kids.jpg",
+      "banner_link": "/collection/acabando",
+      "banner_alt": "Feito para pequenas aventuras: até 25% OFF"
+    }
+  ],
+  "collections": [
+    {
+      "handle": "quase-de-graca",
+      "name": "Quase de graça"
+    },
+    {
+      "handle": "acabando",
+      "name": "Acabando!"
+    }
+  ],
+  "products": [
+    {
+      "handle": "mens-nike-air-zoom-pegasus-42-road-running",
+      "title": "Nike Air Zoom Pegasus 42 Road Running",
+      "shelf": "quase-de-graca",
+      "amount": 27990,
+      "compare_at_amount": 90990,
+      "stock": 18,
+      "description": "Criado para desempenho leve, sensação de respirabilidade e conforto duradouro, o Nike Air Zoom Pegasus 42 Road Running é a adição perfeita à sua coleção de calçados. Feito com cabedal em mesh",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-39",
+          "ean": "7890000108874",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-40",
+          "ean": "7890000108881",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-41",
+          "ean": "7890000108898",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-42",
+          "ean": "7890000108904",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-43",
+          "ean": "7890000108911",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-44",
+          "ean": "7890000108928",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-45",
+          "ean": "7890000108935",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_AIR_ZOOM_PEGASUS_42_ROAD_RUNNING-46",
+          "ean": "7890000108942",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo",
+        "peso_g": 295
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Fechamento: Cadarço · Peso: 295 g (por pé)"
+        }
+      ],
+      "meta_title": "Nike Air Zoom Pegasus 42 Road Running — Corrida | Loja Demo",
+      "meta_description": "Nike Air Zoom Pegasus 42 Road Running — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-nike-air-zoom-pegasus-42-road-running-cover.jpg",
+        "mens-nike-air-zoom-pegasus-42-road-running-gallery-2.jpg",
+        "mens-nike-air-zoom-pegasus-42-road-running-gallery-3.jpg",
+        "mens-nike-air-zoom-pegasus-42-road-running-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-adidas-supernova-rise-3-running-shoes",
+      "title": "adidas Supernova Rise 3 Running Shoes",
+      "shelf": "quase-de-graca",
+      "amount": 21990,
+      "compare_at_amount": 69990,
+      "stock": 14,
+      "description": "Projetados com espuma Dreamstrike+ no solado intermediário, os adidas Running Supernova Rise 3 M Running Shoes oferecem amortecimento macio quilômetro após quilômetro, enquanto os Support Rods - um sistema de inserções de espuma mais densa - ajudam",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-39",
+          "ean": "7890000034227",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-40",
+          "ean": "7890000034234",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-41",
+          "ean": "7890000034241",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-42",
+          "ean": "7890000034258",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-43",
+          "ean": "7890000034265",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_SUPERNOVA_RISE_3_RUNNING_SHOES-44",
+          "ean": "7890000034272",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "amortecimento": "Alto",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Fechamento: Cadarço · Amortecimento: Alto"
+        }
+      ],
+      "meta_title": "adidas Supernova Rise 3 Running Shoes — Corrida | Loja Demo",
+      "meta_description": "adidas Supernova Rise 3 Running Shoes — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-adidas-supernova-rise-3-running-shoes-cover.jpg",
+        "mens-adidas-supernova-rise-3-running-shoes-gallery-2.jpg",
+        "mens-adidas-supernova-rise-3-running-shoes-gallery-3.jpg",
+        "mens-adidas-supernova-rise-3-running-shoes-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-asics-gel-nimbus-28-atc",
+      "title": "ASICS Gel-Nimbus 28 ATC",
+      "shelf": "quase-de-graca",
+      "amount": 24990,
+      "compare_at_amount": 62990,
+      "stock": 22,
+      "description": "O tênis GEL-NIMBUS 28 ATC é um dos modelos mais confortáveis da linha de tênis de corrida ASICS. Este tênis oferece excelente amortecimento para tornar a corrida em distâncias mais longas mais suave.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-39",
+          "ean": "7890000039499",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-40",
+          "ean": "7890000039505",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-41",
+          "ean": "7890000039512",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-42",
+          "ean": "7890000039529",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-43",
+          "ean": "7890000039536",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-44",
+          "ean": "7890000039543",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-45",
+          "ean": "7890000039550",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ASICS_GEL_NIMBUS_28_ATC-46",
+          "ean": "7890000039567",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "fechamento": "Cadarço",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Fechamento: Cadarço"
+        }
+      ],
+      "meta_title": "ASICS Gel-Nimbus 28 ATC — Corrida | Loja Demo",
+      "meta_description": "ASICS Gel-Nimbus 28 ATC — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-asics-gel-nimbus-28-atc-cover.jpg",
+        "mens-asics-gel-nimbus-28-atc-gallery-2.jpg",
+        "mens-asics-gel-nimbus-28-atc-gallery-3.jpg",
+        "mens-asics-gel-nimbus-28-atc-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-new-balance-fresh-foam-x-880-v15-gore-tex",
+      "title": "New Balance Fresh Foam X 880 v15 GORE-TEX",
+      "shelf": "quase-de-graca",
+      "amount": 19990,
+      "compare_at_amount": 57990,
+      "stock": 16,
+      "description": "Leves, impermeáveis e confortáveis, os tênis New Balance oferecem amortecimento e suporte superiores sob os pés. Seus detalhes refletivos proporcionam visibilidade no escuro, enquanto o Fresh Foam X mids",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-39",
+          "ean": "7890000106399",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-40",
+          "ean": "7890000106405",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-41",
+          "ean": "7890000106412",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-42",
+          "ean": "7890000106429",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-43",
+          "ean": "7890000106436",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-44",
+          "ean": "7890000106443",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-45",
+          "ean": "7890000106450",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_FRESH_FOAM_X_880_V15_GORE_TEX-46",
+          "ean": "7890000106467",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Fechamento: Cadarço · Impermeável"
+        }
+      ],
+      "meta_title": "New Balance Fresh Foam X 880 v15 GORE-TEX — Corrida | Loja Demo",
+      "meta_description": "New Balance Fresh Foam X 880 v15 GORE-TEX — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-new-balance-fresh-foam-x-880-v15-gore-tex-cover.jpg",
+        "mens-new-balance-fresh-foam-x-880-v15-gore-tex-gallery-2.jpg",
+        "mens-new-balance-fresh-foam-x-880-v15-gore-tex-gallery-3.jpg",
+        "mens-new-balance-fresh-foam-x-880-v15-gore-tex-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-on-cloudrunner-2-waterproof",
+      "title": "On Cloudrunner 2 Waterproof",
+      "shelf": "quase-de-graca",
+      "amount": 32990,
+      "compare_at_amount": 97490,
+      "stock": 11,
+      "description": "Os materiais principais que compõem este produto contêm no mínimo 20% de conteúdo reciclado.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "42",
+            "43",
+            "44",
+            "45"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ON_CLOUDRUNNER_2_WATERPROOF-42",
+          "ean": "7890000121170",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ON_CLOUDRUNNER_2_WATERPROOF-43",
+          "ean": "7890000121187",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ON_CLOUDRUNNER_2_WATERPROOF-44",
+          "ean": "7890000121194",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ON_CLOUDRUNNER_2_WATERPROOF-45",
+          "ean": "7890000121200",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "solado": "EVA",
+        "fechamento": "Cadarço",
+        "impermeavel": true,
+        "peso_g": 312
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: EVA · Fechamento: Cadarço · Peso: 312 g (por pé) · Impermeável"
+        }
+      ],
+      "meta_title": "On Cloudrunner 2 Waterproof — Corrida | Loja Demo",
+      "meta_description": "On Cloudrunner 2 Waterproof — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-on-cloudrunner-2-waterproof-cover.jpg",
+        "mens-on-cloudrunner-2-waterproof-gallery-2.jpg",
+        "mens-on-cloudrunner-2-waterproof-gallery-3.jpg",
+        "mens-on-cloudrunner-2-waterproof-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-keen-wander-trail-running-shoes",
+      "title": "KEEN Wander Trail Running Shoes",
+      "shelf": "acabando",
+      "amount": 18990,
+      "compare_at_amount": 45990,
+      "stock": [
+        2,
+        1,
+        0,
+        3,
+        0,
+        1,
+        0,
+        0
+      ],
+      "description": "Permita-se vagar com conforto e confiança com o tênis KEEN Wander Trail Running, feito para correr fora das trilhas convencionais. Com o amortecimento energético QuantumFoam que utiliza espuma de alto retorno f",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-39",
+          "ean": "7890000093408",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-40",
+          "ean": "7890000093415",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-41",
+          "ean": "7890000093422",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-42",
+          "ean": "7890000093439",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-43",
+          "ean": "7890000093446",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-44",
+          "ean": "7890000093453",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-45",
+          "ean": "7890000093460",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_KEEN_WANDER_TRAIL_RUNNING_SHOES-46",
+          "ean": "7890000093477",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "uso": "Corrida",
+        "amortecimento": "Alto",
+        "solado": "Borracha",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Amortecimento: Alto"
+        }
+      ],
+      "meta_title": "KEEN Wander Trail Running Shoes — Trilha | Loja Demo",
+      "meta_description": "KEEN Wander Trail Running Shoes — Trilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-keen-wander-trail-running-shoes-cover.jpg",
+        "mens-keen-wander-trail-running-shoes-gallery-2.jpg",
+        "mens-keen-wander-trail-running-shoes-gallery-3.jpg",
+        "mens-keen-wander-trail-running-shoes-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-ecco-byway-2-0-waterproof-lace-up-boots",
+      "title": "ECCO Byway 2.0 Waterproof Lace-up Boots",
+      "shelf": "acabando",
+      "amount": 14990,
+      "compare_at_amount": 38990,
+      "stock": [
+        1,
+        2,
+        0,
+        1
+      ],
+      "description": "Sinta a liberdade e abrace a aventura usando a bota ECCO Byway 2.0 Waterproof Lace-up. Feita com cabedal em couro premium e forro aconchegante em nylon, esta bota cano médio traz a inovadora tecnologia F",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ECCO_BYWAY_2_0_WATERPROOF_LACE_UP_BOOTS-38",
+          "ean": "7890000072045",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ECCO_BYWAY_2_0_WATERPROOF_LACE_UP_BOOTS-39",
+          "ean": "7890000072052",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ECCO_BYWAY_2_0_WATERPROOF_LACE_UP_BOOTS-40",
+          "ean": "7890000072069",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ECCO_BYWAY_2_0_WATERPROOF_LACE_UP_BOOTS-41",
+          "ean": "7890000072076",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Casual",
+        "solado": "EVA",
+        "fechamento": "Cadarço",
+        "cano": "Baixo",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: EVA · Fechamento: Cadarço · Impermeável"
+        }
+      ],
+      "meta_title": "ECCO Byway 2.0 Waterproof Lace-up Boots — Coturno | Loja Demo",
+      "meta_description": "ECCO Byway 2.0 Waterproof Lace-up Boots — Coturno. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-ecco-byway-2-0-waterproof-lace-up-boots-cover.jpg",
+        "mens-ecco-byway-2-0-waterproof-lace-up-boots-gallery-2.jpg",
+        "mens-ecco-byway-2-0-waterproof-lace-up-boots-gallery-3.jpg",
+        "mens-ecco-byway-2-0-waterproof-lace-up-boots-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-nike-vapor-16-club",
+      "title": "Nike Vapor 16 Club",
+      "shelf": "acabando",
+      "amount": 11990,
+      "compare_at_amount": 27990,
+      "stock": [
+        3,
+        0,
+        1,
+        0,
+        2,
+        0
+      ],
+      "description": "Liberte seu lado armador de jogadas usando as chuteiras Nike Vapor 16 Club MG Low-Top. Desenvolvidas com cabedal em resina sintética moldada com textura sticky touch, essas chuteiras oferecem a você um domínio supremo",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-39",
+          "ean": "7890000112697",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-40",
+          "ean": "7890000112703",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-41",
+          "ean": "7890000112710",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-42",
+          "ean": "7890000112727",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-43",
+          "ean": "7890000112734",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NIKE_VAPOR_16_CLUB-44",
+          "ean": "7890000112741",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Sintético",
+        "uso": "Futebol",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo",
+        "peso_g": 204
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Solado: Borracha · Fechamento: Cadarço · Peso: 204 g (por pé)"
+        }
+      ],
+      "meta_title": "Nike Vapor 16 Club — Futebol | Loja Demo",
+      "meta_description": "Nike Vapor 16 Club — Futebol. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-nike-vapor-16-club-cover.jpg",
+        "mens-nike-vapor-16-club-gallery-2.jpg",
+        "mens-nike-vapor-16-club-gallery-3.jpg",
+        "mens-nike-vapor-16-club-gallery-4.jpg"
+      ]
+    }
+  ]
+}
