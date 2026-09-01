@@ -58,17 +58,27 @@ require FORGE_VAULT_KEY forge-vault-key || return 1
 # Minted by `provision-ref` at bootstrap and shown ONCE. Without it the admin boots and nobody can log in.
 export FORGE_ADMIN_SERVICE_TOKEN="$(optional_secret forge-admin-service-token)"
 
-# ★ THE SEED'S CREDENTIAL — a TENANT API key, and it has to be minted by hand exactly once.
+# ★ THE SEED'S CREDENTIAL — and it already exists on this box.
 #
-# ⚠️ THERE IS NO HEADLESS PATH, and the absence is deliberate rather than missing. `iam.api_key.create` is a
-# TENANT command, so driving it already requires a credential — the chicken and its egg. The one command that
-# could break the cycle, `platform.credential.issue`, is `system: true` AND off the CONTROL face's explicit
-# allow-list, which is the platform saying that minting a tenant's credentials is not something a box does to
-# itself over HTTP. So: create the key once in the admin (Developers ▸ API keys) with the scopes the seed
-# needs, put it in your secret store under `forge-seed-token`, and never again.
+# The `Reference Operator` credential that `provision-ref` prints at bootstrap holds every scope the seed
+# needs (`tenant.store.write`, `catalog.product.write`, `catalog.sku.write`, `custom_fields.write`,
+# `media.write`, and more). Capture it here as `forge-seed-token` and nothing else has to be minted.
 #
-# It is the same shape `templates/instance/compose.yml` already asks of an operator for FORGE_BULK_READ_TOKEN.
+# ⚠️ AND HERE IS THE PART THAT COST THIS SLICE AN EVENING. I reported that a tenant key could only be minted
+# by a human in the admin, because that credential answered 403 on `/v1/commands/*`. THAT WAS THE WRONG
+# CONCLUSION FROM A REAL REFUSAL: the write face takes the tenant as a HEADER (`x-forge-tenant`,
+# apps/api/src/adapter.ts:42) and without it refuses with `forbidden: "tenant required"`
+# (packages/core/src/dispatcher.ts:272) — while the SAME token answers the internal READ face with real
+# data. A 403 next to a 200 is not proof that a credential cannot write.
+#
+# With the header, this credential drives the whole first day: the seed, `iam.api_key.create` (so a narrower
+# key needs no admin either) and `extension.install`.
 export FORGE_SEED_TOKEN="$(optional_secret forge-seed-token)"
+
+# WHICH TENANT the seed writes to. It is NOT a secret and it already lives in `.env` — but `.env` is read by
+# COMPOSE and not by your shell, so a script you run by hand would not see it. One line, so `node
+# bin/seed.mjs` works in the same shell that just sourced this file.
+export FORGE_SEED_TENANT="${FORGE_SEED_TENANT:-$(grep -m1 '^FORGE_REF_TENANT=' "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env" 2>/dev/null | cut -d= -f2-)}"
 
 # The tenant API key the storefront uses for WHOLE-CATALOGUE documents (the Google feed, the sitemap). Unset
 # is safe — those are then built on the same budget shoppers' page views spend.

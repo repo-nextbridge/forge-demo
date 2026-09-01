@@ -33,14 +33,31 @@ const argOf = (name) => {
 };
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const token = process.env.FORGE_SEED_TOKEN ?? '';
+// ★ WHICH TENANT, and it is a HEADER rather than something the credential carries on its own.
+//
+// ⚠️ MEASURED THE HARD WAY, and it cost this slice an evening of believing the door was shut. A tenant
+// credential presented WITHOUT `x-forge-tenant` is refused by the write face with
+// `forbidden: "tenant required"` (packages/core/src/dispatcher.ts:272) — while the same token answers the
+// INTERNAL READ face with real data on the same request. Reading a 403 next to a 200 and concluding "this
+// credential cannot write" is the wrong conclusion, and it was mine: the adapter reads the tenant off a
+// header (apps/api/src/adapter.ts:42) and nothing supplies a default.
+const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env.FORGE_REF_TENANT ?? '';
 
 if (!api) fail('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIGIN (see .env.example).');
+if (!tenant) {
+  fail(
+    'no tenant. Pass --tenant <id> or set FORGE_SEED_TENANT / FORGE_REF_TENANT (see .env.example).\n' +
+      '  The write face takes it as a header and refuses without one, with `tenant required` — a refusal\n' +
+      '  that reads like a permission problem and is not.',
+  );
+}
 if (!token) {
   fail(
-    'no FORGE_SEED_TOKEN. It is a TENANT API key, minted ONCE in the admin (Developers ▸ API keys) and\n' +
-      '  kept in your secret store as `forge-seed-token` — see env-source.sh for why there is no headless\n' +
-      '  way to mint one. The scopes it needs: tenant.store.write, catalog.product.write,\n' +
-      '  catalog.sku.write, custom_fields.write, media.write, asset.write.',
+    'no FORGE_SEED_TOKEN. Any TENANT credential holding the scopes below will do, and this box already has\n' +
+      '  one: the "Reference Operator" token `provision-ref` prints at bootstrap. A narrower API key minted\n' +
+      '  with `iam.api_key.create` is the better long-term answer, and that command is reachable through the\n' +
+      '  door too. Scopes needed: tenant.store.write, catalog.product.write, catalog.sku.write,\n' +
+      '  custom_fields.write, media.write.',
   );
 }
 
@@ -54,7 +71,11 @@ const log = (message) => process.stderr.write(`[seed] ${message}\n`);
 async function command(name, input) {
   const res = await fetch(`${api}/v1/commands/${name}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      'x-forge-tenant': tenant,
+    },
     body: JSON.stringify(input),
   });
   const text = await res.text();
@@ -70,13 +91,36 @@ async function command(name, input) {
 async function read(name, params = {}) {
   const qs = new URLSearchParams(params).toString();
   const res = await fetch(`${api}/v1/read/internal/${name}${qs ? `?${qs}` : ''}`, {
-    headers: { authorization: `Bearer ${token}` },
+    headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant },
   });
   if (!res.ok) fail(`read.${name} → HTTP ${res.status}\n  ${(await res.text()).slice(0, 500)}`);
   return res.json();
 }
 
-const rows = (payload) => (Array.isArray(payload) ? payload : (payload?.rows ?? payload?.data ?? []));
+/**
+ * The rows of a read, whatever envelope it came in.
+ *
+ * ⚠️ THE `?? []` THIS REPLACES WAS A DEFECT, AND IT HID ITSELF IN THE ONE PLACE IT COULD DO DAMAGE. The
+ * paginated reads answer `{ items, page, limit, total }`; this function knew `rows` and `data`, so it read a
+ * real page of six products as ZERO — and the caller is the IDEMPOTENCE check. A "did I already make this?"
+ * that silently answers "no" is not a missing feature, it is a duplicate-create: the second run died on
+ * `catalog.product.create → HTTP 409 … "forge-alvorada" is already used`, which is the kernel catching what
+ * this function had got wrong.
+ *
+ * So an envelope it does not recognise is now a LOUD failure and never an empty list. Guessing empty is the
+ * one answer that turns a read bug into a write bug.
+ */
+function rows(payload) {
+  if (Array.isArray(payload)) return payload;
+  for (const key of ['items', 'rows', 'data']) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  fail(
+    `a read answered a shape this script cannot page: ${JSON.stringify(payload).slice(0, 200)}\n` +
+      '  Refusing to read it as EMPTY — that would make every "does it already exist?" answer no, and turn\n' +
+      '  this idempotent script into one that creates duplicates until the kernel refuses.',
+  );
+}
 
 // ── 1. the stores ───────────────────────────────────────────────────────────────────────────────────────────
 async function stores() {
@@ -92,6 +136,16 @@ async function stores() {
           `the bootstrap store "${store.handle}" does not exist. Run the one-shot first:\n` +
             '    docker compose run --rm kernel node dist/provision-ref.js',
         );
+      }
+      // …but what the catalogue DECLARES about it is still this file's promise to keep. `provision-ref`
+      // creates the store with no theme, and leaving it there would make `theme_key: "outlet"` a line in a
+      // JSON file that nothing applies — the shape of promise this repo exists to avoid.
+      // ⚠️ Safe before the theme folder exists: a `theme_key` nothing answers resolves to the base theme and
+      // never 500s, which is the whole reason that rule is written the way it is.
+      if (store.theme_key && found.theme_key !== store.theme_key) {
+        await command('tenant.store.update', { id: found.id, theme_key: store.theme_key });
+        log(`store ${store.handle} — the bootstrap one; theme_key → ${store.theme_key}`);
+        continue;
       }
       log(`store ${store.handle} — the bootstrap one, left alone`);
       continue;
@@ -159,7 +213,11 @@ async function upload(filename) {
   const plan = await (async () => {
     const res = await fetch(`${api}/v1/media/commands/media.request_upload`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+      'x-forge-tenant': tenant,
+    },
       body: JSON.stringify({
         filename,
         mime: 'image/png',
@@ -201,7 +259,13 @@ async function upload(filename) {
 
 // ── 4. the products ─────────────────────────────────────────────────────────────────────────────────────────
 async function products() {
-  const existing = new Set(rows(await read('products', { limit: '200' })).map((p) => p.handle));
+  // ★ `products_admin` AND NOT `products`, and the difference is the whole question this read is asked.
+  // ⚠️ Measured: `read.internal.products` does not exist, and `read.products` is the STORE's published list —
+  // it demands a `store` and caps at 100 rows. A product this script has just created is not published to any
+  // store yet, so asking the store's list would report "not there" for a product that IS there and create it
+  // twice. `products_admin` is the tenant's WHOLE catalogue, drafts and unpublished included, and no store to
+  // scope by — which is exactly the question "did I already make this?".
+  const existing = new Set(rows(await read('products_admin', { limit: '100' })).map((p) => p.handle));
   const photos = new Set(readdirSync(join(SEED, 'photos')));
 
   for (const product of catalog.products) {
@@ -253,7 +317,7 @@ const slug = (text) =>
     .replace(/(^-|-$)/g, '');
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────
-log(`against ${api}`);
+log(`against ${api} as tenant ${tenant}`);
 await stores();
 await customFields();
 await products();

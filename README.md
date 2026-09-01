@@ -108,42 +108,50 @@ the inbox.
 
 ---
 
-## ⚠️ 3. Two things need a human in the admin, exactly once, and cannot be scripted
+## 3. The first day closes by script — and the one refusal that will fool you
 
-This is a property of the platform today, measured on this box rather than assumed. **There is no headless
-path to mint a tenant API key or to install an app.** Every credential the bootstrap hands you was tried:
-
-| credential | on `/v1/commands/*` |
-|---|---|
-| the operator access key from `provision-ref` | **403** |
-| the admin login-driver token from `provision-ref` | **403** |
-| `node dist/admin-platform-token.js` | mints a credential that says, in its own output, that it *"does NOT hold platform.iam.write: it cannot issue credentials, provision tenants **or install apps**"* |
-
-And that is deliberate rather than missing: `iam.api_key.create` is a TENANT command, so driving it already
-requires a credential — the chicken and its egg — and the one command that could break the cycle,
-`platform.credential.issue`, is `system: true` **and** off the CONTROL face's explicit allow-list. The
-platform is saying that minting a tenant's credentials is not something a box does to itself over HTTP.
-
-So, once, in the admin:
-
-1. **Create an API key** (Developers ▸ API keys) with `tenant.store.write`, `catalog.product.write`,
-   `catalog.sku.write`, `custom_fields.write`, `media.write` and `asset.write`. Put it in your secret store
-   as `forge-seed-token`. `bin/seed.mjs` needs it and refuses, by name, without it.
-2. **Install `demo-gate`** (Apps ▸ Demo gate ▸ Install). Loading it makes it *available*; installing is what
-   the tenant *consents* to.
-
-Then:
+Everything below runs with the **`Reference Operator`** credential that `provision-ref` printed at
+bootstrap. No admin, no browser, no second secret to mint.
 
 ```bash
-source ./env-source.sh && node bin/seed.mjs
+source ./env-source.sh                       # exports FORGE_SEED_TOKEN from your secret store
+node bin/seed.mjs --api http://localhost:8080
 ```
 
-`bin/seed.mjs` creates the stores and the six coffees **through the port** — it holds an API key, not a
-database credential, exactly like an ERP would. It is idempotent: re-running it is a no-op.
+That creates the stores, declares the `cf.*` vocabulary and creates the six coffees **with their photos**,
+all through the door: the script holds an API key, never a database credential, exactly like an ERP would.
+It is idempotent — re-running it is a no-op.
 
-⚠️ **It is not a seeder and is not trying to be.** Forge ships one; this is the minimum that makes the demo
-stand up. The full seed is a later slice, written from what the finished demo turns out to need
-(decision of Renan, 2026-08-31).
+Installing the app is one call on the same credential:
+
+```bash
+curl -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/extension.install" \
+  -H "authorization: Bearer $FORGE_SEED_TOKEN" -H "x-forge-tenant: $FORGE_REF_TENANT" \
+  -H 'content-type: application/json' -d '{"extension_id":"demo-gate"}'
+```
+
+⚠️ **THE REFUSAL THAT WILL COST YOU AN HOUR IF NOBODY WARNS YOU.** The write face takes the tenant as a
+**header**, and without it every command answers:
+
+```
+HTTP 403  {"code":"forbidden","message":"tenant required"}
+```
+
+That reads like a permissions problem and is not one. The same credential, on the same box, in the same
+minute, answers `GET /v1/read/internal/stores` with **200 and real data** — the internal read face resolves
+the tenant on its own and the write face does not (`apps/api/src/adapter.ts:42`,
+`packages/core/src/dispatcher.ts:272`). **Send `x-forge-tenant: <tenant>` on every write.** `bin/seed.mjs`
+does it for you and refuses to start without a tenant, saying exactly this.
+
+**A narrower key is the better long-term answer**, and it needs no admin either — `iam.api_key.create` is
+reachable on the same door. Mint one with only `tenant.store.write`, `catalog.product.write`,
+`catalog.sku.write`, `custom_fields.write` and `media.write`, and keep the bootstrap operator credential for
+the things that really need an operator.
+
+⚠️ **`bin/seed.mjs` is not a seeder and is not trying to be.** Forge ships one; this is the minimum that
+makes the demo stand up. The full seed is a later slice, written from what the finished demo turns out to
+need (decision of Renan, 2026-08-31). The three supporting products the catalogue document promises for
+bought-together are **not** invented here — they are named as a gap in `seed/catalog.json`.
 
 ---
 
