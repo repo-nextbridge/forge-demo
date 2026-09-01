@@ -143,6 +143,23 @@ make the script decide "already there, nothing to do" about a tenant it has neve
 written nothing. `bin/seed.mjs` therefore proves the credential before its first write, by asking it which
 stores it can SEE — an answer the wrong token cannot fake.
 
+### THREE MOMENTS, in this order — and the order is not taste
+
+```bash
+node bin/seed.mjs --api … --tenant forgeco                    # 1. the CURATED half
+docker compose run --rm kernel node dist/seed-demo.js --confirm  # 2. the MASSIVE half (one-shot, inside)
+node bin/seed.mjs --api … --tenant forgeco --phase window      # 3. the shop WINDOW
+```
+
+⚠️ **There is a dependency in each direction, and it only became visible when the massive half moved out of
+this script.** The window seeds the dataset's PROMOTIONS, and each one resolves its target by handle through
+the PUBLIC face — the only face that answers "is this on sale in THIS store?". Those targets are handles of
+the massive catalogue, so **the window needs the massive**. And the massive publishes curated handles it does
+not define, so **the massive needs the curated**. Three moments, one direction, no circle.
+
+This script used to create the 2 790 itself, a few lines above the window, so the window always found its
+targets — the crutch hid the dependency. Removing it did not create one.
+
 ### The two halves of the seed, and the order between them
 
 **This script owns the CURATED half** — what a human wrote: the six coffees with their descriptions, the

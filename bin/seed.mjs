@@ -65,6 +65,43 @@ const token = process.env.FORGE_SEED_TOKEN ?? '';
 // header (apps/api/src/adapter.ts:42) and nothing supplies a default.
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env.FORGE_REF_TENANT ?? '';
 
+// ── ★★ THE TWO PHASES, AND WHY THE WINDOW IS NOT A STEP OF THE FIRST ONE ─────────────────────────────────────
+//
+//   --phase curated   (default)  the terrain and the curated content: stores, vocabulary, declared fields,
+//                                the six coffees, the outlet's eight, the counter's menu, the placeholders.
+//   --phase window               the shop window of the sports store: the composed blocks, the app settings,
+//                                the institutional pages, the DATASET's promotions, and the cache bust.
+//
+// ⚠️ THEY ARE TWO INVOCATIONS BECAUSE A THIRD PROCESS RUNS BETWEEN THEM. The massive half — the 2 790-product
+// catalogue and the assortment — is filled by `dist/seed-demo.js`, a one-shot INSIDE the container. The order
+// is therefore: this script (curated) → the one-shot (massive) → this script again (window).
+//
+// ★ AND THE WINDOW HAS TO BE LAST, FOR A REASON THAT IS NOT TASTE. It seeds the dataset's PROMOTIONS, and each
+// one resolves its target by handle through the PUBLIC face — the only face that answers "is this on sale in
+// THIS store?". Those targets are handles of the MASSIVE catalogue (`florsheim-shine-sponge`,
+// `farm-rio-metal-chain-belt`, …). Run before the one-shot, every promotion target is unresolvable: the
+// window needs the massive, and the massive needs the curated (it publishes curated handles it does not
+// define). Three moments, one direction, no circle.
+//
+// ⚠️ THE CIRCLE WAS INVISIBLE UNTIL `seedForge` STOPPED BEING CALLED, and that is worth writing down rather
+// than fixing quietly: this script used to create the 2 790 itself, a few lines above the window, so the
+// window always found its targets. The crutch hid the dependency; removing it did not create one.
+//
+// ★ THE WINDOW ALSO CONVERGES WITH THE ONE-SHOT'S OWN PLACEMENT, and that is measured, not hoped: both read
+// the SAME `storefront.json` and write the SAME config shape, and neither duplicates — the one-shot only
+// re-points art when instances already exist (and the `banners` app declares `hooks: []`, so installing it
+// places nothing), while this side takes over the empty default instance the `shelves` install leaves rather
+// than adding a second. Running LAST, this side is the one whose config survives if the two ever diverge —
+// the CURATED winning over the generated, which is the order that should win. They are not redundant; they
+// are CONVERGENT, and the dangerous day is the day they stop deriving from one declaration.
+const phase = argOf('--phase') ?? 'curated';
+if (phase !== 'curated' && phase !== 'window') {
+  fail(
+    `unknown --phase "${phase}". It is "curated" (the terrain and the curated content) or "window"\n` +
+      '  (the shop window, which runs AFTER the one-shot). See the README.',
+  );
+}
+
 if (!api) fail('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIGIN (see .env.example).');
 if (!tenant) {
   fail(
@@ -905,9 +942,11 @@ async function placeholders() {
 // ⚠️⚠️ ORDER CONTRACT, and it binds the box's script: THIS RUNS BEFORE THE ONE-SHOT. `populate` PUBLISHES the
 // curated handles it does not define — so they have to exist first. Inverted, the publication fails loudly
 // naming the handle and the shop (which is the right behaviour, and still a morning lost to wondering why).
-log(`against ${api} as tenant ${tenant}`);
+log(`against ${api} as tenant ${tenant} — phase ${phase}`);
 await assertCredentialTenant();
 const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
+
+if (phase === 'curated') {
 await stores();
 await customFields();
 await placeholders();
@@ -1008,6 +1047,11 @@ if (false) {
 // The FORGE store's WINDOW, after its catalogue. `uploadAsset` and not `upload`: a banner tile references the
 // asset LIBRARY by id, so those seven files ARE curated inventory an operator sees in the admin — the opposite
 // of the 18582 catalogue photographs above, which carry no asset row on purpose.
+log('curated — done. Next: the one-shot (`dist/seed-demo.js`), then `--phase window`.');
+} // ── end of the curated phase ───────────────────────────────────────────────────────────────────────────────
+
+// ── ★ THE WINDOW — AFTER the one-shot, never before. The header of `--phase` says why. ──────────────────────
+if (phase === 'window') {
 if (here('forge')) {
   await seedVitrine({
   api,
@@ -1026,6 +1070,7 @@ if (here('forge')) {
 } else {
   log('vitrine — the sports store is not on this tenant, skipped');
 }
+} // ── end of the window phase ────────────────────────────────────────────────────────────────────────────────
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +
