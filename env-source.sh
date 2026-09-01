@@ -79,6 +79,13 @@ export FORGE_ADMIN_SERVICE_TOKEN="$(optional_secret forge-admin-service-token)"
 # that pins one tenant needs none) with the failure named here rather than discovered at a login screen.
 export FORGE_ADMIN_PLATFORM_TOKEN="$(optional_secret forge-admin-platform-token)"
 
+# The SECOND tenant's login-driver, for symmetry with its seed token. ⚠️ HOST MODE DOES NOT USE EITHER OF THE
+# LOGIN-DRIVER SECRETS — it mints one per hostname from the platform credential above — so this is here for a
+# box that goes back to pinning, and for a script that wants to drive `operator.request_otp` directly instead
+# of going through the admin's login screen. Its absence was invisible until exactly such a script asked for
+# it: T1's happened to be exported and T2's was not.
+export FORGE_ADMIN_SERVICE_TOKEN_FORGECAFE="$(optional_secret forge-admin-service-token-forgecafe)"
+
 # ★ THE MAILBOX (PRE-SEED · P-A) — Resend, the same account Staging uses, so a local test is the real test.
 #
 # ⚠️ ALL FOUR OR NONE. `FORGE_SMTP_HOST`, `USER` and `FROM` are not secrets and live in `.env`; only the
