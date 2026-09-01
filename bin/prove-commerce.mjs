@@ -52,7 +52,14 @@ async function command(name, input, { store, face = faceOf(name) } = {}) {
     body: JSON.stringify(input),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) fail(`${name} → HTTP ${res.status} ${JSON.stringify(body)}`);
+  if (!res.ok) {
+    // ⛔ The port NAMES the fields it is missing, in `details.missing`. Printing only the message is how an
+    // afternoon gets spent inferring what the door was saying all along.
+    const missing = Array.isArray(body?.details?.missing)
+      ? `\n  MISSING: ${body.details.missing.join(', ')}`
+      : '';
+    fail(`${name} → HTTP ${res.status} ${body?.code ?? ''} ${body?.message ?? ''}${missing}`);
+  }
   return body;
 }
 
