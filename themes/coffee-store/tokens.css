@@ -1,0 +1,31 @@
+/* themes/coffee-store/tokens.css — what the Forge Café store overrides in the base theme.
+ *
+ * Inlined by both fronts on top of the reference theme's own stylesheet, so this file carries only the
+ * DIFFERENCES. A copy of the whole base would be a second base to keep in sync.
+ *
+ * ⚠️ THIS FILE IS THE FLOOR, NOT THE PALETTE — read this before adding to it.
+ *
+ * Slice C1 created this folder for one reason: `themes/<key>/fonts.css` is only ever read from the
+ * directory that holds a `tokens.css` (packages/storefront-kit/src/theme/resolve.ts walks the candidates
+ * ONCE and `tokens.css` is the marker). A theme folder carrying fonts and no tokens is invisible to the
+ * resolver, so the two woff2 families next door would have been dead files. Hence: the typography tokens,
+ * which are C1's anyway — a font is the theme's, always — and nothing else.
+ *
+ * ★ THE COLOUR AND THE RADIUS ARE C2's, and they are deliberately NOT here. The design measures them
+ * (`--copper-600: #B0793C`, `--r: 10px`, `--ri: 9px`) and C2 is the slice that dresses the checkout, which
+ * is where they change what a shopper sees. Adding them here would be C1 writing C2's diff from a distance.
+ * The vitrine does not wait on them: it is FORKED, so its own palette lives in its own stylesheet.
+ */
+
+:root {
+  /* The body face. `--font-sans` is the base theme's own token, so every component that already binds to it
+   * — ours and the checkout's alike — changes with this one line and no component edit. */
+  --font-sans: "Poppins", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  /* ★ A TOKEN THE BASE THEME DOES NOT HAVE, and it is additive on purpose. This store's design is built on
+   * TWO families — a serif for display, a sans for text — and the base has a word for only one of them.
+   * A consumer that does not know this token is unaffected; one that wants the pairing asks for it with a
+   * fallback (`var(--font-display, Fraunces, Georgia, serif)`), which is what makes it safe to add here
+   * instead of in the base. */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+}

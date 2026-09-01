@@ -1,0 +1,27 @@
+/* Centered, no fill/border. display-sm heading, muted body. Semantic tokens only. */
+.empty {
+  text-align: center;
+  padding: var(--space-giant) var(--space-xl);
+}
+
+.title {
+  font-family: var(--type-display-sm-family);
+  font-size: var(--type-display-sm-size);
+  font-weight: var(--type-display-sm-weight);
+  line-height: var(--type-display-sm-line);
+  letter-spacing: var(--type-display-sm-tracking);
+  color: var(--color-ink);
+  margin: 0 0 var(--space-md);
+}
+
+.message {
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.action {
+  margin-top: var(--space-xl);
+}

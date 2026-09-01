@@ -1,0 +1,47 @@
+// The EDGE-CACHEABLE tree (PERF-B). `/c/<store>/…` is an INTERNAL path: the middleware rewrites catalog
+// requests into it when nothing about them is per-visitor (no meaningful query, and the store has no gate),
+// so the public URL never changes. A request that literally asks for `/c/...` is rewritten like any other
+// path and lands nowhere — this tree is unreachable from outside.
+//
+// WHY IT IS A SEPARATE TREE AND NOT A FLAG. Next decides "cacheable or dynamic" per route FILE at build
+// time; it cannot be conditional at runtime. And it must be conditional: the same PLP is cacheable clean and
+// uncacheable filtered, and a store with a GATE reads a dismissal cookie on every route (`s/[store]/layout`),
+// which on a cacheable route is a 500 rather than a degrade. Hence two trees — and, deliberately, ONE
+// implementation: the chrome is <StorefrontChrome> and the pages mount the same views the dynamic tree does.
+//
+// This tree sits OUTSIDE `s/[store]/layout.tsx` on purpose: that layout owns the gate machinery, and nothing
+// that reads a cookie may sit above a cacheable page. A gated store is simply never routed here.
+
+import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
+import type { ReactNode } from 'react';
+import { StorefrontChrome } from '@/components/StorefrontChrome';
+
+export default async function CachedStoreLayout({
+  children,
+  params,
+}: {
+  children: ReactNode;
+  params: Promise<{ store: string }>;
+}) {
+  const { store } = await params;
+  // MS-M2 — ★ THE TWIN THAT GETS FORGOTTEN. This is the tree that serves the CACHED HTML, so a theme wired
+  // only into `s/[store]` would vanish on exactly the pages that are fast — home, PDP, PLP clean — and appear
+  // on the slow ones, which reads as a flicker between palettes rather than as a missing feature. The read is
+  // ISR-cached and the route cache is already keyed by this path's store, so nothing about the caching changes.
+  // ★ D2-E2 — the empty prefix is the VITRINE'S OWN FACT, not a placeholder: this deployable answers the
+  // edge's fall-through, so its asset URLs are the bare ones. The checkout, which shares the host, passes
+  // `/_checkout` instead. See `storeThemeStyle` for why the parameter has no default.
+  const theme = await storeThemeStyle(store, '');
+  // MULTISTORE M1-β — HOST_BASE is a FACT here, not a default: this tree is unreachable except through the
+  // middleware's host rewrite, so its public URL is always the clean one. Asking (headers()) would turn every
+  // cached page into a runtime 500; the tree's own precondition answers instead.
+  return (
+    <>
+      {theme}
+      <StorefrontChrome store={store} base={HOST_BASE}>
+        {children}
+      </StorefrontChrome>
+    </>
+  );
+}

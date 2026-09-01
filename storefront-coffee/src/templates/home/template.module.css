@@ -1,0 +1,29 @@
+/* Home layout (structure). Semantic tokens only. The home is PURE COMPOSITION, so the only thing this file
+   owns is the page frame: the container and the rhythm between the composed slots. */
+.home {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  /* o4 #18 — trim the space between the header and the first block: the sides/bottom keep the prototype's 24px,
+     but the TOP tightens so the hero sits closer to the nav (Renan: "do topo tbm"). */
+  padding: var(--space-lg) var(--space-xl) var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  /* o4 #18 — the home uses its OWN inter-section rhythm token (prototype 56 + a touch), tighter than the
+     generic --space-section-gap (64) the earlier PR reused. */
+  gap: var(--space-section-gap-home);
+}
+
+/* The home is the SINGLE source of vertical rhythm between its blocks. Each composed block/section
+   (banners, shelves, category tiles, brands…) carries its OWN `margin: var(--space-section-gap) 0`; stacked
+   on the container's flex `gap` those margins DOUBLED the spacing (and, between two self-margined blocks, up
+   to tripled it), so the gaps read both too large and uneven. We own the sibling blocks' spacing here, at the
+   wrapper — never by editing those components (they belong to sibling extensions) — by neutralizing their
+   ad-hoc vertical margins so the container `gap` is the one uniform section gap. `> *` reaches each block's
+   root directly: <Slot> and <ExtensionOutlet> add no DOM node, so the block's own <section> is the flex item.
+   The selector is DOUBLED (`.home.home`) on purpose: a block's own `.root { margin: … }` is a single class
+   (0,1,0) living in a SEPARATE CSS module that loads AFTER this one, so a plain `.home > *` (also 0,1,0) lost
+   the cascade on source order and the 64px block margins survived in production. `.home.home > *` is (0,2,0),
+   so it wins deterministically regardless of module order. */
+.home.home > * {
+  margin-block: 0;
+}

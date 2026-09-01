@@ -1,0 +1,122 @@
+/* Global base — consumes ONLY semantic tokens (the green zone). Fonts are self-hosted (Urbanist via
+ * next/font/local in app/layout.tsx — no CDN, CSP-clean); the near-monochrome canvas + Urbanist
+ * body are the defaults. No raw hex here: re-skinning is a tokens.css edit, never an edit to this file
+ * or a component. */
+
+/* Point the theme's --font-sans at next/font's Urbanist (family + its metric-ADJUSTED fallback), keeping the
+ * theme's own fallback chain after it. The theme token declares a bare "Urbanist"; without @fontsource loading
+ * that name, only next/font supplies the face — and its size-adjusted fallback is what removes the swap reflow
+ * (the empty-checkout CLS). App-level override (loaded after the theme tokens); the theme package is untouched. */
+:root {
+  --font-sans:
+    var(--font-urbanist), -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line);
+  letter-spacing: var(--type-body-tracking);
+  -webkit-font-smoothing: antialiased;
+  /* Long unbroken strings (SKUs, URLs, foreign product names) must wrap rather than force a horizontal scroll
+   * on narrow screens. */
+  overflow-wrap: break-word;
+}
+
+/* Responsive baseline: no image (product photo, rich-content image, media) may exceed its column and push the
+ * page wider than the viewport. Cards/galleries already size their own images; this only guards raw content. */
+img {
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* §2.7 — the shared input frame. Any element marked [data-input-box] gets the border hover→focus treatment
+ * (0.18s); .om-invalid (validation) shows a red border that beats the hover. Tokens only, so re-skinning stays
+ * a tokens.css edit. */
+[data-input-box] {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-input);
+  transition: border-color var(--dur-hover) var(--ease);
+}
+
+[data-input-box]:hover,
+[data-input-box]:focus-within {
+  border-color: var(--color-border-strong);
+}
+
+[data-input-box].om-invalid {
+  border-color: var(--color-danger);
+}
+
+/* PROMO — THE MONEY ROW. One rule, four surfaces (order summary, checkout summary, cart drawer, minicart).
+ *
+ * Before the promotions every totals row had a label written by the HOUSE — "Subtotal", "Entrega", "Total":
+ * three short words the layout could be dimensioned around. A discount row is named by the MERCHANT, in free
+ * text ("Cupom ULTIMA10 — R$ 50 off"), and there is no length the storefront gets to assume. So the geometry
+ * stops being each card's private business and becomes one invariant, marked by attribute the way
+ * [data-input-box] marks the shared field frame:
+ *
+ *   the label WRAPS (never overflows, never pushes the row wider), and the amount is ANCHORED RIGHT on the
+ *   first line — an amount orphaned under its own label is the failure this rule exists to make impossible.
+ *
+ * `overflow-wrap: anywhere` (not `break-word`) is load-bearing: only `anywhere` shrinks the label's min-content
+ * width, which is what lets the flex row give the amount its space instead of overflowing the card. The rows
+ * that use this must NOT re-declare display/align/gap in their own module — this is where they live. */
+[data-money-row] {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+[data-money-row] > [data-money-label] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-money-row] > [data-money-amount] {
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
+  /* The amount is one unbreakable token: "R$ 1.234,56" never splits across two lines. */
+  white-space: nowrap;
+}
+
+/* iOS WebKit (Safari AND Chrome-on-iOS, which is WebKit) auto-ZOOMS into any form control whose font-size is
+ * < 16px the moment it's focused — the "field yanks a zoom" Renan saw on search/checkout, which sites like
+ * O Boticário avoid. `-webkit-touch-callout: none` matches ONLY iOS WebKit, so desktop and Android keep their
+ * intended (smaller) field type; there the zoom never happens. `!important` because the per-component `.input`
+ * classes (specificity 0,1,0) would otherwise beat a bare element rule — this is a hard platform minimum, not a
+ * design choice. Pinch-zoom stays enabled (we do NOT touch the viewport's maximum-scale — that would hurt a11y). */
+/* A single, consistent 16px type on EVERY form control, all platforms (Renan). It also removes the iOS WebKit
+ * (Safari + Chrome-on-iOS) focus auto-zoom, which triggers on any field below 16px. Pinch-zoom stays enabled
+ * (we never touch the viewport's maximum-scale — that would hurt a11y).
+ * Exception: [data-otp-box] (the OTP digit boxes) opt out — they are 20px BY DESIGN (§2.5), already above the
+ * 16px iOS-zoom floor, so excluding them lets `.box` (OtpInput.module.css) set 20px through the normal cascade
+ * with NO `!important`. The floor still guards every other control. */
+input:not([data-otp-box]),
+select,
+textarea {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the per-component `.input` classes (0,1,0) that a
+     bare element rule can't, so every field lands on the same 16px minimum. */
+  font-size: 16px !important;
+}

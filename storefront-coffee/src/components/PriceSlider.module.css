@@ -1,0 +1,143 @@
+/* PriceSlider — dual square-thumb range over a shared track (HANDOVER §5). Two native range inputs are stacked
+ * over one track; their tracks are transparent and non-interactive, only the square thumbs catch the pointer, so
+ * both handles live on the same line. Tokens only; square by design (thumbs never round). */
+
+/* ── the no-JS baseline form ─────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.formInput {
+  width: 6rem;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+}
+
+.formApply {
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-control);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  cursor: pointer;
+}
+
+/* ── the enhanced slider ─────────────────────────────────────────────────── */
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: var(--space-xs);
+}
+
+/* Labels BELOW the rail (design source): floor left, "até {max}+" right; the max value is inked/bold. */
+.readout {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.readoutStrong {
+  color: var(--color-ink);
+  font-weight: var(--type-ui-weight-strong, 600);
+}
+
+.track {
+  position: relative;
+  height: 20px;
+}
+
+/* The rail (the full range) — a 3px line centered in the track. */
+.track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: var(--color-hairline);
+}
+
+/* The selected span between the two thumbs. */
+.fill {
+  position: absolute;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  background: var(--color-accent);
+}
+
+/* Both range inputs overlap the track; their own track/pointer are neutralized so only the thumb is grabbable. */
+.thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.thumb:focus-visible {
+  outline: none;
+}
+
+.thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 0; /* square thumb — the prototype's signature */
+  background: var(--color-ink);
+  border: 2px solid var(--color-canvas);
+  box-shadow: 0 0 0 1px var(--color-hairline);
+  cursor: pointer;
+}
+
+.thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: var(--color-ink);
+  border: 2px solid var(--color-canvas);
+  box-shadow: 0 0 0 1px var(--color-hairline);
+  cursor: pointer;
+}
+
+.thumb::-webkit-slider-runnable-track {
+  background: none;
+}
+
+.thumb::-moz-range-track {
+  background: none;
+}
+
+.thumb:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--ring-focus);
+}
+
+.thumb:focus-visible::-moz-range-thumb {
+  box-shadow: var(--ring-focus);
+}

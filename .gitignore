@@ -4,3 +4,11 @@
 .env
 node_modules/
 node_modules/
+
+# The Forge tarballs `bin/vendor-packages.sh` builds from a monorepo checkout. Build output, megabytes of
+# it, whose source of truth is that repository — committing them would make this the second place a package
+# version lives. They leave when `@forgecommerce/*` is published. See bin/vendor-packages.sh.
+storefront-coffee/vendor/
+# The vitrine's build output.
+storefront-coffee/.next/
+storefront-coffee/next-env.d.ts

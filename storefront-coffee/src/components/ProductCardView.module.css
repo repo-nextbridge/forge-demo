@@ -1,0 +1,558 @@
+/* ProductCardView — faithful to the design source (ProductCard.dc.html). The card grows when the variation
+ * panel opens; a stretched <a> covers it for the PDP, the add pill + swatches raised above it.
+ * Semantic tokens only (the striped placeholder uses the documented image-placeholder primitives).
+ *
+ * ★★ BEING ABOVE THE LINK IS ONLY HALF OF BEING CLICKABLE, and the half that was missing is what QA30 measured.
+ * A control is reachable when it paints above the stretched link (z-index — the `.reachable` guard) AND when it
+ * lands inside every box that clips it: a chip laid out past its parent's clip rect keeps its geometry, its
+ * handler and its `aria-pressed`, and takes no pointer at all. Both halves are asserted, in `.varOptions` and
+ * `.varPanel` below. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* L4 #5 — the card is a CONTAINER, so the variation row adapts its footprint to the card's OWN width, not the
+     viewport. A viewport media query cannot tell a wide 4-up cell from a narrow 6-up related cell (same viewport):
+     the thin related shelf (6-up ~185px) clipped its last chip while the PLP 4-up (~290px) had room to spare. The
+     `@container` rule below tightens the chips only when the card itself is narrow — fixing the thin shelf and the
+     mobile 2-up with one rule. (container-type also makes the card the containing block for its absolute children,
+     which it already was via position:relative — no layout change.) */
+  container-type: inline-size;
+  container-name: card;
+  /* o4 #6a — NO `height: 100%`. A percentage height ties the card to its grid/flex ROW track, so one card
+     expanding its quick-add panel dragged every sibling taller with it. The card is now content-height, and the
+     shelves align their rows to `start` (see block.module.css / Shelf.module.css) so only the opened card grows.
+     Equal resting height is preserved structurally: the title reserves a fixed two lines (below). */
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color var(--dur-hover) var(--ease);
+  /* The square add button's side (o4 #8): EXACTLY the height of the price + installment block on the other side,
+     so the collapsed square lines up top (price) to bottom (installment) — symmetric when it opens. Derived from
+     the two lines' own tokens (price 17px + installment 12px, each line-height 1.2, plus the 2px block gap), so a
+     token change keeps them in step. .price/.installment pin those exact line-heights below. */
+  --card-add-square: calc(var(--font-size-17) * 1.2 + var(--font-size-12) * 1.2 + 2px);
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* The whole-card link (z:1). The interactive controls (add pill, swatches) sit above it (z:2). */
+.stretch {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.image {
+  position: relative;
+  overflow: hidden;
+  /* White stage: product photos are not square, so they are CONTAINED (fit 100%, proportional, centred) over a
+     clean white background — never cropped. The old diagonal-striped placeholder is gone (it showed through the
+     letterbox of a contained image). */
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-hairline-soft);
+}
+
+/* Robust square as the SINGLE source of height: the photo is out of flow (absolute inset-0), so the box has no
+   in-flow height. A padding-top:100% pseudo-element forces height = width from the width alone (works on every
+   engine). We do NOT also set `aspect-ratio` — combining the two let some mobile browsers over-size the tile
+   (the card "estourava" in height). One mechanism, uniform cards everywhere. */
+.image::before {
+  content: "";
+  display: block;
+  padding-top: 100%;
+}
+
+.img,
+.placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* contain (not cover): fit the whole photo, proportional, centred on the white stage — never crop. */
+  object-fit: contain;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder::after {
+  content: "foto do produto";
+  font-family: ui-monospace, monospace;
+  font-size: var(--font-size-11);
+  color: var(--color-disabled);
+}
+
+.tags {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.tag {
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--r-xs);
+}
+
+.tagFree {
+  padding: 2px var(--space-sm);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  letter-spacing: 0.02em;
+}
+
+.tagNew {
+  padding: 3px var(--space-sm);
+  background: var(--color-ink);
+  color: var(--color-on-primary);
+  letter-spacing: 0.04em;
+}
+
+.off {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--space-sm);
+  background: var(--color-accent);
+  color: var(--color-on-primary);
+  border-radius: var(--r-xs);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  /* line-height:1 + centered flex so the glyph sits optically centered — text baseline was making the badge
+     look bottom-heavy (more padding under the "-23%" than over it). */
+  line-height: 1;
+}
+
+/* OOS card (ronda3 #11) — out of stock. The photo dims and a centered "Esgotado" pill overlays it (VTEX/Shopify: mark the
+   card, never hide the product). The card stays clickable → the PDP; the quick-add pill is dropped by the caller. */
+.image[data-soldout] .img,
+.image[data-soldout] .placeholder {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.soldOut {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  /* Decorative overlay — clicks fall through to the stretched PDP link beneath it. */
+  pointer-events: none;
+  padding: 5px var(--space-md);
+  background: var(--color-ink);
+  color: var(--color-on-primary);
+  border-radius: var(--r-xs);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.badges {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Tighter bottom inset (prototype): the price/installment sits close to the card's lower edge. */
+  padding: 14px 14px 10px;
+  flex: 1;
+}
+
+.title {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-ink);
+  line-height: 1.35;
+  /* o4 #6a — reserve EXACTLY two lines: clamp long names (ellipsis) and `min-height` short ones, so every card
+     rests at the same height. With the row aligned to `start`, that equal resting height is what keeps the
+     silent siblings put while the clicked card grows. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(var(--font-size-14) * 1.35 * 2);
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  /* Reserve the stars row even when a product has none, so cards with/without reviews rest at the SAME height
+     (the fixed-size prototype cards). 18px = the filled row's MEASURED height (Star 13 + the count line) — an
+     under-reservation left the no-stars cards a couple px shorter, visible as uneven heights in the shelf. */
+  min-height: 18px;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.starOn {
+  color: var(--color-star);
+}
+
+.starOff {
+  color: var(--color-star-empty);
+}
+
+.ratingCount {
+  margin-left: 5px;
+  font-size: var(--font-size-12);
+  color: var(--color-faint);
+}
+
+.priceRow {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+/* QA6/A7 — THE PRICE MAY NOT BE UNDER THE OPEN BAR. The add pill is absolute at the row's bottom-right and,
+   open, it is the full width of the row (o4 #6b): with nothing reserved for it, it lands exactly on the price
+   and the installment line. Measured in Chromium on the card as shipped — price box y 403.8..424.2 and
+   installment 426.2..441.2, both inside the open pill's 404.4..441.2, and `elementFromPoint` at either line's
+   centre returning the stepper. So the shopper who clicks "Comprar" to choose a size loses the price at the
+   very moment of choosing (QA shot g1a-2c: a card with size 37 selected and no price on it at all).
+   The bar keeps its full width; the row grows by exactly the bar's own height, from the same token that sizes
+   it, so the two can never drift apart. */
+.priceRow[data-open] {
+  padding-bottom: calc(var(--card-add-square) + var(--space-sm));
+}
+
+.priceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Every optional price line is a BLOCK with a reserved height MATCHING its filled height, so a card WITHOUT a
+   compare-at price is exactly as tall as one that has them — the whole shelf row stays a uniform height (the
+   prototype's fixed-size cards) without stretching siblings on quick-add (o4 #6a). min-height is ignored on an
+   inline element, hence the explicit display:block; 22px = the measured struck-price line. */
+.compareRow {
+  display: block;
+  min-height: 22px;
+}
+
+.compare {
+  font-size: var(--font-size-12);
+  color: var(--color-faint);
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.price {
+  font-size: var(--font-size-17);
+  line-height: 1.2;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+/* On hover the price warms to the copper accent (prototype), smoothly. Placed after `.price` so the cascade
+   reads top-down (no descending-specificity surprise). */
+.card:hover .price {
+  color: var(--color-accent);
+}
+
+.installment {
+  display: block;
+  min-height: 15px;
+  font-size: var(--font-size-12);
+  line-height: 1.2;
+  color: var(--color-subtle);
+}
+
+.spacer {
+  width: var(--card-add-square);
+  flex-shrink: 0;
+}
+
+/* The add pill: 36px collapsed (ink), grows to 100% on open (accent) revealing the qty stepper. z:2 → above the
+ * stretched link, so a click adds instead of navigating. */
+.addPill {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 2;
+  /* min-height, not height, and `wrap` at EVERY width — same rule as the chip row above, for the same reason:
+     this bar clips (the radius, through the width transition) and it holds two controls. A fixed height plus
+     `nowrap` is how a control ends up outside the box that paints it. The square resting size is unchanged —
+     the collapsed pill's only child is the add button, which is exactly one --card-add-square tall. */
+  min-height: var(--card-add-square);
+  width: var(--card-add-square);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--color-primary);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  transition:
+    width var(--dur-expand) var(--ease),
+    background var(--dur-slide) var(--ease);
+}
+
+/* o4 #6b — open, the pill becomes the full-width orange stepper bar: it spans 100% of the card's content row (no
+   max-width cap), so the qty stepper + cart button fill the card edge-to-edge instead of a stubby partial pill. */
+.addPill[data-open] {
+  width: 100%;
+  background: var(--color-accent);
+}
+
+.stepper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease);
+}
+
+.stepper[data-open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.step {
+  width: 32px;
+  height: var(--card-add-square);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-on-primary) 75%, transparent);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-15);
+  cursor: pointer;
+  transition: color var(--dur-hover) var(--ease);
+}
+
+.step:hover {
+  color: var(--color-on-primary);
+}
+
+.qty {
+  min-width: 20px;
+  text-align: center;
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-primary);
+}
+
+.addBtn {
+  flex-shrink: 0;
+  width: var(--card-add-square);
+  height: var(--card-add-square);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Open, the button carries the word instead of the icon, so it sizes to the word (the square is the CLOSED
+   affordance). `width: auto` + a horizontal inset; the stepper beside it is flex:1 and yields the room. */
+.addBtn[data-open] {
+  width: auto;
+  padding: 0 var(--space-md);
+}
+
+.addLabel {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-primary);
+  white-space: nowrap;
+}
+
+/* The variation panel — IN-FLOW below the body, so opening it grows the card. z:2 for the swatches.
+ *
+ * ★ QA30/A7 — THE OPEN PANEL IS SIZED BY ITS CONTENT, NOT BY A CEILING. It used to animate `max-height: 0` ->
+ * `220px`, and 220 is a guess about how tall the chips will be. Measured in Chromium with a two-axis product
+ * (4 colours + 5 sizes) on a 103px card: the panel's own content is 226px tall and the ceiling held it at 220,
+ * cutting 6px. Today that 6px is padding; one more option value and it is a chip, back to a control that has a
+ * handler, an `aria-pressed` and no pointer that can reach it. A 0fr -> 1fr row track animates the same reveal
+ * against the content's REAL height, so the ceiling cannot be outgrown because there is none. */
+.varPanel {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    grid-template-rows 0.35s var(--ease),
+    opacity var(--dur-expand) var(--ease);
+}
+
+.varPanel[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* The collapsing grid item, and NOTHING else: a 0fr track cannot squeeze a box below its own padding + border
+   (border-box height floors there), so the 26px of inset that used to live here kept the closed panel 26px tall
+   and every card that much longer. The inset moved one level in; this element only clips. */
+.varInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.varList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 11px 14px 14px;
+  border-top: 1px solid var(--color-surface-sunken);
+}
+
+.varRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ★ QA30/A7 — THE CHIP ROW WRAPS; IT MAY NOT CLIP. This row used to be `overflow: hidden`, and a chip that did
+   not fit was still LAID OUT past the clip: it kept its box, its handler, its `aria-pressed` and its label, and
+   only its PIXELS were cut. A clipped box takes no pointer, so `elementFromPoint` at the chip's own centre
+   answered with whatever sits behind it. Measured in Chromium on a 768px viewport (4-up beside the 236px filter
+   rail => a 103px card, this row 57.2px wide): chip "38" spans x 369..395 and hit-tests to the "+1" SPAN, chip
+   "39" spans x 398..424 and hit-tests to the shelf BEHIND the card. Two of the four rendered sizes were
+   unreachable to a finger and reachable to `.click()`, which is exactly the difference the QA hit-test saw.
+   Wrapping is what makes every rendered chip land inside its own parent: the row grows a line instead of cutting
+   one, the panel is in flow so the card grows with it, and `+N` goes back to counting only the values the view
+   never rendered. */
+.varOptions {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.swatch {
+  position: relative; /* the optimized <img fill> paints the chip; overflow clips it to the rounded box */
+  overflow: hidden;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--r-xs);
+  background: var(
+    --color-surface-sunken
+  ); /* the ground behind a not-yet-loaded / missing swatch photo */
+  border: 1.5px solid var(--color-hairline);
+  box-shadow: inset 0 0 0 1px var(--color-canvas);
+  cursor: pointer;
+}
+
+/* The swatch photo — a tiny next/image derivative filling the chip (replaces the old full-size CSS background). */
+.swatchImg {
+  object-fit: cover;
+}
+
+.size {
+  flex: none;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--r-xs);
+  background: var(--color-canvas);
+  border: 1.5px solid var(--color-hairline);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.swatch[data-selected],
+.size[data-selected] {
+  border-color: var(--color-accent);
+}
+
+.overflow {
+  flex-shrink: 0;
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+/* L4 #5 (was item 2) — on a NARROW card the variation row (up to 4 chips/swatches + the "+N" indicator) runs wider
+ * than the card. Tighten the row footprint when the CARD is narrow so the four values + "+N" fit on one line:
+ * smaller gaps, trimmer size-chip padding, and slightly smaller swatches. Keyed on the card's own inline size
+ * (@container), not the viewport, so it catches BOTH the mobile 2-up (~167px) AND the desktop thin related shelf
+ * (6-up ~185px) — the wide 4-up/5-up cells keep the roomy footprint. Verified headless at 390 (2-up) and on the
+ * 6-up related shelf: the last border clears on both axes with no chip escaping the card.
+ *
+ * ⚠️ THIS IS A FIT, NOT A GUARANTEE, and reading it as one is how QA30 happened: the row it tightens was also
+ * `overflow: hidden`, so the card this rule did NOT make room for (a 103px cell at 768) simply cut the chips
+ * that did not fit instead of showing fewer. The row wraps now, which is the guarantee; this rule remains what
+ * keeps the common narrow card on a single line. */
+@container card (max-width: 210px) {
+  /* QA6/A7 — ON A NARROW CARD THE OPEN BAR TAKES TWO ROWS. The word "Adicionar" costs 84px of the bar, and a
+     narrow card's bar is 129px (390px viewport, 2-up) / 137px (768, 4-up): side by side, the stepper is what
+     yields, and its ± buttons collapsed from 32px to 13px and 17px — measured, and a touch target nobody can
+     hit. Wrapping gives each of them a full row at its own height, so the label stays a word and the ± stay
+     pressable. The wide card (266px at 1280) keeps the single row: its stepper measures 152px. */
+  .addPill[data-open] .stepper,
+  .addPill[data-open] .addBtn {
+    flex-basis: 100%;
+  }
+  /* Two rows of bar need two rows of clearance, or the price is back under it (the whole point of
+     `.priceRow[data-open]`). Same token, twice. */
+  .priceRow[data-open] {
+    padding-bottom: calc(var(--card-add-square) * 2 + var(--space-sm));
+  }
+  .varRow {
+    gap: 3px;
+  }
+  .varOptions {
+    gap: 3px;
+  }
+  .size {
+    min-width: 26px;
+    padding: 0 5px;
+  }
+  .swatch {
+    width: 26px;
+    height: 26px;
+  }
+}

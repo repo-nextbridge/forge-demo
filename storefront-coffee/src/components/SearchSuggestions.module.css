@@ -1,0 +1,41 @@
+/* Empty-state suggestions. Semantic tokens only. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+.cat {
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  color: var(--color-ink);
+  text-decoration: none;
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+}
+
+.cat:hover {
+  border-color: var(--color-primary);
+}
+
+.suggested {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.heading {
+  font-family: var(--type-display-sm-family);
+  font-size: var(--type-display-sm-size);
+  font-weight: var(--type-display-sm-weight);
+  color: var(--color-ink);
+  margin: 0;
+}

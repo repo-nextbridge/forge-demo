@@ -1,0 +1,71 @@
+/* List layout (structure). Semantic tokens only. */
+.list {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.title {
+  font-family: var(--type-display-sm-family);
+  font-size: var(--type-display-sm-size);
+  font-weight: var(--type-display-sm-weight);
+  line-height: var(--type-display-sm-line);
+  letter-spacing: var(--type-display-sm-tracking);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* RICH (S2): category header banner + description.
+   The banner has an arbitrary uploaded ratio. Left uncapped, a square/tall image balloons to the full content
+   width (~1200px tall). Cap the height to a slice of the content column so any banner renders as a wide strip:
+   a naturally-wide banner (e.g. 1200x150 → ~149px tall here) stays fully visible under the cap, while an
+   over-tall image is clamped and `object-fit: cover` crops it to the strip. Expressed as a fraction of the
+   container token (≈5:1) rather than a magic pixel — presentation only, no size baked into the admin/kernel. */
+.banner {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(var(--size-container) / 5);
+  border-radius: var(--radius-surface);
+  object-fit: cover;
+}
+
+/* PRE-S7-STOREFRONT-DEBT: the brand logo on /b/<slug>. A contained box — the logo keeps its own ratio inside a
+   fixed height (`contain`, never `cover`: a merchant's logo is not croppable), left-aligned above the heading.
+   The list is a flex column, so the gap between it and the title is the layout's, not the logo's. */
+.brandLogo {
+  display: block;
+  height: 64px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  object-position: left center;
+  border-radius: var(--radius-surface);
+}
+
+/* The degrade (a logo url that does not load): a sunken box of the same height, never a broken image. */
+.brandLogoPlaceholder {
+  display: block;
+  height: 64px;
+  width: 120px;
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-surface);
+}
+
+.description {
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--color-muted);
+}
+
+.description :first-child {
+  margin-top: 0;
+}
+
+.description :last-child {
+  margin-bottom: 0;
+}

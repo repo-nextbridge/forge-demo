@@ -1,0 +1,87 @@
+/* PLP/search body: a full-width head row (title + sort) ABOVE the sidebar + results grid (design source §1).
+   One column on mobile (filter drawer above the results), two columns on desktop. Tokens only. */
+.plp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* The head row: title + count on the LEFT, the sort strip on the RIGHT, bottom-aligned — spanning the full page
+   width (over both the sidebar and the results). Mobile stacks (column). Without a title the sort sits alone. */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The page title — the design source's 24px bold, tracking -0.02em (headline-lg), NOT the 32px display size
+   (S7-SF-PLP-FIDELITY: it read as too large). */
+.title {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--type-headline-lg-size);
+  font-weight: var(--type-headline-lg-weight);
+  line-height: var(--type-headline-lg-line);
+  letter-spacing: var(--type-headline-lg-tracking);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.count {
+  font-family: var(--type-ui-family);
+  font-size: var(--type-caption-size);
+  color: var(--color-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.sidebar {
+  flex: none;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  /* Head: title-left / sort-right on one row, bottom-aligned (design source). */
+  .head[data-with-title] {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-lg);
+  }
+  /* Without a title the row keeps the sort right-aligned. */
+  .head:not([data-with-title]) {
+    align-items: flex-end;
+  }
+  .head:not([data-with-title]) :global([data-testid="sort-control"]) {
+    margin-left: auto;
+  }
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 36px;
+  }
+  .sidebar {
+    width: 236px;
+    position: sticky;
+    top: 88px;
+  }
+  .main {
+    flex: 1;
+  }
+}

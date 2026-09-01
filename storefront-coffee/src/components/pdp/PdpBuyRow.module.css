@@ -1,0 +1,75 @@
+/* HANDOVER §4 — the buy row is ONE dark bar: an embedded [− N +] stepper on the left (a hairline divider apart)
+   and a full-width "Adicionar ao carrinho" filling the rest. The whole bar fades to accent on hover. Semantic
+   tokens only (the translucent divider/step-ink are color-mixes of --color-on-primary, no raw hex). */
+.bar {
+  display: flex;
+  align-items: stretch;
+  height: 52px;
+  width: 100%;
+  margin-top: var(--space-sm);
+  background: var(--color-primary);
+  user-select: none;
+  transition: background-color var(--dur-hover);
+}
+
+.bar:hover {
+  background: var(--color-accent);
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-xs);
+  border-right: 1px solid color-mix(in srgb, var(--color-on-primary) 25%, transparent);
+}
+
+.step {
+  width: 36px;
+  height: 52px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: color-mix(in srgb, var(--color-on-primary) 75%, transparent);
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-17);
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-hover);
+}
+
+.step:hover {
+  color: var(--color-on-primary);
+}
+
+.qtyValue {
+  min-width: 24px;
+  text-align: center;
+  color: var(--color-on-primary);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  font-weight: 600;
+}
+
+.add {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  background: transparent;
+  border: 0;
+  color: var(--color-on-primary);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.add:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.addIcon {
+  flex: none;
+}

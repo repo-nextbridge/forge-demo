@@ -1,0 +1,92 @@
+// The STOREFRONT's chrome: the kit's composition, this app's three fragments.
+//
+// The chrome itself — skip link, header, main landmark, footer, and every `header.*`/`footer.*` extension
+// outlet — lives in `@forgecommerce/storefront-kit/chrome`, because the checkout deployable wears the same
+// one and neither half may import the other's routes. What is the VITRINE's and could never be the kit's:
+//
+//   · the minicart CONTEXT and its five store-bound Server Actions (`(checkout)/checkout/actions`);
+//   · the account affordance — a LINK now, not the modal: see `AccountLink.tsx` for why the cut turned it
+//     into one, and what that costs and buys;
+//   · the rich `SearchBox`, which renders the theme's ProductCard in its suggestion panel.
+//
+// All three are app modules the kit may not name — the first two move to `apps/checkout` in wave 2 of
+// CHECKOUT-APP — so they are bound HERE and handed in as nodes. The rendered HTML is unchanged.
+//
+// ── ★★ M4 — AND THE VITRINE ADOPTS THE MERCHANT'S OWN CHROME, which P2 built and wired to one front ──────
+//
+// P2 shipped the mechanism in the kit and left ADOPTION to each deployable ("o mecanismo é o mesmo e mora no
+// kit; quem adere é decisão do deployable"), taking the checkout first: a checkout WE host must never be
+// worth forking over a footer. The vitrine was the open half, on the argument that its chrome is theme code
+// a forker already owns.
+//
+// It adopts it here because of what a SHOPPER sees, which is the fact neither argument covered: both fronts
+// serve the same host under one address, and a merchant who writes "Atendimento 9h às 18h" into their store
+// gets it on the checkout and not on the shelf — the header changing halfway through a visit, on a screen
+// nobody can point at. The setting is called "the store's header", so it is the store's, on every page of
+// it. Most merchants never fork; the reference vitrine IS their shop.
+//
+// ★ IT COSTS ONE READ AND THE READ IS ALREADY PAID. `storeChromeContent` is `cache()`d per request AND
+// ISR-cached at the port (see the kit), which is why it is legal on the edge-cacheable `c/[store]` tree that
+// mounts this same component.
+
+import { StorefrontChrome as KitChrome } from '@forgecommerce/storefront-kit/chrome';
+import { storeChromeContent } from '@forgecommerce/storefront-kit/chrome/store-chrome';
+import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import type { ReactNode } from 'react';
+import { AccountLink } from '@/components/AccountLink';
+import { MinicartProvider } from '@/components/minicart/MinicartProvider';
+import { MinicartTrigger } from '@/components/minicart/MinicartTrigger';
+import { SearchBox } from '@/components/SearchBox';
+import {
+  addToCartAction,
+  cartSummaryAction,
+  chooseGiftAction,
+  removeLineAction,
+  updateLineAction,
+} from '@/lib/cart-actions';
+import { ExtensionOutlet } from '@/lib/extensions/ExtensionOutlet';
+
+export async function StorefrontChrome({
+  store,
+  base,
+  children,
+}: {
+  store: string;
+  /** MULTISTORE M1-β — the store prefix of the current request. The two layout hosts answer it differently and
+   * that IS the mechanism: `c/[store]` is only ever reached by a host rewrite, so its base is the constant
+   * HOST_BASE (asking would turn a cacheable route into a 500); `s/[store]` reads it per request. */
+  base: StoreBase;
+  children: ReactNode;
+}) {
+  const minicartActions = {
+    readCart: cartSummaryAction.bind(null, store),
+    addLine: addToCartAction.bind(null, store),
+    updateLine: updateLineAction.bind(null, store),
+    removeLine: removeLineAction.bind(null, store),
+    // PROMO — picking an offered gift is a cart write like the others: bound here, re-read by the provider.
+    chooseGift: chooseGiftAction.bind(null, store),
+  };
+  return (
+    <MinicartProvider actions={minicartActions}>
+      <KitChrome
+        store={store}
+        base={base}
+        chrome={await storeChromeContent(store)}
+        outlet={ExtensionOutlet}
+        account={<AccountLink base={base} />}
+        minicart={
+          <MinicartTrigger
+            base={base}
+            top={<ExtensionOutlet name="minicart.top" store={store} storeBase={base} />}
+            belowItems={
+              <ExtensionOutlet name="minicart.below_items" store={store} storeBase={base} />
+            }
+          />
+        }
+        search={<SearchBox base={base} />}
+      >
+        {children}
+      </KitChrome>
+    </MinicartProvider>
+  );
+}

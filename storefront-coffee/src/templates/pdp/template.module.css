@@ -1,0 +1,100 @@
+/* PDP layout (structure). Semantic tokens only. */
+.pdp {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  /* o4 #18 — the PDP is the SINGLE source of vertical rhythm between its stacked blocks (gallery/buybox hero,
+     the three below_* slots, and the tabs). Its own inter-section rhythm token (prototype 28 + a touch) is the
+     one gap — the ProductTabs' `margin-top: var(--space-section-gap)` (64) and any margin a slot's extension
+     block carries stacked on top of this container gap made the spacing read far too large. */
+  gap: var(--space-section-gap-pdp);
+}
+
+/* Neutralize each block's own vertical margin so the container `gap` above is the ONLY inter-section gap —
+   regardless of the margin a theme block (ProductTabs) or a sibling-owned extension block carries. `> *`
+   reaches each block's root directly: <Slot>/<ExtensionOutlet> add no DOM node (same pattern as `.home`).
+   DOUBLED (`.pdp.pdp`) for specificity (0,2,0): the sibling blocks' single-class `margin` rules live in later
+   CSS modules and tied-then-won a plain `.pdp > *` on source order — the doubled class wins deterministically. */
+.pdp.pdp > * {
+  margin-block: 0;
+}
+
+/* Mobile-first: gallery and info STACK in a single column with a tight gap. The two-column split (the large
+ * gallery beside a fixed-width buybox) only applies once there is room. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* PACK item 17 — the hero's two columns.
+ *
+ * L4 #7 — the gallery is the LARGE column (the design: the product image dominates), the buybox beside it.
+ * This was once inverted (`minmax(0,420px) minmax(0,1fr)`) — a small 420px gallery with a wide buybox. The
+ * Gallery's own max-width cap was removed so it fills this fluid column.
+ *
+ * ★ THE RATIO IS THE PROTOTYPE'S OWN, and so is the absence of anything else. The design file declares
+ * `1.18fr 1fr` and its ONLY width breakpoint is the 768px one every other grid uses — it does not treat the
+ * tablet squeeze at all: it stays proportional all the way down and then stacks. 1.18/2.18 = 54.1%, which is
+ * the 54:46 measured off the rendered prototype (gallery 617 / buybox 525 at 1387px).
+ *
+ * THREE WRONG ANSWERS CAME BEFORE THIS ONE, and the comment keeps them so nobody re-invents them:
+ *   · a buybox FROZEN at 440px — measured 688/440 at 1387, 1530 and 1800px, against a design that gives it
+ *     525. The number was the defect, not the freezing;
+ *   · then MY proportional 54fr/46fr — right shape, invented numbers;
+ *   · then a buybox frozen at the design's 525px, which forced a new 1100px breakpoint into the house's
+ *     sanctioned scale to stop the gallery collapsing to 131px at 768. Renan chose proportional instead, and
+ *     that entry came back out of `structure.test.ts`: the prototype asks for no breakpoint of its own.
+ *
+ * The consequence Renan accepted knowingly, MEASURED (not estimated — the first version of this comment
+ * carried a number I had guessed, and it was wrong by 91px): below the container the BUYBOX narrows with the
+ * page — 517 at 1387 and above, 453 at 1100, 418 at 1024, 361 at 900, 316 at 800. The decision column gives
+ * way rather than the photo. It is the design's own behaviour (the prototype renders 525 at 1387 and 461 at
+ * 1100; ours sits ~8px under because our section gap is 64 against its 49) and it is the trade for not
+ * inventing a rule the prototype does not have. */
+@media (min-width: 768px) {
+  .layout {
+    grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+    gap: var(--space-section);
+  }
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* Title + rating group tightly (HANDOVER §4): the rating sits just under the title, above the description. */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-family: var(--type-display-sm-family);
+  font-size: var(--type-display-sm-size);
+  font-weight: var(--type-display-sm-weight);
+  line-height: var(--type-display-sm-line);
+  letter-spacing: var(--type-display-sm-tracking);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.description {
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* S5-SKU-EXPAND / S6-PDP — the selected variant's commercial name, INSIDE the product title
+   ("Tênis Air Veloz — Verde Xtreme"): same type as the title, accented so the variant reads apart. */
+.variantName {
+  color: var(--color-accent, var(--color-ink));
+}

@@ -1,0 +1,146 @@
+/* The theme's 404 body — matches design-base/404.dc.html: giant "4·0·4" (accent RATIONED to the single "0"),
+ * a grouped title+subcopy, two icon CTAs, and category chips. Colors are semantic tokens; the display metrics
+ * with no scale entry (the 96px hero, the 44px button, the 18/10/6px gaps, the 12.5px chip) are literals pulled
+ * straight from the prototype. Square corners via --radius-control. */
+
+.root {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  padding: 72px var(--space-lg) 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 18px;
+}
+
+.brand {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--type-headline-lg-size);
+  font-weight: var(--type-headline-lg-weight);
+  color: var(--color-ink);
+  text-decoration: none;
+  margin-bottom: var(--space-lg);
+}
+
+.brandDot {
+  color: var(--color-accent);
+}
+
+/* The giant "404" — 96px hero (no scale token this large), accent rationed to the "0". */
+.code {
+  font-family: var(--type-display-xl-family);
+  font-size: 96px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.zero {
+  color: var(--color-accent);
+}
+
+/* Title + subcopy share one block (proto: gap 8px, max-width 440px). */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: 440px;
+}
+
+.title {
+  font-family: var(--type-headline-lg-family);
+  font-size: var(--font-size-22);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-title);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.text {
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  line-height: 1.6;
+  color: var(--color-muted);
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.primary,
+.secondary {
+  height: 44px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  border-radius: var(--radius-control);
+  font-family: var(--type-ui-family);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-hover) ease,
+    border-color var(--dur-hover) ease,
+    color var(--dur-hover) ease;
+}
+
+/* Filled black → accent on hover. */
+.primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.primary:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Outline (hairline border) → accent on hover. */
+.secondary {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+}
+
+.secondary:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chip {
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  font-family: var(--type-caption-family);
+  font-size: 12.5px;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-hover) ease,
+    color var(--dur-hover) ease;
+}
+
+/* Proto hover: text goes accent, the border only nudges to the weak line. */
+.chip:hover {
+  color: var(--color-accent);
+  border-color: var(--gray-300);
+}

@@ -1,0 +1,105 @@
+/* Semantic tokens only. Square surfaces, one soft lift on the main image. */
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  /* L4 #7 — no max-width cap: the gallery fills its grid column, which the PDP now makes the LARGE one (a fixed
+     440px buybox beside it). The old 420px cap kept the image small even when the column grew. On mobile the
+     single-column layout already governs the width. */
+}
+
+/* S6-IMAGES — the image boxes are `position: relative` because next/image renders `fill` (the catalog stores
+   no intrinsic dimensions, so the container owns the box and keeps the aspect-ratio). */
+.main {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  /* o6 — the main image box carries ONLY a gray border: no fill, no shadow (matches the prototype). White stage
+     so a non-square photo is CONTAINED (fit 100%, centred) over white — never cropped. */
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--color-canvas);
+  overflow: hidden;
+}
+
+.mainImg,
+.placeholder {
+  width: 100%;
+  height: 100%;
+  /* contain (not cover): the whole photo, proportional, centred on the white stage — never crop. */
+  object-fit: contain;
+  display: block;
+}
+
+.placeholder {
+  background: var(--color-surface-sunken);
+}
+
+/* S6-PDP — a video on the stage: the player embed fills the square surface (no zoom — it is not an image). */
+.videoFrame {
+  position: absolute;
+  inset: 0;
+}
+
+.videoFrame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.videoLink {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+/* S6-PDP — the thumbs ARE the picker: an image thumb is a button, a video thumb is a link (so it still works
+   without JS). Both are the same 64px box — positioned, because the image inside renders `fill` — and the one
+   currently on the stage is ringed. */
+.thumb,
+.videoThumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  cursor: pointer;
+}
+
+.thumb[data-active="true"],
+.videoThumb[data-active="true"] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.videoThumb {
+  display: grid;
+  place-items: center;
+  color: var(--color-ink);
+}
+
+.playBadge {
+  display: grid;
+  place-items: center;
+}

@@ -1,0 +1,19 @@
+/* Search layout (structure). Semantic tokens only. */
+.search {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.title {
+  font-family: var(--type-display-sm-family);
+  font-size: var(--type-display-sm-size);
+  font-weight: var(--type-display-sm-weight);
+  line-height: var(--type-display-sm-line);
+  letter-spacing: var(--type-display-sm-tracking);
+  color: var(--color-ink);
+  margin: 0;
+}

@@ -1,0 +1,62 @@
+/* LoadMore — centered counter + "Carregar mais produtos" button (HANDOVER §5). Square corners, tokens only. */
+.loadMore {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg) 0;
+}
+
+.counter {
+  margin: 0;
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  color: var(--color-subtle, var(--color-ink-muted, var(--color-ink)));
+  font-variant-numeric: tabular-nums;
+}
+
+.counterStrong {
+  color: var(--color-ink);
+  font-weight: var(--type-ui-weight-strong, 600);
+}
+
+/* The design source's load-more is a QUIET outline button (white fill + hairline), NOT the black CTA — it borders
+   accent on hover. Square corners, tokens only. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  padding: 0 var(--space-xl);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color var(--dur-hover) var(--ease),
+    border-color var(--dur-hover) var(--ease);
+}
+
+.button:hover {
+  border-color: var(--color-subtle);
+  color: var(--color-accent);
+}
+
+/* QA20/B11 — the way back to the top of the list, shown only once the window slid past the first page. A quiet
+   text link, never a second button: it must not compete with the load-more CTA beside it. */
+.restart {
+  font-family: var(--type-ui-family);
+  font-size: var(--type-ui-size);
+  color: var(--color-subtle, var(--color-ink-muted, var(--color-ink)));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.restart:hover {
+  color: var(--color-accent);
+}
