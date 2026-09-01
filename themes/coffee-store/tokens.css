@@ -50,6 +50,53 @@
   --r-xs: 999px; /* the chips and note pills are FULLY round in this design, not merely soft */
   --ri: 9px; /* checkout inputs */
 
+  /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+   * C2 — THE LINES, THE SECONDARY INKS AND THE STATUS COLOURS, measured off `Forge Checkout.dc.html`.
+   *
+   * C1 measured the grounds, the ink, the accent and the radius off `Forge Home` / `Forge PDP` and handed the
+   * palette over. What those two artboards do not contain is a form: no input borders, no field hover, no
+   * validation state, no carrier chips, no shipping radios. The checkout is made almost entirely of those, and
+   * on the base theme's own ramp they arrive COOL — #e7e9ec lines and #6b6e74 labels inside a #f3ede3 room.
+   * That is the half this block closes, and it is the reason the slice exists: it is what makes the shop one
+   * shop across the "Finalizar compra" button rather than two that share a logo.
+   *
+   * ★ EVERY VALUE BELOW IS A HEX THAT APPEARS IN THAT ARTBOARD, except the one marked INTERPOLATED. Each
+   * overrides a PRIMITIVE the base already has a word for, so the semantic roles built on them
+   * (`--color-hairline`, `--color-subtle`, `--color-danger`, `--ring-focus`…) move with it and not one
+   * component is edited.
+   * ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+  /* --- The lines. The single most-repeated value in the artboard ---------------------------------------- */
+  /* `--gray-200` is the base's DEFAULT border: cards, inputs, dividers. In the design every one of those is
+   * #DFD5C5 — the card, the field, the qr panel, the trajectory box, the carrier chip. */
+  --gray-200: #dfd5c5;
+  --gray-150: #e6dccc; /* the softer rule: the band divider inside a panel, the product thumb's edge */
+  --gray-250: #d6cbba; /* the faint connector: the vertical line between two trajectory dots */
+  --gray-300: #cfc3b2; /* the ring of an UNSELECTED radio — lighter than a border, darker than a wash */
+
+  /* --- The secondary inks ------------------------------------------------------------------------------ */
+  /* `--gray-600` is two roles in the base and the design agrees with both: secondary text AND the border a
+   * field takes on hover (`[data-input-box]:hover { border-color:#7C7166 }`), which is `--color-border-strong`
+   * here. One value, both roles, exactly as the base intends. */
+  --gray-600: #7c7166;
+  --ink-700: #5a5045; /* labels, the "Checkout" step word, the carrier chip's text, stepper glyphs */
+  --gray-400: #9a8d80; /* the struck-through old price, the first trajectory dot */
+  --gray-350: #c3b7a7; /* the remove-X on a cart line: present, and deliberately quiet */
+  /* INTERPOLATED, and said so rather than measured: the artboard never shows this rung. It sits between two
+   * that it does show (#7c7166 and #9a8d80) and leaving it on the base's cool #8a8d93 would put one grey step
+   * of a different temperature inside a warm ladder. Replace it the day the design shows the real one. */
+  --gray-500: #8a7f73;
+
+  /* --- Status: the two the design re-tints, and they are not decoration --------------------------------- */
+  /* A validation border is the one colour a shopper reads under stress. The design's is a warm brick, not the
+   * base's pure red — #A8412D, the `.om-invalid` rule in the artboard's own stylesheet. */
+  --red-600: #a8412d;
+  --red-700: #8f3625; /* INTERPOLATED: the hover of the above, which a static artboard cannot show */
+  /* Free shipping, the delivered state and the padlock are all the deep green this shop already owns — the
+   * same value C1 named `--coffee-deep` for the primary CTA. Pointed at that token rather than repeating the
+   * hex: one source, so a change to the shop's green cannot leave "Grátis" behind on the old one. */
+  --green-600: var(--coffee-deep);
+
   /* --- Typography ------------------------------------------------------------------------------------- */
   /* The faces themselves are declared in `fonts.css` beside this file and served from `fonts/`. */
   --font-sans: "Poppins", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;

@@ -98,6 +98,24 @@ async function read(name, params = {}) {
 }
 
 /**
+ * One read through the PUBLIC face — the shopper's, which is the only one that answers "is this product ON
+ * SALE in this store?".
+ *
+ * ⚠️ IT EXISTS BECAUSE ASKING THE OTHER FACE GAVE A CONFIDENT WRONG ANSWER. `publish()` first asked
+ * `/v1/read/internal/products?store=<id>`, which answers 200 with the WHOLE TENANT CATALOGUE and ignores the
+ * `store` param entirely (measured: 6 items for a store with 0 published). So the idempotence check read
+ * "all six already on sale" for a shop that was showing nothing, and the publish never ran. Same shape as the
+ * envelope defect `rows()` above carries a note about: a read that answers a DIFFERENT question than the one
+ * asked, silently, and the caller cannot tell.
+ */
+async function publicRead(name, params = {}) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${api}/v1/read/${name}${qs ? `?${qs}` : ''}`);
+  if (!res.ok) fail(`read.${name} (public) → HTTP ${res.status}`);
+  return res.json();
+}
+
+/**
  * The rows of a read, whatever envelope it came in.
  *
  * ⚠️ THE `?? []` THIS REPLACES WAS A DEFECT, AND IT HID ITSELF IN THE ONE PLACE IT COULD DO DAMAGE. The
@@ -163,11 +181,65 @@ async function stores() {
   }
 }
 
+/** ★ E1 — the words, written AFTER the custom fields are declared (an undeclared `vocabulary_*` is accepted
+ *  and then read by nobody, which is the silent half this order avoids). Runs over every store, so a store
+ *  that declares none simply gets no call. */
+async function vocabulary() {
+  const byHandle = new Map(rows(await read('stores')).map((s) => [s.handle, s]));
+  for (const store of catalog.stores) {
+    const words = store.vocabulary ?? {};
+    const keys = Object.keys(words);
+    if (keys.length === 0) continue;
+    const found = byHandle.get(store.handle);
+    if (!found) fail(`store "${store.handle}" is not there — cannot write its words.`);
+    // Idempotent by VALUE, not by presence: `set_custom_fields` is a write, and re-writing the same words
+    // every run would be a no-op that still spends a command and an audit row.
+    const current = found.custom_fields ?? {};
+    const missing = keys.filter((k) => current[`vocabulary_${k}`] !== words[k]);
+    if (missing.length === 0) {
+      log(`vocabulary ${store.handle} — already ${keys.map((k) => `${k}="${words[k]}"`).join(', ')}`);
+      continue;
+    }
+    // ⚠️⚠️ THE CURRENT BAG IS SPREAD BACK IN, AND THIS IS NOT DEFENSIVENESS — IT IS MEASURED.
+    //
+    // `tenant.store.set_custom_fields` REPLACES the map; it does not merge. Measured on this bench: writing
+    // `{vocabulary_cart: ""}` alone left the store's bag as exactly `{"vocabulary_cart": ""}` and
+    // `vocabulary_cart_empty_title` was GONE.
+    //
+    // And the bag is shared. The kernel keeps TWO features' reserved keys in it — `vocabulary_<key>` (E1) and
+    // `chrome_<region>` (P2, the store's own header/footer content) — plus whatever a merchant or an ERP put
+    // there. So a script that sends only its own keys silently erases a store's chrome, and a screen that
+    // sets the chrome silently erases its words. This one sends the bag it found, with its words on top.
+    await command('tenant.store.set_custom_fields', {
+      store_id: found.id,
+      custom_fields: {
+        ...current,
+        ...Object.fromEntries(keys.map((k) => [`vocabulary_${k}`, words[k]])),
+      },
+    });
+    log(`vocabulary ${store.handle} — ${keys.map((k) => `${k}="${words[k]}"`).join(', ')}`);
+  }
+}
+
 // ── 2. the custom fields the catalogue uses ─────────────────────────────────────────────────────────────────
 // DECLARED BEFORE ANY PRODUCT WRITES ONE. `catalog.product.create` validates declared product fields and
 // leaves undeclared metadata keys free — so an undeclared `regiao` would be accepted and then be invisible to
 // every faceting and PDP feature that reads declarations. Silent, and exactly the kind of thing that is found
 // three slices later.
+/**
+ * ★ E1 — THE STORE'S OWN WORDS, and they are a CUSTOM FIELD OF THE STORE, not of a product.
+ *
+ * The kernel publishes only the keys the kit curates (`cart`, `cart_empty_title`), under a reserved
+ * `vocabulary_` prefix, on `read.store_flags`. A key outside that list is written happily and read by nobody
+ * — deliberately: the list is a closed contract, not merchant-side i18n.
+ *
+ * ⚠️ AND THE TWO ARE DIFFERENT SPECIES. `cart` is a NOUN, interpolated only where a bare verb precedes it
+ * ("Abrir sacola"); `cart_empty_title` is a WHOLE SENTENCE because Portuguese makes the noun's gender
+ * load-bearing — "Sua sacola está vazia", never "Seu sacola está vazio". A noun poured into our sentence
+ * would be a string list doing grammar.
+ */
+const VOCABULARY_FIELDS = ['cart', 'cart_empty_title'];
+
 const FIELDS = [
   { key: 'regiao', label: 'Região', type: 'text', facetable: true },
   { key: 'produtor', label: 'Produtor', type: 'text', facetable: false },
@@ -184,6 +256,15 @@ async function customFields() {
   const declared = new Set(
     rows(await read('custom_field_definitions')).map((d) => `${d.owner_entity}:${d.key}`),
   );
+  for (const key of VOCABULARY_FIELDS) {
+    const name = `vocabulary_${key}`;
+    if (declared.has(`store:${name}`)) {
+      log(`cf ${name} — already declared`);
+      continue;
+    }
+    await command('custom_field.define', { owner_entity: 'store', key: name, type: 'text' });
+    log(`cf ${name} — declared (store)`);
+  }
   for (const field of FIELDS) {
     if (declared.has(`product:${field.key}`)) {
       log(`cf ${field.key} — already declared`);
@@ -308,6 +389,99 @@ async function products() {
   }
 }
 
+/**
+ * ★ PUBLISHING — the second act, and D1 did only the first.
+ *
+ * `catalog.product.create` makes a product of the TENANT. Being ON SALE IN A STORE is a separate command, and
+ * skipping it leaves a catalogue that exists and a shop that shows nothing. Measured on this bench with all
+ * six coffees created: `read.products?store=<cafe>` answered **0**. A product is not a listing.
+ *
+ * Idempotent against the STORE's published list, which is the only thing that answers the question being
+ * asked here — the tenant catalogue (`products_admin`, used for "did I create this?") cannot tell a published
+ * product from an unpublished one.
+ */
+async function publish() {
+  const storeHandle = catalog.products_store;
+  if (!storeHandle) fail('seed/catalog.json names no `products_store` — nobody sells these products.');
+  const store = rows(await read('stores')).find((s) => s.handle === storeHandle);
+  if (!store) fail(`the selling store "${storeHandle}" does not exist.`);
+
+  const wanted = new Map(
+        // `product_id`, not `id` — measured: `products_admin` names it that way, and reading `p.id` made every
+    // entry `undefined`. It failed LOUDLY on the first product rather than publishing nothing quietly, which
+    // is the only reason this line is a two-minute fix and not a shop that stays empty.
+    rows(await read('products_admin', { limit: '100' })).map((p) => [p.handle, p.product_id ?? p.id]),
+  );
+  const already = new Set(
+    rows(await publicRead('products', { store: store.id, limit: '100', projection: 'feed' })).map(
+      (p) => p.handle,
+    ),
+  );
+  const todo = catalog.products
+    .filter((p) => !already.has(p.handle))
+    .map((p) => {
+      const id = wanted.get(p.handle);
+      if (!id) fail(`product ${p.handle} was never created — cannot publish it.`);
+      return id;
+    });
+
+  if (todo.length === 0) {
+    log(`publish ${storeHandle} — all ${catalog.products.length} already on sale`);
+    return;
+  }
+  await command('catalog.product.publish_bulk', { product_ids: todo, store_id: store.id });
+  log(`publish ${storeHandle} — ${todo.length} product(s) put on sale`);
+}
+
+/**
+ * ★ STOCK — the third act, and D1 did none of it.
+ *
+ * `catalog.sku.create` prices a SKU. It does not stock one, and the kernel is right to refuse a cart line it
+ * cannot serve: measured on this bench with all six coffees published and none stocked,
+ * `cart.add_line` → `conflict · insufficient_stock · available: 0`. A catalogue nobody can put in a bag.
+ *
+ * Idempotent because it sets an ABSOLUTE `on_hand` rather than a delta — running it twice leaves the same
+ * number, where two deltas would leave double. It is skipped entirely for a SKU already at or above the
+ * declared figure, so a re-run does not overwrite stock somebody moved by hand on the bench.
+ */
+async function stock() {
+  const fallback = catalog.default_on_hand;
+  if (!fallback) fail('seed/catalog.json declares no `default_on_hand` — nothing would be buyable.');
+
+  const bySku = new Map();
+  for (const product of catalog.products) {
+    for (const sku of product.skus) {
+      bySku.set(`${product.handle}-${sku.options.map((v) => slug(v)).join('-')}`, sku.on_hand ?? fallback);
+    }
+  }
+
+  // ⚠️ `stock_levels` AND NOT `products_admin`, and this cost a second wrong answer of the same shape as the
+  // two above. `products_admin` publishes a sku's price, code, options and media and NOT its stock — measured,
+  // its sku keys are [amount, code, compare_at_amount, currency, ean, id, is_default, media, metadata, name,
+  // option_values, ref, status]. Reading `sku.on_hand` off it gave `undefined` for every sku, so `have` was
+  // always 0, so every run re-set all 25. It was idempotent in EFFECT (an absolute `on_hand` twice is the same
+  // number) and not in ACT — 25 commands and 25 audit rows per run, for nothing.
+  //
+  // ★ Third time tonight that a field name I did not measure was a defect. The rule this file now keeps: ask
+  // the read whose NAME is the question, and look at its keys before using one.
+  let moved = 0;
+  for (const product of rows(await read('stock_levels', { limit: '100' }))) {
+    for (const sku of product.skus ?? []) {
+      const want = bySku.get(sku.sku_code);
+      if (want === undefined) continue;
+      if ((sku.on_hand ?? 0) >= want) continue;
+      await command('inventory.adjust', {
+        sku_id: sku.sku_id,
+        on_hand: want,
+        reason: 'correction',
+        note: 'demo birth data',
+      });
+      moved += 1;
+    }
+  }
+  log(moved === 0 ? 'stock — every sku already stocked' : `stock — ${moved} sku(s) set`);
+}
+
 const slug = (text) =>
   text
     .normalize('NFD')
@@ -320,7 +494,10 @@ const slug = (text) =>
 log(`against ${api} as tenant ${tenant}`);
 await stores();
 await customFields();
+await vocabulary();
 await products();
+await publish();
+await stock();
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +

@@ -21,7 +21,6 @@
     "labelled by the customer's METHOD ('Grãos' · 'Filtrado' · 'Espresso'), not by particle size, because the",
     "shopper knows how they brew and does not know what 'fina' means."
   ],
-
   "stores": [
     {
       "handle": "outlet",
@@ -29,24 +28,30 @@
       "tenant": "forgeco",
       "theme_key": "outlet",
       "bootstrap": true,
-      "why": "Created by `provision-ref` at bootstrap, not by this script — a first store is bootstrap, a second is data. It is listed here so the file is the whole picture, and the script CHECKS it rather than creating it."
+      "why": "Created by `provision-ref` at bootstrap, not by this script — a first store is bootstrap, a second is data. It is listed here so the file is the whole picture, and the script CHECKS it rather than creating it.",
+      "vocabulary": {}
     },
     {
       "handle": "forge",
       "name": "Forge",
       "tenant": "forgeco",
       "theme_key": null,
-      "why": "Tenant 1's second store, on the vanilla theme. It is the control: the Outlet's whole thesis is that a theme plus data plus composition is enough, and a thesis with nothing to be compared against is a claim."
+      "why": "Tenant 1's second store, on the vanilla theme. It is the control: the Outlet's whole thesis is that a theme plus data plus composition is enough, and a thesis with nothing to be compared against is a claim.",
+      "vocabulary": {}
     },
     {
       "handle": "cafe",
       "name": "Forge Café",
       "tenant": "forgeco",
       "theme_key": "coffee-store",
-      "why": "The coffee store. ⚠️ THE SPEC PUTS IT ON A SECOND TENANT and this script puts it on the first — see README, 'One tenant on the bench'. The reason is the admin: it is pinned to ONE tenant by FORGE_ADMIN_TENANT, so a second tenant needs a second admin container on a hostname of its own, and the bench has one origin. Nothing about the STOREFRONT needs the split; nothing in the catalogue below changes when it happens."
+      "why": "The coffee store. ⚠️ THE SPEC PUTS IT ON A SECOND TENANT and this script puts it on the first — see README, 'One tenant on the bench'. The reason is the admin: it is pinned to ONE tenant by FORGE_ADMIN_TENANT, so a second tenant needs a second admin container on a hostname of its own, and the bench has one origin. Nothing about the STOREFRONT needs the split; nothing in the catalogue below changes when it happens.",
+      "vocabulary": {
+        "cart": "Sacola",
+        "cart_empty_title": "Sua sacola está vazia"
+      },
+      "_vocabulary_why": "E1 — the store's OWN words, as DATA and never as theme. Two keys of different species on purpose: `cart` is a NOUN the kit interpolates only after a bare verb, and `cart_empty_title` is a whole SENTENCE because Portuguese makes the noun's gender load-bearing — a shop that says 'Sacola' needs 'Sua sacola está vazia', not 'Seu sacola está vazio'. A string list that tried to do that agreement would be doing grammar."
     }
   ],
-
   "products": [
     {
       "handle": "forge-alvorada",
@@ -61,16 +66,65 @@
         "notas": "chocolate ao leite, caramelo, nozes"
       },
       "options": [
-        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
-        { "name": "Peso", "values": ["250g", "1kg"] }
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos",
+            "Filtrado",
+            "Espresso"
+          ]
+        },
+        {
+          "name": "Peso",
+          "values": [
+            "250g",
+            "1kg"
+          ]
+        }
       ],
       "skus": [
-        { "options": ["Grãos", "250g"], "amount": 4290 },
-        { "options": ["Filtrado", "250g"], "amount": 4290 },
-        { "options": ["Espresso", "250g"], "amount": 4290 },
-        { "options": ["Grãos", "1kg"], "amount": 14900 },
-        { "options": ["Filtrado", "1kg"], "amount": 14900 },
-        { "options": ["Espresso", "1kg"], "amount": 14900 }
+        {
+          "options": [
+            "Grãos",
+            "250g"
+          ],
+          "amount": 4290
+        },
+        {
+          "options": [
+            "Filtrado",
+            "250g"
+          ],
+          "amount": 4290
+        },
+        {
+          "options": [
+            "Espresso",
+            "250g"
+          ],
+          "amount": 4290
+        },
+        {
+          "options": [
+            "Grãos",
+            "1kg"
+          ],
+          "amount": 14900
+        },
+        {
+          "options": [
+            "Filtrado",
+            "1kg"
+          ],
+          "amount": 14900
+        },
+        {
+          "options": [
+            "Espresso",
+            "1kg"
+          ],
+          "amount": 14900
+        }
       ]
     },
     {
@@ -88,11 +142,35 @@
         "notas": "mel, maçã verde, floral",
         "sca": "86"
       },
-      "options": [{ "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] }],
+      "options": [
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos",
+            "Filtrado",
+            "Espresso"
+          ]
+        }
+      ],
       "skus": [
-        { "options": ["Grãos"], "amount": 6900 },
-        { "options": ["Filtrado"], "amount": 6900 },
-        { "options": ["Espresso"], "amount": 6900 }
+        {
+          "options": [
+            "Grãos"
+          ],
+          "amount": 6900
+        },
+        {
+          "options": [
+            "Filtrado"
+          ],
+          "amount": 6900
+        },
+        {
+          "options": [
+            "Espresso"
+          ],
+          "amount": 6900
+        }
       ]
     },
     {
@@ -108,16 +186,65 @@
         "notas": "chocolate 70%, avelã, cana"
       },
       "options": [
-        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
-        { "name": "Peso", "values": ["250g", "1kg"] }
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos",
+            "Filtrado",
+            "Espresso"
+          ]
+        },
+        {
+          "name": "Peso",
+          "values": [
+            "250g",
+            "1kg"
+          ]
+        }
       ],
       "skus": [
-        { "options": ["Grãos", "250g"], "amount": 4890 },
-        { "options": ["Filtrado", "250g"], "amount": 4890 },
-        { "options": ["Espresso", "250g"], "amount": 4890 },
-        { "options": ["Grãos", "1kg"], "amount": 16900 },
-        { "options": ["Filtrado", "1kg"], "amount": 16900 },
-        { "options": ["Espresso", "1kg"], "amount": 16900 }
+        {
+          "options": [
+            "Grãos",
+            "250g"
+          ],
+          "amount": 4890
+        },
+        {
+          "options": [
+            "Filtrado",
+            "250g"
+          ],
+          "amount": 4890
+        },
+        {
+          "options": [
+            "Espresso",
+            "250g"
+          ],
+          "amount": 4890
+        },
+        {
+          "options": [
+            "Grãos",
+            "1kg"
+          ],
+          "amount": 16900
+        },
+        {
+          "options": [
+            "Filtrado",
+            "1kg"
+          ],
+          "amount": 16900
+        },
+        {
+          "options": [
+            "Espresso",
+            "1kg"
+          ],
+          "amount": 16900
+        }
       ]
     },
     {
@@ -132,21 +259,69 @@
         "notas": "cacau, melaço, especiarias"
       },
       "options": [
-        { "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] },
-        { "name": "Peso", "values": ["250g", "1kg"] }
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos",
+            "Filtrado",
+            "Espresso"
+          ]
+        },
+        {
+          "name": "Peso",
+          "values": [
+            "250g",
+            "1kg"
+          ]
+        }
       ],
       "skus": [
-        { "options": ["Grãos", "250g"], "amount": 4490 },
-        { "options": ["Filtrado", "250g"], "amount": 4490 },
-        { "options": ["Espresso", "250g"], "amount": 4490 },
         {
-          "options": ["Grãos", "1kg"],
+          "options": [
+            "Grãos",
+            "250g"
+          ],
+          "amount": 4490
+        },
+        {
+          "options": [
+            "Filtrado",
+            "250g"
+          ],
+          "amount": 4490
+        },
+        {
+          "options": [
+            "Espresso",
+            "250g"
+          ],
+          "amount": 4490
+        },
+        {
+          "options": [
+            "Grãos",
+            "1kg"
+          ],
           "amount": 11900,
           "compare_at_amount": 15900,
           "why": "The de/por promotion the catalogue asks for. `compare_at_amount` is the SKU's own field, so the discount is a fact about the price and not a rule an app has to be installed to see."
         },
-        { "options": ["Filtrado", "1kg"], "amount": 11900, "compare_at_amount": 15900 },
-        { "options": ["Espresso", "1kg"], "amount": 11900, "compare_at_amount": 15900 }
+        {
+          "options": [
+            "Filtrado",
+            "1kg"
+          ],
+          "amount": 11900,
+          "compare_at_amount": 15900
+        },
+        {
+          "options": [
+            "Espresso",
+            "1kg"
+          ],
+          "amount": 11900,
+          "compare_at_amount": 15900
+        }
       ]
     },
     {
@@ -160,11 +335,35 @@
         "torra": "média",
         "notas": "biscoito, chocolate"
       },
-      "options": [{ "name": "Moagem", "values": ["Grãos", "Filtrado", "Espresso"] }],
+      "options": [
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos",
+            "Filtrado",
+            "Espresso"
+          ]
+        }
+      ],
       "skus": [
-        { "options": ["Grãos"], "amount": 5490 },
-        { "options": ["Filtrado"], "amount": 5490 },
-        { "options": ["Espresso"], "amount": 5490 }
+        {
+          "options": [
+            "Grãos"
+          ],
+          "amount": 5490
+        },
+        {
+          "options": [
+            "Filtrado"
+          ],
+          "amount": 5490
+        },
+        {
+          "options": [
+            "Espresso"
+          ],
+          "amount": 5490
+        }
       ]
     },
     {
@@ -183,15 +382,28 @@
         "notas": "jasmim, pêssego, rapadura",
         "sca": "88"
       },
-      "options": [{ "name": "Moagem", "values": ["Grãos"] }],
+      "options": [
+        {
+          "name": "Moagem",
+          "values": [
+            "Grãos"
+          ]
+        }
+      ],
       "skus": [
         {
-          "options": ["Grãos"],
+          "options": [
+            "Grãos"
+          ],
           "amount": 9800,
           "on_hand": 14,
           "why": "The scarcity the catalogue asks for — 'restam 14'. It is real stock and not a label: the shelf that says 'Acabando!' reads the same number the checkout refuses to oversell."
         }
       ]
     }
-  ]
+  ],
+  "products_store": "cafe",
+  "_products_store_why": "WHICH STORE SELLS THEM. `catalog.product.create` makes a product of the TENANT; being on sale in a store is a second, separate act (`catalog.product.publish`) — and D1 did the first and not the second, so the six coffees existed and no shop showed them. Measured: `read.products?store=<cafe>` answered 0 with all six created. A product is not a listing.",
+  "default_on_hand": 40,
+  "_stock_why": "STOCK, and D1 left it at zero. `catalog.sku.create` prices a SKU; it does not stock it, and a shop whose every SKU is at 0 refuses `cart.add_line` with `insufficient_stock · available: 0` — measured. So each SKU is stocked at this number unless it declares its own `on_hand` (the Edição do Produtor declares 14, because its scarcity is part of the demo). 40 is a demo's number: enough that nobody hits a wall, small enough that the 'Acabando!' shelf still means something."
 }

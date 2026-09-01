@@ -54,11 +54,33 @@
 		reverse_proxy kernel:3000
 	}
 
-	# ── the CHECKOUT half of the front. Same five blocks as production, same reasons ───────────────────────
+	# ── the CHECKOUT half of the front. Same blocks as production, same reasons ────────────────────────────
 	handle /checkout* {
 		reverse_proxy checkout:3000
 	}
 	handle /account* {
+		reverse_proxy checkout:3000
+	}
+	# ★★ AND THE STORE-SCOPED SPELLINGS OF THE SAME TWO, WHICH PRODUCTION DOES NOT NEED AND A BENCH CANNOT
+	# LIVE WITHOUT. Measured before this block existed:
+	#
+	#     /s/cafe            → 200   (the vitrine)
+	#     /s/cafe/checkout   → 404   ← the vitrine's, because it fell through to it
+	#     /s/cafe/account    → 404   ←
+	#     http://checkout:3000/s/cafe/checkout → 200   (the container serves it perfectly well)
+	#
+	# In production a shopper reaches `/checkout` at the ROOT and the store comes from the HOST: the
+	# middleware rewrites it to `/s/<store>/checkout` after resolving the hostname. This bench has ONE
+	# origin and three stores, so the store can only come from the PATH — and `http://checkout:3000/checkout`
+	# answers 404 here for exactly that reason: no host claims a store, so there is no store to rewrite to.
+	#
+	# So the two paths above are the production spelling and these two are the bench's. Without them the
+	# demo's shop is a shop whose "Finalizar compra" leads to the vitrine's 404 — which is the same defect
+	# the front split exists to prevent, one layer out.
+	handle /s/*/checkout* {
+		reverse_proxy checkout:3000
+	}
+	handle /s/*/account* {
 		reverse_proxy checkout:3000
 	}
 	# ⚠️ `/api/account/orders/*` and NOT `/api/account*`: `/api/account/status` is still the VITRINE's route
