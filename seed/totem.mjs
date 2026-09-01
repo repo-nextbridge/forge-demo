@@ -531,6 +531,21 @@ async function stock({ command, readAll, log, fail }, products) {
 async function pickup({ command, read, readAll, rows, log }) {
   const wanted = data.pickup;
 
+  // ⚠️ THE FOUR LOOKUPS BELOW ARE ABSENCE CHECKS OVER SINGLE-PAGE READS, AND THAT IS SAFE HERE — BY
+  // CONSTRUCTION, not by the size of this bench. Worth writing down, because the general rule is the
+  // opposite: an absence proved over a PAGINATED read is proved only for the page you read, and it fails in
+  // the dangerous direction — it reports "not there" for something on page two, and here "not there" means
+  // CREATE, so the cost is a duplicate.
+  //
+  // Measured, one by one: `pickup_locations`, `shipping_zones`, `shipping_methods_admin` and `carriers` take
+  // NO parameters at all (`z.object({})` — they are small operator-curated registries and the read hands back
+  // the whole list), and `shipping_rates` takes only `method_id`/`zone_id`. None of them has a second page to
+  // miss. `readAll` is used for the methods anyway, because it costs nothing and it is the shape that stays
+  // right if one of these ever grows one.
+  //
+  // ★ IF A READ HERE EVER GAINS `limit`/`page`, THIS COMMENT IS THE TRIPWIRE: switch that call to `readAll`
+  // before trusting its `.find()` again.
+
   const point =
     rows(await read('pickup_locations')).find((p) => p.name === wanted.location.name) ??
     (await (async () => {
