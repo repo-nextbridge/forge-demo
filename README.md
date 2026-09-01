@@ -101,10 +101,10 @@ map of how the box is born:
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
 | 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
-| 10 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust |
-| 11 | **`seed-history` × tenant** | the **past** — 180 days of it, so the dashboard shows a business and not a spike |
+| 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
+| 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
 
-### Step 11 has two halves, and the second one is in a `finally`
+### Step 10 has two halves, the second in a `finally` — and it must run inside the silence
 
 `seed-history` refuses to run when a tenant has **more than one active delivery method** — it will not pick
 one at random. That refusal is right, and it is the exact fork where step 9 once chose *silently* by
@@ -112,6 +112,15 @@ one at random. That refusal is right, and it is the exact fork where step 9 once
 PICKUP, wrote a delivery address, never set a pickup location, and the kernel refused every order. **Same
 data, same junction, two opposite behaviours — one guessed and was wrong for an afternoon, one stops and
 names the ambiguity.**
+
+⛔ **And it runs BETWEEN 8 and 11, which is a mailbox and not a preference.** `seed/commerce.mjs`
+silences the buyer's order mail in the curated phase and re-arms it in the window, and its own comment
+names this script: *the decision to send is taken at EMIT, so silencing late is silencing nothing.* This
+box speaks real SMTP and `customers.json` holds one real address. A past seeded after the re-arm mails a
+person. The step therefore **refuses to start** unless every buyer `order.*` channel is off — measured
+at both ends: it passes on a silent box and refuses on a box with one type armed, naming the store and
+the type. (The read parameter is `store`, not `store_id`; the kernel ignores the wrong one silently and
+answers with tenant defaults, which a bogus-id comparison is what exposes.)
 
 So the box does not satisfy the seeder by shrinking: two delivery options is something the demo *wants* to
 show. The refusal is about the **moment** the script runs, not the box's final state, so step 11 changes the
@@ -123,7 +132,7 @@ ended with the tenant's methods exactly as it found them.
 
 ⚠️ **`seed-history` is reset+seed, and its skip is a green.** If the tenant already holds one order older
 than half the window (90 of the 180 days), it prints `SKIPPING`, writes nothing, and **exits 0** with
-`"skipped": true`. A step that trusted the exit code would report a past this box does not have. Step 11
+`"skipped": true`. A step that trusted the exit code would report a past this box does not have. Step 10
 therefore reads the **summary**, not the status — the same discipline the credential check above applies, one
 layer down. There is no `--force`; the only remedy the history offers is to wipe the tenant and run it again.
 
