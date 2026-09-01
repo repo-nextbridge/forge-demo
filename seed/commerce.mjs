@@ -189,32 +189,46 @@ export function assertCredentialTenant(expectedHandles, visibleStores) {
  * equally honest in every shop.
  *
  * Review CONTENT belongs to this slice; INSTALLING the app belongs to the filler (one owner per act, the
- * same rule the logistics went by). What that split leaves open is which of the three real doors to use, and
- * the answer is per store rather than global:
+ * same rule the logistics went by). What that split leaves open is which door to use, and the answer is per
+ * store:
  *
  *   · `app_seed_demo` — the reviews app's own `seed_demo` action. It pulls from the PLATFORM's dataset, whose
  *     handles are a SHOE catalogue. In the shoe stores that is not a shortcut, it is the cheapest honest
  *     door: the handles really are theirs, and the content lands on the right products.
- *   · `two_doors`     — the design approved in §6 of the spec: a MINORITY born of a real purchase (buyer,
- *     delivered order, review through the buyer's own channel — the verified ones, expensive, few, and the
- *     reason the badge means anything) plus a MAJORITY through the PDP's open form (no order, no badge, and
- *     that is correct). Used where `seed_demo` would seed NOTHING, because the platform dataset knows no
- *     coffee.
+ *   · `open_form`     — the PDP's anonymous form (`POST /v1/ext-public/reviews/review`), used where
+ *     `seed_demo` would write NOTHING because the platform dataset knows no coffee. No order, no badge, and
+ *     that is correct rather than a shortfall.
  *   · `none`          — the counter. A totem has no product page and nobody writes a review at a kiosk; the
  *     archetype does not list reviews for it either. Seeding them would be data that looks right and is
  *     absurd, which is the exact failure the archetype rule exists to prevent.
  *
- * ⚠️ THERE IS NO DEFAULT, ON PURPOSE. A store this table does not name is a store somebody added without
- * deciding — and the silent answer would be whichever branch happened to be first. `reviewDoorFor` throws
- * instead, which turns "we forgot" into a sentence rather than into a shop with the wrong reviews.
+ * ⛔ AND THERE IS NO "VERIFIED" DOOR AT ALL — NOT BECAUSE THIS SLICE RAN OUT OF TIME, BUT BECAUSE THE PRODUCT
+ * HAS NONE. The seal is DERIVED by the face from two things at once (could the kernel NAME the caller, and
+ * does the row point at an order) and is refused from any body by name; the app's OWN `seed_demo` refuses to
+ * write `verified`/`order_id` deliberately, with a test holding it there ("not one seeded row claims a
+ * verified purchase it cannot name an order for"). So the whole seeding surface is built so that no seeded
+ * row carries a badge. The only way to a session without a mailbox is `customer.mint_social_session`, and in
+ * THIS box the kernel warns at boot that its public key is absent — the door is only safe while social login
+ * is off. A seed leaning on that becomes a reason never to turn verification on, and this house has already
+ * paid once for a seed that depended on a hole.
+ *
+ * ⇒ The bench is born with OPEN reviews only. The badge is what a human exercises after a real purchase —
+ * truer to demonstrate live than to seed, and, today, the only true version. (Decision of the tech lead,
+ * pre-seed wave.) The product gap this reveals is written up in the slice report: there is no honest way to
+ * seed a verified review, so no demo can SHOW the seal without somebody buying.
+ *
+ * ⚠️ AND THERE IS NO DEFAULT FOR A NEW STORE, ON PURPOSE. A store this table does not name is a store somebody
+ * added without deciding — and the silent answer would be whichever branch happened to be first.
+ * `reviewDoorFor` throws instead, which turns "we forgot" into a sentence rather than into a shop with the
+ * wrong reviews.
  */
 export const REVIEW_DOORS = {
   // The shoe catalogue IS the platform dataset's — the app's own seeder lands on real handles here.
   forge: 'app_seed_demo',
   // Same catalogue, same door: the outlet sells a cut of the very same products.
   outlet: 'app_seed_demo',
-  // The platform dataset has no coffee, so `seed_demo` would write nothing at all. The two honest doors.
-  cafe: 'two_doors',
+  // The platform dataset has no coffee, so `seed_demo` would write nothing at all — the open form instead.
+  cafe: 'open_form',
   // A counter has no product page. Nobody reviews a coffee at the kiosk they ordered it from.
   balcao: 'none',
 };
@@ -336,19 +350,36 @@ async function seedReviews({ stores, read, log, action }) {
     );
   }
 
-  // ── the two honest doors, for the shops the platform dataset knows nothing about.
-  if (byDoor.has('two_doors')) {
-    const shops = byDoor.get('two_doors').map((s) => s.handle);
-    throw new Error(
-      `reviews — the two-door path for ${shops.join(', ')} is not wired yet, and it is blocked on a decision ` +
-        'rather than on code. The VERIFIED minority has to be written under a shopper SESSION (the face ' +
-        'derives the seal from "could the kernel name the caller" plus "does the row point at an order" — it ' +
-        'is refused from any body by name). This seed cannot do an OTP login: with Resend live the code goes ' +
-        'to a real mailbox it cannot read. The only public door that mints a session without one is ' +
-        '`customer.mint_social_session`, which is PUBLIC and which the kernel honours without ever talking to ' +
-        'the provider — so a seed using it is a seed asserting a social login that never happened. That is a ' +
-        'call for the tech lead, not for this file.',
-    );
+  // ── the open form, for the shops the platform dataset knows nothing about ─────────────────────────────
+  //
+  // ⚠️ `open_reviews` AND `moderation` ARE CONFIG OF THE PAIR (extension, TENANT), NOT OF THE STORE
+  // (`extensions/reviews/settings.ts`). Turning the open form on to seed turns it on for the WHOLE TENANT,
+  // and restoring it restores it for the whole tenant. That is another symptom of the missing per-store axis
+  // this box has — app installation, app config, logistics and pickup points all lack one.
+  //
+  // ⭐ AND THE RESTORE IS IN A `finally`, WHICH IS THE WHOLE REASON THIS READS THE OLD VALUE FIRST. A seed
+  // that dies halfway must not leave a bench with the open form silently switched on: the next person to
+  // look would find a store accepting anonymous reviews and no note anywhere saying who turned it on.
+  if (byDoor.has('open_form')) {
+    const shops = byDoor.get('open_form');
+    const before = (await read('internal/extension_config', { extension_id: 'reviews' })) ?? {};
+    const wasOpen = before.open_reviews === true;
+    try {
+      if (!wasOpen)
+        await command('extension.config.set', {
+          extension_id: 'reviews',
+          values: { ...before, open_reviews: true },
+        });
+      for (const store of shops) await openReviewsFor({ store, read, log, post });
+    } finally {
+      if (!wasOpen) {
+        await command('extension.config.set', {
+          extension_id: 'reviews',
+          values: { ...before, open_reviews: wasOpen },
+        });
+        log('reviews — the open form is back OFF for the tenant, as it was found');
+      }
+    }
   }
 }
 
@@ -368,3 +399,52 @@ async function placeLiveOrders({ stores, log }) {
       'read.products answered 0 items when this was written.',
   );
 }
+
+/**
+ * The anonymous PDP form, for one store's products.
+ *
+ * ⭐ IT WRITES NO `verified` AND NO `order_id`, AND NOT AS A COURTESY — the face refuses `verified` from any
+ * body by name and derives it, so an anonymous create can only ever produce an unbadged row. That is the
+ * whole reason this door is honest: it cannot lie even if this file wanted it to.
+ *
+ * `status` is derived too, from the app's `moderation` config: with moderation ON every row is born
+ * `pending`, which is what puts the moderation queue on screen with something in it — and exercising the
+ * queue was one of the wave's asks. The seed does not force it either way; it renders whatever the tenant is
+ * configured for, and says which it saw.
+ */
+async function openReviewsFor({ store, read, log, post }) {
+  const catalogue = (await read('products', { store: store.id, limit: 12 }))?.items ?? [];
+  if (catalogue.length === 0) {
+    log(`reviews — ${store.handle} publishes nothing yet; the open form has no product to write about`);
+    return;
+  }
+
+  let written = 0;
+  for (const [i, product] of catalogue.entries()) {
+    const voice = OPEN_REVIEW_VOICES[i % OPEN_REVIEW_VOICES.length];
+    const created = await post(`/v1/ext-public/reviews/review`, {
+      product_id: product.product_id,
+      rating: voice.rating,
+      body: voice.body,
+      author: voice.author,
+      // ⚠️ NO `verified`, NO `order_id`, NO `status`. All three are the face's to decide; sending them is
+      // either refused by name or overwritten, and pretending otherwise is how a seed grows a belief.
+    });
+    if (created) written += 1;
+  }
+  log(`reviews — ${written} open review(s) written for ${store.handle}, unbadged by construction`);
+}
+
+/**
+ * The words the open reviews are written in. Plain, short, and deliberately unremarkable: a seed's job is to
+ * make a screen look inhabited, not to write copy somebody will quote. They rotate, so two products never
+ * carry the same sentence — which is the tell that gives a seeded shop away at a glance.
+ */
+const OPEN_REVIEW_VOICES = [
+  { author: 'Marina R.', rating: 5, body: 'Chegou rápido e é exatamente o que eu esperava. Já pedi de novo.' },
+  { author: 'Joana P.', rating: 4, body: 'Muito bom no dia a dia. Tirei uma estrela só pelo prazo de entrega.' },
+  { author: 'Rafael M.', rating: 5, body: 'Melhor do que eu imaginava pelo preço. Recomendo sem pensar duas vezes.' },
+  { author: 'Camila S.', rating: 4, body: 'Bem embalado e do jeito que está na foto. Voltaria a comprar.' },
+  { author: 'Diego A.', rating: 3, body: 'Cumpre o que promete, mas eu esperava um pouco mais pelo valor.' },
+  { author: 'Beatriz L.', rating: 5, body: 'Uso todo dia desde que chegou. Nada a reclamar.' },
+];

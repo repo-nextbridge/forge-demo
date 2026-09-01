@@ -20,6 +20,7 @@ import {
   assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
+  REVIEW_DOORS,
   reviewDoorFor,
   reviewSplit,
   storesWithReviews,
@@ -185,8 +186,16 @@ test('the shoe stores use the app’s own seeder — its dataset handles really 
   assert.equal(reviewDoorFor('outlet'), 'app_seed_demo');
 });
 
-test('the coffee store uses the two honest doors — the platform dataset knows no coffee', () => {
-  assert.equal(reviewDoorFor('cafe'), 'two_doors');
+test('the coffee store uses the OPEN form — the platform dataset knows no coffee', () => {
+  assert.equal(reviewDoorFor('cafe'), 'open_form');
+});
+
+test('★ no store anywhere is seeded through a VERIFIED door, because the product has none', () => {
+  // The seal is derived by the face and refused from any body by name; the app's own seed_demo refuses to
+  // write verified/order_id, with a test holding it there. A door named here would be a door that lies.
+  for (const door of Object.values(REVIEW_DOORS))
+    assert.ok(['app_seed_demo', 'open_form', 'none'].includes(door), `unknown door: ${door}`);
+  assert.equal(Object.values(REVIEW_DOORS).includes('verified'), false);
 });
 
 test('★ the counter takes NO reviews — a totem has no product page', () => {
