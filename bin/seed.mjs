@@ -30,6 +30,7 @@ import { seedCoffee } from '../seed/coffee.mjs';
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
 import { mimeOf, seedForge } from '../seed/forge.mjs';
+import { reuseKey, sha256 } from '../seed/media.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
 
@@ -410,6 +411,66 @@ async function customFields() {
 //     directly — a product photo needs no asset row — so `library` is now the caller's choice, and the
 //     default keeps the old behaviour for the callers that already had it.
 //
+// ── ★★ THE CONTENT INDEX — how this seed notices that a FILE CHANGED ──────────────────────────────────
+//
+// THE HOLE IT FILLS, and it cost a slice of its own. The Renan re-cut the six coffee photographs (less
+// transparent margin, 1024x1536 -> 733x1266) and re-running the seed changed NOTHING: `products()` skips a
+// product that already exists, and `upload()` only ever ran for a product being created. The bytes on disk
+// were new and the shop kept serving the old picture, in silence. Swapping a photo needed a human driving
+// the port by hand.
+//
+// So the question this asks is no longer "does this product exist?" but "is the object in the store the
+// SAME BYTES as the file on disk?". Nothing else answers it honestly: the provider_key cannot, because
+// `media.request_upload` mints `<schema>/<ULID>-<slug>.<ext>` — a NEW key every call, whatever the content
+// (its own generated summary calls that key "deterministic"; it is not, see plan-upload.ts:112). And the
+// registered `size` cannot either: it is a 4-byte hash with a 1-in-nothing collision rate, and "the file
+// changed but stayed the same length" is exactly the re-encode case a designer produces.
+//
+// ⚠️ IT IS MEASURED CHEAP, AND THAT MEASUREMENT IS WHY IT EXISTS RATHER THAN A CARD. The library is 49
+// objects / 25.3 MB on this box, and reading every one of them back through the media route and hashing it
+// takes **0.200 s**. It is one pass, cached for the run.
+//
+// ⚠️ AND IT IS SCOPED TO THE LIBRARY ON PURPOSE — `library: false` uploads never consult it. Those are the
+// 18 520 catalogue photographs, which carry no `asset` row to index and would cost a 3.5 GB read on every
+// run to hash. The catalogue path skips whole products instead, which is the right granularity for it. A
+// content sweep there is a different slice, and its cost has to be paid deliberately, not by inheritance.
+const contentIndex = (() => {
+  /** filename -> Map<sha256, provider_key>. Built once, then kept current by upload() itself. */
+  let building = null;
+  const build = async () => {
+    const assets = await readAll('assets');
+    const byName = new Map();
+    await Promise.all(
+      assets.map(async (a) => {
+        if (!a.filename || !a.provider_key) return;
+        const res = await fetch(`${api}/v1/media/local/${a.provider_key}`);
+        // An asset whose bytes are gone is not a match for anything; it is simply not indexed. Refusing the
+        // whole run over one orphan row would make a harmless leftover fatal.
+        if (!res.ok) return;
+        const sha = sha256(Buffer.from(await res.arrayBuffer()));
+        const byHash = byName.get(a.filename) ?? new Map();
+        byHash.set(sha, a.provider_key);
+        byName.set(a.filename, byHash);
+      }),
+    );
+    return byName;
+  };
+  return {
+    async lookup(filename, sha) {
+      building ??= build();
+      return reuseKey(await building, filename, sha);
+    },
+    async remember(filename, sha, providerKey) {
+      building ??= build();
+      const byName = await building;
+      const byHash = byName.get(filename) ?? new Map();
+      byHash.set(sha, providerKey);
+      byName.set(filename, byHash);
+    },
+  };
+})();
+
+//
 // @param file  a bare name (resolved inside `seed/photos/`) or an absolute path.
 async function upload(file, { library = true } = {}) {
   const path = file.startsWith('/') ? file : join(SEED, 'photos', file);
@@ -417,6 +478,16 @@ async function upload(file, { library = true } = {}) {
   const mime = mimeOf(filename);
   if (!mime) fail(`upload(${path}): this seed does not know the mime of "${filename}".`);
   const bytes = readFileSync(path);
+
+  // ★ SAME NAME, SAME BYTES → the object is already in the store. Upload nothing and hand back the key it
+  // already has. This is what makes a re-run with no file change cost ZERO uploads, and a re-run after a
+  // re-cut cost exactly the files that changed.
+  const sha = library ? sha256(bytes) : null;
+  if (sha) {
+    const already = await contentIndex.lookup(filename, sha);
+    if (already) return already;
+  }
+
   const plan = await (async () => {
     const res = await paced(
       `${api}/v1/media/commands/media.request_upload`,
@@ -457,6 +528,8 @@ async function upload(file, { library = true } = {}) {
 
   if (library) {
     await command('asset.create', { provider_key: key, filename, mime, kind: 'image', size: bytes.byteLength });
+    // Two products naming the same photograph upload it once: the second finds it here.
+    if (sha) await contentIndex.remember(filename, sha, key);
   }
   return key;
 }
@@ -511,6 +584,7 @@ async function products() {
     log(`product ${product.handle} — created with ${skus.length} sku(s) (${out.product_id ?? '?'})`);
   }
 }
+
 
 /**
  * ★ PUBLISHING — the second act, and D1 did only the first.
