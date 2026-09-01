@@ -100,8 +100,15 @@ The shop is `http://localhost:8080` and the admin is `http://localhost:8081`
 (**its own port, not a path** — the admin is a Next app with no `basePath`, so `/admin*` 307s to a rooted
 `/login` that the edge hands to the vitrine as a 404. Measured; `caddy/Caddyfile.local` carries it).
 
-A store is reached at `/s/<handle>` until a hostname claims it — host → store is DATA, set in the admin
+A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
+
+⚠️ **It is the ID (`sto_…`), not the handle, and `/s/<handle>` fails QUIETLY.** The read face takes a store
+id and answers a handle with a 404 that says so; the page itself still returns **200**, because a store
+whose facts cannot be read degrades to a neutral shell rather than to an error. What you get is a shop
+titled "Loja", with no theme, no products and no composed blocks — which looks like a store that was never
+seeded rather than like a URL that was never right. `docker compose exec kernel …`, the admin's store list,
+or `read.internal.stores` all give you the id.
 
 With no SMTP configured the login code is written to the kernel's stdout: `docker compose logs kernel` is
 the inbox.
@@ -121,6 +128,11 @@ node bin/seed.mjs --api http://localhost:8080
 That creates the stores, declares the `cf.*` vocabulary and creates the six coffees **with their photos**,
 all through the door: the script holds an API key, never a database credential, exactly like an ERP would.
 It is idempotent — re-running it is a no-op.
+
+The same run stands the **Outlet** up (`seed/outlet.mjs`, its data in `seed/outlet.json`): it installs the
+two apps that store composes with, uploads its photographs and campaign art, publishes eight products with
+their prices and their stock, pins the two collections its shelves are sourced from, and places the four
+Compose blocks that are its home page. Not one line of front-end code — a theme, data, and a composition.
 
 Installing the app is one call on the same credential:
 
@@ -152,6 +164,30 @@ the things that really need an operator.
 makes the demo stand up. The full seed is a later slice, written from what the finished demo turns out to
 need (decision of Renan, 2026-08-31). The three supporting products the catalogue document promises for
 bought-together are **not** invented here — they are named as a gap in `seed/catalog.json`.
+
+### ⚠️ The fronts do not notice a theme or a placement on their own
+
+Two ways to spend half an hour deciding a feature is broken when it is not, both measured on this box:
+
+- **A NEW THEME FOLDER NEEDS A RESTART, not a reload.** `themes/<key>` is mounted, but the resolver
+  MEMOISES its answer in production — including the answer "there is no such theme". Create
+  `themes/outlet/` while the box is up and every page keeps serving the base theme until the process is
+  replaced: `docker compose restart storefront checkout`. Editing a token inside a folder the process has
+  already resolved is the same story. (In `next dev` the cache is off, which is why nobody meets this
+  while building a theme.)
+
+- **A PLACEMENT DRIVEN THROUGH THE PORT NEEDS A CACHE BUST.** The admin calls the storefront's
+  revalidation hook when an operator saves; a script driving `composition.place` does not, so the page
+  keeps its cached render until the TTL. Ask for it by hand:
+
+  ```bash
+  curl -X POST "http://localhost:8080/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
+       -H "x-revalidate-secret: $FORGE_REVALIDATE_SECRET"
+  ```
+
+  ⚠️ **The checkout has no such hook** — measured: `/_checkout/api/revalidate` is a 404 and that container
+  carries no `FORGE_REVALIDATE_SECRET`. Restarting it is the only lever there, which matters the day a
+  block is composed into a checkout slot.
 
 ---
 

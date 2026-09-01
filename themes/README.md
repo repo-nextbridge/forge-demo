@@ -16,7 +16,7 @@ A key nothing here answers resolves to the base theme. It never 500s, and that i
 
 | folder | store | slice |
 |---|---|---|
-| `outlet/` | Forge Outlet | **D2** — tokens only (accent `#BE123C`, rounded radius against the base's square corners). Its whole thesis is that a theme + data + composition needs no code. |
+| `outlet/` | Forge Outlet | **D2** — seven token values (accent `#BE123C`; `--r/-sm/-xs` 10/8/6 against the base's square corners) plus **Figtree**, which travels as four latin `.woff2` beside them. Its whole thesis is that a theme + data + composition needs no code. ⚠️ The radius is the artboard's `Suave`, not the `Arredondado` the card names — the design won; see the slice report. |
 | `coffee-store/` | Forge Café | **C2** — tokens (`--accent #B0793C`, `--r 10px`, `--ri 9px`) plus the display font, which travels as a file beside the tokens. |
 
 ## Making one

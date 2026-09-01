@@ -1,0 +1,53 @@
+/* themes/outlet/fonts.css — HAND-WRITTEN, beside tokens.css (the D2-E2 mechanism).
+ *
+ * Figtree, the family the Outlet's artboards are drawn in (the reference vitrine's own face is Urbanist).
+ * SIL OFL 1.1 — the licence travels with the files, in `fonts/OFL-figtree.txt`.
+ *
+ * ⚠️ THE FACES ARE FILES, NOT A GOOGLE FONTS URL, and that is the point of the mechanism: an instance may
+ * sit on a network that cannot reach fonts.gstatic.com, and a face that fails to arrive is a store in the
+ * fallback stack with nobody watching. The `url()` below is RELATIVE; the front rewrites it into the route
+ * that serves the file (`asset-url.ts`) because this stylesheet is inlined into the page, where a relative
+ * URL would otherwise resolve against whatever path the shopper is standing on.
+ *
+ * FOUR WEIGHTS, LATIN ONLY — the same four the app already ships for Urbanist, and the same subset. pt-BR
+ * lives entirely inside the latin range (ã, ç, õ, é are all U+00xx), so latin-ext would be ~11 KB per
+ * weight that no page of this store renders.
+ *
+ * NO `unicode-range`: with one subset per weight there is nothing to choose between, and declaring the
+ * range would only mean characters outside it fall back — which is what happens anyway. (The coffee
+ * store's theme declares ranges because it ships two subsets per family; that is the difference.)
+ *
+ * `font-display: swap`: the text is readable in the fallback while the file arrives.
+ */
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/figtree-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/figtree-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/figtree-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/figtree-latin-700-normal.woff2") format("woff2");
+}
