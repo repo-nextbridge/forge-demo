@@ -12,9 +12,17 @@
 #   2. migrate                   system schema first; tenants have none yet, and that is not an error
 #   3. provision-ref  × TENANT   tenant + its FIRST store + FIRST operator + login driver + admin-host claim
 #   4. admin-platform-token      the ONE box credential that lets one admin container serve both tenants
-#   5. kernel + edge + fronts    now that a tenant exists for them to serve
+#   5. kernel + edge + fronts    now that a tenant exists for them to serve (INCLUDING the coffee fork)
 #   6. seed-box.mjs   × TENANT   the remaining stores, the settings every screen inherits
-#   7. seed-demo      × TENANT   the CATALOGUE — the one-shot that fills, run once per tenant
+#   7. totem                     LAST of the six images: it needs the counter store id step 6 resolved
+#   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
+#   9. seed-demo      × TENANT   the MASSIVE catalogue — the one-shot that fills, run once per tenant
+#
+# ⚠️ SIX IMAGES, NOT FOUR. Four are pinned by digest in `forge.lock` (kernel, storefront, checkout, admin);
+# TWO are built here and carry this box's own front code — `forge-demo-storefront-coffee:local` (the coffee
+# shop's forked vitrine) and `forge-demo-totem:local` (the counter). A box that comes up with four of them is
+# missing exactly the two screens this demo exists to show, and it comes up GREEN, which is why they are
+# named in this list rather than left to `docker compose up`.
 #
 # ⚠️ 3, 6 AND 7 ARE EACH RUN TWICE, ONCE PER TENANT, AND THAT IS THE SHAPE RATHER THAN A WORKAROUND.
 # `provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — ONE tenant, ONE store, from the
@@ -50,6 +58,54 @@ dc() {
   local quoted='' a
   for a in "$@"; do quoted+=" $(printf '%q' "$a")"; done
   $DOCKER_SH "cd $(printf '%q' "$HERE") && docker compose$quoted"
+}
+
+# ★★ A CONTAINER PATH MAY NEVER REACH A HOST PROCESS — enforced, not remembered.
+#
+# THE DEFECT THIS EXISTS FOR, TWICE IN ONE EVENING. `FORGE_SEED_DATASET_DIR=/app/seed-dataset` and
+# `FORGE_SEED_PHOTOS_DIR=/data/seed-photos` are TRUE for the kernel and FALSE for anything running on this
+# machine. This script sources `.env`, so every host process it starts INHERITS both — and a seeder that
+# reads them dies with `does not exist` or `ENOENT`, naming a path that genuinely exists three metres away
+# inside a container. The `..._DIR` / `..._HOST_DIR` pair exists precisely for this, and the two names are
+# far too similar to trust anyone's attention with, mine included.
+#
+# So a host process is started through `host_node`, which (1) REPLACES each known container path with its
+# host counterpart, and (2) REFUSES to launch if any FORGE_* variable still holds a value under /app or
+# /data — naming every offender. A new variable of that shape added later is caught by (2) on its first run,
+# which is the half that keeps this from going stale: the list in (1) is what I know, (2) is what I do not.
+CONTAINER_PATH_VARS='FORGE_SEED_DATASET_DIR:FORGE_SEED_DATASET_HOST_DIR FORGE_SEED_PHOTOS_DIR:'
+host_node() { # <script> [args…]
+  local pair name host_name value overrides='' offenders=''
+  for pair in $CONTAINER_PATH_VARS; do
+    name="${pair%%:*}"; host_name="${pair#*:}"
+    if [ -n "$host_name" ]; then
+      eval "value=\${$host_name:-}"
+      overrides="$overrides $name=$(printf '%q' "$value")"
+    else
+      # No host counterpart exists — the value belongs to a docker volume and has no honest host address.
+      # Blank it: a host process that needs it should fail saying it is UNSET, not chase a path into /data.
+      overrides="$overrides $name="
+    fi
+  done
+  # (2) — the part that survives me. Anything still pointing into a container's filesystem is refused BY NAME.
+  while IFS='=' read -r name value; do
+    case "$name" in FORGE_*) ;; *) continue;; esac
+    case " ${overrides} " in *" $name="*) continue;; esac
+    case "$value" in
+      /app|/app/*|/data|/data/*)
+        offenders="$offenders\n     $name=$value" ;;
+    esac
+  done < <(env)
+  if [ -n "$offenders" ]; then
+    die "REFUSING to start a host process with CONTAINER paths in its environment:$(printf "$offenders")
+     These are true inside the kernel and false here. Either give the variable a \`..._HOST_DIR\` sibling and
+     add the pair to CONTAINER_PATH_VARS, or blank it for host runs. See the header above this function."
+    # ⚠️ AN EXPLICIT RETURN, not a reliance on `die` exiting. A guard whose refusal depends on ANOTHER
+    # function's control flow is one edit away from printing a refusal and then doing the thing anyway —
+    # measured exactly that while testing this, with a `die` that returned instead of exiting.
+    return 1
+  fi
+  env $overrides node "$@"
 }
 
 say() { printf '\n\033[1m── %s\033[0m\n' "$*" >&2; }
@@ -163,7 +219,7 @@ say '5 · kernel + edge + fronts'
 # this step starts, and the copy loaded at step 0 predates them.
 # shellcheck disable=SC1091
 set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; . "$HERE/bin/images-from-lock.sh" >/dev/null 2>&1; set +a
-dc up -d kernel caddy admin storefront checkout >/dev/null 2>&1 || die 'could not start the tier.'
+dc up -d kernel caddy admin storefront checkout storefront-coffee >/dev/null 2>&1 || die 'could not start the tier.'
 for i in $(seq 1 30); do
   code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' "${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/health" || true)"
   [ "$code" = 200 ] && break
@@ -178,7 +234,7 @@ for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-seed-token → FORGE_SEED_TOKEN
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment — step 3 filed it into .secrets; re-source env-source.sh."
-  FORGE_SEED_TOKEN="$tokval" node "$HERE/bin/seed-box.mjs" --tenant "$t" || die "seed-box failed for $t."
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed-box.mjs" --tenant "$t" || die "seed-box failed for $t."
 done
 
 # The counter's store id is only knowable now, and `compose.override.yml` refuses to interpolate without it.
@@ -199,15 +255,86 @@ if [ -n "$balcao" ]; then
   fi
 fi
 
-# ── 7 · the catalogue, once per tenant ──────────────────────────────────────────────────────────────────────
-say '7 · seed-demo (the catalogue, once per tenant)'
+# ── 7 · THE COUNTER'S TOTEM — and it could not have started at step 5 ───────────────────────────────────────
+#
+# ★ THE ORDER IS FORCED, not chosen. `compose.override.yml` declares
+# `FORGE_TOTEM_STORE_ID: ${FORGE_TOTEM_STORE_ID:?…}` — a hard requirement, and the counter store does not
+# exist until step 6 creates it. On a virgin box the id is a fresh ULID, so it cannot be written down
+# anywhere in advance: step 6 RESOLVES it by reading the tenant's stores for the `balcao` handle and writes
+# it into `.env`, and only then is there something for this service to start with. Starting it beside the
+# other fronts is what left the first build of this box with four of the instance's six images.
+say '7 · the totem (needs the counter store id that step 6 just resolved)'
+set -a; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
+if [ -n "${FORGE_TOTEM_STORE_ID:-}" ] && [ "${FORGE_TOTEM_STORE_ID}" != 'sto_PENDING_SEED' ]; then
+  dc up -d totem >/dev/null 2>&1 && note "totem up · store ${FORGE_TOTEM_STORE_ID}" \
+    || note '⚠️ the totem did not start — `docker compose logs totem`'
+else
+  note '⚠️ no counter store id — skipping the totem (step 6 should have resolved it)'
+fi
+
+# ── 8 · THE CURATED DATA — and it must precede the massive one-shot ─────────────────────────────────────────
+#
+# ★ THE ORDER IS FORCED, NOT CHOSEN — the same trap as the totem, so it is written the same way. The wave's
+# boundary is CURATED × MASSIVE: `bin/seed.mjs` owns what a HUMAN wrote (the six coffees, the counter's menu,
+# the outlet's eight) and the dataset owns the generated volume AND THE ASSORTMENT. An assortment PUBLISHES a
+# handle it did not define — so if the curated products are not there yet, the publish step has nothing to
+# point at and refuses BY NAME:
+#
+#   populate refused (unknown_product): store "cafe" declares product "forge-alvorada" in its assortment,
+#   and no such product exists — neither in this dataset nor in this tenant.
+#
+# That refusal is the guard SPEC §3.3 promised, and it is what caught this step missing. Anyone who moves the
+# curated seed after the one-shot, or merges the two "because both fill data", brings that red straight back.
+#
+# BOTH TENANTS, EACH WITH ITS OWN TOKEN. The shoe tenant passed WITHOUT this once, by an accident of shape —
+# its assortment selects by category regex rather than by handle — but the outlet's eight products are
+# curated and belong here, so running it only where the red appeared would leave that store quietly different
+# from what the demo expects.
+say '8 · the curated data (once per tenant)'
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the curated seed."
+  # ⚠️ THE DATASET PATH IS REMAPPED HERE, AND IT IS NOT A DETAIL. `FORGE_SEED_DATASET_DIR` is the CONTAINER's
+  # path (`/app/seed-dataset`) because the kernel is what reads it — but THIS script runs on the HOST, where
+  # that path does not exist. Handing it through unchanged is how the curated seed died with
+  # `FORGE_SEED_DATASET_DIR=/app/seed-dataset does not exist`: one variable name serving two filesystems.
+  # The host's copy of the same directory is `FORGE_SEED_DATASET_HOST_DIR`, and that is what a host process
+  # must be given.
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
+    || die "the curated seed failed for \"$t\". Its own output is above; nothing further has run."
+done
+
+# ── 9 · the catalogue, once per tenant ──────────────────────────────────────────────────────────────────────
+say '9 · seed-demo (the catalogue, once per tenant)'
 for t in $TENANTS; do
   handle="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.handle' "$BOX")"
   # FORGE_SEED_DEMO=1 is the entrypoint's own opt-in: the in-process runner bypasses the type-to-confirm, so it
   # demands an explicit one. POPULATE-only; the destructive `wipe` is not on this path.
+  # ★★ THE ACTION CEILING IS LIFTED HERE AND NOWHERE ELSE — on THIS invocation, never on the kernel service.
+  #
+  # `DEFAULT_ACTION_TIMEOUT_MS` is 300_000 (5 minutes) and it is a LIVENESS guard for whoever CALLS: it exists
+  # so an operator who fires an action is not left with a spinner forever. A bulk import one-shot is not an
+  # interactive action — nobody is watching a screen, and the process exists in order to finish. So the
+  # ceiling is raised for THIS RUN and the standing kernel keeps its default.
+  #
+  # THE NUMBER IS DERIVED, NOT GUESSED. Measured on the run that failed: 1,287 products written in 300s, so
+  # 2,790 need ~650s. 1,800,000 (30 min) is nearly 3x that — head-room because the FIRST run also hydrates
+  # media, and because a ceiling you have to revisit in a fortnight is not a ceiling.
+  #
+  # ⚠️ AND WHY THE ANSWER IS NOT TO LET IT BLOW. The timeout does NOT cancel the action (`timeout.ts` says so
+  # in its own words: the caller stops waiting, the writer does not stop), and this entrypoint's `finally`
+  # then closes the pool underneath that abandoned writer. What comes out is a HALF-WRITTEN catalogue and an
+  # error naming the POOL instead of the ceiling. There is no one-line repair for an abandoned bulk write.
   dc run --rm -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
+    -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
     kernel node dist/seed-demo.js 2>&1 | tail -6 >&2 \
-    || note "⚠️ seed-demo failed for $t — the terrain is built; re-run this script to retry."
+    || note "⚠️ seed-demo failed for \"$t\". The kernel's own words are the six lines above — read those, not this.
+     ⛔ I DO NOT KNOW WHETHER RE-RUNNING FIXES IT, and saying so is the honest answer: of the three ways this
+     step has failed so far, NONE was repaired by repetition (an action ceiling, a missing step before it, and
+     a curated product that did not exist yet). A default of \"just run it again\" is right for the failure
+     somebody imagined and wrong for the one that happened.
+     What IS known: steps 1-8 completed, so the box and its curated data are standing; only this fill did not."
 done
 
 say 'the bench'
@@ -215,5 +342,6 @@ note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
   note "admin     http://$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host' "$BOX")   → $t"
 done
+note "café      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/s/<cafe store id>   (the forked vitrine)"
 note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
 printf '\n' >&2

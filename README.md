@@ -98,7 +98,44 @@ map of how the box is born:
 | 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
 | 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
 | 6 | **`seed-box.mjs` × tenant** | the remaining stores, and the settings every screen inherits |
-| 7 | **`seed-demo` × tenant** | the catalogue — the one-shot that fills |
+| 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
+| 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
+| 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
+
+⚠️ **Step 8 must precede step 9, and that order is forced rather than chosen.** The boundary is
+CURATED × MASSIVE: `bin/seed.mjs` owns what a human wrote (the six coffees, the counter's menu, the outlet's
+eight) while the dataset owns the generated volume **and the assortment** — and an assortment *publishes* a
+handle it did not define. Run the one-shot first and the publish step has nothing to point at:
+
+```
+populate refused (unknown_product): store "cafe" declares product "forge-alvorada" in its assortment,
+and no such product exists — neither in this dataset nor in this tenant.
+```
+
+Both run **per tenant, each with its own token**. The shoe tenant happens to survive without the curated
+step — its assortment selects by category rather than by handle — but the outlet's eight products are
+curated, so skipping it there leaves that store quietly different from what the demo expects.
+
+⚠️ **Step 8 raises the action ceiling, and only on its own invocation.** The kernel caps app code at
+`DEFAULT_ACTION_TIMEOUT_MS` = 5 minutes. That cap is a **liveness guard for whoever calls** — it exists so an
+operator who fires an action is not left with a spinner forever. A bulk import one-shot is not an interactive
+action: nobody is watching a screen, and the process exists in order to finish. So `bin/box-up.sh` passes
+`FORGE_EXTENSION_ACTION_TIMEOUT_MS` on that `docker compose run` alone (30 min, override with
+`FORGE_SEED_ACTION_TIMEOUT_MS`) and **the standing kernel keeps the 5-minute default**.
+
+The number is derived: a run that hit the cap had written 1,287 of 2,790 products in 300s, so the full
+catalogue needs ~650s. Thirty minutes is nearly 3x that, with head-room for the first run's media hydration.
+
+⚠️ **If it is exceeded anyway, a plain re-run does not help.** The timeout does not *cancel* the action — the
+caller stops waiting, the writer keeps writing — and the entrypoint then closes its pool underneath that
+writer. What comes out is a **half-written catalogue** and an error naming the pool rather than the ceiling.
+What changes the outcome is the ceiling, not the repetition.
+
+⚠️ **This box is SIX images, not four.** Four are pinned by digest in `forge.lock` — kernel, storefront,
+checkout, admin. **Two are built here** and carry this repository's own front code:
+`forge-demo-storefront-coffee:local` (the coffee shop's forked vitrine) and `forge-demo-totem:local` (the
+counter). A box that starts only the four pinned ones comes up **green and missing exactly the two screens
+this demo exists to show**, which is why `bin/box-up.sh` names them.
 
 **Steps 3, 6 and 7 each run twice, once per tenant, and that is the shape rather than a workaround.**
 `provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — one tenant, one store, from the
@@ -110,6 +147,49 @@ into `.secrets` through a temp file it shreds, and reports only `filed`.
 
 **It converges.** Re-running is the supported way to repair a half-built box: migrate is a no-op,
 `provision-ref` returns the same store id, the box seeder creates nothing, `seed-demo` is idempotent.
+
+### ⚠️ A container path may never reach a host process
+
+`bin/box-up.sh` runs some steps **inside** the kernel (`docker compose run`) and some **on this machine**
+(`node bin/seed.mjs`). It sources `.env` for both, so a host process inherits every variable — including the
+ones whose values are only true inside a container:
+
+| variable | true for | false for |
+|---|---|---|
+| `FORGE_SEED_DATASET_DIR=/app/seed-dataset` | the kernel | anything on this machine |
+| `FORGE_SEED_PHOTOS_DIR=/data/seed-photos` | the kernel | anything on this machine (it is a **named volume** — there is no honest host path at all) |
+
+**The rule: a variable whose value is a CONTAINER path is never handed to a host process.** The
+`..._DIR` / `..._HOST_DIR` pair exists for exactly this — but the two names are far too similar to trust
+anyone's attention with. This cost two failed births in one evening: first
+`FORGE_SEED_DATASET_DIR=/app/seed-dataset does not exist`, then
+`ENOENT: /data/seed-photos/…/cover.jpg` — each naming a path that genuinely exists, three metres away, inside
+a container.
+
+**So it is enforced rather than remembered.** Host steps go through `host_node`, which replaces each known
+container path with its host counterpart and then **refuses to launch** if any `FORGE_*` variable still holds
+a value under `/app` or `/data`, naming every offender. The replacement list covers what we know; the refusal
+covers what we do not — a variable of that shape added next month is caught on its first run.
+
+### Tearing it down to be born again
+
+```bash
+bash bin/box-down.sh          # state dies, the photo cache lives
+bash bin/box-down.sh --all    # everything, cache included (re-pulls 3.6 GB)
+```
+
+⚠️ **Do not use `docker compose down -v` for this.** One flag takes everything, and it does not distinguish
+the two kinds of thing this box holds:
+
+| | what it is | in a birth proof |
+|---|---|---|
+| `pgdata`, `redisdata`, `media`, `caddy_*` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
+| `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs ~40 min |
+
+The claim a birth proof makes is *"the box is born from nothing"* — not *"the network is re-read from
+nothing"*. `bin/box-down.sh` makes the cheap, correct thing the default and puts the expensive one behind a
+flag, because a habit beats a paragraph: this distinction was explained, written down, and then violated by
+hand one minute later.
 
 ### The seed dataset — pointed at, never copied
 
