@@ -2,7 +2,8 @@
 # INSTALL THE COFFEE VITRINE'S DEPENDENCIES from the tarballs `bin/vendor-packages.sh` produced.
 #
 #   bash bin/vendor-packages.sh ~/nextbridge/projetos/forge   # once, and again whenever the monorepo moves
-#   bash bin/install-storefront.sh
+#   bash bin/install-storefront.sh                            # the coffee vitrine (default)
+#   bash bin/install-storefront.sh totem                      # any other app of this repo — see its sibling
 #
 # ⚠️ npm FORCES TWO SHAPES AND THIS SCRIPT IS THAT SPLIT — see the long note in vendor-packages.sh.
 # A DIRECT dependency arrives as an install target (`npm install ./vendor/x.tgz`), because that is what
@@ -19,11 +20,12 @@
 
 set -euo pipefail
 
+app_dir="${1:-storefront-coffee}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-app="$here/storefront-coffee"
+app="$here/$app_dir"
 
 [ -d "$app/vendor" ] || {
-  echo "[install] no storefront-coffee/vendor/ — run \`bash bin/vendor-packages.sh <forge checkout>\` first." >&2
+  echo "[install] no $app_dir/vendor/ — run \`bash bin/vendor-packages.sh <forge checkout> $app_dir\` first." >&2
   exit 1
 }
 

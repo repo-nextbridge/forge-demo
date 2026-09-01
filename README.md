@@ -335,6 +335,94 @@ change inside this repository can fix it: a per-store offer gate would be a kern
 that does exist is the name: the app is called after a PLACE ("Pagar no balcão"), so that seeing it in the
 coffee store's checkout reads as a misconfiguration and never as a legitimate option.
 
+## 4c. The counter's totem — and why this box runs SIX images, not four
+
+The demo instance is **six images**, and only four of them are the product:
+
+| image | whose | how it gets here |
+|---|---|---|
+| `kernel` · `storefront` · `checkout` · `admin` | **the product** | pinned BY DIGEST in `forge.lock`, re-stamped from a registry |
+| `storefront-coffee` | **ours** | built by `bin/build-coffee.sh`, wired in `compose.override.yml` |
+| `totem` | **ours** | built by `bin/build-totem.sh`, wired in `compose.override.yml` |
+
+**The totem is the fourth posture of the customisation table, and it is the one worth understanding.** It is
+not a forked vitrine plus a forked checkout: it is ONE Next app of the client's own (`totem/`) answering
+**every path of the counter's host** — the menu, the bag, the identification, the payment and the order
+number, all of it — while talking to the same kernel through the same public port as everything else. Not
+every extra experience is a fork of ours; it can be **one more image**.
+
+⚠️ **Neither of the two OURS is in `forge.lock`, and for the totem there is a second reason worth writing
+down.** The first is the one `compose.override.yml` already gives for the vitrine: they are ours, they have
+no upstream, and pinning them would claim a provenance they do not have. The second is a fact about the file:
+`bin/build-local.sh` **rewrites `forge.lock` from a fixed four-image template**, so a fifth or sixth key added
+there by hand is deleted, silently, by the next oven run. `totem/src/lock-provenance.test.ts` fails if anybody
+puts it back.
+
+### Bringing the counter up
+
+The image has to exist before compose can start it — the Dockerfile is thin on purpose (it copies a build,
+it does not run one), exactly like the vitrine's:
+
+```bash
+bash bin/build-totem.sh <path to the forge monorepo checkout>
+source ./env-source.sh && source bin/images-from-lock.sh
+docker compose up -d totem
+```
+
+Then set, in `.env` (the full block with its reasons is in `.env.example`):
+
+```dotenv
+FORGE_TOTEM_STORE_ID=sto_…          # what the process sends to the port
+FORGE_TOTEM_STORE_HANDLE=balcao     # what a HUMAN reads to know which shop that id is
+FORGE_TOTEM_HTTP_PORT=8102          # the bench port; the site `:82` in caddy/Caddyfile.local
+FORGE_TOTEM_DOMAIN=                 # the counter's hostname in a deployment (caddy/Caddyfile)
+FORGE_TOTEM_IDLE_SECONDS=90         # how long before the screen resets between customers
+```
+
+⚠️ **The store takes TWO variables and that is not redundancy.** The public read face produces a store id from
+a HOST and from nothing else; the only capability that returns a `handle` lives on the internal face, behind
+the admin service token — which this app deliberately does not hold, because no other front on this box holds
+one and a kiosk is a poor place to start. So the id is what the process uses and the handle is what makes that
+id reviewable by a person. The app refuses to boot if either is missing, or if the handle was pasted into the
+id slot.
+
+### Testing the counter by hand
+
+Open **http://localhost:8102** (the bench) — you should land on "Toque para começar".
+
+1. **Touch anywhere.** The attract screen lifts and the menu appears: four bands (Cafés · Especiais da casa ·
+   Comidas · Pra levar), a fixed rail on the left, big finger-sized cards.
+2. **Tap a drink with milk** — a Cappuccino or a Latte. The modal opens on the cheapest variant. Choose a size
+   and a milk: **two taps, fat buttons, never a dropdown**. The price beside "Adicionar" is the SKU's, and the
+   "+ R$ …" beside an option is the difference between two real SKU prices, never a surcharge table.
+3. **Tap a coffee from "Pra levar"** — one of the six the online shop already sells. ⚠️ **Check its price
+   against the coffee store's** (`/s/cafe` on the bench edge): it is the same SKU, so it is the same number,
+   read live. If they ever differ, something re-registered a product that should only have been published.
+4. **Revisar pedido → CUPOM → `PRIMEIROCAFE`** on the on-screen keyboard → "Adicionar cupom". The discount
+   line and the total are the kernel's own; the counter never multiplies by 0.9.
+5. **Ir para o pagamento → type a name** (only a name — a person at a counter has no e-mail to give and must
+   not be asked for one) → **choose Pix or Cartão**.
+   · **Pix**: the QR appears; **touch it** to simulate the scan.
+   · **Cartão**: "pague na maquininha", and the machine has already said yes by the time the screen draws.
+6. **The confirmation** shows the order number GIANT — that is `order.number`, the kernel's per-store
+   sequence, the number the barista will call — plus the name, the summary and "retire no balcão".
+7. **Check the order in the admin** (`:8101`), in the counter's store: the buyer's name is the one that was
+   typed, and the items are the ones that were chosen.
+8. **Now walk away and count.** After `FORGE_TOTEM_IDLE_SECONDS` the screen returns to "Toque para começar"
+   **and the bag is empty** — the cart pointer is destroyed on the server, so the next customer starts clean.
+   That is the whole difference between a till and a web page, and it is worth testing on purpose.
+9. **Turn on "reduce motion"** in the operating system and reload. Every animation stops. A public screen is
+   the one place a person cannot walk away from motion they did not ask for.
+
+⚠️ **What a busy counter runs into, and it is a property of the platform rather than of this app.**
+`cart.set_buyer` and `cart.apply_coupon` are oracle-class faces capped at **ten a minute per store + IP**
+(`ORACLE_IP_CAP`), and one totem is one address — so the counter's ceiling is ten identified orders a minute,
+shared with any other caller of that store that does not forward an address. Measured on the bench: the
+eleventh call answers `429` with `Retry-After: 60`, and the bucket really is shared (five calls on one cart
+plus five on another refuse the eleventh). The screen therefore sends the buyer **at most once per cart**,
+asking the kernel rather than remembering, and turns the refusal into a sentence with the port's own number in
+it. Nobody taps ten orders a minute by hand, so the demo never meets this — but a real counter would.
+
 ---
 
 ## 5. Upgrading

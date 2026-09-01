@@ -162,6 +162,24 @@
 	reverse_proxy admin:3000
 }
 
+# ★★ THE COUNTER'S TOTEM (T2·S2), on a hostname of its own — and it is a WHOLE SITE with no path split,
+# which is the entire architectural claim of that slice: the totem is ONE app of the client's own serving
+# EVERY path of this host. There is no second Next server behind it, so there is nothing to divide — no
+# `/checkout*` to peel off, no `/_checkout/*` assets, no store in the URL. It resolves its store from its
+# own environment (`FORGE_TOTEM_STORE_ID`), which is why this block needs no store name either.
+#
+# ⚠️ IT IS HERE AND NOT IN `caddy/extra/`, unlike a second tenant's admin, and the difference is what the
+# hostname MEANS. `extra/` is for hostnames one BOX happens to serve; this is a host of the instance itself —
+# every deployment of this demo has a counter — and it is driven by an environment variable exactly like the
+# two above, so this file still needs no edit to move between boxes.
+#
+# The certificate comes from the `tls` declaration in the first block: the pool is process-wide, not
+# per-site. The kernel's own faces are NOT routed here on purpose — the totem talks to the kernel
+# server-side over the compose network, and a till has no reason to expose a command face to a room.
+{$FORGE_TOTEM_DOMAIN} {
+	reverse_proxy totem:3000
+}
+
 # Hostnames beyond those two — the case being a SECOND ADMIN, for a second tenant this instance holds. They
 # go in caddy/extra/, one file each, instead of here: this file needs no edit to move between boxes, and an
 # empty folder is the normal state. Caddy accepts a pattern that matches nothing (one `warn` line in the log

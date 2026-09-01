@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # THE FORGE PACKAGES THE COFFEE VITRINE INSTALLS, AS TARBALLS. EXECUTE it (it writes files); do not source it.
 #
-#   bash bin/vendor-packages.sh ~/nextbridge/projetos/forge
+#   bash bin/vendor-packages.sh ~/nextbridge/projetos/forge                 # the coffee vitrine (default)
+#   bash bin/vendor-packages.sh ~/nextbridge/projetos/forge totem           # any other app of this repo
+#
+# ★ THE SECOND ARGUMENT ARRIVED WITH THE TOTEM, AND IT DEFAULTS TO WHAT THIS SCRIPT ALWAYS DID.
+# This repository now builds TWO Next apps of its own — `storefront-coffee/` (the forked vitrine) and
+# `totem/` (the counter's kiosk) — and both install the same Forge packages the same pre-release way.
+# Duplicating the script would put npm's two-shapes rule (below) in two places, and the day it changes it
+# would change in one. So the directory became a parameter and the old call site did not move a letter.
 #
 # ⚠️ WHY A DIRECTORY OF TARBALLS INSTEAD OF `npm install`, AND WHEN THIS SHOULD STOP EXISTING.
 #
@@ -38,16 +45,18 @@
 
 set -euo pipefail
 
-forge="${1:?usage: vendor-packages.sh <path to the forge monorepo checkout>}"
+forge="${1:?usage: vendor-packages.sh <path to the forge monorepo checkout> [app directory]}"
+app_dir="${2:-storefront-coffee}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-out="$here/storefront-coffee/vendor"
+app="$here/$app_dir"
+out="$app/vendor"
 
 [ -f "$forge/scripts/pack-publishable.sh" ] || {
   echo "[vendor] '$forge' does not look like the Forge monorepo (no scripts/pack-publishable.sh)." >&2
   exit 1
 }
-[ -d "$here/storefront-coffee" ] || {
-  echo "[vendor] no storefront-coffee/ — cut it first with \`pnpm pack:surface storefront\`." >&2
+[ -d "$app" ] || {
+  echo "[vendor] no $app_dir/ — this repository does not own an app by that name." >&2
   exit 1
 }
 
@@ -65,5 +74,5 @@ count="$(find "$out" -name '*.tgz' | wc -l | tr -d ' ')"
   echo "[vendor] the pack step produced no tarballs — nothing was written to $out." >&2
   exit 1
 }
-echo "[vendor] $count package(s) in storefront-coffee/vendor/"
-echo "[vendor] next: bash bin/install-storefront.sh"
+echo "[vendor] $count package(s) in $app_dir/vendor/"
+echo "[vendor] next: bash bin/install-storefront.sh $app_dir"
