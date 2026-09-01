@@ -27,6 +27,7 @@ import {
   reviewSplit,
   storesWithReviews,
   seedCommerce,
+  silenceBuyerChannels,
   sellingStores,
   SEED_NOISE_TYPES,
 } from './commerce.mjs';
@@ -259,22 +260,22 @@ test('★ and no line of the module asks the placement read for this question', 
 // two different lists. The WIRING fed both sides from the same `read('internal/stores')` with the same
 // token, so in the only place that runs it compared a list against itself. These tests exercise
 // `seedCommerce` itself, which is where the mistake lived.
-test('★ seedCommerce refuses a credential that cannot see the stores the run declares', async () => {
+test('★ the silencing refuses a credential that cannot see the stores the run declares', async () => {
   const read = async (name) => (name === 'internal/stores' ? [{ handle: 'forge' }, { handle: 'outlet' }] : []);
   await assert.rejects(
-    () => seedCommerce({ expect: ['cafe', 'balcao'], read, command: async () => ({}), log: () => {}, fail: (m) => { throw new Error(m); }, post: async () => ({}) }),
+    () => silenceBuyerChannels({ expect: ['cafe', 'balcao'], read, command: async () => ({}), log: () => {}, fail: (m) => { throw new Error(m); } }),
     /cannot see "cafe", "balcao"/,
   );
 });
 
 test('★ and it refuses to run at all without a stated expectation', async () => {
   await assert.rejects(
-    () => seedCommerce({ read: async () => [], command: async () => ({}), log: () => {}, fail: (m) => { throw new Error(m); }, post: async () => ({}) }),
+    () => silenceBuyerChannels({ read: async () => [], command: async () => ({}), log: () => {}, fail: (m) => { throw new Error(m); } }),
     /needs `expect`/,
   );
 });
 
-test('the expectation is what selects the stores it works on — never the whole box', async () => {
+test('the expectation is what SELECTS the stores it works on — never the whole box', async () => {
   // A credential that can see four stores, a run declared for two: it must touch two.
   const seen = [];
   const read = async (name) => {
@@ -283,13 +284,12 @@ test('the expectation is what selects the stores it works on — never the whole
     if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
     return [];
   };
-  await seedCommerce({
+  await silenceBuyerChannels({
     expect: ['cafe', 'balcao'],
     read,
     command: async (_n, input) => { if (input?.store_id) seen.push(input.store_id); return {}; },
     log: () => {},
     fail: (m) => { throw new Error(m); },
-    post: async () => ({}),
-  }).catch(() => {});
+  });
   assert.deepEqual([...new Set(seen)].sort(), ['c', 'd']);
 });

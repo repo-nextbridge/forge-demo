@@ -82,26 +82,196 @@ bash bin/build-local.sh ~/path/to/forge     # PRE-RELEASE ONLY — builds the fo
 bash bin/pack-apps.sh   ~/path/to/forge     # apps/ → extensions/ (the form the kernel loads)
 bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's own front, built not pinned
 
-source ./env-source.sh
-source bin/images-from-lock.sh
-docker compose run --rm kernel node dist/migrate.js        # forward-only, idempotent, transactional
-docker compose run --rm kernel node dist/provision-ref.js  # ONE-SHOT: tenant + first store + first operator
-#   → capture BOTH tokens it prints into your secret store, as
-#     `forge-admin-service-token` and `forge-operator-access-key`. Shown once.
-source ./env-source.sh                                     # so the admin picks the service token up
-docker compose up -d
+bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
+
+### What `bin/box-up.sh` does, in order
+
+It is one command to TYPE, not one step. Seven, and each needs what the one before it produced — this is the
+map of how the box is born:
+
+| # | step | why it is where it is |
+|---|---|---|
+| 1 | `postgres` + `redis` | somewhere to put a schema before migrating one |
+| 2 | `migrate` | system schema first; "tenants: none registered yet" is correct here, not an error |
+| 3 | **`provision-ref` × tenant** | tenant + its FIRST store + FIRST operator + login driver + the admin-host claim |
+| 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
+| 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
+| 6 | **`seed-box.mjs` × tenant** | the remaining stores, and the settings every screen inherits |
+| 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
+| 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
+| 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
+| 10 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust |
+
+⚠️ **8 → 9 → 10 is one direction, not a cycle** — it only reads as circular if 8 and 10 are taken for one
+step. The window seeds the dataset's promotions and resolves each target through the **public** read (the
+only one that answers *"is this on sale in this store?"*, and a promotion on something nobody can buy never
+fires), so its targets are **massive** products and it must follow 9. Step 9 publishes an assortment naming
+**curated** handles, so it must follow 8. They are three moments because the massive is another **process** —
+the one-shot inside the container — not a line in the curated script.
+
+Until the sports catalogue retired from the curated seed, that script created the 2,790 itself moments before
+the window ran. **The crutch was hiding the dependency; removing it did not create one.** The revalidate
+lands in step 10, at the end, which is where a cache bust belongs: it invalidates a store that is finished
+rather than one with a step still to come.
+
+⚠️ **Step 8 must precede step 9, and that order is forced rather than chosen.** The boundary is
+CURATED × MASSIVE: `bin/seed.mjs` owns what a human wrote (the six coffees, the counter's menu, the outlet's
+eight) while the dataset owns the generated volume **and the assortment** — and an assortment *publishes* a
+handle it did not define. Run the one-shot first and the publish step has nothing to point at:
+
+```
+populate refused (unknown_product): store "cafe" declares product "forge-alvorada" in its assortment,
+and no such product exists — neither in this dataset nor in this tenant.
+```
+
+Both run **per tenant, each with its own token**. The shoe tenant happens to survive without the curated
+step — its assortment selects by category rather than by handle — but the outlet's eight products are
+curated, so skipping it there leaves that store quietly different from what the demo expects.
+
+⚠️ **Step 8 raises the action ceiling, and only on its own invocation.** The kernel caps app code at
+`DEFAULT_ACTION_TIMEOUT_MS` = 5 minutes. That cap is a **liveness guard for whoever calls** — it exists so an
+operator who fires an action is not left with a spinner forever. A bulk import one-shot is not an interactive
+action: nobody is watching a screen, and the process exists in order to finish. So `bin/box-up.sh` passes
+`FORGE_EXTENSION_ACTION_TIMEOUT_MS` on that `docker compose run` alone (30 min, override with
+`FORGE_SEED_ACTION_TIMEOUT_MS`) and **the standing kernel keeps the 5-minute default**.
+
+The number is derived: a run that hit the cap had written 1,287 of 2,790 products in 300s, so the full
+catalogue needs ~650s. Thirty minutes is nearly 3x that, with head-room for the first run's media hydration.
+
+⚠️ **If it is exceeded anyway, a plain re-run does not help.** The timeout does not *cancel* the action — the
+caller stops waiting, the writer keeps writing — and the entrypoint then closes its pool underneath that
+writer. What comes out is a **half-written catalogue** and an error naming the pool rather than the ceiling.
+What changes the outcome is the ceiling, not the repetition.
+
+⚠️ **This box is SIX images, not four.** Four are pinned by digest in `forge.lock` — kernel, storefront,
+checkout, admin. **Two are built here** and carry this repository's own front code:
+`forge-demo-storefront-coffee:local` (the coffee shop's forked vitrine) and `forge-demo-totem:local` (the
+counter). A box that starts only the four pinned ones comes up **green and missing exactly the two screens
+this demo exists to show**, which is why `bin/box-up.sh` names them.
+
+**Steps 3, 6 and 7 each run twice, once per tenant, and that is the shape rather than a workaround.**
+`provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — one tenant, one store, from the
+environment — and a credential belongs to one tenant, which the write face enforces with a `403`. Widening
+either entrypoint to take N tenants would move a boundary the kernel exists to hold into a script.
+
+**No token is ever printed.** Steps 3 and 4 each emit a secret exactly once; the script captures them straight
+into `.secrets` through a temp file it shreds, and reports only `filed`.
+
+**It converges.** Re-running is the supported way to repair a half-built box: migrate is a no-op,
+`provision-ref` returns the same store id, the box seeder creates nothing, `seed-demo` is idempotent.
+
+### ⚠️ A container path may never reach a host process
+
+`bin/box-up.sh` runs some steps **inside** the kernel (`docker compose run`) and some **on this machine**
+(`node bin/seed.mjs`). It sources `.env` for both, so a host process inherits every variable — including the
+ones whose values are only true inside a container:
+
+| variable | true for | false for |
+|---|---|---|
+| `FORGE_SEED_DATASET_DIR=/app/seed-dataset` | the kernel | anything on this machine |
+| `FORGE_SEED_PHOTOS_DIR=/data/seed-photos` | the kernel | anything on this machine (it is a **named volume** — there is no honest host path at all) |
+
+**The rule: a variable whose value is a CONTAINER path is never handed to a host process.** The
+`..._DIR` / `..._HOST_DIR` pair exists for exactly this — but the two names are far too similar to trust
+anyone's attention with. This cost two failed births in one evening: first
+`FORGE_SEED_DATASET_DIR=/app/seed-dataset does not exist`, then
+`ENOENT: /data/seed-photos/…/cover.jpg` — each naming a path that genuinely exists, three metres away, inside
+a container.
+
+**So it is enforced rather than remembered.** Host steps go through `host_node`, which replaces each known
+container path with its host counterpart and then **refuses to launch** if any `FORGE_*` variable still holds
+a value under `/app` or `/data`, naming every offender. The replacement list covers what we know; the refusal
+covers what we do not — a variable of that shape added next month is caught on its first run.
+
+### Tearing it down to be born again
+
+```bash
+bash bin/box-down.sh          # state dies, the photo cache lives
+bash bin/box-down.sh --all    # everything, cache included (re-pulls 3.6 GB)
+```
+
+⚠️ **Do not use `docker compose down -v` for this.** One flag takes everything, and it does not distinguish
+the two kinds of thing this box holds:
+
+| | what it is | in a birth proof |
+|---|---|---|
+| `pgdata`, `redisdata`, `media`, `caddy_*` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
+| `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs ~40 min |
+
+The claim a birth proof makes is *"the box is born from nothing"* — not *"the network is re-read from
+nothing"*. `bin/box-down.sh` makes the cheap, correct thing the default and puts the expensive one behind a
+flag, because a habit beats a paragraph: this distinction was explained, written down, and then violated by
+hand one minute later.
+
+### The seed dataset — pointed at, never copied
+
+Step 7 fills the stores from a dataset that lives in the **monorepo** (`instances/demo/dataset`). This box
+points at it by path:
+
+| variable | what it is |
+|---|---|
+| `FORGE_SEED_DATASET_HOST_DIR` | where the dataset is on this machine — what compose mounts |
+| `FORGE_SEED_DATASET_DIR` | where the kernel reads it (`/app/seed-dataset`). **Unset → `seed-demo` answers "nothing to seed"**, which is the correct state for a box that wants no example data |
+| `FORGE_SEED_PHOTOS_DIR` | where the photographs are hydrated to (`/data/seed-photos`, a named volume) |
+
+**It is pointed at rather than copied** because it is 40 MB of JSON naming 3.6 GB of photographs — a
+generator's output, and copying it here would put it where a human edits.
+
+⚠️ **The dataset mount is READ-ONLY and the photos go somewhere else, and that pairing is the point.** The
+seed WRITES as it hydrates, and what it writes is the photo tree. Mounting the dataset read-write would land
+gigabytes inside a git worktree somebody else is working in. `FORGE_SEED_PHOTOS_DIR` exists for exactly this
+("a VM whose container layer cannot hold the gigabytes points it at a big-disk mount"), and it is what lets
+the dataset stay read-only. The volume is named, so a re-seed skips what is already on disk.
+
+**The photographs are pulled at runtime** from the bucket the dataset's pointer names — measured reachable
+from the host and from inside the kernel container. ⚠️ Note that the pointer carries **two versions**, the
+catalog's and the photos', **and they use different URL shapes** (`<base>/dataset/<catalog version>/<rel>`
+against `<base>/<photos version>/<rel>`). Probing one with the other's shape answers 404 and looks exactly
+like an empty bucket.
+
+If a pull cannot complete, the seed **refuses**: *"Refusing to seed a partial dataset"*, naming what is
+missing. It does not fill a catalogue with broken images.
+
+### The bench's addresses
+
+| face | address | serves |
+|---|---|---|
+| shop (all storefronts + checkout) | `http://localhost:8200` | every store, at `/s/<store id>` until a host claims one |
+| **admin · T1** | `http://localhost:8201` | tenant `forgeco` |
+| **admin · T2** | `http://localhost:8202` | tenant `forgecafe` |
+| totem (the counter) | `http://localhost:8203` | store `balcao` |
+| https (edge) | `8243` | |
+
+### ★ Two tenants, four stores, ONE admin container
+
+| tenant | stores | theme |
+|---|---|---|
+| `forgeco` | `forge` (bootstrap) · `outlet` | — · `outlet` |
+| `forgecafe` | `cafe` (bootstrap) · `balcao` | `coffee-store` · — |
+
+**A second tenant does NOT need a second admin.** With `FORGE_ADMIN_TENANT` **empty** the admin runs in HOST
+mode: it asks the kernel which tenant the request's `Host` belongs to (`read.admin.by_host`) and mints a
+1-hour login-driver for it from `FORGE_ADMIN_PLATFORM_TOKEN`. That lookup keys on **`host:port` first** and
+the bare host second — which is why the two admins above differ only by port, and why `:81` and `:83` in
+`caddy/Caddyfile.local` both proxy the same container. The map is DATA, claimed at bootstrap:
+
+```bash
+curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8201'   # {"tenant_id":"forgeco"}
+curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8202'   # {"tenant_id":"forgecafe"}
+```
+
+⚠️ **Each tenant has its OWN seed credential.** `.secrets` carries `forge-seed-token` (forgeco) and
+`forge-seed-token-forgecafe`; `env-source.sh` exports both. A token pointed at the other tenant is refused —
+and `bin/seed-box.mjs` asks `whoami` first so the refusal names the real cause instead of guessing.
 
 Then:
 
 ```bash
-curl -fsS http://localhost:8080/health
+curl -fsS http://localhost:8200/health
 bash bin/verify-composition.sh        # does the running image compose the apps this lock pins?
+bash bin/test.sh                      # this repo's guards
 ```
-
-The shop is `http://localhost:8080` and the admin is `http://localhost:8081`
-(**its own port, not a path** — the admin is a Next app with no `basePath`, so `/admin*` 307s to a rooted
-`/login` that the edge hands to the vitrine as a 404. Measured; `caddy/Caddyfile.local` carries it).
 
 A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
@@ -125,8 +295,91 @@ bootstrap. No admin, no browser, no second secret to mint.
 
 ```bash
 source ./env-source.sh                       # exports FORGE_SEED_TOKEN from your secret store
-node bin/seed.mjs --api http://localhost:8080
+node bin/seed.mjs --api http://localhost:8200 --tenant forgeco
+node bin/seed.mjs --api http://localhost:8200 --tenant forgecafe   # with THAT tenant's credential
 ```
+
+⚠️ **TWO TENANTS, TWO RUNS, TWO CREDENTIALS.** This demo is `forgeco` (the shoe brand: `forge` + `outlet`) and
+`forgecafe` (the coffee shop: `cafe` + `balcao`) — a shoe brand and a coffee shop are not one company. Each
+run fills only the stores of its own tenant and says, in a line, which ones it skipped. The box keeps one
+credential per tenant (`forge-seed-token` and `forge-seed-token-forgecafe`); export the right one before each
+run.
+
+⚠️⚠️ **AND THE INTERNAL READ FACE IGNORES `x-forge-tenant`** — it resolves the tenant from the CREDENTIAL,
+while only the WRITE face honours the header. Measured on this bench: a `forgeco` token asking for
+`forgecafe`'s stores answers **HTTP 200 with the `forgeco` stores**; the same token WRITING into `forgecafe`
+is refused **403**. Since every "does this already exist?" in the seed is a READ, the wrong credential would
+make the script decide "already there, nothing to do" about a tenant it has never seen, and exit 0 having
+written nothing. `bin/seed.mjs` therefore proves the credential before its first write, by asking it which
+stores it can SEE — an answer the wrong token cannot fake.
+
+### THREE MOMENTS, in this order — and the order is not taste
+
+```bash
+node bin/seed.mjs --api … --tenant forgeco                    # 1. the CURATED half
+docker compose run --rm kernel node dist/seed-demo.js --confirm  # 2. the MASSIVE half (one-shot, inside)
+node bin/seed.mjs --api … --tenant forgeco --phase window      # 3. the shop WINDOW
+```
+
+⚠️ **There is a dependency in each direction, and it only became visible when the massive half moved out of
+this script.** The window seeds the dataset's PROMOTIONS, and each one resolves its target by handle through
+the PUBLIC face — the only face that answers "is this on sale in THIS store?". Those targets are handles of
+the massive catalogue, so **the window needs the massive**. And the massive publishes curated handles it does
+not define, so **the massive needs the curated**. Three moments, one direction, no circle.
+
+This script used to create the 2 790 itself, a few lines above the window, so the window always found its
+targets — the crutch hid the dependency. Removing it did not create one.
+
+### The two halves of the seed, and the order between them
+
+**This script owns the CURATED half** — what a human wrote: the six coffees with their descriptions, the
+counter's menu, the outlet's eight, and the curated promotions (the counter's coupon, the morning combo, the
+subscriber discount). It is the identity of this demo.
+
+**The dataset and `demo-data`'s `populate` own the MASSIVE half** — what a generator produced: the 2 790
+products and which shop sells what. That runs as a one-shot INSIDE the box:
+
+```bash
+docker compose run --rm kernel node dist/seed-demo.js --confirm    # once per tenant
+```
+
+⚠️ **ORDER: this script FIRST, the one-shot after.** `populate` PUBLISHES the curated handles it does not
+define, so they have to exist before it runs. Inverted, the publication fails out loud naming the handle and
+the shop — the right behaviour, and still a morning lost to wondering why.
+
+⚠️ **The one-shot needs the dataset MOUNTED** (`FORGE_SEED_DATASET_DIR`, and `FORGE_SEED_DATASET_HOST_DIR` for
+the bind). Without it, it writes one line saying no dataset is mounted and does nothing — which is why the
+`forge` store comes up empty on a box that has not wired it.
+
+### Proving what the seed left behind
+
+```bash
+FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
+FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
+```
+
+One tenant per run, like the seed, and for the same reason. It prints the four shops against what the seed
+DECLARES (never a bare count), **the negative** — no free-shipping promotion and no freight born for the
+counter — the four cuts of the stock screen with a count in each, and the placeholder art in the Asset
+Library.
+
+⚠️ **It refuses rather than reporting a half-filled box.** No credential, an unreachable box, a token whose
+tenant is not the one asked for, a store the public face cannot resolve yet, a shop with fewer products than
+declared — each is a non-zero exit and a named line, never a number that reads like a result. Exit 0 means
+everything it checked is settled.
+
+### The placeholder art
+
+A window slot with no picture renders wrong, and the wrongness does not show up in a seed log. So
+`node bin/make-placeholders.mjs` generates one — flat colour, and the slot, the store and the dimension
+written **inside the image** (`home.hero · cafe · 1504x560`), at the size measured from the art that already
+serves that slot. They are deterministic (same slot, same bytes, so a re-run uploads nothing) and they are
+obviously not final.
+
+**To curate them:** they are all named `placeholder-…`, so the whole set is one search for `placeholder-` in
+the admin's Asset Library, or `read.internal.assets` filtered by the same prefix. Replace them one at a time.
+The generator never draws over art that already exists, and it makes none for the counter — a totem is four
+bands and no hero.
 
 That creates the stores, declares the `cf.*` vocabulary and creates the six coffees **with their photos**,
 all through the door: the script holds an API key, never a database credential, exactly like an ERP would.
@@ -201,7 +454,7 @@ products, 44 427 SKUs and 18 582 photographs. It arrives by **path**, and the pa
 ```bash
 source ./env-source.sh
 FORGE_SEED_DATASET_DIR=<path to the forge monorepo>/instances/demo/dataset \
-  node bin/seed.mjs --api http://localhost:8080
+  node bin/seed.mjs --api http://localhost:8200
 ```
 
 Unset, the variable means what it means everywhere else in Forge: **no example data, and that is a legitimate
@@ -254,7 +507,7 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
   keeps its cached render until the TTL. Ask for it by hand:
 
   ```bash
-  curl -X POST "http://localhost:8080/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
+  curl -X POST "http://localhost:8200/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
        -H "x-revalidate-secret: $FORGE_REVALIDATE_SECRET"
   ```
 
@@ -450,7 +703,7 @@ Open **http://localhost:8102** (the bench) — you should land on "Toque para co
    · **Cartão**: "pague na maquininha", and the machine has already said yes by the time the screen draws.
 6. **The confirmation** shows the order number GIANT — that is `order.number`, the kernel's per-store
    sequence, the number the barista will call — plus the name, the summary and "retire no balcão".
-7. **Check the order in the admin** (`:8101`), in the counter's store: the buyer's name is the one that was
+7. **Check the order in the admin** (`:8202` — the counter belongs to tenant `forgecafe`), in the counter's store: the buyer's name is the one that was
    typed, and the items are the ones that were chosen.
 8. **Now walk away and count.** After `FORGE_TOTEM_IDLE_SECONDS` the screen returns to "Toque para começar"
    **and the bag is empty** — the cart pointer is destroyed on the server, so the next customer starts clean.

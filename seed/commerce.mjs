@@ -291,73 +291,86 @@ const appAction = (post) => (extension_id, action, input) =>
   post('/v1/internal/extension/action', { extension_id, action, ...(input ? { input } : {}) });
 
 /**
- * THE COMMERCE PASS, in the one order that keeps a mailbox empty.
+ * ⛔ THE SILENCING — AND IT RUNS IN THE **CURATED** PHASE, NOT THE WINDOW.
  *
- *   1. prove the credential is in the tenant we think it is       ← before any "does this exist?" read
- *   2. silence every buyer message in every store
- *   3. the reviews, by the door each shop deserves
- *   4. one live order per selling store — proof the box still sells TODAY
- *   5. re-arm the buyer messages, everywhere except the counter
+ * The seed is three moments, not one: `--phase curated` → the one-shots INSIDE the box → `--phase window`.
+ * The one-shots are what create the demo's ORDERS — `seed-history` writes dozens of them, dated. So a
+ * silencing that ran in the window would run AFTER those orders were emitted, and the decision to send is
+ * taken at EMIT (measured: an order placed while silenced produced no notification even after the channel
+ * was re-armed and the dispatcher had 70 further seconds). Silencing late is silencing nothing.
  *
- * ⚠️ STEP 5 IS IN A `finally`. A seed that dies in the middle must not leave the box mute: a bench nobody can
- * get an e-mail from is a bench whose first bug report is "the store does not send anything". The same
- * reasoning puts the `open_reviews` restore in a `finally` inside `seedReviews`.
+ * ⚠️ AND THE CONSEQUENCE IS A TRADE-OFF TAKEN DELIBERATELY: the re-arm lives in the OTHER phase, so a
+ * `finally` cannot span the two; they are two processes. If the window phase never runs, the box stays mute.
+ * That is the better failure of the two — a mute box is one command away from being fixed and somebody
+ * notices within a day, while dozens of e-mails to a real person cannot be un-sent.
+ */
+export async function silenceBuyerChannels({ expect, command, read, log, fail }) {
+  const stores = await provenStores({ expect, read, log, fail });
+  await toggleChannels(command, channelPlan(stores, { enabled: false }));
+  log(
+    `commerce — ${SEED_MANAGED_TYPES.length} message types silenced in ${stores.length} store(s), ` +
+      'BEFORE the one-shots write any order',
+  );
+}
+
+/**
+ * THE COMMERCE PASS — the reviews, the live order, and the re-arm. Runs in the **window** phase, because
+ * every one of those needs what the one-shots put there: the massive catalogue a cart can hold, the
+ * logistics `place_order` demands, and the payment app that answers for a method.
  */
 export async function seedCommerce({ expect, command, read, log, fail, post }) {
-  // ⛔⛔ THE EXPECTATION MUST NOT COME FROM THE SAME READ, AND THE FIRST WIRING DID.
-  //
-  // `assertCredentialTenant` compares "the stores this run is about to touch" against "the stores this
-  // credential can see". It is correct, and it has unit tests that drive it with two different lists. But it
-  // was WIRED with both sides fed by the same `read('internal/stores')` with the same token — so it compared
-  // A against A and could not fail, ever. A guard that cannot fail is not a guard; it is a line that makes
-  // the next reader believe the question was asked.
-  //
-  // Which is exactly the species this slice wrote a lesson about, one layer up: a test whose positive control
-  // also comes out negative measured nothing. The fix is the same shape — the expectation has to be stated
-  // INDEPENDENTLY of the thing it checks. So the caller declares which stores this run is for, and a token
-  // from the other tenant now fails on the first read instead of seeding the wrong shop in silence.
-  if (!Array.isArray(expect) || expect.length === 0)
-    fail(
-      'seedCommerce needs `expect`: the store handles this run is FOR, stated by the caller. Deriving them ' +
-        'from the same read the guard checks makes the guard compare a list against itself.',
-    );
-  const visible = (await read('internal/stores')) ?? [];
-  assertCredentialTenant(expect, visible);
-  const stores = visible.filter((s) => expect.includes(s.handle));
-  log(`commerce — credential proven in the tenant holding ${visible.map((s) => s.handle).join(', ')}`);
+  const stores = await provenStores({ expect, read, log, fail });
 
   const absent = await appsNotInstalled(read, REQUIRED_APPS);
   if (absent.length)
     fail(
       `commerce needs ${absent.join(', ')} installed and this slice does not install apps — the filler does. ` +
-        'Run the catalogue seed first, or ask for the app to be added to its list.',
+        'Run the catalogue one-shot first, or ask for the app to be added to its list.',
     );
-
-  const toggle = async (rows) => {
-    for (const row of rows)
-      await command('notification.channel.set_enabled', {
-        type_key: row.type_key,
-        channel_key: row.channel_key,
-        store_id: row.store_id,
-        enabled: row.enabled,
-      });
-  };
-
-  await toggle(channelPlan(stores, { enabled: false }));
-  log(`commerce — ${SEED_MANAGED_TYPES.length} message types silenced in ${stores.length} store(s)`);
 
   try {
     await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
   } finally {
     const on = channelPlan(stores, { enabled: true });
-    await toggle(on);
+    await toggleChannels(command, on);
     const armed = [...new Set(on.map((r) => r.handle))];
     log(
       `commerce — buyer messages re-armed in ${armed.join(', ')}; ` +
         `${SILENT_STORE_HANDLES.join(', ')} stays silent on purpose (a totem calls the number out loud)`,
     );
   }
+}
+
+/**
+ * The stores this run is FOR, proven against what the credential can see.
+ *
+ * ⛔ `expect` IS THE CALLER'S DECLARATION and must not come from this read. The first wiring fed both sides
+ * from the same `read('internal/stores')` with the same token, so the check compared a list against itself
+ * and could never fail — it passed every run and never asked the question once.
+ */
+async function provenStores({ expect, read, log, fail }) {
+  if (!Array.isArray(expect) || expect.length === 0)
+    fail(
+      'the commerce pass needs `expect`: the store handles this run is FOR, stated by the caller. Deriving ' +
+        'them from the same read the guard checks makes the guard compare a list against itself.',
+    );
+  const visible = (await read('internal/stores')) ?? [];
+  assertCredentialTenant(expect, visible);
+  const stores = visible.filter((s) => expect.includes(s.handle));
+  log(`commerce — credential proven for ${stores.map((s) => s.handle).join(', ')}`);
+  return stores;
+}
+
+/** One toggle per row. Every row passed through `assertSeedableChannel` when the plan was built. */
+async function toggleChannels(command, rows) {
+  for (const row of rows)
+    await command('notification.channel.set_enabled', {
+      type_key: row.type_key,
+      channel_key: row.channel_key,
+      store_id: row.store_id,
+      enabled: row.enabled,
+    });
 }
 
 /**

@@ -42,6 +42,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { planRepoint } from './media.mjs';
+import { unresolved } from './minted.mjs';
 import { planStock } from './stock.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -166,7 +167,7 @@ export async function seedTotem(port) {
   const products = await theProducts(port);
   await publish(port, store, products);
   await categorize(port, store, categories, products);
-  await stock(port);
+  await stock(port, products);
   await pickup(port);
   await promotions(port, store, products);
 
@@ -260,8 +261,25 @@ async function theProducts(port) {
   const files = new Set(readdirSync(MEDIA_DIR));
 
   const known = new Map();
+  /** sku code -> id, for the SKUs this run just minted. See `stock()`. */
+  const minted = new Map();
   for (const row of await readAll('products_admin')) {
     known.set(row.handle, { id: row.product_id ?? row.id, metadata: row.metadata ?? {} });
+  }
+  // ★★ THE RUN'S OWN REGISTRY FIRST — see `seed/minted.mjs` for the class this ends. The six coffees are
+  // created by the catalogue step a few modules back, in THIS run, and `products_admin` is a PROJECTION:
+  // measured on a fresh box, that read answered WITHOUT them while the log above it showed each one created
+  // with its id. Asking what the run made costs nothing and covers exactly the window where the race exists;
+  // the read stays the authority for everything an EARLIER run made, where there is no race to lose.
+  //
+  // ⚠️ The registry holds no metadata — it holds what a COMMAND returned, and a create returns ids, not bags.
+  // A coffee resolved this way therefore starts with an empty bag, and `mergeMetadata` is what keeps that
+  // honest: merging into `{}` yields the seal and nothing else, which is exactly right for a product this run
+  // just created and whose bag it already knows.
+  for (const handle of data.publish_also.handles) {
+    if (known.has(handle)) continue;
+    const id = port.minted?.product(handle);
+    if (id) known.set(handle, { id, metadata: {} });
   }
 
   let created = 0;
@@ -296,6 +314,15 @@ async function theProducts(port) {
     });
     const id = out.product_id ?? out.id;
     known.set(product.handle, { id, metadata: productMetadata(product) });
+    port.minted?.rememberProduct(product.handle, id);
+    // ★★ THE SKU IDS COME BACK FROM THE COMMAND, AND THEY ARE KEPT — see `stock()` for what asking a
+    // projection for them instead cost: the whole counter came up unstocked on a fresh tenant.
+    for (const [i, sku] of expandSkus(product).entries()) {
+      const skuId = out.sku_ids?.[i];
+      if (skuId) minted.set(sku.code, skuId);
+      // …and into the RUN's registry, so a later module never has to ask a projection about it.
+      port.minted?.rememberSku(sku.code, skuId);
+    }
     created += 1;
   }
   log(
@@ -307,14 +334,27 @@ async function theProducts(port) {
   // module runs after the catalogue step and after seedCoffee precisely so they are here.
   const missing = data.publish_also.handles.filter((handle) => !known.has(handle));
   if (missing.length > 0) {
+    // ⚠️ THE MESSAGE THAT USED TO BE HERE NAMED A CAUSE — "this module runs AFTER the catalogue step, never
+    // before" — and it was the most dangerous of the three written today precisely because it was the most
+    // helpful-sounding: whoever read it verified the module order, found it correct, and was left with
+    // nothing. The real cause was the projection. One helper now says what was measured and refuses to pick,
+    // here and in `bin/seed.mjs` both.
     fail(
-      `totem — these products are supposed to already exist and do not: ${missing.join(', ')}.\n` +
-        '  They are seed/catalog.json\'s, created by the catalogue step of bin/seed.mjs — this module runs\n' +
-        '  AFTER it and after seedCoffee, never before. It does not create a coffee.',
+      `totem — ${unresolved({
+        what: 'product(s) the counter re-sells and does not create',
+        names: missing,
+        measured:
+          `read.internal.products_admin answered ${known.size} product(s) for this tenant; this run's ` +
+          `registry holds ${port.minted?.counts.products ?? 0} product(s) it created.`,
+        andThen:
+          'they were never created — which would mean this module ran BEFORE the catalogue step of\n' +
+          '  bin/seed.mjs, or on a tenant that does not own the coffee store. It never creates a coffee.',
+      })}`,
     );
   }
   await sealTheCoffees(port, known);
 
+  known.minted = minted;
   return known;
 }
 
@@ -454,7 +494,7 @@ async function categorize({ command, readAll, log, fail }, _store, categories, p
  * measurement lives: "keep selling" is `oversell_policy: 'allow'` on the WAREHOUSE, it is not scoped to
  * what that warehouse stocks, and switching it on would let the e-commerce's coffees oversell too.
  */
-async function stock({ command, readAll, log, fail }) {
+async function stock({ command, readAll, log, fail }, products) {
   const want = new Map();
   for (const product of data.products) {
     for (const sku of expandSkus(product)) {
@@ -468,9 +508,19 @@ async function stock({ command, readAll, log, fail }) {
   // here while leaving the shared step blind would be the worst of both: two mechanisms, one broken, and
   // the broken one is the one that runs for every store. `seed/stock.mjs` holds the reasoning and the
   // measurement; it takes both reads because taking only one is the bug.
+  // ⚠️⚠️ THE SKUs THIS RUN JUST MINTED ARE ADDED TO WHAT THE CATALOGUE READ ANSWERS, AND THE RUN THAT MADE
+  // THIS NECESSARY IS WORTH NAMING. `products_admin` is a PROJECTION. On a fresh tenant the fifteen products
+  // were created and the read that followed did not have them yet — so every sku code resolved to nothing and
+  // `planStock` refused the whole step by name (correctly: it cannot tell a projection lag from a typo).
+  // What `catalog.product.create` RETURNED is not a cache of the truth, it is the truth; the projection is
+  // the thing that is catching up. Same species as `publish()`'s in bin/seed.mjs, same afternoon.
+  const catalogue = [
+    ...(await readAll('products_admin')),
+    { skus: [...(products.minted ?? new Map())].map(([code, id]) => ({ code, id })) },
+  ];
   const { adjustments, missing } = planStock(
     want,
-    await readAll('products_admin'),
+    catalogue,
     await readAll('stock_levels', { limit: '200' }),
   );
   if (missing.length > 0) {
@@ -511,6 +561,21 @@ async function stock({ command, readAll, log, fail }) {
  */
 async function pickup({ command, read, readAll, rows, log }) {
   const wanted = data.pickup;
+
+  // ⚠️ THE FOUR LOOKUPS BELOW ARE ABSENCE CHECKS OVER SINGLE-PAGE READS, AND THAT IS SAFE HERE — BY
+  // CONSTRUCTION, not by the size of this bench. Worth writing down, because the general rule is the
+  // opposite: an absence proved over a PAGINATED read is proved only for the page you read, and it fails in
+  // the dangerous direction — it reports "not there" for something on page two, and here "not there" means
+  // CREATE, so the cost is a duplicate.
+  //
+  // Measured, one by one: `pickup_locations`, `shipping_zones`, `shipping_methods_admin` and `carriers` take
+  // NO parameters at all (`z.object({})` — they are small operator-curated registries and the read hands back
+  // the whole list), and `shipping_rates` takes only `method_id`/`zone_id`. None of them has a second page to
+  // miss. `readAll` is used for the methods anyway, because it costs nothing and it is the shape that stays
+  // right if one of these ever grows one.
+  //
+  // ★ IF A READ HERE EVER GAINS `limit`/`page`, THIS COMMENT IS THE TRIPWIRE: switch that call to `readAll`
+  // before trusting its `.find()` again.
 
   const point =
     rows(await read('pickup_locations')).find((p) => p.name === wanted.location.name) ??

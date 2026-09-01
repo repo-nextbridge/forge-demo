@@ -127,13 +127,34 @@
 
 	# ── everything else is the reference vitrine ───────────────────────────────────────────────────────────
 	handle {
+		# ★ WHO SERVED. Set by the ROUTE, so a reader can prove which front the edge chose instead of inferring
+		# it from a theme attribute — which proves the THEME and misled two people into believing the café's
+		# fork was serving a page the vanilla front was rendering. See caddy/extra/coffee.local.caddy.
+		header X-Forge-Served-By "storefront"
 		reverse_proxy storefront:3000
 	}
 }
 
 # THE ADMIN, on its own listener — see the header for the measurement that put it here rather than under a
 # path. Published as ${FORGE_ADMIN_HTTP_PORT} by compose.yml.
+#
+# ★★ TWO LISTENERS, ONE CONTAINER, TWO TENANTS (PRE-SEED · P-A). `:81` is tenant T1's admin door and `:83` is
+# T2's, and BOTH proxy the same `admin:3000`. That is not a duplication to be tidied away — it is the whole
+# mechanism: with `FORGE_ADMIN_TENANT` empty the admin runs in HOST mode and asks the kernel which tenant the
+# request's `Host` belongs to (`read.admin.by_host`), and that lookup keys on `host:port` FIRST and the bare
+# host second (`requestHostKeys`). On a bench where every door is `localhost`, THE PORT IS THE ONLY THING THAT
+# DISTINGUISHES ONE BRAND'S ADMIN FROM ANOTHER'S. Collapse these two blocks into one and both tenants answer
+# on one address, which the directory cannot resolve — the admin would refuse with `unknown_admin_host`.
+#
+# The map itself is DATA, written by `platform.admin_host.set` (bin/seed.mjs does it): `localhost:8201` → the
+# shoe tenant, `localhost:8202` → the coffee tenant. Changing a published port here means rewriting that claim.
 :81 {
+	reverse_proxy admin:3000
+}
+
+# THE SECOND TENANT'S ADMIN. Same container, different door — see the block above for why the port carries the
+# meaning. Published as ${FORGE_ADMIN2_HTTP_PORT} by compose.yml.
+:83 {
 	reverse_proxy admin:3000
 }
 

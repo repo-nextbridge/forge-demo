@@ -76,8 +76,22 @@ services:
       FORGE_STORAGE_BUCKET: ${FORGE_STORAGE_BUCKET:-}
       FORGE_STORAGE_CLIENT_EMAIL: ${FORGE_STORAGE_CLIENT_EMAIL:-}
       FORGE_STORAGE_PRIVATE_KEY: ${FORGE_STORAGE_PRIVATE_KEY:-}
-      # Login e-mail. ALL FOUR or NONE: unset → the kernel LOGS the code instead of sending it (which is what
-      # a demo wants — `docker compose logs kernel` is the inbox); a partial set is a fatal boot error.
+      # ★★ LOGIN E-MAIL. ALL FOUR OR NONE — a partial set is a FATAL BOOT ERROR that names the missing one.
+      #
+      # ⚠️ THIS BLOCK USED TO PROMISE THAT LEAVING THEM UNSET MAKES THE KERNEL LOG THE CODE TO THE TERMINAL,
+      # AND THAT WAS NEVER TRUE HERE. This file declares `NODE_ENV: production` four blocks up, and the
+      # transport that writes a message to stderr is constructible ONLY under `!production`
+      # (apps/api/src/smtp-channel-driver.ts) — deliberately, because printing a credential to a terminal must
+      # be impossible in production BY CONSTRUCTION rather than by a flag. What a production box with no mail
+      # actually gets is the transport that FAILS BY NAME on every message: no OTP reaches anyone, and nobody
+      # can log in. The two sentences sat in one file contradicting each other for a whole wave, and the cost
+      # was an afternoon on a bench nobody could enter.
+      #
+      # So: this box CONFIGURES the full set. The values are assembled in `env-source.sh`, where the presence
+      # of the `forge-smtp-pass` secret decides whether the set exists at all — three here and a conditional
+      # password would rebuild the partial set that refuses to boot.
+      # WHERE THE CODE ARRIVES: the mailbox of `FORGE_ADMIN_SEED_EMAIL`. There is no terminal inbox on this box.
+      # `bin/dev-mail-promise.guard.mjs` holds this comment to the code that would have to keep it.
       FORGE_SMTP_HOST: ${FORGE_SMTP_HOST:-}
       FORGE_SMTP_PORT: ${FORGE_SMTP_PORT:-}
       FORGE_SMTP_USER: ${FORGE_SMTP_USER:-}
@@ -86,6 +100,11 @@ services:
       # Read only by the one-shot bootstrap (`run --rm kernel node dist/provision-ref.js`): the tenant, store
       # and first operator this instance is created with. The demo's OTHER stores are created by bin/seed.mjs,
       # through the port, because a second store is data and not bootstrap.
+      # ★ THE DATASET POINTER. Unset → `seed-demo` answers "nothing to seed", which is the correct state for an
+      # instance that wants no example data. Set → the one-shot fills the store it is aimed at.
+      FORGE_SEED_DATASET_DIR: ${FORGE_SEED_DATASET_DIR:-}
+      # Where the photo payload is hydrated to, kept OFF the read-only dataset mount. See the volumes above.
+      FORGE_SEED_PHOTOS_DIR: ${FORGE_SEED_PHOTOS_DIR:-}
       FORGE_REF_TENANT: ${FORGE_REF_TENANT:-}
       FORGE_REF_STORE_HANDLE: ${FORGE_REF_STORE_HANDLE:-}
       FORGE_REF_STORE_NAME: ${FORGE_REF_STORE_NAME:-}
@@ -106,6 +125,21 @@ services:
     volumes:
       # Our extensions, read-only: the kernel loads this code, it never writes it.
       - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
+      # ★★ THE SEED DATASET — mounted BY PATH and READ-ONLY, and both halves are deliberate.
+      #
+      # BY PATH because it is 40 MB of JSON pointing at 3.6 GB of photographs, and copying that into this
+      # repository would put a generator's output in a place a human edits. It lives in the monorepo
+      # (`instances/demo/dataset`) and this box points at it.
+      #
+      # READ-ONLY because the seed WRITES when it hydrates — and what it writes is the photo tree, which is
+      # why the photo tree is pointed somewhere else (below). Mounting this read-write would land gigabytes
+      # inside a shared git worktree, which is a working tree somebody else is using.
+      - ${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}:/app/seed-dataset:ro
+      # ★ WHERE THE 3.6 GB LANDS. `FORGE_SEED_PHOTOS_DIR` exists exactly for this ("a VM whose container layer
+      # cannot hold the gigabytes points it at a big-disk mount") and it is what lets the dataset above stay
+      # read-only. A named volume, so it survives a re-run and is not re-pulled: the hydration skips a file
+      # already on disk, so the second seed of a box costs nothing.
+      - seed_photos:/data/seed-photos
       - media:/data/media
     depends_on:
       redis:
@@ -243,6 +277,10 @@ services:
       # answers here and the published port is inert. On the bench it is the admin's own origin — a path
       # prefix does not work (the admin is a Next app with no basePath; see caddy/Caddyfile.local).
       - '${FORGE_ADMIN_HTTP_PORT:-8081}:81'
+      # ★ THE SECOND TENANT'S ADMIN DOOR (PRE-SEED · P-A). Same container as `:81`; the PORT is what
+      # `read.admin.by_host` keys on, so two tenants on one `localhost` need two published ports. See
+      # caddy/Caddyfile.local, `:83`.
+      - '${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
     environment:
       FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
       FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}
@@ -272,6 +310,8 @@ services:
       retries: 5
 
 volumes:
+  # The hydrated photo tree (3.6 GB). Named, so a re-seed skips what is already on disk.
+  seed_photos:
   pgdata:
   redisdata:
   caddy_data:
