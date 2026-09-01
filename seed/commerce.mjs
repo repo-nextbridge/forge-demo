@@ -303,12 +303,27 @@ const appAction = (post) => (extension_id, action, input) =>
  * get an e-mail from is a bench whose first bug report is "the store does not send anything". The same
  * reasoning puts the `open_reviews` restore in a `finally` inside `seedReviews`.
  */
-export async function seedCommerce({ stores, command, read, log, fail, post }) {
+export async function seedCommerce({ expect, command, read, log, fail, post }) {
+  // ⛔⛔ THE EXPECTATION MUST NOT COME FROM THE SAME READ, AND THE FIRST WIRING DID.
+  //
+  // `assertCredentialTenant` compares "the stores this run is about to touch" against "the stores this
+  // credential can see". It is correct, and it has unit tests that drive it with two different lists. But it
+  // was WIRED with both sides fed by the same `read('internal/stores')` with the same token — so it compared
+  // A against A and could not fail, ever. A guard that cannot fail is not a guard; it is a line that makes
+  // the next reader believe the question was asked.
+  //
+  // Which is exactly the species this slice wrote a lesson about, one layer up: a test whose positive control
+  // also comes out negative measured nothing. The fix is the same shape — the expectation has to be stated
+  // INDEPENDENTLY of the thing it checks. So the caller declares which stores this run is for, and a token
+  // from the other tenant now fails on the first read instead of seeding the wrong shop in silence.
+  if (!Array.isArray(expect) || expect.length === 0)
+    fail(
+      'seedCommerce needs `expect`: the store handles this run is FOR, stated by the caller. Deriving them ' +
+        'from the same read the guard checks makes the guard compare a list against itself.',
+    );
   const visible = (await read('internal/stores')) ?? [];
-  assertCredentialTenant(
-    stores.map((s) => s.handle),
-    visible,
-  );
+  assertCredentialTenant(expect, visible);
+  const stores = visible.filter((s) => expect.includes(s.handle));
   log(`commerce — credential proven in the tenant holding ${visible.map((s) => s.handle).join(', ')}`);
 
   const absent = await appsNotInstalled(read, REQUIRED_APPS);

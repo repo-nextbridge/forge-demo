@@ -23,6 +23,10 @@ const argOf = (name) => {
 };
 const api = (argOf('--api') ?? 'http://localhost:8100').replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? 'forgeco';
+// ⛔ WHICH STORES THIS RUN IS FOR — stated, never derived from the box. It is the independent half of the
+// credential guard: if the token belongs to the other tenant, the read cannot show these handles and the run
+// stops. Deriving it from the same read would make the guard compare a list against itself.
+const expect = (argOf('--expect') ?? '').split(',').map((h) => h.trim()).filter(Boolean);
 const token = process.env.FORGE_SEED_TOKEN ?? '';
 if (!token) {
   process.stderr.write('[prove] FORGE_SEED_TOKEN is required\n');
@@ -110,9 +114,9 @@ async function post(path, body, { store } = {}) {
   return parsed;
 }
 
-const stores = (await read('internal/stores')) ?? [];
-if (stores.length === 0) fail(`no stores visible to this credential on ${api}`);
-log(`against ${api} as ${tenant} — ${stores.map((s) => s.handle).join(', ')}`);
+if (expect.length === 0)
+  fail('--expect <handles,…> is required: the stores this run is for. See the note above it.');
+log(`against ${api} as ${tenant} — expecting ${expect.join(', ')}`);
 
-await seedCommerce({ stores, command, read, log, fail, post });
+await seedCommerce({ expect, command, read, log, fail, post });
 log('done.');
