@@ -33,6 +33,7 @@ import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
 import { planRepoint, reuseKey, sha256 } from '../seed/media.mjs';
 // WHICH SKUs STILL NEED STOCKING — a function, and it takes BOTH reads on purpose. See the file: the version
 // that trusted `stock_levels` alone could not stock a product that had never been stocked, in silence.
+import { createMinted, unresolved } from '../seed/minted.mjs';
 import { planStock } from '../seed/stock.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
@@ -636,10 +637,14 @@ async function upload(file, { library = true } = {}) {
   return key;
 }
 
-/** handle -> product id, filled by products() and read by repointMedia(). */
+/** handle -> product id, filled by products() and read by repointMedia(). Holds what a READ answered too, so
+ *  it is not the run's registry — that is `minted`, below, and the two are deliberately separate. */
 let existingIds = new Map();
-/** sku code -> sku id, for the SKUs THIS RUN minted. Read by stock(); see the note there. */
-const mintedSkus = new Map();
+
+/** ★★ WHAT THIS RUN MADE — the registry every module shares. See `seed/minted.mjs` for the class of defect
+ *  it ends: four times today a step created something and then asked a READ about it, and lost the race with
+ *  the projection. Whoever creates registers here; whoever needs consults here BEFORE falling back to a read. */
+const minted = createMinted();
 
 // ── 4. the products ─────────────────────────────────────────────────────────────────────────────────────────
 async function products() {
@@ -704,10 +709,8 @@ async function products() {
     existingIds.set(product.handle, out.product_id ?? out.id);
     // ★★ AND THE SKU IDS, for the same reason and the same race — see `stock()` below. `catalog.product.create`
     // returns them in the order the skus were sent, which is the order this array was built in.
-    for (const [i, sku] of skus.entries()) {
-      const id = out.sku_ids?.[i];
-      if (id) mintedSkus.set(sku.code, id);
-    }
+    minted.rememberProduct(product.handle, out.product_id ?? out.id);
+    for (const [i, sku] of skus.entries()) minted.rememberSku(sku.code, out.sku_ids?.[i]);
     log(`product ${product.handle} — created with ${skus.length} sku(s) (${out.product_id ?? '?'})`);
   }
 }
@@ -878,7 +881,7 @@ async function stock() {
   // timeout that can still be wrong.
   const catalogue = [
     ...(await readAll('products_admin')),
-    { skus: [...mintedSkus].map(([code, id]) => ({ code, id })) },
+    ...minted.asCatalogueRows(),
   ];
   const { adjustments, missing } = planStock(
     bySku,
@@ -888,21 +891,17 @@ async function stock() {
   if (missing.length > 0) {
     // A declared sku code that no product answers to is a catalogue bug, and skipping it in silence is how
     // a product ends up published, priced and permanently unbuyable.
-    // ⚠️ IT SAYS WHAT IT MEASURED, AND STOPS THERE — and the old sentence is the defect of the day in
-    // miniature. It read "Either the product was never created, or its option values were renamed after it
-    // was": TWO causes, confidently, and the real one was a THIRD it did not list — the read had not caught
-    // up. Whoever read it went looking for a missing product and a renamed option, found both plausible, and
-    // lost half an hour. A message that asserts more than it measured is the same species as "re-run this
-    // script": it spends somebody else's time on the author's guess.
     fail(
-      `stock — ${missing.length} sku code(s) this seed declares are in no product that ` +
-        `read.internal.products_admin answered with, and were not minted by this run:\n` +
-        `    ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` … (+${missing.length - 5})` : ''}\n` +
-        `  MEASURED: that read answered ${catalogue.length - 1} product(s); this run minted ` +
-        `${mintedSkus.size} sku(s).\n` +
-        '  This does NOT say why. Ask the read again before assuming: if the codes appear a moment later, it\n' +
-        '  was the projection and not the catalogue. If they do not, the product was never created or an\n' +
-        '  option value was renamed after it was — and those two look identical from here.',
+      `stock — ${unresolved({
+        what: 'sku code(s) this seed declares',
+        names: missing,
+        measured:
+          `read.internal.products_admin answered ${catalogue.length - 1} product(s); this run minted ` +
+          `${minted.counts.skus} sku(s) and ${minted.counts.products} product(s).`,
+        andThen:
+          'the product was never created, or an option value was renamed after it was — and those two look\n' +
+          '  identical from here, so check the catalogue file against the store rather than guessing.',
+      })}`,
     );
   }
   for (const adjustment of adjustments) {
@@ -1003,14 +1002,14 @@ if (here(catalog.products_store)) {
 }
 // The OUTLET store, which shares only the stores and the field declarations with everything above it.
 if (here('outlet')) {
-  await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail });
+  await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail, minted });
 } else {
   log('outlet — not on this tenant, skipped');
 }
 // The COFFEE store's own half: the subscription mark on the SKUs the merchant curated, and the promotion
 // that prices it. Same shape as the Outlet's — one store, one file, the seed keeps deciding the order.
 if (here('cafe')) {
-  await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail });
+  await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail, minted });
 } else {
   log('coffee — not on this tenant, skipped');
 }
@@ -1032,6 +1031,7 @@ if (here('cafe')) {
   rows,
   log,
   fail,
+  minted,
     uploadAsset: (file) => upload(file, { library: true }),
   });
 } else {
@@ -1106,6 +1106,7 @@ if (here('forge')) {
   rows,
   log,
   fail,
+  minted,
   uploadAsset: (file) => upload(file, { library: true }),
     resolveMedia: resolveMediaFile,
   });
