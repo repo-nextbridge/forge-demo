@@ -162,10 +162,64 @@ reachable on the same door. Mint one with only `tenant.store.write`, `catalog.pr
 `catalog.sku.write`, `custom_fields.write` and `media.write`, and keep the bootstrap operator credential for
 the things that really need an operator.
 
-⚠️ **`bin/seed.mjs` is not a seeder and is not trying to be.** Forge ships one; this is the minimum that
-makes the demo stand up. The full seed is a later slice, written from what the finished demo turns out to
-need (decision of Renan, 2026-08-31). The three supporting products the catalogue document promises for
-bought-together are **not** invented here — they are named as a gap in `seed/catalog.json`.
+⚠️ **`bin/seed.mjs` holds no catalogue of its own beyond these two stores.** The three supporting products
+the catalogue document promises for bought-together are **not** invented here — they are named as a gap in
+`seed/catalog.json`. The `forge` store is filled from the platform's example dataset instead of from a
+catalogue written here; the section below says where that comes from and why.
+
+⚠️ **And it is not the platform's seeder, which exists.** Forge ships `demo-data` (the `Seeder` app,
+`node dist/seed-demo.js`), and it owns the dataset. It is not used here for two measured reasons, both about
+this box: it cannot be **aimed** at a store — it picks `handle === 'demo-store'` or else the tenant's oldest
+store, which here is `outlet` — and aiming it would mean changing the app and rebuilding the kernel image,
+which on a pinned pre-release box moves the binary that is serving it. The right long-term fix is a store
+target on that action; until then this module drives the same port with the same dataset.
+
+### Where the `forge` store's catalogue comes from — and why it is not in this repository
+
+The coffee store and the outlet carry their content here (`seed/catalog.json`, `seed/outlet.json`): six and
+eight products, small enough to read in a diff. The **`forge`** store — the sports shop the box serves at its
+root — does not. Its catalogue is the **platform's example dataset**: 33 categories, 351 brands, 2 790
+products, 44 427 SKUs and 18 582 photographs. It arrives by **path**, and the path is configuration:
+
+```bash
+source ./env-source.sh
+FORGE_SEED_DATASET_DIR=<path to the forge monorepo>/instances/demo/dataset \
+  node bin/seed.mjs --api http://localhost:8080
+```
+
+Unset, the variable means what it means everywhere else in Forge: **no example data, and that is a legitimate
+state.** The seed writes one line saying the sports store stays empty and carries on. A clone of this
+repository with no monorepo beside it still brings up the coffees and the outlet.
+
+**Why by path and not committed here.** The obvious alternative — "a customer's catalogue is his own data, so
+it belongs in his repo" — was measured before it was rejected, and it does not deliver what it promises:
+
+- `instances/demo/dataset/` is **41 MB** of catalogue JSON and shared art, and
+- the **3.6 GB of per-product photographs are git-ignored in the monorepo too**
+  (`instances/demo/dataset/assets/catalog/.gitignore`). They live in a public bucket and are pulled on demand
+  by the platform's own hydrate step.
+
+So committing the dataset here would add 41 MB of weight to this repository **and still depend on the same
+bucket** for the half that actually matters — the pictures. The path costs nothing and is honest about what
+this box is today: a demo whose example catalogue is still ours, pointed at from where it is maintained. It
+is the same gesture `bin/build-local.sh <path to the forge monorepo>` already asks for, and the same variable
+name the platform's own compose uses (`FORGE_SEED_DATASET_DIR` / `FORGE_SEED_DATASET_HOST_DIR`).
+
+**What changes the day the demo has a catalogue of its own.** Nothing in `seed/forge.mjs`: it reads a dataset
+directory, and a dataset directory is a `forge-seed-dataset.json` pointer, a `catalog.json`, a
+`custom-fields.json` and an `assets/` tree. On that day the directory moves into this repository (or into
+this instance's own bucket), `FORGE_SEED_DATASET_DIR` points at it, `seed/forge.json` names its id instead of
+`"demo"` — and the seed refuses to run against any other, by name, which is the check that makes the move
+safe. The 41 MB objection disappears with it: it is his data then, and weight you carry for your own
+catalogue is weight that belongs to you.
+
+**The photographs.** If the directory you point at has none on disk, hydrate it first from the monorepo — the
+platform's step pulls what is missing over plain HTTPS and does nothing when the disk is already complete.
+Measured on this box: **18 582 photos / 3.5 GB in 319 seconds.**
+
+⚠️ **`FORGE_SEED_PHOTOS_DIR` moves ONLY the per-product tree**, never the shared art (brand logos, category
+icons, the strips). That asymmetry is the platform's and it is deliberate — pointing the override at a shared
+photo mount and expecting the icons to follow is a documented way to break the seed.
 
 ### ⚠️ The fronts do not notice a theme or a placement on their own
 

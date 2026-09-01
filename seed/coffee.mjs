@@ -127,7 +127,7 @@ async function installApps({ command, read, rows, log }) {
  * because "nothing there today" is a fact about this afternoon and the destructive version of this line
  * would be found by a merchant, later, missing a field they typed.
  */
-async function markSubscribable({ command, read, rows, log }, store) {
+async function markSubscribable({ command, readAll, log }, store) {
   const wanted = new Set(SUBSCRIBABLE_HANDLES);
   const known = new Set(catalog.products.map((p) => p.handle));
   const orphans = [...wanted].filter((handle) => !known.has(handle));
@@ -144,7 +144,10 @@ async function markSubscribable({ command, read, rows, log }, store) {
   // ⚠️ `store` IS REQUIRED BY THIS READ even though the internal face answers the whole TENANT catalogue
   // regardless of it (measured by D1, and the note is in bin/seed.mjs). Omitting it is a refusal, not a
   // wider answer — so it is passed, and the filtering this loop does is by handle rather than by trusting it.
-  for (const product of rows(await read('products', { store: store.id, limit: '100' }))) {
+  // ★ S1 — AND IT PAGES NOW. The read above is not store-scoped, so with the sports store seeded it answers
+  // the whole tenant catalogue (2790+ products); one page of 100 would filter six coffees out of a window
+  // they are not in, and mark nothing, in silence. `readAll` is the shared paginator in bin/seed.mjs.
+  for (const product of await readAll('products', { store: store.id })) {
     if (!wanted.has(product.handle)) continue;
     for (const sku of product.skus ?? []) {
       const bag = sku.metadata && typeof sku.metadata === 'object' ? sku.metadata : {};
@@ -179,8 +182,8 @@ async function markSubscribable({ command, read, rows, log }, store) {
  * Scoped to this store: the Outlet and the control store share this tenant, and a tenant-wide subscriber
  * discount would be a promotion the other two shops never asked for.
  */
-async function subscriberPromotion({ command, read, rows, log }, store) {
-  const existing = rows(await read('promotions_admin', { limit: '100' })).find(
+async function subscriberPromotion({ command, read, readAll, rows, log }, store) {
+  const existing = (await readAll('promotions_admin')).find(
     (p) => p.name === PROMOTION_NAME,
   );
   if (existing) {

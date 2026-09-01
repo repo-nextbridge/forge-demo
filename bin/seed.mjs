@@ -26,6 +26,11 @@ import { fileURLToPath } from 'node:url';
 // It lives beside the data it drives rather than in here, so two slices can fill two stores without
 // meeting in one file.
 import { seedCoffee } from '../seed/coffee.mjs';
+// The FORGE store (S1) — the sports shop, filled from the platform's example dataset by PATH rather than
+// from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
+// is the dataset's business, and `upload()` below is the one place that needs to ask.
+import { mimeOf, seedForge } from '../seed/forge.mjs';
+import { createReadAll } from '../seed/paginate.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,19 +77,108 @@ function fail(message) {
 }
 const log = (message) => process.stderr.write(`[seed] ${message}\n`);
 
-/** One command through the tenant write face. The ONLY way this file changes anything. */
-async function command(name, input) {
-  const res = await fetch(`${api}/v1/commands/${name}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      'x-forge-tenant': tenant,
+// ── THE PACER ───────────────────────────────────────────────────────────────────────────────────────────────
+//
+// ★ S1 — THE KERNEL RATE-LIMITS THIS CREDENTIAL, AND UNTIL THE SPORTS STORE THERE WAS NO WAY TO NOTICE.
+//
+// `apps/api/src/index.ts:791` caps a credential at FORGE_RATE_LIMIT_PER_CREDENTIAL commands per
+// FORGE_RATE_LIMIT_WINDOW_SECONDS — 6000/60s by default, which is what this box runs (both variables are
+// empty in its .env, measured). Fourteen products never came close. The forge store is ~74 000 commands, so
+// the cap is now the clock, and a seed that simply fires as fast as it can spends the difference collecting
+// 429s and retrying — which costs MORE requests, not fewer.
+//
+// So the script paces ITSELF, below the cap, instead of discovering it. A token bucket refilling at a steady
+// rate is the whole mechanism: the 429 handling further down stays as the net, and on a correctly paced run
+// it never fires.
+//
+// ⚠️ IT COVERS READS TOO, and that is not caution. The limiter is ONE bucket over the command face AND the
+// internal read face (`index.ts`'s own comment on `commandRateLimit` says so). A pacer that counted only
+// writes would be a pacer that is wrong by exactly the number of reads.
+const RATE_PER_SECOND = Number(process.env.FORGE_SEED_RATE_PER_SECOND ?? 85);
+const pacer = (() => {
+  let tokens = RATE_PER_SECOND;
+  let last = Date.now();
+  const queue = [];
+  const refill = () => {
+    const now = Date.now();
+    tokens = Math.min(RATE_PER_SECOND, tokens + ((now - last) / 1000) * RATE_PER_SECOND);
+    last = now;
+  };
+  const pump = () => {
+    refill();
+    while (queue.length > 0 && tokens >= 1) {
+      tokens -= 1;
+      queue.shift()();
+    }
+    if (queue.length > 0) setTimeout(pump, Math.ceil(1000 / RATE_PER_SECOND));
+  };
+  return () =>
+    new Promise((resolve) => {
+      queue.push(resolve);
+      pump();
+    });
+})();
+
+/**
+ * One HTTP call to the kernel, paced, with the 429 net behind the pacer.
+ *
+ * A 429 that is retried immediately is a request that is refused again; the kernel's window is fixed, so the
+ * only useful wait is until the window turns over. `retry-after` carries that when the kernel sends it.
+ */
+async function paced(url, init, describe) {
+  for (let attempt = 0; ; attempt++) {
+    await pacer();
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    if (attempt >= 5) {
+      fail(
+        `${describe} → HTTP 429 after ${attempt} retries. The credential's window ` +
+          `(FORGE_RATE_LIMIT_PER_CREDENTIAL) is smaller than this seed's pace. Lower it with\n` +
+          `  FORGE_SEED_RATE_PER_SECOND=<n>  (currently ${RATE_PER_SECOND}/s).`,
+      );
+    }
+    const after = Number(res.headers.get('retry-after'));
+    await new Promise((r) => setTimeout(r, Number.isFinite(after) && after > 0 ? after * 1000 : 2000));
+  }
+}
+
+/**
+ * One command through the tenant write face. The ONLY way this file changes anything.
+ *
+ * ★ S1 — `tolerate` names refusal CODES this caller is prepared to read as an answer instead of a death.
+ * It exists for exactly one shape: `catalog.product.create` answering `conflict / handle_taken`, which is
+ * the kernel saying "that product already exists". A seed racing its own projection can genuinely meet
+ * that (see awaitQuietCatalogue in seed/forge.mjs), and dying on the kernel being RIGHT is the wrong
+ * response. Everything not named still kills the run — the default is unchanged, and silence is not a
+ * tolerated code anywhere.
+ */
+async function command(name, input, { tolerate = [] } = {}) {
+  const res = await paced(
+    `${api}/v1/commands/${name}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        'x-forge-tenant': tenant,
+      },
+      body: JSON.stringify(input),
     },
-    body: JSON.stringify(input),
-  });
+    name,
+  );
   const text = await res.text();
   if (!res.ok) {
+    const body = (() => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return null;
+      }
+    })();
+    // A refusal the CALLER declared it can read. Handed back as a value, never as a silent success: the
+    // caller has to branch on `refused`, so it cannot mistake this for a command that ran.
+    const reason = body?.details?.reason ?? body?.code;
+    if (reason && tolerate.includes(reason)) return { refused: true, reason, error: body };
     // The kernel's refusals are actionable and this script must not swallow them: a seed that reports
     // "failed" instead of "handle already taken" costs somebody an hour of guessing.
     fail(`${name} → HTTP ${res.status}\n  ${text.slice(0, 900)}`);
@@ -95,12 +189,21 @@ async function command(name, input) {
 /** One read through the internal face — used ONLY to decide what already exists (idempotence). */
 async function read(name, params = {}) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${api}/v1/read/internal/${name}${qs ? `?${qs}` : ''}`, {
-    headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant },
-  });
+  const res = await paced(
+    `${api}/v1/read/internal/${name}${qs ? `?${qs}` : ''}`,
+    { headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant } },
+    `read.${name}`,
+  );
   if (!res.ok) fail(`read.${name} → HTTP ${res.status}\n  ${(await res.text()).slice(0, 500)}`);
   return res.json();
 }
+
+// EVERY PAGE OF A READ — the mechanism, and the reason it exists, live in seed/paginate.mjs.
+// Two paginators because there are two faces: the internal one answers "does this exist in the
+// tenant?", and the public one is the only one that answers "is this ON SALE in this store?".
+const readAll = createReadAll({ read, rows, fail });
+const publicReadAll = createReadAll({ read: publicRead, rows, fail });
+
 
 /**
  * One read through the PUBLIC face — the shopper's, which is the only one that answers "is this product ON
@@ -115,7 +218,7 @@ async function read(name, params = {}) {
  */
 async function publicRead(name, params = {}) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${api}/v1/read/${name}${qs ? `?${qs}` : ''}`);
+  const res = await paced(`${api}/v1/read/${name}${qs ? `?${qs}` : ''}`, {}, `read.${name} (public)`);
   if (!res.ok) fail(`read.${name} (public) → HTTP ${res.status}`);
   return res.json();
 }
@@ -294,23 +397,40 @@ async function customFields() {
 // Three steps, all through the door: `media.request_upload` validates the mime/size and NAMES the key (it
 // writes nothing and returns no bytes), the connector edge mints the URL, and the PUT carries the bytes
 // straight there — they never pass through the command port.
-async function upload(filename) {
-  const bytes = readFileSync(join(SEED, 'photos', filename));
+//
+// ★ S1 — TWO THINGS IT USED TO ASSUME, AND BOTH WERE ONLY TRUE OF THE SIX COFFEES.
+//
+//   · THE MIME. It sent `image/png` for everything, because `seed/photos/` holds PNGs. The dataset's 18582
+//     photographs are JPEG, and a JPEG announced as PNG gets a provider_key ending in `.png` with non-PNG
+//     bytes behind it — a `content-type` the storefront's optimiser reads BEFORE it sniffs, so the picture
+//     fails at the edge instead of being wrong in a way anyone can see. The mime now comes from the file.
+//   · THE LIBRARY. It registered every upload with `asset.create`. That is right for the coffees (they are
+//     Asset Library rows an operator sees) and wrong for a catalogue: 18582 product photographs would be
+//     18582 extra commands and 18582 rows of library nobody curated. `media_ref` stores the provider_key
+//     directly — a product photo needs no asset row — so `library` is now the caller's choice, and the
+//     default keeps the old behaviour for the callers that already had it.
+//
+// @param file  a bare name (resolved inside `seed/photos/`) or an absolute path.
+async function upload(file, { library = true } = {}) {
+  const path = file.startsWith('/') ? file : join(SEED, 'photos', file);
+  const filename = path.slice(path.lastIndexOf('/') + 1);
+  const mime = mimeOf(filename);
+  if (!mime) fail(`upload(${path}): this seed does not know the mime of "${filename}".`);
+  const bytes = readFileSync(path);
   const plan = await (async () => {
-    const res = await fetch(`${api}/v1/media/commands/media.request_upload`, {
-      method: 'POST',
-      headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      'x-forge-tenant': tenant,
-    },
-      body: JSON.stringify({
-        filename,
-        mime: 'image/png',
-        kind: 'image',
-        size: bytes.byteLength,
-      }),
-    });
+    const res = await paced(
+      `${api}/v1/media/commands/media.request_upload`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+          'x-forge-tenant': tenant,
+        },
+        body: JSON.stringify({ filename, mime, kind: 'image', size: bytes.byteLength }),
+      },
+      `media.request_upload(${filename})`,
+    );
     if (!res.ok) fail(`media.request_upload(${filename}) → HTTP ${res.status}\n  ${await res.text()}`);
     return res.json();
   })();
@@ -326,20 +446,18 @@ async function upload(filename) {
     );
   }
 
+  // The PUT is NOT a command — it goes to the connector's own edge, so it is not paced and does not spend
+  // the credential's window. Only the two commands around it do.
   const put = await fetch(url.startsWith('http') ? url : `${api}${url}`, {
     method: 'PUT',
-    headers: { 'content-type': 'image/png' },
+    headers: { 'content-type': mime },
     body: bytes,
   });
   if (!put.ok) fail(`PUT ${url} → HTTP ${put.status}`);
 
-  await command('asset.create', {
-    provider_key: key,
-    filename,
-    mime: 'image/png',
-    kind: 'image',
-    size: bytes.byteLength,
-  });
+  if (library) {
+    await command('asset.create', { provider_key: key, filename, mime, kind: 'image', size: bytes.byteLength });
+  }
   return key;
 }
 
@@ -351,7 +469,7 @@ async function products() {
   // store yet, so asking the store's list would report "not there" for a product that IS there and create it
   // twice. `products_admin` is the tenant's WHOLE catalogue, drafts and unpublished included, and no store to
   // scope by — which is exactly the question "did I already make this?".
-  const existing = new Set(rows(await read('products_admin', { limit: '100' })).map((p) => p.handle));
+  const existing = new Set((await readAll('products_admin')).map((p) => p.handle));
   const photos = new Set(readdirSync(join(SEED, 'photos')));
 
   for (const product of catalog.products) {
@@ -412,15 +530,13 @@ async function publish() {
   if (!store) fail(`the selling store "${storeHandle}" does not exist.`);
 
   const wanted = new Map(
-        // `product_id`, not `id` — measured: `products_admin` names it that way, and reading `p.id` made every
+    // `product_id`, not `id` — measured: `products_admin` names it that way, and reading `p.id` made every
     // entry `undefined`. It failed LOUDLY on the first product rather than publishing nothing quietly, which
     // is the only reason this line is a two-minute fix and not a shop that stays empty.
-    rows(await read('products_admin', { limit: '100' })).map((p) => [p.handle, p.product_id ?? p.id]),
+    (await readAll('products_admin')).map((p) => [p.handle, p.product_id ?? p.id]),
   );
   const already = new Set(
-    rows(await publicRead('products', { store: store.id, limit: '100', projection: 'feed' })).map(
-      (p) => p.handle,
-    ),
+    (await publicReadAll('products', { store: store.id, projection: 'feed' })).map((p) => p.handle),
   );
   const todo = catalog.products
     .filter((p) => !already.has(p.handle))
@@ -469,8 +585,13 @@ async function stock() {
   //
   // ★ Third time tonight that a field name I did not measure was a defect. The rule this file now keeps: ask
   // the read whose NAME is the question, and look at its keys before using one.
+  //
+  // ⚠️ AND IT PAGES. `stock_levels` caps `limit` at 200 and pages BY PRODUCT; asking for one page was the
+  // same coincidence-of-size defect `readAll` above documents. It also truncates `skus` past 50 per product
+  // (`skus_truncated: true`) — harmless for these two stores, whose products have 1–5 SKUs, and named here
+  // so the next person to reuse this loop on a wide catalogue knows it is there.
   let moved = 0;
-  for (const product of rows(await read('stock_levels', { limit: '100' }))) {
+  for (const product of await readAll('stock_levels', { limit: '200' })) {
     for (const sku of product.skus ?? []) {
       const want = bySku.get(sku.sku_code);
       if (want === undefined) continue;
@@ -504,10 +625,27 @@ await products();
 await publish();
 await stock();
 // The OUTLET store, which shares only the stores and the field declarations with everything above it.
-await seedOutlet({ api, token, tenant, command, read, rows, log, fail });
+await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail });
 // The COFFEE store's own half: the subscription mark on the SKUs the merchant curated, and the promotion
 // that prices it. Same shape as the Outlet's — one store, one file, the seed keeps deciding the order.
-await seedCoffee({ api, token, tenant, command, read, rows, log, fail });
+await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail });
+// The FORGE store — the sports shop. Last, and it is the only one whose content does not live in this repo:
+// it comes from the dataset directory FORGE_SEED_DATASET_DIR points at. Unset → one line and a no-op.
+// Its uploads are NOT library assets: 2790 products' photographs are catalogue, not curated inventory.
+await seedForge({
+  api,
+  token,
+  tenant,
+  command,
+  read,
+  readAll,
+  publicRead,
+  publicReadAll,
+  rows,
+  log,
+  fail,
+  upload: (file) => upload(file, { library: false }),
+});
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +

@@ -123,7 +123,7 @@ async function declareFields({ command, read, rows, log }) {
 // asset LIBRARY (`type: 'id'`), and the kernel resolves it to a url at read time exactly as it does for a
 // product photo. So this returns both, keyed by file name.
 async function uploadMedia(port) {
-  const { command, read, rows, log } = port;
+  const { command, readAll, log } = port;
   const wanted = [
     ...data.mosaic.media.map((m) => m.file),
     ...data.shelves.flatMap((s) => (s.banner ? [s.banner] : [])),
@@ -131,7 +131,7 @@ async function uploadMedia(port) {
   ];
 
   const known = new Map();
-  for (const asset of rows(await read('assets', { limit: '100' }))) {
+  for (const asset of await readAll('assets')) {
     if (asset.filename) known.set(asset.filename, asset);
   }
 
@@ -202,9 +202,17 @@ const subdirOf = (filename) => (filename.startsWith('banner-') ? 'banners' : 'pr
 // exists and is published can be found again by handle on the next run; one created and left unpublished
 // can not (the internal product read takes an id, and the store-scoped list only sees publications), so
 // the window where a crash leaves an orphan is one HTTP call wide instead of eight.
-async function seedProducts({ command, read, log }, store, assets) {
-  const listed = await read('products', { store: store.id, limit: '100' });
-  const existing = new Map((listed.items ?? []).map((p) => [p.handle, p.product_id ?? p.id]));
+async function seedProducts({ command, readAll, log }, store, assets) {
+  // ★ S1 — MEASURED, AND IT WAS ONE PAGE AWAY FROM KILLING THE RE-RUN. This read is NOT store-scoped: asked
+  // for the outlet, it answers the whole TENANT catalogue (measured on this bench: `?store=<cafe>` returned
+  // all 14 products, `total: 14`). While the tenant held 14 products the single page of 100 was everything,
+  // so `existing` was complete and the re-run was a no-op. With the sports store's 2790 products in the same
+  // tenant, a first page that does not happen to contain these eight makes `existing` empty — and this
+  // function's next move is `catalog.product.create`, which the kernel refuses with 409 on the unique handle.
+  // A seed that cannot be run twice. So it pages.
+  const existing = new Map(
+    (await readAll('products', { store: store.id })).map((p) => [p.handle, p.product_id ?? p.id]),
+  );
 
   const ids = new Map();
   for (const product of data.products) {

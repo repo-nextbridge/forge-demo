@@ -1,0 +1,17 @@
+{
+  "_readme": [
+    "The FORGE store's birth data — and it holds no catalogue, on purpose.",
+    "",
+    "The other two stores of this box carry their content in this directory (seed/catalog.json for the",
+    "coffees, seed/outlet.json for the outlet). This one does not: the sports store is filled from the",
+    "PLATFORM'S EXAMPLE DATASET, which is 2790 products, 44427 SKUs and 3.6 GB of photographs. That",
+    "dataset is not copied in here — this file only says WHICH store it lands in, WHICH dataset is",
+    "allowed to land in it, and how much stock each SKU is born with. See the README section",
+    "'De onde vem o catalogo da loja forge'."
+  ],
+  "store": "forge",
+  "dataset": "demo",
+  "default_on_hand": 100,
+  "_dataset_why": "The id the mounted dataset must declare in its forge-seed-dataset.json. A directory that names another dataset is somebody else's catalogue about to be published into this store, and this seed refuses it by name rather than publishing it.",
+  "_stock_why": "on_hand per SKU. catalog.product.create prices a SKU; it does not stock one, and the kernel refuses a cart line it cannot serve (measured on this bench with the six coffees: cart.add_line -> conflict, insufficient_stock, available: 0)."
+}
