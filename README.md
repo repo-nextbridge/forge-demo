@@ -164,6 +164,23 @@ the shop — the right behaviour, and still a morning lost to wondering why.
 the bind). Without it, it writes one line saying no dataset is mounted and does nothing — which is why the
 `forge` store comes up empty on a box that has not wired it.
 
+### Proving what the seed left behind
+
+```bash
+FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
+FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
+```
+
+One tenant per run, like the seed, and for the same reason. It prints the four shops against what the seed
+DECLARES (never a bare count), **the negative** — no free-shipping promotion and no freight born for the
+counter — the four cuts of the stock screen with a count in each, and the placeholder art in the Asset
+Library.
+
+⚠️ **It refuses rather than reporting a half-filled box.** No credential, an unreachable box, a token whose
+tenant is not the one asked for, a store the public face cannot resolve yet, a shop with fewer products than
+declared — each is a non-zero exit and a named line, never a number that reads like a result. Exit 0 means
+everything it checked is settled.
+
 ### The placeholder art
 
 A window slot with no picture renders wrong, and the wrongness does not show up in a seed log. So

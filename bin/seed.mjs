@@ -849,6 +849,47 @@ const slug = (text) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
+/**
+ * ★ THE PLACEHOLDER ART, INTO THE ASSET LIBRARY — where the curation happens.
+ *
+ * Order of the Renan: *"onde precisa de banner mas não tem imagem, cria uma imagem qualquer e sobe. Eu depois
+ * faço a curadoria."* `bin/make-placeholders.mjs` DRAWS them (deterministic, captioned with their own slot,
+ * store and size); this puts them where a person can find and replace them.
+ *
+ * ⚠️ `library: true` IS THE WHOLE POINT. A product photograph needs no asset row — but these exist to be
+ * BROWSED and swapped one at a time, which is exactly what the Asset Library is. One search for
+ * `placeholder-` returns the set.
+ *
+ * ⚠️ AND ONLY THIS TENANT'S SHOPS. The file name carries the store handle, so a run uploads the art of the
+ * stores it owns and leaves the other tenant's to the other run. The alternative — every tenant holding every
+ * shop's placeholder — is a library where the search returns other people's shops.
+ *
+ * Idempotent for free: `upload()` matches on name AND bytes, and the generator is byte-stable, so a re-run
+ * uploads nothing. That pairing is the reason the generator pins the PNG time chunk.
+ */
+async function placeholders() {
+  let dir;
+  try {
+    dir = readdirSync(join(SEED, 'placeholder-media'));
+  } catch {
+    log('placeholders — seed/placeholder-media/ is not there; run `node bin/make-placeholders.mjs`');
+    return;
+  }
+  const handles = storesOfThisTenant.map((s) => s.handle);
+  const mine = dir.filter(
+    (file) => file.startsWith('placeholder-') && handles.some((h) => file.startsWith(`placeholder-${h}-`)),
+  );
+  if (mine.length === 0) {
+    log('placeholders — none for this tenant\'s shops');
+    return;
+  }
+  for (const file of mine) await upload(join(SEED, 'placeholder-media', file), { library: true });
+  log(
+    `placeholders — ${mine.length} in the Asset Library for [${handles.join(', ')}]. ` +
+      'To curate: search "placeholder-" there and replace them one at a time.',
+  );
+}
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────
 //
 // ★ ONCE PER TENANT, and each step runs only where its store lives. The same shape the box already uses for
@@ -869,6 +910,7 @@ await assertCredentialTenant();
 const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
 await stores();
 await customFields();
+await placeholders();
 await vocabulary();
 // The six coffees are the COFFEE store's, so they are created on that tenant's run and nowhere else.
 if (here(catalog.products_store)) {
