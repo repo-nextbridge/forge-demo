@@ -87,14 +87,48 @@ async function installApps({ command, read, rows, log }) {
 }
 
 // ── 2. the custom fields ────────────────────────────────────────────────────────────────────────────
-// BEFORE ANY PRODUCT WRITES ONE. `catalog.product.create` leaves an undeclared metadata key alone — it is
-// stored and then invisible to faceting and to every reader that walks declarations. Silent, and found
-// three slices later.
+// ⚠️⚠️ THIS STEP NO LONGER DECLARES ANYTHING, AND THE REASON IS A COLLISION THAT IS UNAVOIDABLE BY
+// CONSTRUCTION — read this before adding a key back.
+//
+// THE SHOE VOCABULARY BELONGS TO THE DATASET. `genero`, `material`, `uso`, `solado`, `fechamento`, `cano`,
+// `peso_g`, `amortecimento`, `impermeavel` are declared in the dataset's `custom-fields.json`, and the
+// demo-data install MATERIALIZES them (SEED-DATASET emptied the manifest's own `customFields` precisely
+// because the vocabulary moved to the dataset). Measured key by key: all NINE this file used to declare are
+// in that list, and the coffee vocabulary of `bin/seed.mjs` and the counter's two overlap it by ZERO — so the
+// collision was entirely this file's, and so is the fix.
+//
+// ★ WHY TWO DECLARATIONS OF ONE KEY CANNOT COEXIST. The unique index is
+// `custom_field_definition (owner_entity, key, store) nulls not distinct where status = 'active'`
+// (tenant/0021) and it does NOT include `source`. But `materializeAppCustomFields`
+// (packages/core/src/commands/custom-fields.ts) looks for the existing row `... and source = $3`. So the
+// idempotence check is NARROWER than the constraint: a key declared by this seed (`source: merchant`) is
+// invisible to the app's check (`source: app:demo-data`), which therefore INSERTS and hits the index. Two
+// sources declaring one key collide ALWAYS. That is a kernel defect, it is carded, and it is not ours to fix
+// in this wave — what is ours is to stop being the second source.
+//
+// ⚠️ AND THE ORDER DOES NOT MATTER, which is the thing that makes this safe. The old comment here said an
+// undeclared key is "stored and then invisible to faceting" — true, and NOT permanent. Measured on the
+// bench: `subtitle` is written into every coffee's metadata by `bin/seed.mjs` and declared NOWHERE, and the
+// public face serves it today. The projection copies `metadata` verbatim (projection/build-doc.ts) and the
+// facet axes are resolved PER REQUEST (`loadFacetableKeys`, read/catalog-filters.ts; the values come from
+// `jsonb_each_text(doc->'metadata')` in read/facets.ts). So a key declared LATER lights its facet up for
+// products already written, with nothing re-written. Proved live: the cafe store's facet axes are exactly
+// the four declarations with `facetable: true`, while `notas`, `sca`, `tag_balcao` and `subtitle` sit in the
+// same metadata and are simply not axes.
+//
+// So this store's products keep writing their nine keys, and the install declares them whenever it runs.
 async function declareFields({ command, read, rows, log }) {
   const declared = new Set(
     rows(await read('custom_field_definitions')).map((d) => `${d.owner_entity}:${d.key}`),
   );
+  /** The keys the DATASET owns — declared by the demo-data install, never here. */
+  const datasetOwned = new Set(data.custom_fields.map((f) => f.key));
+  let deferred = 0;
   for (const field of data.custom_fields) {
+    if (datasetOwned.has(field.key)) {
+      deferred += 1;
+      continue;
+    }
     if (declared.has(`product:${field.key}`)) {
       log(`cf ${field.key} — already declared`);
       continue;
@@ -108,6 +142,45 @@ async function declareFields({ command, read, rows, log }) {
       ...(field.options ? { options: field.options } : {}),
     });
     log(`cf ${field.key} — declared${field.facetable ? ' (facetable)' : ''}`);
+  }
+  if (deferred > 0) {
+    log(
+      `outlet — ${deferred} shoe field(s) NOT declared here: they are the dataset's, and the demo-data ` +
+        'install materializes them. Two sources declaring one key collide on the unique index — see the ' +
+        'header. The products still write the values; the facet lights up when the install runs.',
+    );
+  }
+
+  // ⚠️⚠️ THE LEFTOVER FROM A BOX THIS FILE ALREADY RAN ON, and saying it here is the difference between a
+  // one-line instruction and an afternoon.
+  //
+  // An EARLIER version of this step declared those nine keys itself, with `source: merchant`. Those rows do
+  // not disappear because this file stopped writing them — and the demo-data install will still collide with
+  // them, because its idempotence check looks for `source: app:demo-data` and finds nothing, then inserts and
+  // meets the unique index (which ignores `source`). The failure surfaces inside the one-shot, far from here,
+  // as an install that dies on a key nobody is looking at.
+  //
+  // ★ IT IS NOT ARCHIVED AUTOMATICALLY, and that is deliberate. `custom_field.archive` is a STRUCTURE change
+  // on a merchant-owned declaration, and this script cannot tell a row IT wrote from one a merchant typed —
+  // "it looks like mine" is not consent to retire somebody's field. So it is named, loudly, with the exact
+  // command, and a human decides. Archiving frees the key: the unique index is `where status = 'active'`.
+  const owned = data.custom_fields
+    .map((f) => f.key)
+    .filter((key) => declared.has(`product:${key}`));
+  if (owned.length > 0) {
+    log(
+      [
+        `⚠️ outlet — ${owned.length} of the dataset's key(s) are ALREADY declared on this tenant, and this`,
+        `  seed is no longer their author: ${owned.join(', ')}.`,
+        '  If they carry `source: merchant` they are leftovers from an earlier run of THIS file, and the',
+        '  demo-data install WILL collide with them (its check is by source; the unique index is not).',
+        '  Retire each one, ONCE, and then run the one-shot:',
+        '    curl -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/custom_field.archive" \\',
+        '      -H "authorization: Bearer $FORGE_SEED_TOKEN" -H "x-forge-tenant: <tenant>" \\',
+        '      -H "content-type: application/json" -d \'{"owner_entity":"product","key":"<key>"}\'',
+        '  A box that never ran the older version has nothing to do here.',
+      ].join('\n'),
+    );
   }
 }
 
