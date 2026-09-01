@@ -26,6 +26,10 @@ import { fileURLToPath } from 'node:url';
 // It lives beside the data it drives rather than in here, so two slices can fill two stores without
 // meeting in one file.
 import { seedCoffee } from '../seed/coffee.mjs';
+// The COMMERCE pass (pre-seed) — what happens AFTER there is a catalogue: the notification channels silenced
+// while the box fills, the reviews through whichever door each shop deserves, and one live order per selling
+// store. It creates no logistics and installs no app: those belong to the filler, and this consumes them.
+import { seedCommerce } from '../seed/commerce.mjs';
 // The FORGE store (S1) — the sports shop, filled from the platform's example dataset by PATH rather than
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
@@ -847,6 +851,109 @@ await seedVitrine({
   uploadAsset: (file) => upload(file, { library: true }),
   resolveMedia: resolveMediaFile,
 });
+/**
+ * The store handles this run is FOR, from what this script DECLARES — never from the box it is talking to.
+ *
+ * ⚠️ A STORE CREATED BY A STEP MODULE AND NOT DECLARED HERE IS INVISIBLE TO THE COMMERCE PASS. The counter
+ * (`balcao`) is created by `seed/totem.mjs` and is not in `seed/catalog.json`, so until it is declared there
+ * the commerce pass will not silence its channels or place its live order — and it will say so rather than
+ * work on a store it was not told about. Reported; the catalogue's store list is not this slice's to edit.
+ */
+function expectedStoreHandles() {
+  const mine = catalog.stores.filter((s) => !s.tenant || s.tenant === tenant).map((s) => s.handle);
+  if (mine.length === 0)
+    fail(
+      `seed/catalog.json declares no store for the tenant "${tenant}". The commerce pass needs to be told ` +
+        'which shops this run is for — deriving it from the box would make its credential guard compare a ' +
+        'list against itself.',
+    );
+  return mine;
+}
+
+// ── the COMMERCE pass, LAST, and the order is the point ─────────────────────────────────────────────────
+//
+// It runs after every store's catalogue because a cart can only hold what its store publishes, and after the
+// filler's logistics because `place_order` refuses without a shipping method and an address.
+//
+// ⚠️ IT NEEDS A COMMAND WITH A **STORE** AND A **FACE**, which the helper above does not have and should not
+// grow: `command()` here posts to the tenant face with no store header, which is right for the catalogue.
+// A cart is per store and lives on its own faces (`/v1/cart`, `/v1/checkout`, `/v1/payment`), so the adapter
+// is written here, next to the call, rather than widening a helper eighty other lines depend on.
+const commerceCommand = async (name, input, { store } = {}) => {
+  const face = name.startsWith('cart.')
+    ? '/cart'
+    : name.startsWith('checkout.')
+      ? '/checkout'
+      : name.startsWith('payment.')
+        ? '/payment'
+        : '';
+  const res = await paced(
+    `${api}/v1${face}/commands/${name}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        'x-forge-tenant': tenant,
+        ...(store ? { 'x-forge-store': store } : {}),
+      },
+      body: JSON.stringify(input),
+    },
+    name,
+  );
+  const text = await res.text();
+  if (!res.ok) fail(`${name} → HTTP ${res.status}\n  ${text.slice(0, 900)}`);
+  return text ? JSON.parse(text) : {};
+};
+
+// One read for both faces: the commerce module names `internal/…` when it means the credentialed face and a
+// bare capability when it means the public one, so the prefix it wrote is the routing.
+const commerceRead = async (name, params = {}) =>
+  name.startsWith('internal/')
+    ? read(name.slice('internal/'.length), params)
+    : publicRead(name, params);
+
+/** A raw POST, for the two app faces: the tenant action face and the ANONYMOUS public data face (which
+ *  carries no credential and therefore needs the store in a header — it has nothing else to resolve one
+ *  from). */
+const commercePost = async (path, body, { store } = {}) => {
+  const anonymous = path.startsWith('/v1/ext-public/');
+  const res = await paced(
+    `${api}${path}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-forge-tenant': tenant,
+        ...(store ? { 'x-forge-store': store } : {}),
+        ...(anonymous ? {} : { authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(body),
+    },
+    path,
+  );
+  if (!res.ok) return null;
+  return res.json().catch(() => ({}));
+};
+
+await seedCommerce({
+  // ⛔ THE EXPECTATION COMES FROM THE CATALOGUE THIS SCRIPT DECLARES, never from the box it is talking to.
+  // That independence is the whole guard: the internal read face resolves the tenant from the CREDENTIAL and
+  // ignores `x-forge-tenant`, so a token from the other tenant answers 200 with the wrong shops — and a
+  // check fed from that same read would compare a list against itself and pass. It did, once.
+  //
+  // ⚠️ AND IT IS FILTERED BY TENANT, because this script runs once PER tenant and the catalogue declares all
+  // of them: handing it every handle would make the guard refuse a perfectly correct run of `forgeco` for
+  // not being able to see the coffee tenant's shops. A store declared without a `tenant` predates the split
+  // and is treated as this run's.
+  expect: expectedStoreHandles(),
+  command: commerceCommand,
+  read: commerceRead,
+  post: commercePost,
+  log,
+  fail,
+});
+
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +
