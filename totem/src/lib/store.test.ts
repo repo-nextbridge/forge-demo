@@ -3,10 +3,10 @@
 import { describe, expect, it } from 'vitest';
 import { resolveTotemStore } from './store';
 
-const ok = {
+const ok: Record<string, string | undefined> = {
   FORGE_TOTEM_STORE_ID: 'sto_01M1EWQFH253ZE5WKJDAEZ6PNJ',
   FORGE_TOTEM_STORE_HANDLE: 'balcao',
-} as NodeJS.ProcessEnv;
+};
 
 describe('resolveTotemStore', () => {
   it('returns the id the port is scoped by and the handle a human reads', () => {

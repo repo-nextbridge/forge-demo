@@ -38,7 +38,12 @@ export type TotemStore = {
  * The store this totem serves, from the environment. Throws rather than degrades: a counter pointed at no
  * store — or at another store — is not a screen with a smaller feature set, it is the wrong shop.
  */
-export function resolveTotemStore(env: NodeJS.ProcessEnv = process.env): TotemStore {
+export function resolveTotemStore(
+  // A narrow shape on purpose: this function reads exactly two variables, and typing the parameter as
+  // `NodeJS.ProcessEnv` would drag in Next's own augmentation of it (which makes `NODE_ENV` required, so
+  // every test fixture would have to carry a variable this code never looks at).
+  env: Record<string, string | undefined> = process.env,
+): TotemStore {
   const id = env.FORGE_TOTEM_STORE_ID?.trim();
   const handle = env.FORGE_TOTEM_STORE_HANDLE?.trim();
 
