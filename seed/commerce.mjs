@@ -175,3 +175,54 @@ export function assertCredentialTenant(expectedHandles, visibleStores) {
       'check after it is answered about the wrong tenant. Use the token of the tenant you are seeding.',
   );
 }
+
+/**
+ * ⭐ WHICH DOOR EACH STORE'S REVIEWS COME THROUGH — and they are not the same door, because the doors are not
+ * equally honest in every shop.
+ *
+ * Review CONTENT belongs to this slice; INSTALLING the app belongs to the filler (one owner per act, the
+ * same rule the logistics went by). What that split leaves open is which of the three real doors to use, and
+ * the answer is per store rather than global:
+ *
+ *   · `app_seed_demo` — the reviews app's own `seed_demo` action. It pulls from the PLATFORM's dataset, whose
+ *     handles are a SHOE catalogue. In the shoe stores that is not a shortcut, it is the cheapest honest
+ *     door: the handles really are theirs, and the content lands on the right products.
+ *   · `two_doors`     — the design approved in §6 of the spec: a MINORITY born of a real purchase (buyer,
+ *     delivered order, review through the buyer's own channel — the verified ones, expensive, few, and the
+ *     reason the badge means anything) plus a MAJORITY through the PDP's open form (no order, no badge, and
+ *     that is correct). Used where `seed_demo` would seed NOTHING, because the platform dataset knows no
+ *     coffee.
+ *   · `none`          — the counter. A totem has no product page and nobody writes a review at a kiosk; the
+ *     archetype does not list reviews for it either. Seeding them would be data that looks right and is
+ *     absurd, which is the exact failure the archetype rule exists to prevent.
+ *
+ * ⚠️ THERE IS NO DEFAULT, ON PURPOSE. A store this table does not name is a store somebody added without
+ * deciding — and the silent answer would be whichever branch happened to be first. `reviewDoorFor` throws
+ * instead, which turns "we forgot" into a sentence rather than into a shop with the wrong reviews.
+ */
+export const REVIEW_DOORS = {
+  // The shoe catalogue IS the platform dataset's — the app's own seeder lands on real handles here.
+  forge: 'app_seed_demo',
+  // Same catalogue, same door: the outlet sells a cut of the very same products.
+  outlet: 'app_seed_demo',
+  // The platform dataset has no coffee, so `seed_demo` would write nothing at all. The two honest doors.
+  cafe: 'two_doors',
+  // A counter has no product page. Nobody reviews a coffee at the kiosk they ordered it from.
+  balcao: 'none',
+};
+
+export function reviewDoorFor(handle) {
+  const door = REVIEW_DOORS[handle];
+  if (!door)
+    throw new Error(
+      `no review door decided for the store "${handle}". Reviews are seeded through different doors in ` +
+        'different shops (see REVIEW_DOORS), and there is deliberately no default: a store nobody decided ' +
+        'about would get whichever branch came first. Add it to the table, with the reason.',
+    );
+  return door;
+}
+
+/** The stores whose reviews this slice actually writes — everything except the ones that take none. */
+export function storesWithReviews(stores) {
+  return stores.filter((s) => reviewDoorFor(s.handle) !== 'none');
+}

@@ -20,7 +20,9 @@ import {
   assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
+  reviewDoorFor,
   reviewSplit,
+  storesWithReviews,
   sellingStores,
   SEED_NOISE_TYPES,
 } from './commerce.mjs';
@@ -175,4 +177,31 @@ test('the right credential passes', () => {
 
 test('a credential that sees NOTHING is refused too — an empty 200 is not a pass', () => {
   assert.throws(() => assertCredentialTenant(['cafe'], []), /no stores at all/);
+});
+
+// ── ⭐ ONE OWNER, DIFFERENT DOORS PER SHOP ───────────────────────────────────────────────────────────────
+test('the shoe stores use the app’s own seeder — its dataset handles really are theirs', () => {
+  assert.equal(reviewDoorFor('forge'), 'app_seed_demo');
+  assert.equal(reviewDoorFor('outlet'), 'app_seed_demo');
+});
+
+test('the coffee store uses the two honest doors — the platform dataset knows no coffee', () => {
+  assert.equal(reviewDoorFor('cafe'), 'two_doors');
+});
+
+test('★ the counter takes NO reviews — a totem has no product page', () => {
+  assert.equal(reviewDoorFor('balcao'), 'none');
+  assert.deepEqual(
+    storesWithReviews(STORES).map((s) => s.handle),
+    ['forge', 'outlet', 'cafe'],
+  );
+});
+
+test('★ a store nobody decided about is a REFUSAL, never a default', () => {
+  assert.throws(() => reviewDoorFor('loja-nova'), /no review door decided/);
+  assert.throws(() => reviewDoorFor('loja-nova'), /deliberately no default/);
+});
+
+test('every store of the target topology has an explicit decision', () => {
+  for (const s of STORES) assert.ok(reviewDoorFor(s.handle));
 });
