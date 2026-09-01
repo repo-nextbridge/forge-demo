@@ -130,10 +130,18 @@ export function channelPlan(stores, { enabled, types = SEED_MANAGED_TYPES }) {
  * MINORITY — which is exactly why the badge means something. Everything else came through the PDP's open
  * form: no order, no badge, and that is correct rather than a shortfall.
  *
- * ⚠️ A VERIFIED REVIEW WITHOUT AN ORDER IS THE LIE AN EARLIER SLICE ALREADY HAD TO KILL. The app stores
- * `verified` AND `order_id` precisely so the first can be audited against the second, so this function
- * derives the split FROM the order rather than taking a flag from the data: a row cannot claim to be
- * verified, it can only have been bought.
+ * ⚠️ AND THE SEAL IS NOT THIS SEED'S TO GRANT — IT IS DERIVED BY THE FACE. Measured in the reviews manifest:
+ * `verified` is REFUSED from any body by name, and computed from two things at once — whether the kernel
+ * could NAME the caller, and whether the row points at an order. The anonymous PDP door can only ever answer
+ * the first half `false`, so an open review is born unverified BY CONSTRUCTION; the account form posts
+ * through `/v1/ext-customer/…` with the shopper's own session and is born verified for the same reason. It
+ * was not always so: a caller who skipped the buyer's endpoint and posted `{"verified": true}` got the badge,
+ * and a store with moderation off published the forgery.
+ *
+ * So what this function decides is which DOOR each review goes through, never what badge it ends up with —
+ * and that is exactly why a "verified without an order" cannot be produced here even by mistake. Splitting on
+ * `order_id` is therefore not a policy this file enforces; it is this file agreeing with where the face will
+ * put each row anyway.
  */
 export function reviewSplit(rows) {
   const verified = rows.filter((r) => Boolean(r.order_id));
@@ -225,4 +233,138 @@ export function reviewDoorFor(handle) {
 /** The stores whose reviews this slice actually writes — everything except the ones that take none. */
 export function storesWithReviews(stores) {
   return stores.filter((s) => reviewDoorFor(s.handle) !== 'none');
+}
+
+// ── THE DRIVER ───────────────────────────────────────────────────────────────────────────────────────────
+//
+// Everything above is a pure decision; this is the part that talks. It receives the port `bin/seed.mjs`
+// already built (same shape as `seed/totem.mjs` and `seed/coffee.mjs`) and knows nothing about transport.
+
+/** The apps this slice needs INSTALLED to do its work. It installs none of them — that is the filler's act,
+ * one owner per gesture — so this list exists to FAIL LOUDLY and early rather than three steps later, when a
+ * missing app shows up as "no payment provider for method" on the first order. */
+const REQUIRED_APPS = ['payment-reference', 'reviews'];
+
+/** An app action on the tenant face. ⚠️ The tenant is the CREDENTIAL's — `tenant_id` in the body is ignored
+ * by construction (action-adapter.ts), which is the write side of the same rule `assertCredentialTenant`
+ * exists for on the read side. */
+const appAction = (post) => (extension_id, action, input) =>
+  post('/v1/internal/extension/action', { extension_id, action, ...(input ? { input } : {}) });
+
+/**
+ * THE COMMERCE PASS, in the one order that keeps a mailbox empty.
+ *
+ *   1. prove the credential is in the tenant we think it is       ← before any "does this exist?" read
+ *   2. silence every buyer message in every store
+ *   3. the reviews, by the door each shop deserves
+ *   4. one live order per selling store — proof the box still sells TODAY
+ *   5. re-arm the buyer messages, everywhere except the counter
+ *
+ * ⚠️ STEP 5 IS IN A `finally`. A seed that dies in the middle must not leave the box mute: a bench nobody can
+ * get an e-mail from is a bench whose first bug report is "the store does not send anything". The same
+ * reasoning puts the `open_reviews` restore in a `finally` inside `seedReviews`.
+ */
+export async function seedCommerce({ stores, command, read, log, fail, post }) {
+  const visible = (await read('internal/stores')) ?? [];
+  assertCredentialTenant(
+    stores.map((s) => s.handle),
+    visible,
+  );
+  log(`commerce — credential proven in the tenant holding ${visible.map((s) => s.handle).join(', ')}`);
+
+  const installed = (await read('internal/extensions')) ?? [];
+  const absent = REQUIRED_APPS.filter((id) => !installed.some((e) => e.extension_id === id));
+  if (absent.length)
+    fail(
+      `commerce needs ${absent.join(', ')} installed and this slice does not install apps — the filler does. ` +
+        'Run the catalogue seed first, or ask for the app to be added to its list.',
+    );
+
+  const toggle = async (rows) => {
+    for (const row of rows)
+      await command('notification.channel.set_enabled', {
+        type_key: row.type_key,
+        channel_key: row.channel_key,
+        store_id: row.store_id,
+        enabled: row.enabled,
+      });
+  };
+
+  await toggle(channelPlan(stores, { enabled: false }));
+  log(`commerce — ${SEED_MANAGED_TYPES.length} message types silenced in ${stores.length} store(s)`);
+
+  try {
+    await seedReviews({ stores, command, read, log, action: appAction(post) });
+    await placeLiveOrders({ stores, command, read, log });
+  } finally {
+    const on = channelPlan(stores, { enabled: true });
+    await toggle(on);
+    const armed = [...new Set(on.map((r) => r.handle))];
+    log(
+      `commerce — buyer messages re-armed in ${armed.join(', ')}; ` +
+        `${SILENT_STORE_HANDLES.join(', ')} stays silent on purpose (a totem calls the number out loud)`,
+    );
+  }
+}
+
+/**
+ * THE REVIEWS, through whichever door the shop deserves (see `REVIEW_DOORS`).
+ *
+ * ⚠️ `open_reviews` AND `moderation` ARE CONFIG OF THE PAIR (extension, TENANT), NOT OF THE STORE
+ * (`extensions/reviews/settings.ts`). Turning the open form on to seed turns it on for the WHOLE TENANT, and
+ * "restore it afterwards" restores it for the whole tenant. That is the third symptom of the same missing
+ * axis this box has — app installation, app config, logistics and pickup points all lack a per-store
+ * dimension — and it is why the restore is in a `finally`: a seed that dies in the middle must not leave a
+ * bench with the open form silently switched on.
+ */
+async function seedReviews({ stores, read, log, action }) {
+  const byDoor = new Map();
+  for (const store of storesWithReviews(stores)) {
+    const door = reviewDoorFor(store.handle);
+    byDoor.set(door, [...(byDoor.get(door) ?? []), store]);
+  }
+
+  // ── the cheap honest door: the app's own seeder, where the platform dataset's handles really are the
+  //    store's. It dedupes on re-run, which is what keeps the whole seed idempotent.
+  if (byDoor.has('app_seed_demo')) {
+    const summary = await action('reviews', 'seed_demo');
+    log(
+      `reviews — the app's own seeder ran for ${byDoor
+        .get('app_seed_demo')
+        .map((s) => s.handle)
+        .join(', ')}: ${JSON.stringify(summary?.summary ?? summary)}`,
+    );
+  }
+
+  // ── the two honest doors, for the shops the platform dataset knows nothing about.
+  if (byDoor.has('two_doors')) {
+    const shops = byDoor.get('two_doors').map((s) => s.handle);
+    throw new Error(
+      `reviews — the two-door path for ${shops.join(', ')} is not wired yet, and it is blocked on a decision ` +
+        'rather than on code. The VERIFIED minority has to be written under a shopper SESSION (the face ' +
+        'derives the seal from "could the kernel name the caller" plus "does the row point at an order" — it ' +
+        'is refused from any body by name). This seed cannot do an OTP login: with Resend live the code goes ' +
+        'to a real mailbox it cannot read. The only public door that mints a session without one is ' +
+        '`customer.mint_social_session`, which is PUBLIC and which the kernel honours without ever talking to ' +
+        'the provider — so a seed using it is a seed asserting a social login that never happened. That is a ' +
+        'call for the tech lead, not for this file.',
+    );
+  }
+}
+
+/**
+ * ONE live order per selling store — and one only.
+ *
+ * ⭐ ITS JOB IS NOT "HAVE ORDERS". The demo's past comes from the history plan replayed inside the kernel,
+ * which is the only caller that can date an order; this is the proof that the box still takes an order TODAY,
+ * after everything above it ran. Two populations would be two sources for one fact and a dashboard that
+ * disagrees with itself.
+ */
+async function placeLiveOrders({ stores, log }) {
+  const shops = sellingStores(stores).map((s) => s.handle);
+  throw new Error(
+    `commerce — the live order for ${shops.join(', ')} is not wired yet. It needs the catalogue the filler ` +
+      'slice seeds (a cart can only hold what its store publishes), and the box is still empty: ' +
+      'read.products answered 0 items when this was written.',
+  );
 }
