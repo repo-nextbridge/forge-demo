@@ -254,7 +254,13 @@ if [ -n "${ROOT_STORE:-}" ]; then
     [ -n "$h" ] || continue
     map="$map\"$h\":\"$ROOT_STORE\",\"$h:${FORGE_HTTP_PORT:-8200}\":\"$ROOT_STORE\","
   done
-  map="{${map%,}}"
+  # ⚠️ SINGLE-QUOTED, AND THE QUOTES ARE THE WHOLE FIX. `.env` is read by TWO parsers: compose's own, and
+  # bash, because this script sources the file to get its host-side values. Written bare, bash's `source`
+  # eats the JSON's double quotes — `{"a":"b"}` arrives as `{a:b}` — and that mangled value is exported, so
+  # it WINS over the correct one compose would have read. Measured: the file was right and the container had
+  # `{localhost:sto_…}`. Single quotes survive both: bash keeps the inner double quotes, compose strips the
+  # outer pair and keeps the content literal.
+  map="'{${map%,}}'"
   if grep -q '^FORGE_STORE_HOSTS=' "$HERE/.env"; then
     python3 - "$HERE/.env" "$map" <<'PYEOF'
 import sys
