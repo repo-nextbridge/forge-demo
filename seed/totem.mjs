@@ -166,7 +166,7 @@ export async function seedTotem(port) {
   const products = await theProducts(port);
   await publish(port, store, products);
   await categorize(port, store, categories, products);
-  await stock(port);
+  await stock(port, products);
   await pickup(port);
   await promotions(port, store, products);
 
@@ -260,6 +260,8 @@ async function theProducts(port) {
   const files = new Set(readdirSync(MEDIA_DIR));
 
   const known = new Map();
+  /** sku code -> id, for the SKUs this run just minted. See `stock()`. */
+  const minted = new Map();
   for (const row of await readAll('products_admin')) {
     known.set(row.handle, { id: row.product_id ?? row.id, metadata: row.metadata ?? {} });
   }
@@ -296,6 +298,12 @@ async function theProducts(port) {
     });
     const id = out.product_id ?? out.id;
     known.set(product.handle, { id, metadata: productMetadata(product) });
+    // ★★ THE SKU IDS COME BACK FROM THE COMMAND, AND THEY ARE KEPT — see `stock()` for what asking a
+    // projection for them instead cost: the whole counter came up unstocked on a fresh tenant.
+    for (const [i, sku] of expandSkus(product).entries()) {
+      const skuId = out.sku_ids?.[i];
+      if (skuId) minted.set(sku.code, skuId);
+    }
     created += 1;
   }
   log(
@@ -315,6 +323,7 @@ async function theProducts(port) {
   }
   await sealTheCoffees(port, known);
 
+  known.minted = minted;
   return known;
 }
 
@@ -454,7 +463,7 @@ async function categorize({ command, readAll, log, fail }, _store, categories, p
  * measurement lives: "keep selling" is `oversell_policy: 'allow'` on the WAREHOUSE, it is not scoped to
  * what that warehouse stocks, and switching it on would let the e-commerce's coffees oversell too.
  */
-async function stock({ command, readAll, log, fail }) {
+async function stock({ command, readAll, log, fail }, products) {
   const want = new Map();
   for (const product of data.products) {
     for (const sku of expandSkus(product)) {
@@ -468,9 +477,19 @@ async function stock({ command, readAll, log, fail }) {
   // here while leaving the shared step blind would be the worst of both: two mechanisms, one broken, and
   // the broken one is the one that runs for every store. `seed/stock.mjs` holds the reasoning and the
   // measurement; it takes both reads because taking only one is the bug.
+  // ⚠️⚠️ THE SKUs THIS RUN JUST MINTED ARE ADDED TO WHAT THE CATALOGUE READ ANSWERS, AND THE RUN THAT MADE
+  // THIS NECESSARY IS WORTH NAMING. `products_admin` is a PROJECTION. On a fresh tenant the fifteen products
+  // were created and the read that followed did not have them yet — so every sku code resolved to nothing and
+  // `planStock` refused the whole step by name (correctly: it cannot tell a projection lag from a typo).
+  // What `catalog.product.create` RETURNED is not a cache of the truth, it is the truth; the projection is
+  // the thing that is catching up. Same species as `publish()`'s in bin/seed.mjs, same afternoon.
+  const catalogue = [
+    ...(await readAll('products_admin')),
+    { skus: [...(products.minted ?? new Map())].map(([code, id]) => ({ code, id })) },
+  ];
   const { adjustments, missing } = planStock(
     want,
-    await readAll('products_admin'),
+    catalogue,
     await readAll('stock_levels', { limit: '200' }),
   );
   if (missing.length > 0) {

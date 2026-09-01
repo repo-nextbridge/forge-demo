@@ -89,6 +89,60 @@ function fail(message) {
 }
 const log = (message) => process.stderr.write(`[seed] ${message}\n`);
 
+// ── ★★ TWO TENANTS, AND THE ONE THING THAT MAKES THAT DANGEROUS ─────────────────────────────────────────────
+//
+// This demo is TWO tenants — `forgeco` (the shoe brand: `forge` + `outlet`) and `forgecafe` (the coffee shop:
+// `cafe` + `balcao`) — because a shoe brand and a coffee shop are not one company. Each has its OWN credential,
+// and this script runs ONCE PER TENANT, the same shape the box already uses for `provision-ref`.
+//
+// ⚠️⚠️ THE INTERNAL READ FACE IGNORES `x-forge-tenant` AND RESOLVES THE TENANT FROM THE CREDENTIAL. Only the
+// WRITE face honours the header. Measured on this bench, both halves:
+//
+//     GET  /v1/read/internal/stores   token=T1  header: x-forge-tenant: forgecafe
+//       → HTTP 200  ["forge","outlet"]        ← the T1 stores. The header was ignored, and it did not say so.
+//     POST /v1/commands/custom_field.define   token=T1  header: x-forge-tenant: forgecafe
+//       → HTTP 403  {"code":"forbidden"}     ← the write face refuses, correctly.
+//
+// ★ WHY THAT IS WORSE THAN IT LOOKS FOR THIS FILE SPECIFICALLY: every idempotence check here is a READ. "Does
+// this already exist?" asked with the wrong credential answers about the wrong tenant, confidently, with real
+// data and a 200 — so a run can decide "already there, nothing to do" about a store it has never seen, and
+// exit 0 having written nothing. The failure is a seed that reports success over an empty tenant.
+//
+// So the guard below is not "write first so the refusal shows" — it is better than that: THE READ'S OWN ANSWER
+// IS THE PROOF. A credential can only ever show the stores of its own tenant, so asking it which stores it can
+// see and comparing that against the stores this run intends to touch cannot be faked by the wrong token.
+// It needs no ordering discipline and nobody has to remember to write first.
+const storesOfThisTenant = catalog.stores.filter((s) => (s.tenant ?? tenant) === tenant);
+if (storesOfThisTenant.length === 0) {
+  fail(
+    `seed/catalog.json declares no store for tenant "${tenant}". It knows: ` +
+      `${[...new Set(catalog.stores.map((s) => `${s.handle}→${s.tenant}`))].join(', ')}.\n` +
+      '  Pass --tenant with one of those, and the credential of THAT tenant.',
+  );
+}
+
+/**
+ * ★ THE CREDENTIAL IS IN THE TENANT IT CLAIMS — proven by what it can SEE, not by what it was told.
+ *
+ * Runs before the first write. A fresh tenant has exactly one store (`provision-ref`'s), which is enough: the
+ * question is never "are all my stores there yet", it is "is this credential looking at MY tenant at all".
+ */
+async function assertCredentialTenant() {
+  const seen = rows(await read('stores')).map((s) => s.handle);
+  const mine = storesOfThisTenant.map((s) => s.handle);
+  if (seen.length > 0 && !seen.some((handle) => mine.includes(handle))) {
+    fail(
+      `WRONG CREDENTIAL. This run says --tenant ${tenant}, whose stores are [${mine.join(', ')}], but the\n` +
+        `  token in FORGE_SEED_TOKEN can only see [${seen.join(', ')}] — so it belongs to another tenant.\n` +
+        '  ⚠️ The internal READ face resolves the tenant from the CREDENTIAL and ignores `x-forge-tenant`, so\n' +
+        '  without this check every "does it already exist?" below would have answered about the wrong tenant,\n' +
+        '  with a 200 and real data, and this run would have exited 0 having written nothing.\n' +
+        `  Export the ${tenant} credential (the box keeps one per tenant) and run again.`,
+    );
+  }
+  log(`credential check — sees [${seen.join(', ') || 'no store yet'}], expected to touch [${mine.join(', ')}]`);
+}
+
 // ── THE PACER ───────────────────────────────────────────────────────────────────────────────────────────────
 //
 // ★ S1 — THE KERNEL RATE-LIMITS THIS CREDENTIAL, AND UNTIL THE SPORTS STORE THERE WAS NO WAY TO NOTICE.
@@ -263,7 +317,7 @@ function rows(payload) {
 // ── 1. the stores ───────────────────────────────────────────────────────────────────────────────────────────
 async function stores() {
   const existing = new Map(rows(await read('stores')).map((s) => [s.handle, s]));
-  for (const store of catalog.stores) {
+  for (const store of storesOfThisTenant) {
     const found = existing.get(store.handle);
     if (store.bootstrap) {
       // NOT created here, on purpose: the first store is `provision-ref`'s, at bootstrap. Checking for it is
@@ -306,7 +360,7 @@ async function stores() {
  *  that declares none simply gets no call. */
 async function vocabulary() {
   const byHandle = new Map(rows(await read('stores')).map((s) => [s.handle, s]));
-  for (const store of catalog.stores) {
+  for (const store of storesOfThisTenant) {
     const words = store.vocabulary ?? {};
     const keys = Object.keys(words);
     if (keys.length === 0) continue;
@@ -601,6 +655,14 @@ async function products() {
       metadata: { ...product.custom_fields, ...(product.subtitle ? { subtitle: product.subtitle } : {}) },
       media: [{ provider_key: providerKey, kind: 'image', position: 0, alt: product.title }],
     });
+    // ★★ THE ID IS REMEMBERED THE MOMENT IT IS MINTED, and this line is a fix, not bookkeeping.
+    //
+    // `publish()` below resolved handle→id by re-reading `products_admin`, which is a PROJECTION. On a bench
+    // where the products already existed that always worked; on a FRESH tenant it is a race, and this run
+    // lost it: six coffees created, then `product forge-alvorada was never created — cannot publish it`,
+    // with the product sitting in the catalogue. The command already handed us the id — asking a projection
+    // for something we were just told is how a seed makes its own success unreadable.
+    existingIds.set(product.handle, out.product_id ?? out.id);
     log(`product ${product.handle} — created with ${skus.length} sku(s) (${out.product_id ?? '?'})`);
   }
 }
@@ -680,6 +742,11 @@ async function publish() {
     // is the only reason this line is a two-minute fix and not a shop that stays empty.
     (await readAll('products_admin')).map((p) => [p.handle, p.product_id ?? p.id]),
   );
+  // ⚠️ AND THE IDS THIS RUN JUST MINTED WIN OVER THE PROJECTION. `products_admin` is a projection and a
+  // product created seconds ago may not be in it yet — measured on a fresh tenant, where the read came back
+  // without the six coffees that had just been created and this step died naming one of them. What the
+  // command returned is not a cache of the truth; it IS the truth.
+  for (const [handle, id] of existingIds) if (id) wanted.set(handle, id);
   const already = new Set(
     (await publicReadAll('products', { store: store.id, projection: 'feed' })).map((p) => p.handle),
   );
@@ -783,23 +850,54 @@ const slug = (text) =>
     .replace(/(^-|-$)/g, '');
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────
+//
+// ★ ONCE PER TENANT, and each step runs only where its store lives. The same shape the box already uses for
+// `provision-ref`: two tenants, two runs, two credentials. A step whose store belongs to the OTHER tenant is
+// SKIPPED with a line — never failed, because "not mine" is the ordinary state of half this file on any run.
+//
+// ⚠️ AND THIS SCRIPT OWNS THE CURATED HALF ONLY. The 2 790-product catalogue and the assortment belong to the
+// dataset and to `demo-data`'s `populate`, which runs as a one-shot INSIDE the box. The boundary is CURATED ×
+// MASSIVE: what a HUMAN WROTE lives here (the six coffees and their descriptions, the counter's menu, the
+// outlet's eight, and the curated promotions — the identity of this demo); what a GENERATOR produced lives
+// there (the volume, and which shop sells what).
+//
+// ⚠️⚠️ ORDER CONTRACT, and it binds the box's script: THIS RUNS BEFORE THE ONE-SHOT. `populate` PUBLISHES the
+// curated handles it does not define — so they have to exist first. Inverted, the publication fails loudly
+// naming the handle and the shop (which is the right behaviour, and still a morning lost to wondering why).
 log(`against ${api} as tenant ${tenant}`);
+await assertCredentialTenant();
+const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
 await stores();
 await customFields();
 await vocabulary();
-await products();
-await publish();
-await stock();
+// The six coffees are the COFFEE store's, so they are created on that tenant's run and nowhere else.
+if (here(catalog.products_store)) {
+  await products();
+  await publish();
+  await stock();
+} else {
+  log(`catalogue — the "${catalog.products_store}" store is not on this tenant; its six coffees are not mine to create`);
+}
 // The OUTLET store, which shares only the stores and the field declarations with everything above it.
-await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail });
+if (here('outlet')) {
+  await seedOutlet({ api, token, tenant, command, read, readAll, rows, log, fail });
+} else {
+  log('outlet — not on this tenant, skipped');
+}
 // The COFFEE store's own half: the subscription mark on the SKUs the merchant curated, and the promotion
 // that prices it. Same shape as the Outlet's — one store, one file, the seed keeps deciding the order.
-await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail });
+if (here('cafe')) {
+  await seedCoffee({ api, token, tenant, command, read, readAll, rows, log, fail });
+} else {
+  log('coffee — not on this tenant, skipped');
+}
 // The COUNTER's own half: its store, the four bands of the menu, the fifteen products only it sells, the
 // publication of the six coffees it re-sells, the pickup point every order needs, and its two promotions.
 // `uploadAsset` and not the bare `upload`: fifteen photographs an operator curates ARE Asset Library rows —
 // the opposite of the catalogue photographs below, which carry no asset row on purpose.
-await seedTotem({
+if (here('cafe')) {
+  // The counter is the coffee shop's second store — same tenant, created by the module itself.
+  await seedTotem({
   api,
   token,
   tenant,
@@ -811,12 +909,16 @@ await seedTotem({
   rows,
   log,
   fail,
-  uploadAsset: (file) => upload(file, { library: true }),
-});
+    uploadAsset: (file) => upload(file, { library: true }),
+  });
+} else {
+  log('totem — the counter is not on this tenant, skipped');
+}
 // The FORGE store — the sports shop. Last, and it is the only one whose content does not live in this repo:
 // it comes from the dataset directory FORGE_SEED_DATASET_DIR points at. Unset → one line and a no-op.
 // Its uploads are NOT library assets: 2790 products' photographs are catalogue, not curated inventory.
-await seedForge({
+if (here('forge')) {
+  await seedForge({
   api,
   token,
   tenant,
@@ -828,12 +930,16 @@ await seedForge({
   rows,
   log,
   fail,
-  upload: (file) => upload(file, { library: false }),
-});
+    upload: (file) => upload(file, { library: false }),
+  });
+} else {
+  log('forge — the sports store is not on this tenant, skipped');
+}
 // The FORGE store's WINDOW, after its catalogue. `uploadAsset` and not `upload`: a banner tile references the
 // asset LIBRARY by id, so those seven files ARE curated inventory an operator sees in the admin — the opposite
 // of the 18582 catalogue photographs above, which carry no asset row on purpose.
-await seedVitrine({
+if (here('forge')) {
+  await seedVitrine({
   api,
   token,
   tenant,
@@ -845,8 +951,11 @@ await seedVitrine({
   log,
   fail,
   uploadAsset: (file) => upload(file, { library: true }),
-  resolveMedia: resolveMediaFile,
-});
+    resolveMedia: resolveMediaFile,
+  });
+} else {
+  log('vitrine — the sports store is not on this tenant, skipped');
+}
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +

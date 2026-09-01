@@ -40,11 +40,20 @@
       "vocabulary": {}
     },
     {
+      "handle": "balcao",
+      "name": "Forge Café · Balcão",
+      "tenant": "forgecafe",
+      "theme_key": null,
+      "why": "The counter the totem serves — the coffee shop's SECOND store, on the same tenant as `cafe`. It is created by `seed/totem.mjs`, not by the store step, and it is listed here so this file is the whole picture of the topology (which is what the `outlet` entry above already claims to be, and was not while this one was missing). No theme: the totem is an app of its own and resolves none.",
+      "vocabulary": {}
+    },
+    {
       "handle": "cafe",
       "name": "Forge Café",
-      "tenant": "forgeco",
+      "tenant": "forgecafe",
+      "bootstrap": true,
       "theme_key": "coffee-store",
-      "why": "The coffee store. ⚠️ THE SPEC PUTS IT ON A SECOND TENANT and this script puts it on the first — see README, 'One tenant on the bench'. The reason is the admin: it is pinned to ONE tenant by FORGE_ADMIN_TENANT, so a second tenant needs a second admin container on a hostname of its own, and the bench has one origin. Nothing about the STOREFRONT needs the split; nothing in the catalogue below changes when it happens.",
+      "why": "The coffee store, and it lives on the SECOND tenant — `forgecafe` — with the counter beside it. ⚠️ THIS FIELD USED TO SAY THE OPPOSITE, and the sentence it carried is why this demo was one tenant for weeks: it claimed a second tenant would need a second admin container, because the admin is pinned by FORGE_ADMIN_TENANT. That was FALSE. `read.admin.by_host` (M4-ADMIN-HOST) resolves the tenant from the hostname — with the PORT significant — and `platform.admin_host.set` writes that map, so ONE admin deployment serves N tenants; `compose.yml` says so on the FORGE_ADMIN_TENANT line itself ('leave it EMPTY for a box that serves several brands by hostname'). It also pointed at a README section that does not exist. A shoe brand and a coffee shop are not one company, and the topology now says so.",
       "vocabulary": {
         "cart": "Sacola",
         "cart_empty_title": "Sua sacola está vazia"

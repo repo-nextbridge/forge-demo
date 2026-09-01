@@ -125,8 +125,57 @@ bootstrap. No admin, no browser, no second secret to mint.
 
 ```bash
 source ./env-source.sh                       # exports FORGE_SEED_TOKEN from your secret store
-node bin/seed.mjs --api http://localhost:8080
+node bin/seed.mjs --api http://localhost:8080 --tenant forgeco
+node bin/seed.mjs --api http://localhost:8080 --tenant forgecafe   # with THAT tenant's credential
 ```
+
+⚠️ **TWO TENANTS, TWO RUNS, TWO CREDENTIALS.** This demo is `forgeco` (the shoe brand: `forge` + `outlet`) and
+`forgecafe` (the coffee shop: `cafe` + `balcao`) — a shoe brand and a coffee shop are not one company. Each
+run fills only the stores of its own tenant and says, in a line, which ones it skipped. The box keeps one
+credential per tenant (`forge-seed-token` and `forge-seed-token-forgecafe`); export the right one before each
+run.
+
+⚠️⚠️ **AND THE INTERNAL READ FACE IGNORES `x-forge-tenant`** — it resolves the tenant from the CREDENTIAL,
+while only the WRITE face honours the header. Measured on this bench: a `forgeco` token asking for
+`forgecafe`'s stores answers **HTTP 200 with the `forgeco` stores**; the same token WRITING into `forgecafe`
+is refused **403**. Since every "does this already exist?" in the seed is a READ, the wrong credential would
+make the script decide "already there, nothing to do" about a tenant it has never seen, and exit 0 having
+written nothing. `bin/seed.mjs` therefore proves the credential before its first write, by asking it which
+stores it can SEE — an answer the wrong token cannot fake.
+
+### The two halves of the seed, and the order between them
+
+**This script owns the CURATED half** — what a human wrote: the six coffees with their descriptions, the
+counter's menu, the outlet's eight, and the curated promotions (the counter's coupon, the morning combo, the
+subscriber discount). It is the identity of this demo.
+
+**The dataset and `demo-data`'s `populate` own the MASSIVE half** — what a generator produced: the 2 790
+products and which shop sells what. That runs as a one-shot INSIDE the box:
+
+```bash
+docker compose run --rm kernel node dist/seed-demo.js --confirm    # once per tenant
+```
+
+⚠️ **ORDER: this script FIRST, the one-shot after.** `populate` PUBLISHES the curated handles it does not
+define, so they have to exist before it runs. Inverted, the publication fails out loud naming the handle and
+the shop — the right behaviour, and still a morning lost to wondering why.
+
+⚠️ **The one-shot needs the dataset MOUNTED** (`FORGE_SEED_DATASET_DIR`, and `FORGE_SEED_DATASET_HOST_DIR` for
+the bind). Without it, it writes one line saying no dataset is mounted and does nothing — which is why the
+`forge` store comes up empty on a box that has not wired it.
+
+### The placeholder art
+
+A window slot with no picture renders wrong, and the wrongness does not show up in a seed log. So
+`node bin/make-placeholders.mjs` generates one — flat colour, and the slot, the store and the dimension
+written **inside the image** (`home.hero · cafe · 1504x560`), at the size measured from the art that already
+serves that slot. They are deterministic (same slot, same bytes, so a re-run uploads nothing) and they are
+obviously not final.
+
+**To curate them:** they are all named `placeholder-…`, so the whole set is one search for `placeholder-` in
+the admin's Asset Library, or `read.internal.assets` filtered by the same prefix. Replace them one at a time.
+The generator never draws over art that already exists, and it makes none for the counter — a totem is four
+bands and no hero.
 
 That creates the stores, declares the `cf.*` vocabulary and creates the six coffees **with their photos**,
 all through the door: the script holds an API key, never a database credential, exactly like an ERP would.
