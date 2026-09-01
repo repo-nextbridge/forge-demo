@@ -71,6 +71,25 @@ branch="$(git -C "$forge" rev-parse --abbrev-ref HEAD)"
 sha="$(git -C "$forge" rev-parse --short HEAD)"
 dirty=''
 git -C "$forge" diff --quiet || dirty=' (working tree DIRTY — this build is not reproducible from any commit)'
+
+# ★★ C3 — THE PROVENANCE IS COMPUTED ONCE, HERE, AND READ TWICE: it is stamped INTO each image as a build-arg
+# and written INTO the lock as `provenance`. Two `git rev-parse` calls would be two facts that agree today and
+# drift the first time somebody edits one of them — so there is exactly one, above, and everything downstream
+# reads these variables.
+#
+# ⚠️ THAT MAKES DIVERGENCE IMPOSSIBLE TO AUTHOR, NOT IMPOSSIBLE TO INTRODUCE — a future edit could still add a
+# second source. So the single assignment is backed by a CHECK: after each image is built, the stamp is read
+# back OUT of it and compared to what is about to be written in the lock (see `build()`), and a mismatch
+# refuses the build. The property is enforced by the artifact, not by this comment.
+BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+BUILT_FROM="${branch}@${sha}${dirty}"
+
+# ⚠️ AND THE STAMP CARRIES THE DIRT, because the first run of this feature caught itself lying: the lock said
+# `d2/d1-repo@06b716546 (working tree DIRTY)` and the four images said `FORGE_KERNEL_SHA=06b716546` — a clean
+# commit they were NOT built from. An image that names a commit is claiming to be reproducible from it; when
+# the tree had uncommitted changes, that claim is false and the cheapest honest thing is to say so IN the
+# value. `-dirty` is git's own convention (`git describe`), so it stays one token and one field.
+STAMP_SHA="${sha}${dirty:+-dirty}"
 if [ -z "$version" ]; then
   version="v$(jq -r '.version' "$forge/packages/contracts/package.json")-pre.${sha}"
 fi
@@ -91,8 +110,25 @@ build() { # <lock key> <image name> <dockerfile>
     --build-arg "FORGE_COMPOSITION=$composition_path" \
     --build-arg "FORGE_COMPOSITION_ID=$composition_id" \
     --build-arg "FORGE_RELEASE=$version" \
+    --build-arg "GIT_SHA=$STAMP_SHA" \
+    --build-arg "BUILD_DATE=$BUILT_AT" \
     -t "$name:$composition_id" \
     "$forge" >&2
+
+  # ★★ READ THE STAMP BACK OUT OF THE ARTIFACT. A build-arg a Dockerfile does not declare is accepted and
+  # DISCARDED — docker does not error — which is exactly how the three front images shipped with an empty
+  # `FORGE_KERNEL_SHA` while CI had been passing the arg all along. So the only trustworthy answer to "is this
+  # image stamped?" comes from the image, and it is asked here rather than hoped for.
+  local stamped
+  stamped="$(docker image inspect "$name:$composition_id" \
+    --format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^FORGE_KERNEL_SHA=//p')"
+  if [ "$stamped" != "$STAMP_SHA" ]; then
+    echo "[build-local] $name came out of the oven stamped '${stamped:-<empty>}' and this build is '$STAMP_SHA'." >&2
+    echo "[build-local]   Either $dockerfile does not declare \`ARG GIT_SHA\` + \`ENV FORGE_KERNEL_SHA\`" >&2
+    echo "[build-local]   (a build-arg nobody declares is silently dropped), or a second source of the sha" >&2
+    echo "[build-local]   has appeared. Refusing to write a lock whose provenance the image does not carry." >&2
+    exit 1
+  fi
   # The digest of what we just built. `docker image inspect .Id` is the content address of the image config —
   # the same string a registry digest carries, and the same one `<name>@sha256:…` resolves by locally.
   local id
@@ -114,8 +150,8 @@ jq -n \
   --arg checkout "$checkout_ref" \
   --arg admin "$admin_ref" \
   --arg origin "local build" \
-  --arg built_from "${branch}@${sha}${dirty}" \
-  --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg built_from "$BUILT_FROM" \
+  --arg built_at "$BUILT_AT" \
   --arg host "$(hostname)" \
   '{
     forgeVersion: $version,
