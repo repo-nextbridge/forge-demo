@@ -100,6 +100,11 @@ services:
       # Read only by the one-shot bootstrap (`run --rm kernel node dist/provision-ref.js`): the tenant, store
       # and first operator this instance is created with. The demo's OTHER stores are created by bin/seed.mjs,
       # through the port, because a second store is data and not bootstrap.
+      # ★ THE DATASET POINTER. Unset → `seed-demo` answers "nothing to seed", which is the correct state for an
+      # instance that wants no example data. Set → the one-shot fills the store it is aimed at.
+      FORGE_SEED_DATASET_DIR: ${FORGE_SEED_DATASET_DIR:-}
+      # Where the photo payload is hydrated to, kept OFF the read-only dataset mount. See the volumes above.
+      FORGE_SEED_PHOTOS_DIR: ${FORGE_SEED_PHOTOS_DIR:-}
       FORGE_REF_TENANT: ${FORGE_REF_TENANT:-}
       FORGE_REF_STORE_HANDLE: ${FORGE_REF_STORE_HANDLE:-}
       FORGE_REF_STORE_NAME: ${FORGE_REF_STORE_NAME:-}
@@ -120,6 +125,21 @@ services:
     volumes:
       # Our extensions, read-only: the kernel loads this code, it never writes it.
       - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
+      # ★★ THE SEED DATASET — mounted BY PATH and READ-ONLY, and both halves are deliberate.
+      #
+      # BY PATH because it is 40 MB of JSON pointing at 3.6 GB of photographs, and copying that into this
+      # repository would put a generator's output in a place a human edits. It lives in the monorepo
+      # (`instances/demo/dataset`) and this box points at it.
+      #
+      # READ-ONLY because the seed WRITES when it hydrates — and what it writes is the photo tree, which is
+      # why the photo tree is pointed somewhere else (below). Mounting this read-write would land gigabytes
+      # inside a shared git worktree, which is a working tree somebody else is using.
+      - ${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}:/app/seed-dataset:ro
+      # ★ WHERE THE 3.6 GB LANDS. `FORGE_SEED_PHOTOS_DIR` exists exactly for this ("a VM whose container layer
+      # cannot hold the gigabytes points it at a big-disk mount") and it is what lets the dataset above stay
+      # read-only. A named volume, so it survives a re-run and is not re-pulled: the hydration skips a file
+      # already on disk, so the second seed of a box costs nothing.
+      - seed_photos:/data/seed-photos
       - media:/data/media
     depends_on:
       redis:
@@ -290,6 +310,8 @@ services:
       retries: 5
 
 volumes:
+  # The hydrated photo tree (3.6 GB). Named, so a re-seed skips what is already on disk.
+  seed_photos:
   pgdata:
   redisdata:
   caddy_data:

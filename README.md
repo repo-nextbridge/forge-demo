@@ -111,6 +111,35 @@ into `.secrets` through a temp file it shreds, and reports only `filed`.
 **It converges.** Re-running is the supported way to repair a half-built box: migrate is a no-op,
 `provision-ref` returns the same store id, the box seeder creates nothing, `seed-demo` is idempotent.
 
+### The seed dataset — pointed at, never copied
+
+Step 7 fills the stores from a dataset that lives in the **monorepo** (`instances/demo/dataset`). This box
+points at it by path:
+
+| variable | what it is |
+|---|---|
+| `FORGE_SEED_DATASET_HOST_DIR` | where the dataset is on this machine — what compose mounts |
+| `FORGE_SEED_DATASET_DIR` | where the kernel reads it (`/app/seed-dataset`). **Unset → `seed-demo` answers "nothing to seed"**, which is the correct state for a box that wants no example data |
+| `FORGE_SEED_PHOTOS_DIR` | where the photographs are hydrated to (`/data/seed-photos`, a named volume) |
+
+**It is pointed at rather than copied** because it is 40 MB of JSON naming 3.6 GB of photographs — a
+generator's output, and copying it here would put it where a human edits.
+
+⚠️ **The dataset mount is READ-ONLY and the photos go somewhere else, and that pairing is the point.** The
+seed WRITES as it hydrates, and what it writes is the photo tree. Mounting the dataset read-write would land
+gigabytes inside a git worktree somebody else is working in. `FORGE_SEED_PHOTOS_DIR` exists for exactly this
+("a VM whose container layer cannot hold the gigabytes points it at a big-disk mount"), and it is what lets
+the dataset stay read-only. The volume is named, so a re-seed skips what is already on disk.
+
+**The photographs are pulled at runtime** from the bucket the dataset's pointer names — measured reachable
+from the host and from inside the kernel container. ⚠️ Note that the pointer carries **two versions**, the
+catalog's and the photos', **and they use different URL shapes** (`<base>/dataset/<catalog version>/<rel>`
+against `<base>/<photos version>/<rel>`). Probing one with the other's shape answers 404 and looks exactly
+like an empty bucket.
+
+If a pull cannot complete, the seed **refuses**: *"Refusing to seed a partial dataset"*, naming what is
+missing. It does not fill a catalogue with broken images.
+
 ### The bench's addresses
 
 | face | address | serves |
