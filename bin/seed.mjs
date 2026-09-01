@@ -638,6 +638,8 @@ async function upload(file, { library = true } = {}) {
 
 /** handle -> product id, filled by products() and read by repointMedia(). */
 let existingIds = new Map();
+/** sku code -> sku id, for the SKUs THIS RUN minted. Read by stock(); see the note there. */
+const mintedSkus = new Map();
 
 // ── 4. the products ─────────────────────────────────────────────────────────────────────────────────────────
 async function products() {
@@ -700,6 +702,12 @@ async function products() {
     // with the product sitting in the catalogue. The command already handed us the id — asking a projection
     // for something we were just told is how a seed makes its own success unreadable.
     existingIds.set(product.handle, out.product_id ?? out.id);
+    // ★★ AND THE SKU IDS, for the same reason and the same race — see `stock()` below. `catalog.product.create`
+    // returns them in the order the skus were sent, which is the order this array was built in.
+    for (const [i, sku] of skus.entries()) {
+      const id = out.sku_ids?.[i];
+      if (id) mintedSkus.set(sku.code, id);
+    }
     log(`product ${product.handle} — created with ${skus.length} sku(s) (${out.product_id ?? '?'})`);
   }
 }
@@ -849,18 +857,52 @@ async function stock() {
   // ⚠️ `stock_levels` PAGES (limit caps at 200, by PRODUCT) and truncates `skus` past 50 per product
   // (`skus_truncated: true`) — harmless for products with 1–6 SKUs, and named so the next person to grow
   // one knows it is there.
+  // ⚠️⚠️ THE THIRD TIME THIS PROJECTION RACE HAS BILLED THIS REPOSITORY TODAY, and the first time this
+  // particular path ever RAN far enough to meet it.
+  //
+  // MEASURED on a fresh box: this step died with `declares 25 sku code(s) the catalogue has no sku for`, and
+  // minutes later the SAME read answered `products: 6 | sku codes: 25` — exactly those codes. The skus
+  // existed; what did not exist, at the instant of the question, was the PROJECTION. `products_admin` is one.
+  //
+  // ★ WHY THE MINTED IDS AND NOT `awaitQuietCatalogue`, WHICH THIS REPOSITORY ALSO HAS. Because for THIS
+  // path the minted ids are already the house pattern, 3 sites to 0: `seed/outlet.mjs` stocks straight from
+  // `out.sku_ids` (which is exactly why it never had this bug), `seed/totem.mjs` does the same, and
+  // `publish()` above resolves handle→id the same way. `awaitQuietCatalogue` answers a DIFFERENT question,
+  // in `seed/forge.mjs`: there ~2 790 products are created in pools and the whole catalogue has to become
+  // readable to compute a skip set — there is no minted map at that scale. Adding a wait here would be a
+  // second technique for one problem, and two techniques is how a repository ends up with two truths.
+  //
+  // ★ AND IT COVERS EXACTLY THE WINDOW WHERE THE RACE EXISTS, which is what makes it better than a wait: the
+  // race is only possible for a product created THIS RUN — and that is precisely when a minted id exists. On
+  // a re-run the projection settled long ago and `products_admin` answers for everything. No polling, no
+  // timeout that can still be wrong.
+  const catalogue = [
+    ...(await readAll('products_admin')),
+    { skus: [...mintedSkus].map(([code, id]) => ({ code, id })) },
+  ];
   const { adjustments, missing } = planStock(
     bySku,
-    await readAll('products_admin'),
+    catalogue,
     await readAll('stock_levels', { limit: '200' }),
   );
   if (missing.length > 0) {
     // A declared sku code that no product answers to is a catalogue bug, and skipping it in silence is how
     // a product ends up published, priced and permanently unbuyable.
+    // ⚠️ IT SAYS WHAT IT MEASURED, AND STOPS THERE — and the old sentence is the defect of the day in
+    // miniature. It read "Either the product was never created, or its option values were renamed after it
+    // was": TWO causes, confidently, and the real one was a THIRD it did not list — the read had not caught
+    // up. Whoever read it went looking for a missing product and a renamed option, found both plausible, and
+    // lost half an hour. A message that asserts more than it measured is the same species as "re-run this
+    // script": it spends somebody else's time on the author's guess.
     fail(
-      `stock — seed/catalog.json declares ${missing.length} sku code(s) the catalogue has no sku for: ` +
-        `${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}.\n` +
-        '  Either the product was never created, or its option values were renamed after it was.',
+      `stock — ${missing.length} sku code(s) this seed declares are in no product that ` +
+        `read.internal.products_admin answered with, and were not minted by this run:\n` +
+        `    ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` … (+${missing.length - 5})` : ''}\n` +
+        `  MEASURED: that read answered ${catalogue.length - 1} product(s); this run minted ` +
+        `${mintedSkus.size} sku(s).\n` +
+        '  This does NOT say why. Ask the read again before assuming: if the codes appear a moment later, it\n' +
+        '  was the projection and not the catalogue. If they do not, the product was never created or an\n' +
+        '  option value was renamed after it was — and those two look identical from here.',
     );
   }
   for (const adjustment of adjustments) {
