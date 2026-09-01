@@ -1,0 +1,26 @@
+# ── EXAMPLE ONLY — the real file is GENERATED and is not in git ─────────────────────────────────────────────
+#
+# `bin/box-up.sh` (step 3c) writes `coffee.local.caddy` next to this one, from the café store id that
+# provisioning just returned. This copy exists so a reader can see the SHAPE without a running box; it is
+# named `.example` so the Caddyfile's `import /etc/caddy/extra/*.local.caddy` does not pick it up.
+#
+# ⚠️ WHY THE REAL ONE IS NOT VERSIONED, and it is the same defect this whole rule exists to prevent: the
+# store id is a fresh ULID on every birth. A committed copy is correct for exactly one box and a LIE for
+# every other — it routes to a store that does not exist, the request falls through to the vanilla
+# storefront, and the page still looks right because the theme comes from the store. That is precisely the
+# bug that hid the café's fork not serving the café, and committing a generated file re-creates it.
+#
+# <CAFE_STORE_ID> below is what the generator substitutes.
+
+handle /s/<CAFE_STORE_ID>/checkout* {
+	header X-Forge-Served-By "checkout"
+	reverse_proxy checkout:3000
+}
+handle /s/<CAFE_STORE_ID>* {
+	header X-Forge-Served-By "storefront-coffee"
+	reverse_proxy storefront-coffee:3000
+}
+handle /s/cafe* {
+	header X-Forge-Served-By "storefront-coffee"
+	reverse_proxy storefront-coffee:3000
+}
