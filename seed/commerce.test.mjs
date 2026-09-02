@@ -22,7 +22,12 @@ import {
   assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
+  HELD_AUTHORS,
   REVIEW_DOORS,
+  REVIEW_VOICES,
+  reviewPlanFor,
+  SEEDED_AUTHORS,
+  voicesFor,
   reviewDoorFor,
   reviewSplit,
   storesWithReviews,
@@ -348,4 +353,78 @@ test('★ the pass waits for the notification queue to hold still BEFORE re-armi
   const firstToggle = order.indexOf('toggle');
   assert.ok(order.includes('poll'), 'the queue was never polled');
   assert.ok(order.indexOf('poll') < firstToggle, 'the wait must precede the re-arm');
+});
+
+// ── ★★ A47 · THE REVIEW WALL — six per product, and a queue that still has something on it ──────────────
+//
+// Measured on the pre-seed box (2026-09-02): SIX reviews in the coffee tenant, exactly one per coffee, five
+// approved and one rejected. The Renan: *"os reviews também estão bem pobrinhos, tem um por café e às vezes
+// nenhum, ideal pelo menos uns 6 por produto"*.
+//
+// ⚠️ AND THE VOCABULARY IS `approved | pending | rejected`, NEVER `published`. A question asked with the
+// wrong value returns zero and LOOKS like a finding — it happened three times in this round. These tests
+// name the real values so nobody re-derives them from a guess.
+
+test('★★ every product gets at least SIX reviews, and never more than the voices allow', () => {
+  for (const handle of ['forge-alvorada', 'forge-serra-do-caparao', 'forge-cerrado-mineiro', 'forge-noturno', 'forge-descafeinado', 'forge-edicao-do-produtor']) {
+    const plan = reviewPlanFor(handle);
+    assert.ok(plan.length >= 6, `${handle} plans only ${plan.length}`);
+    assert.ok(plan.length <= 10, `${handle} plans ${plan.length}`);
+    // one author cannot review the same product twice — the dedupe key is (product, author)
+    assert.equal(new Set(plan.map((v) => v.author)).size, plan.length, `${handle} repeats an author`);
+  }
+});
+
+test('★ the ratings VARY — a wall where everything is five stars reads as a wall somebody wrote', () => {
+  const ratings = new Set(REVIEW_VOICES.map((v) => v.rating));
+  assert.ok(ratings.size >= 3, `only ${ratings.size} distinct rating(s) in the whole voice list`);
+  assert.ok(Math.min(...ratings) <= 3, 'nothing below 4 stars — nobody believes that shop');
+  const average = REVIEW_VOICES.reduce((n, v) => n + v.rating, 0) / REVIEW_VOICES.length;
+  assert.ok(average > 3.5 && average < 4.8, `average ${average} — the majority should still be happy`);
+});
+
+test('★★ the plan is derived from the HANDLE, never from the read order', () => {
+  // The first version used the product's INDEX in the catalogue read — a projection's order. A seed whose
+  // data depends on it writes a different shop every time a product is added.
+  assert.deepEqual(reviewPlanFor('forge-noturno'), reviewPlanFor('forge-noturno'));
+  assert.notDeepEqual(
+    reviewPlanFor('forge-alvorada').map((v) => v.author),
+    reviewPlanFor('forge-noturno').map((v) => v.author),
+    'two coffees open with the same wall — that is the tell that gives a seeded shop away',
+  );
+});
+
+test('★★ every product carries exactly ONE held row, so the moderation queue is never empty', () => {
+  // A queue that empties itself on the first run is a screen that is empty every time anybody opens it —
+  // and re-filling it on each run is what stops the seed converging.
+  for (const handle of ['forge-alvorada', 'forge-edicao-do-produtor']) {
+    const held = reviewPlanFor(handle).filter((v) => HELD_AUTHORS.has(v.author));
+    assert.equal(held.length, 1, `${handle} plans ${held.length} held row(s)`);
+  }
+  assert.equal(HELD_AUTHORS.size, 1, 'more than one held voice would put the whole wall in the queue');
+});
+
+test('⛔ THE CONTROL — the held author is NOT in the moderation candidates', () => {
+  // The rule the driver applies is `status === "pending" && !HELD_AUTHORS.has(author)`. Proven here on the
+  // vocabulary itself, because a rule written against `published` would silently select nothing.
+  const rows = [
+    { author: [...HELD_AUTHORS][0], status: 'pending' },
+    { author: 'Marina R.', status: 'pending' },
+    { author: 'Uma Pessoa', status: 'pending' }, // not ours — a seed must never decide a human's review
+  ];
+  const candidates = rows.filter((r) => SEEDED_AUTHORS.has(r.author) && r.status === 'pending' && !HELD_AUTHORS.has(r.author));
+  assert.deepEqual(candidates.map((r) => r.author), ['Marina R.']);
+});
+
+test('★ SEEDED_AUTHORS is DERIVED from the voices — a name added in one place cannot be forgotten in the other', () => {
+  // It used to be a hand-written list. Forgetting a name there makes the seed stop recognising its own rows,
+  // write them again on the next run, and moderate none of them.
+  for (const voice of REVIEW_VOICES) assert.ok(SEEDED_AUTHORS.has(voice.author), `${voice.author} is unknown to the seed`);
+  assert.equal(SEEDED_AUTHORS.size, REVIEW_VOICES.length);
+});
+
+test('⛔ a store on the open-review door with no voices of its own is a DEATH, not a default', () => {
+  // Same doctrine as REVIEW_DOORS: a coffee wall on a shoe shop is data that looks right and is absurd.
+  assert.doesNotThrow(() => voicesFor('cafe'));
+  assert.throws(() => voicesFor('outlet'), /no voices of its own/);
 });
