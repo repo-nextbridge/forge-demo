@@ -30,6 +30,9 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// ⚠️ THE EXPECTATIONS ARE IMPORTED, NEVER RE-TYPED. `seed/coffee.mjs` is what the SEED writes from; a
+// verifier with its own copy of the nine field names would agree with a stale catalogue and say so proudly.
+import { expectedCoffees } from '../seed/coffee.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -245,6 +248,70 @@ if (!seen.includes('outlet')) {
 }
 say();
 
+// ── 5. ★★ THE COFFEE — declared × landed (A46 · A47) ─────────────────────────────────────────────────────
+//
+// Every line here answers the same question in a different column: DID WHAT THE DATASET DECLARES ACTUALLY
+// REACH THE BOX? Both defects this section exists for were writes that never happened and never complained —
+// the subscription mark and the nine custom fields — so the measurement is of the RESULT, on the anonymous
+// face the shopper's page actually reads.
+say();
+say('THE COFFEE — what seed/catalog.json declares, against what the shop serves');
+if (!seen.includes('cafe')) {
+  say('  · the coffee shop is not on this tenant — nothing to assert here');
+} else {
+  const store = byHandle.get('cafe');
+  const page = await publicRead('products', { store: store.id, limit: '100', page: '1' });
+  const served = new Map((page?.items ?? []).map((p) => [p.handle, p]));
+  const reviews = await allOf('extension_records', { extension: 'reviews', model: 'review' });
+  const byProduct = new Map();
+  for (const r of reviews) byProduct.set(r.product_id, (byProduct.get(r.product_id) ?? 0) + 1);
+
+  for (const want of expectedCoffees()) {
+    const got = served.get(want.handle);
+    if (!got) {
+      bad(want.handle, 'the shop does not serve it at all');
+      continue;
+    }
+    const bag = got.metadata && typeof got.metadata === 'object' ? got.metadata : {};
+    const lost = Object.keys(want.metadata).filter((k) => bag[k] !== want.metadata[k]);
+    const photos = (got.media ?? []).filter((m) => m.kind === undefined || m.kind === 'image').length;
+    const sections = (got.content_sections ?? []).length;
+    const marked = (got.skus ?? []).filter((k) => k?.metadata?.sub_enabled === true).length;
+    const wall = byProduct.get(got.product_id) ?? 0;
+
+    const problems = [];
+    if (lost.length > 0) problems.push(`${lost.length} custom field(s) missing or wrong: ${lost.join(', ')}`);
+    if (photos !== want.photos.length) problems.push(`${photos} photograph(s), declared ${want.photos.length}`);
+    if (sections !== want.sections.length) problems.push(`${sections} content section(s), declared ${want.sections.length}`);
+    // ⚠️ THE NEGATIVE IS HALF THE CHECK. The Edição do Produtor is deliberately NOT subscribable, and a
+    // verifier that only asked "is it marked?" would call a catalogue where everything is marked a success —
+    // which is the failure the curation exists to make impossible.
+    if (want.subscribable && marked === 0) problems.push('NO sku carries sub_enabled — the page draws no subscription');
+    if (!want.subscribable && marked > 0) problems.push(`${marked} sku(s) carry sub_enabled and this coffee is curated OUT`);
+    if (wall < 6) problems.push(`${wall} review(s) — the ask is at least 6 per product`);
+
+    if (problems.length === 0) {
+      ok(
+        want.handle,
+        `${Object.keys(want.metadata).length} field(s) · ${photos} photo(s) · ${sections} section(s) · ` +
+          `${want.subscribable ? `${marked} sku(s) subscribable` : 'not subscribable, on purpose'} · ${wall} review(s)`,
+      );
+    } else {
+      bad(want.handle, problems.join(' · '));
+    }
+  }
+
+  // The moderation queue has to have something on it, and the wall has to have something in it. Both, or the
+  // demo shows one screen at the cost of the other.
+  const byStatus = reviews.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
+  const line = Object.entries(byStatus).map(([k, v]) => `${k}=${v}`).join(' · ') || 'none';
+  if ((byStatus.approved ?? 0) > 0 && (byStatus.pending ?? 0) > 0 && (byStatus.rejected ?? 0) > 0) {
+    ok('the review mix', `${line} — the wall has rows, the queue has rows, and moderation was exercised`);
+  } else {
+    bad('the review mix', `${line} — approved, pending AND rejected are all needed (the vocabulary is approved|pending|rejected, never "published")`);
+  }
+}
+say();
 // ── 4. the placeholders ─────────────────────────────────────────────────────────────────────────────────
 say('THE PLACEHOLDER ART — findable in one gesture');
 const assets = await allOf('assets', { q: 'placeholder-' });
