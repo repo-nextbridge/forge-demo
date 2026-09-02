@@ -641,6 +641,54 @@ $(printf '%s\n' "$armed" | sed 's/^/       /')
 done
 trap - EXIT INT TERM
 
+# ── 10b · WAIT FOR THE DISPATCHER, BECAUSE THE SILENCE ONLY HOLDS WHILE THE QUEUE IS BEHIND IT ──────────────
+#
+# ⛔ THE PATTERN silence → seed → re-arm HAS A SCALE LIMIT, and this step is what found it. `seed/commerce.mjs`
+# cites a measurement: an order placed while silenced produced no notification even after the channel was
+# re-armed and the dispatcher had 70 further seconds. That was true — for DOZENS of orders. This step writes
+# ~1,466, and dispatch is ASYNCHRONOUS: on the birth that first ran it, step 11 re-armed while the dispatcher
+# was still draining, and the tail went out through the door that had just been opened. 88 messages were
+# attempted. They failed only because every address in the dataset is `@example.com` and the provider
+# answered `550 Invalid "to" field` — **the fix is this wait, not the luck of an undeliverable domain.**
+#
+# The assumption "the queue empties before the next step" is not wrong; it stops holding when somebody makes
+# the queue big, and the step that made it big is this one. So this one waits for its own consequences.
+#
+# ★ N IS DERIVED, NOT GUESSED. Measured on that birth: the dispatcher's longest gap between two consecutive
+# emissions was 2.1s, and a notification's whole life is 2.1s (`attempts = 1` — a 550 is terminal, there is
+# no retry backoff to outlast). 30s is ~14x both. The ceiling is 10 minutes.
+#
+# ⚠️ AND IT DIES RATHER THAN CONTINUES. A box whose window never ran is mute and one command from fixed;
+# a box that mailed a real person cannot be un-mailed. That is the same trade `commerce.mjs` already took.
+say '10b · waiting for the dispatcher to drain (the silence only holds while it is behind us)'
+QUIET_S=30; DRAIN_CEILING_S=600
+notif_total() { # <tenant> <token> [status]
+  curl -fsS -m 15 "$FORGE_PUBLIC_ORIGIN/v1/read/internal/notifications?limit=1${3:+&status=$3}" \
+    -H "authorization: Bearer $2" -H "x-forge-tenant: $1" | jq -r '.total'
+}
+drain_started=$SECONDS; quiet_since=$SECONDS; last_fingerprint=''
+while :; do
+  fingerprint=''; pending_total=0
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"; eval "tokval=\${$tokvar:-}"
+    tot="$(notif_total "$t" "$tokval")" || die "could not read the notification queue of \"$t\"; refusing to
+     hand a still-draining queue to the window, which re-arms the mail."
+    pend="$(notif_total "$t" "$tokval" pending)" || pend=0
+    fingerprint="$fingerprint $t:$tot"; pending_total=$((pending_total + pend))
+  done
+  if [ "$fingerprint" = "$last_fingerprint" ] && [ "$pending_total" = 0 ]; then
+    [ $((SECONDS - quiet_since)) -ge "$QUIET_S" ] && break
+  else
+    [ -z "$last_fingerprint" ] || note "still draining —$fingerprint (pending $pending_total)"
+    last_fingerprint="$fingerprint"; quiet_since=$SECONDS
+  fi
+  [ $((SECONDS - drain_started)) -lt "$DRAIN_CEILING_S" ] || die "the notification queue has not gone quiet in
+     ${DRAIN_CEILING_S}s (last:$fingerprint, pending $pending_total). STOPPING BEFORE THE WINDOW, because the
+     window re-arms the buyer's mail and this queue would drain through it. The box and its past are standing."
+  sleep 5
+done
+note "queue quiet for ${QUIET_S}s —$last_fingerprint · safe for the window to re-arm"
+
 # ── 11 · THE SHOP WINDOW — AFTER the one-shot, and the order is what broke to reveal itself ────────────────
 #
 # ★ THE CIRCLE, AND THE SENTENCE THAT DISARMS IT. The window seeds the dataset's CURATED PROMOTIONS, and it

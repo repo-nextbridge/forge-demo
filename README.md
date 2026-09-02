@@ -102,6 +102,7 @@ map of how the box is born:
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
 | 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
+| 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
 
 ### Step 10 has two halves, the second in a `finally` — and it must run inside the silence
@@ -121,6 +122,14 @@ person. The step therefore **refuses to start** unless every buyer `order.*` cha
 at both ends: it passes on a silent box and refuses on a box with one type armed, naming the store and
 the type. (The read parameter is `store`, not `store_id`; the kernel ignores the wrong one silently and
 answers with tenant defaults, which a bogus-id comparison is what exposes.)
+
+⚠️ **And silence→seed→re-arm has a scale limit, which this step found.** Dispatch is asynchronous. On the
+first birth that ran the past, step 11 re-armed while the dispatcher was still draining ~1,466 orders, and
+the tail went out through the door that had just opened — 88 messages attempted. They failed only because
+every dataset address is `@example.com` and the provider answered `550 Invalid "to" field`. **The fix is
+the wait, not the luck of an undeliverable domain.** Step 10b blocks until the queue is quiet for 30s
+(derived: the dispatcher's longest observed gap is 2.1s and `attempts = 1`, so there is no retry backoff to
+outlast) and **dies rather than continues** — a mute box is one command from fixed; a mailed person is not.
 
 So the box does not satisfy the seeder by shrinking: two delivery options is something the demo *wants* to
 show. The refusal is about the **moment** the script runs, not the box's final state, so step 11 changes the
