@@ -177,7 +177,9 @@ test('★★ no tailnet hostname or address is committed anywhere in this reposi
   const files = execFileSync('git', ['-C', ROOT, 'ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.ok(files.length > 20, `git listed ${files.length} tracked file(s) — this guard is not looking at the repo.`);
   const MAGICDNS = /\b[a-z0-9-]+\.tail[0-9a-f]{5,}\.ts\.net\b/i;   // the MagicDNS shape
-  const CGNAT = /\b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b/; // Tailscale's 100.64.0.0/10
+  const CGNAT = /\b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b/; // Tailscale's CGNAT range (RFC 6598, 100.64/10 — written WITHOUT the four octets on
+  // purpose: this guard scans every tracked file INCLUDING ITSELF, and a full dotted quad in this very
+  // comment made it accuse its own source. A guard blind to its own file would be worse than this line.
   const offenders = [];
   for (const rel of files) {
     const abs = join(ROOT, rel);
