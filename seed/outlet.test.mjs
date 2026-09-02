@@ -175,11 +175,21 @@ test('★ the CURATED phase does not write a `de` — phase 9 would erase it and
   );
 });
 
-test('★ the `de` IS written, and from the WINDOW half of the seed', () => {
+test('★ the `de` AND the `por` are written, and from the WINDOW half of the seed', () => {
   assert.ok(/export async function priceOutlet/.test(outletSrc), 'priceOutlet() is gone');
+  const body = outletSrc.slice(outletSrc.indexOf('export async function priceOutlet'));
   assert.ok(
-    /compare_at_amount: product\.compare_at_amount/.test(outletSrc.slice(outletSrc.indexOf('export async function priceOutlet'))),
+    /compare_at_amount: product\.compare_at_amount/.test(body),
     'priceOutlet no longer writes compare_at_amount',
+  );
+  // ⚠️ BOTH HALVES, because writing one of them is what produced `de == por` on the bench of 02/09. A
+  // product the MASSIVE step created carries the dataset's price and never saw the curated `amount`;
+  // stamping the dataset figure as its `compare_at` strikes through a price identical to the live one on
+  // 130 of 182 skus. Asserting only the `de` is exactly the assertion that stayed green through it.
+  assert.ok(
+    /amount: product\.amount/.test(body),
+    'priceOutlet writes the "de" without the "por": a product the massive step already created keeps the ' +
+      'dataset price, and the two become equal — a struck-through price identical to the live one.',
   );
 });
 

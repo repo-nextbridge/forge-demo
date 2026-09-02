@@ -513,8 +513,17 @@ export async function priceOutlet({ read, readAll, rows, command, log, fail }) {
       const id = sku.id ?? sku.sku_id;
       if (!id) continue;
       if (sku.compare_at_amount !== product.compare_at_amount) hadBeenCleared += 1;
+      // ⚠️ BOTH HALVES OF THE PRICE, AND THE SECOND ONE WAS MEASURED MISSING ON THE BENCH OF 02/09.
+      // Writing only the "de" is right for a product THIS file created — the create already carried the
+      // "por". It is wrong for the 24 the MASSIVE step had already made from the same dataset: those carry
+      // the dataset's own price, the curated `amount` never reached them, and stamping the dataset figure as
+      // `compare_at` on top of it produced `de == por` — a struck-through price identical to the live one,
+      // on 130 of the 182 skus. That reads as broken rather than as full price, so it is worse than writing
+      // nothing. `catalog.sku.update` is partial, so naming both is the whole fix, and it is the same pair
+      // the create path writes (every sku of an outlet product shares `product.amount`).
       await command('catalog.sku.update', {
         sku_id: id,
+        amount: product.amount,
         compare_at_amount: product.compare_at_amount,
       });
       written += 1;

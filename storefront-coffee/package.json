@@ -47,6 +47,7 @@
   "overrides": {
     "@forgecommerce/cli": "./vendor/forgecommerce-cli-0.3.0.tgz",
     "@forgecommerce/contracts": "./vendor/forgecommerce-contracts-0.3.0.tgz",
+    "@forgecommerce/ext-chrome": "./vendor/forgecommerce-ext-chrome-0.3.0.tgz",
     "@forgecommerce/sdk": "./vendor/forgecommerce-sdk-0.3.0.tgz"
   }
 }
