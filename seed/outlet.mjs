@@ -14,6 +14,8 @@
 //     (A40 — a store served by the vanilla either carries that tree or ships 33 links into the void);
 //   · the photographs and the campaign art, through the media door;
 //   · the products, PUBLISHED into the outlet store, CATEGORISED and given their stock;
+//   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
+//     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
 //   · the two collections the two shelves are sourced from;
 //   · the four Compose placements that ARE the home: the announcement band, the five-tile banner mosaic
 //     and the two shelves.
@@ -366,12 +368,16 @@ async function seedProducts({ command, readAll, log }, store, assets, categories
       // bag, a cap) come with one SKU and no grid at all.
       ...(product.options?.length ? { options: product.options } : {}),
       // ONE PRICE ACROSS THE SIZE GRID, which is what the artboard draws: a card shows one figure struck
-      // through and one to pay. The de/por is `compare_at_amount` on the SKU — the operator's own number,
-      // not a promotion rule — and the theme's discount tag derives its percentage from the pair.
+      // through and one to pay.
+      //
+      // ⛔⛔ AND THE `compare_at_amount` IS **NOT** WRITTEN HERE. It used to be, and it did not survive the
+      // birth — this is the defect the Renan saw as "2 of the 8 have a discount". See `priceOutlet()` at the
+      // foot of this file for the whole story; the short version is that a LATER step of the birth converges
+      // every dataset SKU's `compare_at` to the dataset's own figure, and every product this file names is a
+      // dataset product. Written here it is erased minutes later, in silence.
       skus: product.skus.map((sku, index) => ({
         ...sku,
         amount: product.amount,
-        compare_at_amount: product.compare_at_amount,
         is_default: index === 0,
       })),
       metadata: product.metadata,
@@ -393,9 +399,8 @@ async function seedProducts({ command, readAll, log }, store, assets, categories
     ids.set(product.handle, out.product_id);
     log(
       `product ${product.handle} — created, published in ${product.category}, ` +
-        `${out.sku_ids.length} sku(s) stocked ` +
-        `(${(product.compare_at_amount / 100).toFixed(2)} → ${(product.amount / 100).toFixed(2)}, ` +
-        `−${discountPercent(product)}%)`,
+        `${out.sku_ids.length} sku(s) stocked at ${(product.amount / 100).toFixed(2)} ` +
+        '(the "de" is the window phase\'s — see priceOutlet)',
     );
   }
   return ids;
@@ -436,6 +441,81 @@ async function setStock({ command }, product, skuIds) {
     const onHand = Array.isArray(product.stock) ? (product.stock[index] ?? 0) : product.stock;
     await command('inventory.set_level', { sku_id: skuId, on_hand: onHand, reason: 'goods_received' });
   }
+}
+
+// ── 4b. THE WINDOW'S HALF — the "de", written LAST because a step between the two phases erases it ────
+//
+// ⛔⛔ THIS IS NOT TIDINESS. THE DISCOUNT DOES NOT SURVIVE THE CURATED PHASE, AND IT IS NOBODY'S BUG.
+//
+// The birth is ordered (`bin/box-up.sh`): 8 · the CURATED seed (this file's `seedOutlet`) → 9 · `seed-demo`,
+// the MASSIVE one-shot → 10 · the past → 11 · the WINDOW (`bin/seed.mjs --phase window`, which calls this).
+//
+// Step 9 runs `apps/api/src/seed-media.ts`, whose contract is written at its head: "IDEMPOTENT BY
+// CONSTRUCTION: the desired state is the dataset ... A product OUTSIDE the dataset is never touched." For
+// every SKU it can match BY CODE it converges four fields to the dataset's declaration —
+// `compare_at_amount`, `ref`, `ean`, `is_default` — and the wanted value is `sku.compare_at_amount ?? null`.
+// The dataset declares a `compare_at` on almost none of these shoes, so `null` is what it writes.
+//
+// ★ AND EVERY PRODUCT THIS FILE NAMES IS A DATASET PRODUCT — deliberately, because that is what gives them a
+// real photograph, a real size grid and a real "de". Same handles, SAME SKU CODES. So they sit squarely
+// inside that step's jurisdiction and it does exactly what it promises to them.
+//
+// ⚠️ IT DOES NOT TOUCH `amount` — measured, that field is not in its diff. So the failure is the nastiest
+// shape there is: the "por" survives and the "de" vanishes, leaving a clearance store with low prices and no
+// visible discount anywhere. That is precisely what the Renan reported ("2 of the 8 have a discount") and
+// what the audit shows: 52 `catalog.sku.update` at 00:45:06, right after the massive step finished.
+//
+// SO THE WRITE MOVES TO THE PHASE DESIGNED FOR IT. The window exists because "the window promotes products
+// of the MASSIVE catalogue, so it must follow 9" — the same reason, and it is the LAST word on this tenant.
+// Creation, publication, categorisation and stock stay in the curated phase, where they belong; only the
+// figure another author converges is written after that author has spoken.
+//
+// ⚠️ AND IT WRITES WITHOUT ASKING FIRST, WHICH IS A DELIBERATE EXCEPTION TO THIS FILE'S "re-running is a
+// no-op". A diff would have to trust `products_admin`, a PROJECTION, about a column a competing writer just
+// changed — and the direction that hurts is the silent one: a doc still showing this file's old figure while
+// the table holds `null` makes the diff say "already right" and the shop ships with no discount. 182 SKU
+// updates is a cheap price for a guarantee that does not depend on projection lag (the same tenant already
+// spends 44 427 `inventory.adjust` in one birth). The read below is for the sku IDS and for the EVIDENCE the
+// log prints — how many had actually been cleared — never for deciding whether to write.
+export async function priceOutlet({ read, readAll, rows, command, log, fail }) {
+  const store = rows(await read('stores')).find((s) => s.handle === data.store);
+  if (!store) fail(`the store "${data.store}" does not exist; the curated phase has not run.`);
+
+  const wanted = new Map(data.products.map((p) => [p.handle, p]));
+  const catalogue = await readAll('products_admin');
+
+  let written = 0;
+  let hadBeenCleared = 0;
+  const missing = [];
+  for (const [handle, product] of wanted) {
+    const doc = catalogue.find((p) => p.handle === handle);
+    if (!doc) {
+      missing.push(handle);
+      continue;
+    }
+    for (const sku of doc.skus ?? []) {
+      const id = sku.id ?? sku.sku_id;
+      if (!id) continue;
+      if (sku.compare_at_amount !== product.compare_at_amount) hadBeenCleared += 1;
+      await command('catalog.sku.update', {
+        sku_id: id,
+        compare_at_amount: product.compare_at_amount,
+      });
+      written += 1;
+    }
+  }
+
+  if (missing.length > 0) {
+    fail(
+      `the window cannot price ${missing.length} product(s) the curated phase should have created:\n  ` +
+        `${missing.join('\n  ')}\n` +
+        '  Run `bin/seed.mjs` (the curated phase) for this tenant before the window.',
+    );
+  }
+  log(
+    `outlet — the "de" written on ${written} sku(s) of ${wanted.size} product(s); ` +
+      `${hadBeenCleared} of them did not carry it (that is the massive step's convergence, undone here)`,
+  );
 }
 
 // ── 5. the collections ──────────────────────────────────────────────────────────────────────────────

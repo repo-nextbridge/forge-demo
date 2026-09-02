@@ -139,6 +139,81 @@ test('★ every product names at least one photograph, and the file is on disk',
   assert.deepEqual(missing, []);
 });
 
+// ── the DISCOUNT IS WRITTEN IN THE RIGHT PHASE ─────────────────────────────────────────────────────────
+//
+// ⛔⛔ EVERYTHING ABOVE READS `outlet.json`, AND ALL OF IT WOULD STAY GREEN WITH A SHOP THAT SHOWS NO
+// DISCOUNT AT ALL. That is not hypothetical — it is the state the Renan reported ("2 of the 8"), and the
+// cause is not in this file's data. It is the ORDER of the birth:
+//
+//     8 · seed.mjs (curated)  →  9 · seed-demo (massive)  →  10 · the past  →  11 · seed.mjs --phase window
+//
+// Step 9 runs `apps/api/src/seed-media.ts`, which converges every SKU it matches BY CODE to the dataset's
+// `compare_at_amount ?? null` and does NOT touch `amount`. Every product of this shop is a dataset product
+// with the dataset's own SKU codes, so a `de` written in phase 8 is nulled in phase 9 and nobody is told.
+//
+// So these four watch the MECHANISM the data cannot see: that the write sits after the eraser. Break the
+// order, move the write back into the create payload, or drop the window call, and one of them goes red.
+// Nothing here recites a line number of the other repository — the order is derived from `bin/box-up.sh`
+// and the wiring from `bin/seed.mjs`, both of which are in this repo and both of which would have to change
+// for the regression to happen.
+
+const REPO = join(SEED, '..');
+const outletSrc = readFileSync(join(SEED, 'outlet.mjs'), 'utf8');
+const seedSrc = readFileSync(join(REPO, 'bin', 'seed.mjs'), 'utf8');
+const boxUpSrc = readFileSync(join(REPO, 'bin', 'box-up.sh'), 'utf8');
+
+test('★ the CURATED phase does not write a `de` — phase 9 would erase it and say nothing', () => {
+  // From the create call to the FIRST publish AFTER it — the "already there" branch publishes earlier in
+  // the function, so an unanchored `indexOf` would slice backwards and pass on an empty string.
+  const from = outletSrc.indexOf("await command('catalog.product.create'");
+  const to = outletSrc.indexOf("await command('catalog.product.publish'", from);
+  assert.ok(from > 0 && to > from, 'the create call moved — this guard lost its anchor, fix it');
+  const create = outletSrc.slice(from, to);
+  assert.ok(
+    !/^\s*compare_at_amount:/m.test(create),
+    'catalog.product.create is writing compare_at_amount again. It does not survive step 9 — see priceOutlet().',
+  );
+});
+
+test('★ the `de` IS written, and from the WINDOW half of the seed', () => {
+  assert.ok(/export async function priceOutlet/.test(outletSrc), 'priceOutlet() is gone');
+  assert.ok(
+    /compare_at_amount: product\.compare_at_amount/.test(outletSrc.slice(outletSrc.indexOf('export async function priceOutlet'))),
+    'priceOutlet no longer writes compare_at_amount',
+  );
+});
+
+test('★ `bin/seed.mjs` calls priceOutlet INSIDE the window phase, never the curated one', () => {
+  const window = seedSrc.indexOf("if (phase === 'window') {");
+  const call = seedSrc.indexOf('await priceOutlet(');
+  assert.ok(window > 0, "the window phase branch moved");
+  assert.ok(call > 0, 'bin/seed.mjs no longer calls priceOutlet — the shop ships with no discount');
+  assert.ok(call > window, 'priceOutlet is called before the window phase begins');
+  const curated = seedSrc.indexOf("if (phase === 'curated') {");
+  assert.ok(curated > 0 && curated < window, 'the two phase branches are not in the order this guard assumes');
+});
+
+test('★ the birth still runs the WINDOW after the massive step — the whole reason the write moved', () => {
+  // The steps as the script RUNS them (its `say` banners and the invocation itself), never the summary
+  // comment at the top — a header can drift from the body, and the body is what births the box.
+  const curated = boxUpSrc.indexOf("say '8 ·");
+  const massive = boxUpSrc.indexOf("say '9 ·");
+  // ⚠️ `--phase window` alone is NOT the marker: the summary comment at the head of the script names the
+  // flag too, and it sits ABOVE step 8 — so `indexOf` found the comment and this guard read the order
+  // backwards. The banner is the step; the invocation is asserted separately.
+  const windowPhase = boxUpSrc.indexOf("say '11 ·");
+  assert.ok(
+    boxUpSrc.slice(windowPhase).includes('--phase window'),
+    'step 11 no longer invokes the window phase',
+  );
+  assert.ok(curated > 0 && massive > 0 && windowPhase > 0, 'bin/box-up.sh no longer names the three steps');
+  assert.ok(curated < massive, 'the curated seed no longer precedes the massive one');
+  assert.ok(
+    massive < windowPhase,
+    'the window phase no longer follows seed-demo — the outlet\'s `de` would be erased again',
+  );
+});
+
 // ── the grid the kernel will refuse ────────────────────────────────────────────────────────────────────
 // These four cost nothing here and cost a whole seed run on the box: `catalog.product.create` validates the
 // SKU grid, and a run that dies on product 19 of 32 leaves a half-built shop that the next run has to heal.
