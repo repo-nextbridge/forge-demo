@@ -8,53 +8,53 @@
     "THIS FILE AND `forge.lock` SAY THE SAME THING TWICE, ON PURPOSE. `forge.lock` carries the list the",
     "images WERE BAKED FROM (the pin); this file is the list this repository MAINTAINS (the intent).",
     "`bin/verify-composition.sh` compares the lock against what the running kernel declares — the third",
-    "party in the argument, and the only one that is a fact rather than a claim.",
+    "party in the argument, and the only one that is a fact rather than a claim. Between an edit here and the",
+    "next bake the two disagree, and that is the honest state: the lock must never be hand-edited to promise",
+    "a list no image was built from.",
     "",
-    "WHY EACH APP IS HERE. Nothing is on this list 'because it exists': an app on a list is welded into the",
-    "image, and an app nobody uses is bytes and an attack surface.",
-    "  · banners            — the Outlet home's banner mosaic, and the text-only announcement bar.",
-    "  · shelves            — the Outlet's 'Quase de graça' / 'Acabando!' shelves.",
-    "  · reviews            — the coffee store's review wall, and the review form after an order.",
-    "  · recommendations    — the coffee PDP's bought-together pairing.",
-    "  · subscriptions      — the coffee store's whole reason to exist: buy once vs subscribe.",
-    "  · payment-reference  — the bench's payment provider (test cards, PIX display). A list with NO payment",
-    "                         provider is refused at the act of composing: a box that takes orders it can",
-    "                         never be paid for is not a store.",
-    "  · payment-mercadopago — the provider the demo actually shows a visitor.",
+    "★★ 02/09 — THIS LIST IS NOW THE PRODUCT'S WHOLE OOTB CATALOGUE, AND THAT IS A DECISION, NOT A DEFAULT.",
+    "It used to name SEVEN apps: the ones the two shop windows and the payment screens needed, each with its",
+    "own line of justification. That was a defensible list and it produced the wrong demo — the box that was",
+    "supposed to show what Forge CAN do shipped ten of its apps missing, and the first question asked of it",
+    "was \"where did the other ones go?\". So the rule for THIS box is now the opposite of the rule for a",
+    "customer's: the demo composes EVERY app the platform offers, plus the apps it wrote for itself.",
+    "  · A customer's list is a CHOICE — `image = release × list` exists so a box can carry less, and the",
+    "    seven-app bake proved that half of the mechanism in the field. That proof is kept in",
+    "    `infra/fleet/lists/lean-instance.json` upstream, which is where a FIXTURE belongs.",
+    "  · The demo's list is a SHOWCASE — an app that is not in the image has no screen, no command and no",
+    "    row in the admin's Apps area, so leaving one out is hiding a capability from the person the box",
+    "    exists to convince.",
     "",
-    "★★ `demo-gate` IS COMPOSED NOW, AND IT IS ON `instanceApps` RATHER THAN ON `apps` — the two lists are two",
-    "different questions and the split is the whole point. `apps` names what the PLATFORM offers and this box",
-    "chose; it is the list `infra/fleet/lists/demo-instance.json` in the monorepo mirrors, and it is the list",
-    "the fleet oven can bake there because every entry is an app that release carries. `instanceApps` names what",
-    "THIS REPOSITORY WROTE — code no release of ours has ever seen — and it reaches the bake by being copied",
-    "into the build context (`bin/build-local.sh` stages it; the oven adopts it with --instance-apps).",
+    "WHY THERE ARE NO LONGER PER-APP REASONS HERE. The old readme argued each of the seven; with the whole",
+    "catalogue on the list, arguing each of the seventeen would be re-writing the product's own documentation",
+    "into this repository, and it would go stale the day an app is added upstream. The rule replaced the",
+    "list: EVERYTHING THE PRODUCT OFFERS. What still needs a written reason is the opposite — an app the",
+    "product carries and this box does NOT compose — and that is what `notComposed` below is for.",
     "",
-    "★★ `payment-pos` IS THE SECOND ONE, AND IT IS WHAT THE SPECIES WAS MISSING. `demo-gate` is a screen; this is",
-    "a payment DRIVER — the counter's `pos_card` and `pos_pix`, written here because the alternative was editing",
-    "an app the platform offers to everybody. `payment-reference` could almost do it and was measured: its PIX",
-    "mode is UNIVERSAL app config, so auto-approving for the counter would take the coffee store's live",
-    "'aguardando pagamento' away, and its webhook needs a `provider_ref` its own `initiate` never hands back.",
-    "This app returns that ref inside its own `next_action`, which is the whole difference and cost no kernel.",
+    "★★ `apps` AND `instanceApps` ARE TWO DIFFERENT QUESTIONS AND THE SPLIT IS THE WHOLE POINT. `apps` names",
+    "what the PLATFORM offers and this box chose; it is the list `infra/fleet/lists/demo-instance.json` in",
+    "the monorepo mirrors, and it is the list the fleet oven can bake there because every entry is an app",
+    "that release carries. `instanceApps` names what THIS REPOSITORY WROTE — code no release of ours has",
+    "ever seen — and it reaches the bake by being copied into the build context (`bin/build-local.sh` stages",
+    "it; the oven adopts it with --instance-apps).",
     "",
-    "⚠️ IT OPENS A PUBLIC DOOR THAT APPROVES A PAYMENT (the totem's 'tap the QR to simulate the scan'), and that",
-    "is only acceptable because of the line below: this app is never offered to anybody. See its README and",
-    "`docs/capabilities/payment-pos.md`.",
+    "⚠️ AN INSTANCE APP IS ADOPTED, NEVER COMPOSED, AND PUTTING ONE ON `apps` IS A RED BUILD. The oven",
+    "refuses the collision by name — `@forge/ext-demo-gate would land on extensions/demo-gate, which this",
+    "release already carries` — and `bin/composition.guard.mjs` proves the distinction still holds before",
+    "anybody reaches the oven.",
     "",
-    "⚠️ AND THE IMAGE THAT COMES OUT IS NOT OFFERABLE, BY CONSTRUCTION. The oven stamps it, and the platform's",
-    "release gate refuses to promote such an image. That is correct and it is not a limitation of this box: an",
-    "image carrying OUR app must never be handed to anybody else. See `docs/concepts/instance-owned-apps.md`",
-    "in the monorepo.",
-    "",
-    "⚠️ IT IS NO LONGER MOUNTED THROUGH FORGE_EXTENSIONS_DIR, and it must not be BOTH. A composed app is already",
-    "in the image; mounting the same id on top of it is a duplicate the kernel refuses at boot. Composing is the",
-    "better half: mounting gave this box the KERNEL side of the app (manifest, install, actions) and no screen at",
-    "all, because a front renders an app only from the composition. That is exactly what P1 fixed upstream.",
+    "⚠️ AND THE IMAGE THAT COMES OUT IS NOT OFFERABLE, BY CONSTRUCTION. The oven stamps it, and the",
+    "platform's release gate refuses to promote such an image. That is correct and it is not a limitation of",
+    "this box: an image carrying OUR app must never be handed to anybody else. See its README and",
+    "`docs/concepts/instance-owned-apps.md` in the monorepo.",
     "",
     "⚠️ THE COPY IN THE MONOREPO. `infra/fleet/lists/demo-instance.json` over there is this list, so the",
     "`fleet-oven` job can bake `release × THIS list` before a release is offered. Nothing mechanical keeps",
     "the two in step — CI does not cross repositories — so a change here is a change there, by hand, and the",
-    "symptom of forgetting is an image baked from a list this box never asked for. `verify-composition.sh`",
-    "is what catches it on the box, after the fact."
+    "symptom of forgetting is an image baked from a list this box never asked for. THE ORDER OF THE ARRAY IS",
+    "PART OF THE COMPARISON (`bin/build-local.sh` compares the two as sequences, not as sets), so copy it",
+    "verbatim. `bin/composition.guard.mjs` says so before the build does, when a checkout is at hand;",
+    "`bin/verify-composition.sh` is what catches it on the box, after the fact."
   ],
   "version": 1,
   "apps": [
@@ -63,30 +63,84 @@
       "package": "@forgecommerce/ext-banners"
     },
     {
-      "id": "shelves",
-      "package": "@forgecommerce/ext-shelves"
+      "id": "channel-push",
+      "package": "@forge/ext-channel-push"
     },
     {
-      "id": "reviews",
-      "package": "@forgecommerce/ext-reviews"
+      "id": "channel-sms-twilio",
+      "package": "@forge/ext-channel-sms-twilio"
     },
     {
-      "id": "recommendations",
-      "package": "@forgecommerce/ext-recommendations"
+      "id": "channel-whatsapp",
+      "package": "@forge/ext-channel-whatsapp"
     },
     {
-      "id": "subscriptions",
-      "package": "@forgecommerce/ext-subscriptions"
+      "id": "feed",
+      "package": "@forgecommerce/ext-feed"
+    },
+    {
+      "id": "leads",
+      "package": "@forgecommerce/ext-leads"
+    },
+    {
+      "id": "order-review",
+      "package": "@forge/ext-order-review"
+    },
+    {
+      "id": "payment-mercadopago",
+      "package": "@forgecommerce/ext-payment-mercadopago"
+    },
+    {
+      "id": "payment-promissory",
+      "package": "@forgecommerce/ext-payment-promissory"
     },
     {
       "id": "payment-reference",
       "package": "@forgecommerce/ext-payment-reference"
     },
     {
-      "id": "payment-mercadopago",
-      "package": "@forgecommerce/ext-payment-mercadopago"
+      "id": "payment-zero",
+      "package": "@forgecommerce/ext-payment-zero"
+    },
+    {
+      "id": "recommendations",
+      "package": "@forgecommerce/ext-recommendations"
+    },
+    {
+      "id": "redirects",
+      "package": "@forge/ext-redirects"
+    },
+    {
+      "id": "review-digest-agent",
+      "package": "@forge/ext-review-digest-agent"
+    },
+    {
+      "id": "reviews",
+      "package": "@forgecommerce/ext-reviews"
+    },
+    {
+      "id": "shelves",
+      "package": "@forgecommerce/ext-shelves"
+    },
+    {
+      "id": "subscriptions",
+      "package": "@forgecommerce/ext-subscriptions"
     }
   ],
+  "_notComposed_why": [
+    "APPS THIS RELEASE CARRIES AND THIS BOX DOES NOT COMPOSE — named, with the reason, because \"the demo",
+    "takes all of them\" is only checkable if the exceptions are written down. `bin/composition.guard.mjs`",
+    "reads this block: every platform-origin app in the monorepo's `extensions/` must be on `apps` above OR",
+    "here with a reason, and an app that IS on the product's OOTB list may never be excused here — a",
+    "capability cannot be dropped from the showcase by prose.",
+    "",
+    "Keyed by the app's DIRECTORY name under `extensions/`, which is what the guard walks."
+  ],
+  "notComposed": {
+    "admin-dashboard": "SOLDERED, not optional. `apps/admin` imports it directly (a non-generated source under apps/*/src), so composing it from a list would register it twice — the oven refuses it by name with rule `hand-welded`. It is in every image already, including this box's; being off this list is the opposite of being absent.",
+    "demo-data": "SOLDERED, same rule and same proof: `apps/api/src/action-registry.ts` imports its populate/wipe/adopt-legacy by hand. It is also `surface: 'platform'` — a system app the tenant does not operate — and it is what drives this box's own seeding. Off the list, in the image.",
+    "chrome": "NOT ON THE PRODUCT'S OOTB LIST. `@forgecommerce/ext-chrome` landed in the monorepo on 02/09 (b61768dc2, the checkout header/footer slots) and was never added to `extensions/composition.base.json` — so no list anywhere composes it, and it renders nowhere, in Staging as much as here. An instance may carry LESS than the product offers or MORE than it needs, but it may not be the first place an app of the product is ever composed: that decision belongs upstream, on the base list, where every image gets it. Reported to the Forge side; the moment it lands on the base list this file goes red until it is on `apps`."
+  },
   "instanceApps": [
     {
       "id": "demo-gate",

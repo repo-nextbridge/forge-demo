@@ -246,66 +246,138 @@
     "slot": "storefront:header.announcement",
     "text": "Outlet oficial · Até 70% OFF · Frete grátis acima de R$ 600"
   },
+  "_home_why": [
+    "★★ 02/09 — THE FOUR BLOCKS OF THE HOME NOW LIVE IN ONE SLOT, AND THAT IS THE TEMPLATE'S DOING.",
+    "",
+    "He asked for this order: «Compre por categoria» → the banner mosaic → «Quase de graça» → «Acabando»",
+    "(with its banner) → «Marcas que amamos». The reference home draws its sections in a FIXED order",
+    "(apps/storefront/src/templates/home/template.tsx:40-46) and only two of them are ours to move:",
+    "",
+    "  1 home.hero · 2 home.banner_strip · 3 home.below_shelf · 4 «Compre por categoria» (FIXED SECTION,",
+    "  not a slot) · 5 home.below_categories · 6 «Marcas que amamos» (FIXED SECTION) · 7 home.below_brands",
+    "",
+    "There is exactly ONE slot between the two fixed sections he named, so all four blocks go into it and the",
+    "ORDER IS `position`, not the slot name. A slot takes N blocks — the `forge` store already stacks two",
+    "shelves that way.",
+    "",
+    "SO FOUR SLOTS ARE EMPTY ON PURPOSE — `home.hero`, `home.banner_strip`, `home.below_shelf` and",
+    "`home.below_brands` — and so is the whole PLP (`list.*`). They are not 'not done yet': putting the mosaic",
+    "back in `home.hero` would draw it ABOVE «Compre por categoria», which is the one thing he asked to change.",
+    "",
+    "⚠️ THE «ACABANDO» BANNER IS A BLOCK OF ITS OWN NOW (position 3), where it used to be `banner_asset` inside",
+    "the shelf — the shelf's promo banner occupies the FIRST GRID CELL, and what he asked for is a banner AFTER",
+    "the shelf. Same picture, different thing.",
+    "",
+    "⚠️ AND `compose()` NOW GOVERNS THESE SLOTS RATHER THAN APPENDING TO THEM. With two `banners/banner` blocks",
+    "in ONE slot, 'is there a placement of this app+component in this slot?' stops identifying anything — and a",
+    "seed that only appends would leave the OLD home (hero + banner_strip + below_shelf) drawn above the new one",
+    "on every box that ran the previous version. See the header of that function."
+  ],
   "mosaic": {
-    "slot": "storefront:home.hero",
+    "slot": "storefront:home.below_categories",
+    "position": 0,
     "style": "mosaic",
+    "_why": [
+      "The five campaign pieces, in two rows: 50 + 25 + 25 fills the first line, 50 + 50 wraps to the second.",
+      "`width` is a PERCENTAGE of the row and `height` is PIXELS — the block's own vocabulary, not CSS.",
+      "",
+      "THE HEIGHTS ARE DERIVED FROM THE ART, not chosen: at the storefront's ~1504px content column a 50% cell",
+      "is ~736px and a 25% cell ~352px. 1232x608 at 736 wide is 363 tall and a 600x600 at 352 wide is 352 —",
+      "so 360 is the row height that crops both by ~2%. The second row is 1228x440 at 736 wide = 264.",
+      "The frame is `overflow:hidden` + `object-fit:cover`, so a wrong height CROPS and never distorts.",
+      "",
+      "⚠️ TWO FILE NAMES LIED AND THE NAMES IN THIS REPO ARE THE MEASURED ONES. 'Banner Outlet 1 - Bota",
+      "Adventure 1228x600.png' is really 1232x608, and 'Banner Outlet Infantil 462x373.png' is really 912x752.",
+      "Neither breaks anything — the block crops — but a name that describes a size the file does not have is",
+      "what sends the next person looking for a bug in the layout.",
+      "",
+      "⚠️ `alt` HERE IS DOCUMENTATION AND REACHES NO PAGE — measured. The `banner` block's item schema has no alt",
+      "field (extensions/banners/manifest.ts) and the render hard-codes `alt=\"\"` with the reason 'decorative'",
+      "(render.tsx:209). These five tiles carry prices and product names, so 'decorative' is not true of them; the",
+      "sentences are kept because they say what each piece IS, and the day the app grows the field they are ready."
+    ],
     "media": [
       {
-        "file": "banner-social2.jpg",
+        "file": "banner-outlet-bota-adventure-1232x608.png",
         "width": 50,
-        "height": 300,
+        "height": 360,
         "link": "/collection/quase-de-graca",
-        "alt": "Sapato social clássico a partir de R$ 249,90"
+        "alt": "Outlet de aventura: bota de R$ 599,90 por R$ 299,90"
       },
       {
-        "file": "banner-bota.jpg",
+        "file": "banner-outlet-chuteira-nike-600x600.png",
         "width": 25,
-        "height": 300,
-        "link": "/collection/acabando",
-        "alt": "Bota pegada: de R$ 974,90 por R$ 749,90"
+        "height": 360,
+        "link": "/collection/quase-de-graca",
+        "alt": "Chuteira Nike Mercurial: de R$ 399,90 por R$ 199,90"
       },
       {
-        "file": "banner-shelf-aventura.jpg",
+        "file": "banner-outlet-tenis-asics-600x600.png",
         "width": 25,
-        "height": 300,
-        "link": "/collection/acabando",
-        "alt": "Feito para a aventura: até 25% OFF"
+        "height": 360,
+        "link": "/collection/quase-de-graca",
+        "alt": "Tênis Asics: de R$ 499,90 por R$ 249,90"
       },
       {
-        "file": "banner-grande-jordan.jpg",
+        "file": "banner-outlet-bolsa-feminina-1228x440.png",
         "width": 50,
-        "height": 220,
+        "height": 264,
         "link": "/collection/quase-de-graca",
-        "alt": "Nike Jordan com 30% OFF"
+        "alt": "Elegância com desconto: bolsa Aldo de R$ 459,90 por R$ 229,90"
       },
       {
-        "file": "banner-grande-rosa.jpg",
+        "file": "banner-outlet-tenis-nike-1228x440.png",
         "width": 50,
-        "height": 220,
+        "height": 264,
         "link": "/collection/quase-de-graca",
-        "alt": "Rosa é a cor da Copa: até 50% de desconto"
+        "alt": "Corra pela oferta: Nike Air Zoom de R$ 549,90 por R$ 274,90"
       }
     ]
   },
   "shelves": [
     {
-      "collection": "quase-de-graca",
+      "slot": "storefront:home.below_categories",
+      "position": 1,
       "title": "Quase de graça",
-      "slot": "storefront:home.banner_strip",
+      "collection": "quase-de-graca",
       "layout": "grid",
       "item_count": 5
     },
     {
-      "collection": "acabando",
+      "slot": "storefront:home.below_categories",
+      "position": 2,
       "title": "Acabando!",
-      "slot": "storefront:home.below_shelf",
+      "collection": "acabando",
       "layout": "grid",
-      "item_count": 3,
-      "banner": "banner-shelf-aventura-kids.jpg",
-      "banner_link": "/collection/acabando",
-      "banner_alt": "Feito para pequenas aventuras: até 25% OFF"
+      "item_count": 3
     }
   ],
+  "kidsBanner": {
+    "slot": "storefront:home.below_categories",
+    "position": 3,
+    "style": "mosaic",
+    "_why": [
+      "The «Outlet Kids» piece, the last thing on the home before «Marcas que amamos». A one-item mosaic is how",
+      "the banners app draws a single tile: `carousel` would give it arrows and dots it has nothing to page.",
+      "",
+      "WHY 33% AND NOT FULL WIDTH — the art is 912x752 (ratio 1.21) and it is FULL of content top to bottom: the",
+      "title, the price and a three-icon strip at the foot. A full-width tile at any sane height crops it to a",
+      "band and cuts two of the three off. 33% of the column is ~496px, and 496x400 is 1.24 — the proportion the",
+      "file name itself claims (462x373) and within 2% of the art's own. It reads as the card the artboard drew.",
+      "Retuning it is two numbers in Compose, no deploy.",
+      "",
+      "⚠️ Its `alt` is documentation too — see the mosaic's note."
+    ],
+    "media": [
+      {
+        "file": "banner-outlet-kids-912x752.png",
+        "width": 33,
+        "height": 400,
+        "link": "/collection/acabando",
+        "alt": "Outlet Kids: grandes marcas, preços pequenos — de R$ 299,90 por R$ 149,90"
+      }
+    ]
+  },
   "collections": [
     {
       "handle": "quase-de-graca",
