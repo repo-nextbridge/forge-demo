@@ -36,6 +36,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { unresolved } from './minted.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const catalog = JSON.parse(readFileSync(join(SEED, 'catalog.json'), 'utf8'));
@@ -52,7 +53,7 @@ const APPS = ['subscriptions', 'reviews'];
  *  a rotating lot). Written as the handles that ARE subscribable rather than as the one that is not: a
  *  seventh coffee added tomorrow is NOT subscribable until a human says so, which is the default the mark
  *  exists to defend. */
-const SUBSCRIBABLE_HANDLES = [
+export const SUBSCRIBABLE_HANDLES = [
   'forge-alvorada',
   'forge-serra-do-caparao',
   'forge-cerrado-mineiro',
@@ -62,7 +63,7 @@ const SUBSCRIBABLE_HANDLES = [
 
 /** This app's key on the SKU bag. It belongs to `@forgecommerce/ext-subscriptions` (`subscribable.ts`) and
  *  is repeated here because a seed script may not import an app's source — the app lives in the image. */
-const SUB_ENABLED_FIELD = 'sub_enabled';
+export const SUB_ENABLED_FIELD = 'sub_enabled';
 
 /** The subscriber discount, in basis points. 1000 = 10.00%.
  *
@@ -73,6 +74,50 @@ const SUB_ENABLED_FIELD = 'sub_enabled';
 const SUBSCRIBER_PERCENT_BP = 1000;
 
 const PROMOTION_NAME = 'Assinante 10% OFF';
+
+// ── ★★ THE EXPECTATIONS, AS FUNCTIONS — the thing every guard in this repository is derived from ─────────
+//
+// ⚠️ THEY LIVE HERE AND NOT IN `bin/seed.mjs` FOR THE SAME REASON `seed/media.mjs` gives: that file runs on
+// import (it validates the env and then seeds), so nothing can import it to check its reasoning — and a
+// verifier that re-typed the nine keys would go stale the day somebody edited the catalogue, SILENTLY. One
+// function, two readers: the seed that WRITES and the guard that MEASURES.
+
+/**
+ * The metadata bag a coffee is BORN with — the declared custom fields plus the subtitle, which rides the
+ * same bag (`product-view.ts` reads `field(product,'subtitle')` for the kicker above the title).
+ */
+export function expectedMetadata(product) {
+  return { ...product.custom_fields, ...(product.subtitle ? { subtitle: product.subtitle } : {}) };
+}
+
+/**
+ * ★ THE PHOTOGRAPHS ONE PRODUCT DECLARES, IN ORDER — the list, not the picture.
+ *
+ * `photos` (a list) is what the coffee page reads BY POSITION — `PdpCoffee.tsx:5`: `[0]` is the bag,
+ * `[1..3]` are the story. `photo` (singular) is the bag and remains the fallback for a product that declares
+ * no list, so nothing regressed on the day the list arrived.
+ */
+export function expectedPhotos(product) {
+  if (Array.isArray(product.photos) && product.photos.length > 0) return product.photos;
+  return product.photo ? [product.photo] : [];
+}
+
+/** What the dataset says a coffee's page should be able to draw — one object, so the seed and the verifier
+ *  cannot disagree about what "complete" means. */
+export function expectedCoffee(product) {
+  return {
+    handle: product.handle,
+    metadata: expectedMetadata(product),
+    photos: expectedPhotos(product),
+    sections: (product.content_sections ?? []).map((x) => ({ title: x.title, body: x.body })),
+    subscribable: SUBSCRIBABLE_HANDLES.includes(product.handle),
+  };
+}
+
+/** Every coffee the catalogue declares, as expectations. The verifier's whole input. */
+export function expectedCoffees() {
+  return catalog.products.map(expectedCoffee);
+}
 
 /**
  * @param port {{ api: string, token: string, tenant: string, command: Function, read: Function,
@@ -118,39 +163,80 @@ async function installApps({ command, read, rows, log }) {
 
 // ── 2. the curation mark ────────────────────────────────────────────────────────────────────────────────
 /**
- * Mark every SKU of the five subscribable coffees, and leave the sixth alone.
+ * ⛔⛔ WHAT WAS WRONG HERE, MEASURED, BECAUSE THE FIX IS UNREADABLE WITHOUT IT (A46).
+ *
+ * This step asked `readAll('products', {store})` for the six coffees and marked every SKU of the five it
+ * curated. On the pre-seed box it marked **zero, in silence**, and the storefront drew no subscription
+ * control on any coffee page. The kernel was innocent and so was the app; the mark had never been written.
+ *
+ * The read is served by a PROJECTION, and the projection had not received the products yet. Measured on the
+ * box (2026-09-02, `event_delivery` joined to `event_outbox`):
+ *
+ *     catalog.product.created  forge-alvorada   emitted 00:31:44.469955
+ *     catalog.projection       applied it at            00:31:45.090644   ← 620 ms later
+ *     this step ran between the publish (00:31:44.58) and the counter's seal (00:31:45.012)
+ *
+ * So the loop walked twenty-nine pages of a catalogue that did not contain the thing it was looking for, and
+ * `for (…of []) {}` is not an error. `sku.updated_at === sku.created_at` on all nineteen coffee SKUs; not one
+ * `catalog.sku.updated` event exists for any of them.
+ *
+ * ⚠️ AND THE GUARD THAT EXISTED WATCHED THE WRONG END. It refused a curated handle that `catalog.json` does
+ * not declare — a check on the INPUT, which cannot fail as long as the two lists in this file agree — and
+ * said nothing at all about the RESULT. A guard on the input is a guard that can only catch a typo.
+ *
+ * ★ THE FIX IS BOTH HALVES, and neither alone is enough:
+ *
+ *   1. ASK THE RUN'S OWN REGISTRY FIRST (`seed/minted.mjs`), which covers exactly the window where the race
+ *      exists and has no timeout that can still be wrong. The read remains the authority for everything an
+ *      EARLIER run made, where there is nothing to race.
+ *   2. FAIL ON THE RESULT. Every curated handle must end this function with at least one SKU carrying the
+ *      mark. "I was asked to mark five coffees and I marked none" is a sentence, not a log line.
  *
  * ⚠️ THE MARK IS WRITTEN WITH `catalog.sku.update`, AND `metadata` IS REPLACED WHOLESALE. The command
  * validates declared `sku` fields and then COALESCES the bag, so writing `{sub_enabled:true}` over a SKU
- * that already holds something would erase the something. Nothing on these SKUs holds anything today —
- * measured against `seed/catalog.json`, which writes no SKU metadata at all — but the merge is done anyway,
- * because "nothing there today" is a fact about this afternoon and the destructive version of this line
- * would be found by a merchant, later, missing a field they typed.
+ * that already holds something would erase the something. The bag is therefore merged, and for a SKU this
+ * run just minted the bag comes from the registry — which knows what was SENT — rather than from a guess.
  */
-async function markSubscribable({ command, readAll, log }, store) {
+export async function markSubscribable({ command, readAll, minted, log }, store) {
   const wanted = new Set(SUBSCRIBABLE_HANDLES);
   const known = new Set(catalog.products.map((p) => p.handle));
   const orphans = [...wanted].filter((handle) => !known.has(handle));
   if (orphans.length > 0) {
     // A curated handle that is not in the catalogue is ALWAYS a curation bug, and silence would make a PDP
-    // quietly miss its subscription control. Name them and stop.
+    // quietly miss its subscription control. Name them and stop. (A check on the INPUT — kept, but it is
+    // NOT the guard: see the result check at the bottom.)
     throw new Error(
       `coffee — these handles are marked subscribable but are not in seed/catalog.json: ${orphans.join(', ')}`,
     );
   }
 
-  let marked = 0;
-  let already = 0;
   // ⚠️ `store` IS REQUIRED BY THIS READ even though the internal face answers the whole TENANT catalogue
   // regardless of it (measured by D1, and the note is in bin/seed.mjs). Omitting it is a refusal, not a
-  // wider answer — so it is passed, and the filtering this loop does is by handle rather than by trusting it.
-  // ★ S1 — AND IT PAGES NOW. The read above is not store-scoped, so with the sports store seeded it answers
-  // the whole tenant catalogue (2790+ products); one page of 100 would filter six coffees out of a window
-  // they are not in, and mark nothing, in silence. `readAll` is the shared paginator in bin/seed.mjs.
+  // wider answer — so it is passed, and the filtering below is by handle rather than by trusting it.
+  // ★ S1 — AND IT PAGES. With the sports store seeded this read answers 2811 products over 29 pages; one
+  // page of 100 would filter six coffees out of a window they are not in, and mark nothing, in silence.
+  const fromRead = new Map();
   for (const product of await readAll('products', { store: store.id })) {
-    if (!wanted.has(product.handle)) continue;
-    for (const sku of product.skus ?? []) {
+    if (wanted.has(product.handle)) fromRead.set(product.handle, product.skus ?? []);
+  }
+
+  let marked = 0;
+  let already = 0;
+  /** handle -> how many of its SKUs now carry the mark. THE thing this function is judged on. */
+  const carrying = new Map();
+  const unseen = [];
+  for (const handle of SUBSCRIBABLE_HANDLES) {
+    // ★★ THE REGISTRY FIRST. Only something created by THIS run can be missing from the read, and that is
+    // precisely what the registry holds — with the bag it was created with, so the merge below is honest.
+    const skus = minted?.skusOf(handle) ?? fromRead.get(handle) ?? null;
+    if (!skus || skus.length === 0) {
+      unseen.push(handle);
+      continue;
+    }
+    let mine = 0;
+    for (const sku of skus) {
       const bag = sku.metadata && typeof sku.metadata === 'object' ? sku.metadata : {};
+      mine += 1;
       if (bag[SUB_ENABLED_FIELD] === true) {
         already += 1;
         continue;
@@ -161,9 +247,39 @@ async function markSubscribable({ command, readAll, log }, store) {
       });
       marked += 1;
     }
+    carrying.set(handle, mine);
   }
+
+  // ── ★★ THE GUARD, AND IT IS ON THE RESULT ───────────────────────────────────────────────────────────
+  // "Asked to mark five and marked zero" must be a death. This is the check whose absence let A46 ship: the
+  // old version logged `0 sku(s) marked` and returned 0 as if it were an answer.
+  if (unseen.length > 0) {
+    throw new Error(
+      unresolved({
+        what: 'subscribable coffee(s)',
+        names: unseen,
+        measured:
+          `the store read answered ${fromRead.size} of the ${SUBSCRIBABLE_HANDLES.length} curated handles ` +
+          `and this run's registry holds ${minted?.counts?.products ?? 0} product(s); ` +
+          `${marked} sku(s) were marked and ${already} already carried the mark`,
+        andThen:
+          'the catalogue step did not create them — `catalog.product.create` is what mints them and\n' +
+          '  `minted.rememberSkusOf` is what makes them findable here before the projection catches up.',
+      }),
+    );
+  }
+  const empty = SUBSCRIBABLE_HANDLES.filter((h) => (carrying.get(h) ?? 0) === 0);
+  if (empty.length > 0) {
+    throw new Error(
+      `coffee — ${empty.length} curated coffee(s) resolved but carry NO sku to mark: ${empty.join(', ')}.\n` +
+        '  The subscription control on their product page is drawn from `sku.metadata.sub_enabled` and\n' +
+        '  nothing else, so a coffee with no marked sku is a coffee nobody can subscribe to — silently.',
+    );
+  }
+
   log(
-    `coffee — subscription mark: ${marked} sku(s) marked, ${already} already marked, ` +
+    `coffee — subscription mark: ${marked} sku(s) marked, ${already} already marked, across ` +
+      `${carrying.size} coffee(s); ` +
       `${catalog.products.length - SUBSCRIBABLE_HANDLES.length} coffee(s) deliberately left out`,
   );
 }

@@ -692,36 +692,98 @@ async function openReviewsFor({ store, read, log, post }) {
   // is born `pending`, and the anonymous face only serves APPROVED rows: the public read answered 0 for a
   // product that already carried six. So the question is asked of the app's own records, on the operator
   // side, which is where a pending row actually is.
-  const existing = ((await read('internal/extension_records', {
-    extension: 'reviews',
-    model: 'review',
-    limit: 100,
-  }))?.items ?? []).filter((r) => SEEDED_AUTHORS.has(r.author));
-  const alreadyReviewed = new Set(existing.map((r) => r.product_id));
+  // ⚠️ AND THE DEDUPE KEY IS THE PAIR, NOT THE PRODUCT. With one review per product "has this product got
+  // one?" was enough; with eight it would skip a product that carries a single row and never finish its
+  // wall. `(product, author)` is the pair this seed can recognise as its own — the app's own uniqueness
+  // (`uniqueBy: ['order_id','product_id']`) cannot bite on rows that carry no order.
+  const existing = (await allSeededReviews(read)).filter((r) => SEEDED_AUTHORS.has(r.author));
+  const done = new Set(existing.map((r) => `${r.product_id}::${r.author}`));
 
+  const voices = voicesFor(store.handle);
   let written = 0;
-  for (const [i, product] of catalogue.entries()) {
-    if (alreadyReviewed.has(product.product_id)) continue;
-    const voice = OPEN_REVIEW_VOICES[i % OPEN_REVIEW_VOICES.length];
-    const created = await post(
-      '/v1/ext-public/reviews/review',
-      {
-        product_id: product.product_id,
-        rating: voice.rating,
-        body: voice.body,
-        author: voice.author,
-        // ⚠️ NO `verified`, NO `order_id`, NO `status`. All three are the face's to decide; sending them is
-        // either refused by name or overwritten, and pretending otherwise is how a seed grows a belief.
-      },
-      { store: store.id },
+  for (const product of catalogue) {
+    for (const voice of reviewPlanFor(product.handle ?? product.product_id, voices)) {
+      if (done.has(`${product.product_id}::${voice.author}`)) continue;
+      const created = await post(
+        '/v1/ext-public/reviews/review',
+        {
+          product_id: product.product_id,
+          rating: voice.rating,
+          body: voice.body,
+          author: voice.author,
+          // ⚠️ NO `verified`, NO `order_id`, NO `status`. All three are the face's to decide; sending them is
+          // either refused by name or overwritten, and pretending otherwise is how a seed grows a belief.
+        },
+        { store: store.id },
+      );
+      if (created) written += 1;
+    }
+  }
+  // ★★ A GUARD ON THE RESULT, not on the intention. "It wrote nothing" and "there was nothing to write" are
+  // opposite facts and the log line above could not tell them apart — the same shape of silence that let the
+  // subscription mark ship unwritten. So the wall is COUNTED, per product, against what was planned.
+  //
+  // ⚠️ AND IT GIVES THE READ A CHANCE TO CATCH UP BEFORE IT ACCUSES. Every read in this kernel sits behind
+  // something, and a guard that fires on the first short answer is a guard that kills correct runs — which
+  // is a worse failure than the one it is here to catch, because the next person's fix is to delete it.
+  // It re-asks while the number is still MOVING and stops the moment it is enough; a count that stays short
+  // through the whole window is a real shortfall and is named.
+  let after = [];
+  let thin = [];
+  const wanted = new Map(
+    catalogue.map((p) => [p.product_id, reviewPlanFor(p.handle ?? p.product_id, voices).length]),
+  );
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    after = (await allSeededReviews(read)).filter((r) => SEEDED_AUTHORS.has(r.author));
+    const perProduct = new Map();
+    for (const r of after) perProduct.set(r.product_id, (perProduct.get(r.product_id) ?? 0) + 1);
+    thin = catalogue
+      .map((p) => ({ handle: p.handle, have: perProduct.get(p.product_id) ?? 0, want: wanted.get(p.product_id) }))
+      .filter((row) => row.have < row.want);
+    if (thin.length === 0) break;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  if (thin.length > 0) {
+    throw new Error(
+      `reviews — ${thin.length} product(s) of ${store.handle} carry fewer reviews than this seed planned:\n` +
+        `    ${thin.map((r) => `${r.handle} ${r.have}/${r.want}`).join(', ')}\n` +
+        `  ${written} row(s) were POSTed in this pass, and the count was re-read five times over five\n` +
+        '  seconds before this was said. A count that stays short is the face refusing (`open_reviews` off\n' +
+        '  for the tenant) or the product not being published in this store — not a lag.',
     );
-    if (created) written += 1;
   }
   log(
     written === 0
-      ? `reviews — ${store.handle} already carries its seeded reviews; nothing written`
-      : `reviews — ${written} open review(s) written for ${store.handle}, unbadged by construction`,
+      ? `reviews — ${store.handle} already carries its ${after.length} seeded review(s); nothing written`
+      : `reviews — ${written} open review(s) written for ${store.handle} (${after.length} in total, ` +
+          `${(after.length / Math.max(1, catalogue.length)).toFixed(1)} per product), unbadged by construction`,
   );
+}
+
+/**
+ * EVERY seeded review row, paged.
+ *
+ * ⚠️ THE SINGLE `limit: 100` THIS REPLACES WAS CORRECT BY COINCIDENCE OF SIZE — six rows in the tenant. With
+ * six coffees carrying eight reviews each it is seventy-two, and the coincidence expires the day somebody
+ * adds a seventh coffee. `seed/paginate.mjs` states the rule; this is the same rule, spelled for the one
+ * read in this file that needs it.
+ */
+async function allSeededReviews(read, { pageSize = 100 } = {}) {
+  const all = [];
+  for (let page = 1; page <= 200; page += 1) {
+    const payload = await read('internal/extension_records', {
+      extension: 'reviews',
+      model: 'review',
+      limit: pageSize,
+      page,
+    });
+    const batch = payload?.items ?? [];
+    all.push(...batch);
+    if (batch.length < pageSize) return all;
+    const total = Number(payload?.total);
+    if (Number.isFinite(total) && all.length >= total) return all;
+  }
+  throw new Error('reviews — read.internal.extension_records never ran out of pages; refusing to guess.');
 }
 
 /**
@@ -737,14 +799,18 @@ async function openReviewsFor({ store, read, log, post }) {
  * would publish a human's pending review on their behalf.
  */
 async function moderateSeededReviews({ read, log, action }) {
-  const rows = ((await read('internal/extension_records', {
-    extension: 'reviews',
-    model: 'review',
-    limit: 100,
-  }))?.items ?? []).filter((r) => SEEDED_AUTHORS.has(r.author));
-  const pending = rows.filter((r) => r.status === 'pending');
+  const rows = (await allSeededReviews(read)).filter((r) => SEEDED_AUTHORS.has(r.author));
+  // ⚠️ THE HELD ROWS ARE NOT CANDIDATES. One voice per product is written to STAY in the queue, so the
+  // moderation screen has something on it whenever anybody opens it. Deciding them here would empty that
+  // screen on the first run and there would be nothing to demonstrate — and it would also be the one thing
+  // that stops this converging, because the seed would have to write a new pending row every time.
+  const pending = rows.filter((r) => r.status === 'pending' && !HELD_AUTHORS.has(r.author));
   if (pending.length === 0) {
-    log(`reviews — the queue holds no seeded row to moderate (${rows.length} already decided)`);
+    const held = rows.filter((r) => HELD_AUTHORS.has(r.author)).length;
+    log(
+      `reviews — the queue holds no seeded row to moderate (${rows.length - held} already decided, ` +
+        `${held} held on purpose)`,
+    );
     return;
   }
 
@@ -766,27 +832,97 @@ async function moderateSeededReviews({ read, log, action }) {
   }
   log(
     `reviews — moderation exercised: ${toApprove.length} approved · ${toReject ? 1 : 0} rejected · ` +
-      `${toRestore ? 1 : 0} rejected-then-restored`,
+      `${toRestore ? 1 : 0} rejected-then-restored · ` +
+      `${rows.filter((r) => HELD_AUTHORS.has(r.author)).length} HELD in the queue on purpose`,
   );
 }
 
-/** The names the seed writes under. They are how it recognises its OWN rows on a second run and in the
- *  moderation queue — a seed must never decide a review a person wrote. */
-const SEEDED_AUTHORS = new Set(['Marina R.', 'Joana P.', 'Rafael M.', 'Camila S.', 'Diego A.', 'Beatriz L.']);
-
-/**
- * The words the open reviews are written in. Plain, short, and deliberately unremarkable: a seed's job is to
- * make a screen look inhabited, not to write copy somebody will quote. They rotate, so two products never
- * carry the same sentence — which is the tell that gives a seeded shop away at a glance.
- */
 /** Columns every stored config row carries and no app declares. Stripped before a write-back. */
 const ROW_METADATA_KEYS = ['id', 'created_at', 'updated_at'];
 
-const OPEN_REVIEW_VOICES = [
-  { author: 'Marina R.', rating: 5, body: 'Chegou rápido e é exatamente o que eu esperava. Já pedi de novo.' },
+/**
+ * ⭐ THE WALL, AND WHY IT IS TWELVE VOICES AND NOT SIX (A47).
+ *
+ * The first version wrote ONE review per product — `voices[i % voices.length]`, one pass over the store's
+ * catalogue — so the coffee shop was born with six reviews in the whole tenant, one per coffee. Measured,
+ * and it is what the Renan saw: *"os reviews também estão bem pobrinhos, tem um por café e às vezes nenhum,
+ * ideal pelo menos uns 6 por produto"*.
+ *
+ * ★ AND THE RATINGS VARY ON PURPOSE. A wall where every row is five stars reads as a wall somebody wrote,
+ * which is the exact tell a seed exists to avoid. Twelve voices spanning 2★ to 5★ average 4.2 — a shop
+ * people like, not a shop nobody criticises.
+ *
+ * ⚠️ ONE VOICE IS `hold: true` AND IS NEVER MODERATED. The moderation queue has to have something in it for
+ * a human to look at, and a queue that empties itself on the first run is a screen that is empty every time
+ * anybody opens it. `moderateSeededReviews` skips these rows deliberately, which is also what makes this
+ * CONVERGE: a held row is pending after run one and pending after run five, and no run decides it.
+ */
+export const REVIEW_VOICES = [
+  { author: 'Marina R.', rating: 5, body: 'Chegou rápido, moagem certinha e o cheiro ao abrir o pacote é outro nível. Já assinei.' },
   { author: 'Joana P.', rating: 4, body: 'Muito bom no dia a dia. Tirei uma estrela só pelo prazo de entrega.' },
-  { author: 'Rafael M.', rating: 5, body: 'Melhor do que eu imaginava pelo preço. Recomendo sem pensar duas vezes.' },
-  { author: 'Camila S.', rating: 4, body: 'Bem embalado e do jeito que está na foto. Voltaria a comprar.' },
-  { author: 'Diego A.', rating: 3, body: 'Cumpre o que promete, mas eu esperava um pouco mais pelo valor.' },
-  { author: 'Beatriz L.', rating: 5, body: 'Uso todo dia desde que chegou. Nada a reclamar.' },
+  { author: 'Rafael M.', rating: 5, body: 'Faço na prensa e na V60 e nos dois fica ótimo. Doçura sem precisar de açúcar.' },
+  { author: 'Camila S.', rating: 4, body: 'Torra fresca, data recente na embalagem. Rende bem mais do que o que eu comprava no mercado.' },
+  { author: 'Diego A.', rating: 3, body: 'Cumpre o que promete, mas para o meu gosto podia ser um pouco mais encorpado.' },
+  { author: 'Beatriz L.', rating: 5, body: 'Comprei para presente e acabei ficando com um pacote. A embalagem com válvula faz diferença.' },
+  { author: 'Henrique T.', rating: 4, body: 'Boa acidez, nada agressiva. No espresso pede um clique a mais de moagem fina.' },
+  { author: 'Larissa F.', rating: 5, body: 'Terceiro pedido. Nunca veio errado e sempre chega dentro do prazo.' },
+  { author: 'Otávio B.', rating: 2, body: 'O café é bom, mas o meu veio moído no ponto errado e não deu para trocar a tempo.' },
+  { author: 'Priscila N.', rating: 5, body: 'Tomo puro, sem leite, e é o único que eu consigo beber assim sem enjoar.' },
+  { author: 'Gustavo A.', rating: 4, body: 'Custo-benefício honesto. Pedi 1kg e durou o mês inteiro em casa com duas pessoas.' },
+  // ⚠️ THE HELD ONE. Never approved, never rejected — it is what keeps the moderation queue inhabited.
+  { author: 'Tiago N.', rating: 3, body: 'Gostei do café, mas achei a embalagem difícil de fechar de novo depois de aberta.', hold: true },
 ];
+
+/** The names the seed writes under. They are how it recognises its OWN rows on a second run and in the
+ *  moderation queue — a seed must never decide a review a person wrote.
+ *
+ *  ⚠️ DERIVED, NOT TYPED. It used to be a hand-written list beside the voices, which is two places to add a
+ *  name and one of them to forget — and forgetting it makes the seed stop recognising its own rows, write
+ *  them again on the next run, and moderate none of them. */
+export const SEEDED_AUTHORS = new Set(REVIEW_VOICES.map((v) => v.author));
+
+/** The rows this seed writes and then deliberately leaves in the queue. */
+export const HELD_AUTHORS = new Set(REVIEW_VOICES.filter((v) => v.hold).map((v) => v.author));
+
+/**
+ * ⛔ WHOSE VOICES THESE ARE — and there is no default, exactly like `REVIEW_DOORS` above.
+ *
+ * The `open_form` door is decided per store, and today only the coffee shop takes it; the sentences above
+ * are a coffee shop's. A second store put on this door with no voices of its own would silently get a wall
+ * praising the moagem of a pair of shoes, so this throws instead.
+ */
+const VOICES_BY_STORE = { cafe: REVIEW_VOICES };
+
+export function voicesFor(handle) {
+  const voices = VOICES_BY_STORE[handle];
+  if (!voices)
+    throw new Error(
+      `the store "${handle}" is on the open-review door but has no voices of its own. The sentences are ` +
+        'written for one kind of shop and there is deliberately no default: a coffee wall on a shoe shop ' +
+        'is data that looks right and is absurd. Add the store to VOICES_BY_STORE, with its own words.',
+    );
+  return voices;
+}
+
+/**
+ * ★★ HOW MANY REVIEWS ONE PRODUCT GETS, AND WHICH — pure, deterministic, and derived from the HANDLE.
+ *
+ * ⚠️ NOT FROM THE PRODUCT'S POSITION IN THE READ, which is what the first version used (`voices[i % n]`).
+ * The catalogue read's order is the projection's, and a seed whose data depends on it writes a different
+ * shop every time a product is added. From the handle, the six coffees get the same wall on every box.
+ *
+ * The count is 6..10 — the Renan asked for *"pelo menos uns 6 por produto"* — and the ROTATION is offset by
+ * the same hash, so two coffees do not open with the same sentence. The held voice is always included: one
+ * pending row per product is what puts something on the moderation screen without emptying the wall.
+ */
+export function reviewPlanFor(handle, voices = REVIEW_VOICES) {
+  let hash = 0;
+  for (let i = 0; i < handle.length; i += 1) hash = (hash * 31 + handle.charCodeAt(i)) >>> 0;
+  const open = voices.filter((v) => !v.hold);
+  const held = voices.filter((v) => v.hold);
+  const count = Math.min(open.length, 5 + (hash % 5)); // 5..9 open, plus the held one → 6..10
+  const offset = hash % open.length;
+  const picked = Array.from({ length: count }, (_, i) => open[(offset + i) % open.length]);
+  return [...picked, ...held];
+}
+

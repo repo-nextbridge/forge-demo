@@ -19,7 +19,22 @@
     "",
     "THE SKU AXES are the product's own options, and 'Moagem' is the one the demo exists to show: it is",
     "labelled by the customer's METHOD ('Grãos' · 'Filtrado' · 'Espresso'), not by particle size, because the",
-    "shopper knows how they brew and does not know what 'fina' means."
+    "shopper knows how they brew and does not know what 'fina' means.",
+    "",
+    "★ FOUR PHOTOGRAPHS PER COFFEE, AND THE CONVENTION IS POSITION. `PdpCoffee.tsx:5` states it: `photos[0]` is",
+    "the bag (the transparent shot the buy box draws) and `photos[1..3]` are the story — one wide 4:3 frame and",
+    "two squares. `photo` (singular) is still here and still names the bag: it is what `photos[0]` must be, and",
+    "the seed falls back to it for a product that declares no list, so nothing regressed when the list arrived.",
+    "",
+    "⚠️ THE THREE STORY FRAMES DO NOT EXIST ON DISK YET — `seed/photos/` holds one picture per coffee. They are",
+    "declared anyway, under the FINAL name the merchant will produce, and the seed serves a generated stand-in",
+    "from `seed/placeholder-media/` until the real file lands. Renan, 2026-09-01: *\"prefiro que suba algo errado",
+    "do que não subir, senão fica difícil eu saber o que preciso criar\"*. Drop the real file into `seed/photos/`",
+    "under the name written here and nothing else changes — the next run re-points the picture.",
+    "",
+    "★ THE NINE CUSTOM FIELDS are the ones the shop's \"Características\" panel draws, and they are all declared on",
+    "all six. Where the value is not known yet it is written PROVISIONALLY and says so, in the value itself:",
+    "`(placeholder)`. A47/A50 — a hole nobody can see is indistinguishable from a decision nobody took."
   ],
   "stores": [
     {
@@ -67,13 +82,30 @@
       "title": "Forge Alvorada",
       "subtitle": "O blend da casa",
       "photo": "alvorada.png",
+      "photos": [
+        "alvorada.png",
+        "alvorada-historia-1.png",
+        "alvorada-historia-2.png",
+        "alvorada-historia-3.png"
+      ],
       "description": "O café de todo dia. Torra média, corpo redondo e doçura fácil — chocolate ao leite, caramelo e nozes. Vem da Mogiana Paulista, onde a altitude e a colheita tardia dão ao grão o açúcar que sustenta a xícara sem precisar de nada.",
       "custom_fields": {
+        "notas": "chocolate ao leite, caramelo, nozes",
         "regiao": "Mogiana Paulista",
+        "produtor": "Vários produtores (placeholder)",
+        "fazenda": "Vários sítios da Mogiana (placeholder)",
+        "altitude": "900–1.100 m (placeholder)",
+        "variedade": "Mundo Novo, Catuaí (placeholder)",
         "processo": "natural",
         "torra": "média",
-        "notas": "chocolate ao leite, caramelo, nozes"
+        "sca": "82 (placeholder)"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "O Alvorada é um blend, e um blend tem mais de um dono: ele nasce de produtores da Mogiana Paulista que entregam à mesma cooperativa e colhem tarde, quando o grão já carrega o açúcar que sustenta a xícara. (placeholder — os nomes e a história das famílias ainda não foram escritos.)"
+        }
+      ],
       "options": [
         {
           "name": "Moagem",
@@ -141,16 +173,30 @@
       "title": "Forge Serra do Caparaó",
       "subtitle": "Microlote single origin",
       "photo": "serra-do-caparao.png",
+      "photos": [
+        "serra-do-caparao.png",
+        "serra-do-caparao-historia-1.png",
+        "serra-do-caparao-historia-2.png",
+        "serra-do-caparao-historia-3.png"
+      ],
       "description": "Um microlote da Serra do Caparaó, no Espírito Santo, a 1.200 metros. Catuaí amarelo, lavado, torra clara: mel, maçã verde e um floral que aparece quando a xícara esfria um pouco. 86 pontos SCA.",
       "custom_fields": {
+        "notas": "mel, maçã verde, floral",
         "regiao": "Serra do Caparaó (ES)",
+        "produtor": "a definir (placeholder)",
+        "fazenda": "a definir (placeholder)",
         "altitude": "1.200 m",
         "variedade": "Catuaí amarelo",
         "processo": "lavado",
         "torra": "clara",
-        "notas": "mel, maçã verde, floral",
         "sca": "86"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "O microlote vem da Serra do Caparaó, no Espírito Santo, a 1.200 metros, onde o Catuaí amarelo amadurece devagar e é lavado no mesmo dia da colheita. (placeholder — falta o nome do produtor e da propriedade.)"
+        }
+      ],
       "options": [
         {
           "name": "Moagem",
@@ -187,13 +233,30 @@
       "title": "Forge Cerrado Mineiro",
       "subtitle": "Denominação de origem",
       "photo": "cerrado-mineiro.png",
+      "photos": [
+        "cerrado-mineiro.png",
+        "cerrado-mineiro-historia-1.png",
+        "cerrado-mineiro-historia-2.png",
+        "cerrado-mineiro-historia-3.png"
+      ],
       "description": "Do Cerrado Mineiro, a primeira denominação de origem do café brasileiro. Natural, torra média: chocolate 70%, avelã e um fundo de cana que fica na boca. O café que combina com qualquer coisa que você já tenha na despensa.",
       "custom_fields": {
+        "notas": "chocolate 70%, avelã, cana",
         "regiao": "Cerrado Mineiro",
+        "produtor": "Cooperativa do Cerrado (placeholder)",
+        "fazenda": "a definir (placeholder)",
+        "altitude": "1.000 m (placeholder)",
+        "variedade": "Catuaí vermelho (placeholder)",
         "processo": "natural",
         "torra": "média",
-        "notas": "chocolate 70%, avelã, cana"
+        "sca": "83 (placeholder)"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "O Cerrado Mineiro foi a primeira denominação de origem do café brasileiro: a região responde por ele com um selo, e o lote chega pela cooperativa que reúne os sítios do alto. (placeholder — falta escolher de qual produtor o lote desta safra vem.)"
+        }
+      ],
       "options": [
         {
           "name": "Moagem",
@@ -261,12 +324,30 @@
       "title": "Forge Noturno",
       "subtitle": "Blend intenso",
       "photo": "noturno.png",
+      "photos": [
+        "noturno.png",
+        "noturno-historia-1.png",
+        "noturno-historia-2.png",
+        "noturno-historia-3.png"
+      ],
       "description": "Torra escura, feita para o leite e para o espresso curto. Cacau, melaço e especiarias; corpo alto e amargor limpo. É o café que não some debaixo de meio litro de leite.",
       "custom_fields": {
+        "notas": "cacau, melaço, especiarias",
+        "regiao": "Sul de Minas e Mogiana (placeholder)",
+        "produtor": "Vários produtores (placeholder)",
+        "fazenda": "Vários sítios (placeholder)",
+        "altitude": "850–1.050 m (placeholder)",
+        "variedade": "Mundo Novo, Obatã (placeholder)",
         "processo": "natural",
         "torra": "escura",
-        "notas": "cacau, melaço, especiarias"
+        "sca": "81 (placeholder)"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "O Noturno é feito para o leite, e por isso é montado: grãos do Sul de Minas e da Mogiana entram na mesma torra escura até o corpo aguentar meio litro de leite sem sumir. (placeholder — falta a história dos sítios de origem.)"
+        }
+      ],
       "options": [
         {
           "name": "Moagem",
@@ -338,12 +419,30 @@
       "title": "Forge Descafeinado",
       "subtitle": "Swiss Water",
       "photo": "descafeinado.png",
+      "photos": [
+        "descafeinado.png",
+        "descafeinado-historia-1.png",
+        "descafeinado-historia-2.png",
+        "descafeinado-historia-3.png"
+      ],
       "description": "Descafeinado pelo processo Swiss Water — água, tempo e paciência, sem solvente. Torra média, biscoito e chocolate. O café das nove da noite que continua sendo café.",
       "custom_fields": {
+        "notas": "biscoito, chocolate",
+        "regiao": "Sul de Minas (placeholder)",
+        "produtor": "a definir (placeholder)",
+        "fazenda": "a definir (placeholder)",
+        "altitude": "1.000 m (placeholder)",
+        "variedade": "Catuaí amarelo (placeholder)",
         "processo": "Swiss Water",
         "torra": "média",
-        "notas": "biscoito, chocolate"
+        "sca": "80 (placeholder)"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "O grão é do Sul de Minas e viaja antes de torrar: o processo Swiss Water tira a cafeína com água e tempo, sem solvente, e devolve um café que continua sendo café. (placeholder — falta o nome do produtor e da unidade de descafeinação.)"
+        }
+      ],
       "options": [
         {
           "name": "Moagem",
@@ -380,17 +479,30 @@
       "title": "Forge Edição do Produtor",
       "subtitle": "Sítio Boa Vista · Dona Cida · Mantiqueira de Minas",
       "photo": "edicao-do-produtor.png",
+      "photos": [
+        "edicao-do-produtor.png",
+        "edicao-do-produtor-historia-1.png",
+        "edicao-do-produtor-historia-2.png",
+        "edicao-do-produtor-historia-3.png"
+      ],
       "description": "Dona Cida colhe no Sítio Boa Vista, na Mantiqueira de Minas, e seca o café em terreiro suspenso por catorze dias. Bourbon amarelo, honey, 88 pontos SCA: jasmim, pêssego e rapadura. Lote numerado, e quando acaba, acabou.",
       "custom_fields": {
+        "notas": "jasmim, pêssego, rapadura",
         "regiao": "Mantiqueira de Minas",
         "produtor": "Dona Cida",
         "fazenda": "Sítio Boa Vista",
+        "altitude": "1.250 m (placeholder)",
         "variedade": "Bourbon amarelo",
         "processo": "honey",
         "torra": "clara",
-        "notas": "jasmim, pêssego, rapadura",
         "sca": "88"
       },
+      "content_sections": [
+        {
+          "title": "Quem plantou",
+          "body": "Dona Cida colhe no Sítio Boa Vista, na Mantiqueira de Minas, e seca o café em terreiro suspenso por catorze dias — cada lote sai numerado e assinado por ela. Quando acaba, acabou: a edição seguinte é outra colheita e outro número."
+        }
+      ],
       "options": [
         {
           "name": "Moagem",

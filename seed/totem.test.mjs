@@ -20,6 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { createMinted } from './minted.mjs';
 import { MEDIA_DIR, counterFieldsFor, expandSkus, mergeMetadata, productMetadata, skuCode, totem } from './totem.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -354,4 +355,52 @@ test('the coupon is the frozen code at the frozen ten percent', () => {
   assert.equal(totem.promotions.coupon.code, 'PRIMEIROCAFE');
   assert.equal(totem.promotions.coupon.percent_bp, 1000);
   assert.match(totem.promotions.coupon.code, /^[A-Za-z0-9._-]+$/, 'promotion.code.add refuses anything else');
+});
+
+// ── ⛔⛔ A47 · THE SEAL THAT ERASED THE COFFEE CATALOGUE — the control for the fix ────────────────────────
+//
+// The merge above was already right and already tested. What was missing was the OTHER half: the caller
+// handed it a bag it had never been told, and `{}` is not a bag — it is an absence wearing one.
+//
+// Measured on the pre-seed box, 2026-09-02:
+//   forge-alvorada created 00:31:44.469955 with nine custom fields + subtitle
+//   catalog.projection received it at 00:31:45.090644           ← 620 ms later
+//   sealTheCoffees issued catalog.product.updated at 00:31:45.012070  ← 78 ms BEFORE the projection had it
+//   the bag on the box today: {"tag_balcao": "blend"}  ·  everything else gone
+//
+// So the registry now carries the bag beside the id, and a caller with no bag REFUSES TO WRITE. These two
+// tests are the fix and its control.
+
+test('★★ the registry carries the bag the product was CREATED with, not just its id', () => {
+  const minted = createMinted();
+  minted.rememberProduct('forge-alvorada', 'prod_1', { regiao: 'Mogiana Paulista', torra: 'média' });
+  assert.deepEqual(minted.metadataOf('forge-alvorada'), { regiao: 'Mogiana Paulista', torra: 'média' });
+  // …and the seal merged into THAT keeps the fields the catalogue step wrote.
+  const merged = mergeMetadata(minted.metadataOf('forge-alvorada'), { tag_balcao: 'blend' });
+  assert.deepEqual(merged, { regiao: 'Mogiana Paulista', torra: 'média', tag_balcao: 'blend' });
+});
+
+test('⛔ THE CONTROL — a product this run made whose bag was NOT registered answers null, never {}', () => {
+  // This is the exact line that shipped: `known.set(handle, { id, metadata: {} })`. `null` is what makes the
+  // seal refuse; `{}` is what made it write a deletion and report success.
+  const minted = createMinted();
+  minted.rememberProduct('forge-alvorada', 'prod_1'); // id only — the old call shape
+  assert.equal(minted.metadataOf('forge-alvorada'), null, 'an unregistered bag must be UNKNOWN, not empty');
+  // …and merging the seal into that absence is exactly the erasure. Proven, so nobody re-introduces it.
+  assert.deepEqual(mergeMetadata({}, { tag_balcao: 'blend' }), { tag_balcao: 'blend' });
+});
+
+test('the registry keeps the SKU rows of a product too, with the bag each was sent with', () => {
+  // `markSubscribable` needs both: the id to write to, and the bag not to erase.
+  const minted = createMinted();
+  minted.rememberSkusOf('forge-alvorada', [{ code: 'a-1', id: 'sku_1', metadata: {} }]);
+  assert.deepEqual(minted.skusOf('forge-alvorada'), [{ code: 'a-1', id: 'sku_1', metadata: {} }]);
+  assert.equal(minted.skusOf('forge-noturno'), null, 'a product this run did not make is null, not []');
+});
+
+test('the registry hands back COPIES — a caller cannot mutate what the run recorded', () => {
+  const minted = createMinted();
+  minted.rememberProduct('h', 'id_1', { a: 1 });
+  minted.metadataOf('h').a = 99;
+  assert.equal(minted.metadataOf('h').a, 1);
 });

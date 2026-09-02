@@ -11,11 +11,14 @@
 //     Asset Library grows without anybody deciding it should.
 
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import {
   captionFor,
+  planStoryPlaceholders,
+  pointSizeFor,
+  storyCaptionFor,
   colourFor,
   fileNameFor,
   magickArgs,
@@ -97,6 +100,52 @@ test('the mobile hero is its own frame, not a crop of the desktop one', () => {
 test('every planned placeholder is on disk — the generator was run and its output committed', () => {
   // A generator whose output is not committed is a bench that comes up with empty slots on a clone.
   for (const item of planPlaceholders(['forge', 'outlet', 'cafe'], new Set())) {
+    assert.ok(existsSync(join(PLACEHOLDER_DIR, item.file)), `missing ${item.file}`);
+  }
+});
+
+// ── ★ A50 · THE COFFEE'S STORY FRAMES — the second family, on a different axis ───────────────────────────
+//
+// The rows above are the WINDOW's slots, one set per shop. These are per PRODUCT: eighteen photographs the
+// dataset declares and `seed/photos/` does not have. *"prefiro que suba algo errado do que não subir, senão
+// fica difícil eu saber o que preciso criar"* — so they are born as stand-ins that say what they are.
+
+test('★★ the story plan is DERIVED from the dataset, never typed — a seventh coffee gets its three', () => {
+  const catalog = JSON.parse(readFileSync(join(PLACEHOLDER_DIR, '..', 'catalog.json'), 'utf8'));
+  const plan = planStoryPlaceholders(catalog.products, new Set());
+  assert.equal(plan.length, catalog.products.length * 3, 'not three story frames per coffee');
+  // …and one more coffee is three more stand-ins, with no edit to the generator.
+  const grown = planStoryPlaceholders([...catalog.products, { handle: 'x', photo: 'x.png' }], new Set());
+  assert.equal(grown.length, plan.length + 3);
+});
+
+test('★★ a story frame whose REAL photograph is on disk is NOT planned', () => {
+  // The destructive failure in this family: painting a placeholder over the picture the merchant produced.
+  const plan = planStoryPlaceholders([{ handle: 'a', photo: 'alvorada.png' }], new Set(['alvorada-historia-1.png']));
+  assert.equal(plan.length, 2);
+  assert.equal(plan.some((p) => p.real === 'alvorada-historia-1.png'), false);
+});
+
+test('★ the caption says PLACEHOLDER and names the FILE the merchant has to produce', () => {
+  // The file name — not the slot — is the gesture that makes the stand-in disappear, so it is what the
+  // picture has to say. And a curator browsing the library reads a list, not a wall of grey rectangles.
+  const [item] = planStoryPlaceholders([{ handle: 'a', photo: 'alvorada.png' }], new Set());
+  assert.match(storyCaptionFor(item), /^PLACEHOLDER · alvorada-historia-1\.png · 1208x906$/);
+});
+
+test('⛔ the caption FITS INSIDE the picture — the first version ran off both edges', () => {
+  // A stand-in whose words are cut in half fails at the one job it has. The size is bounded by the box AND
+  // by the width the caption needs.
+  const long = 'PLACEHOLDER · edicao-do-produtor-historia-1.png · 1208x906';
+  const size = pointSizeFor(long, { width: 1208, height: 906 });
+  assert.ok(size * long.length * 0.6 <= 1208, `${size}pt overflows a 1208px frame`);
+  // …and a short caption in a big box is still bounded by the box, not blown up to fill it.
+  assert.equal(pointSizeFor('x', { width: 1208, height: 906 }), Math.round(906 / 12));
+});
+
+test('every story stand-in the dataset needs is on disk — the generator was run and its output committed', () => {
+  const catalog = JSON.parse(readFileSync(join(PLACEHOLDER_DIR, '..', 'catalog.json'), 'utf8'));
+  for (const item of planStoryPlaceholders(catalog.products, new Set(readdirSync(join(PLACEHOLDER_DIR, '..', 'photos'))))) {
     assert.ok(existsSync(join(PLACEHOLDER_DIR, item.file)), `missing ${item.file}`);
   }
 });

@@ -41,10 +41,51 @@ export function createMinted() {
   const products = new Map();
   /** sku code -> sku id */
   const skus = new Map();
+  /** ★★ product handle -> the metadata bag this run SENT when it created the product, and the sku rows it
+   *  got back. See `rememberProduct`: the registry used to hold ids only, and that gap cost the six coffees
+   *  their nine custom fields. */
+  const bags = new Map();
+  const skusByProduct = new Map();
   return {
-    /** Register a product this run created. Call it with what the COMMAND returned, never with a read. */
-    rememberProduct(handle, id) {
-      if (handle && id) products.set(handle, id);
+    /**
+     * Register a product this run created. Call it with what the COMMAND returned, never with a read.
+     *
+     * ⛔⛔ `bag` IS NOT OPTIONAL BOOKKEEPING — IT IS THE HALF WHOSE ABSENCE ERASED THE COFFEE CATALOGUE.
+     *
+     * `seed/totem.mjs` asks this registry for a coffee the catalogue step just created, gets an id, and then
+     * MERGES its counter seal into the product's bag before writing it back with `catalog.product.update` —
+     * which replaces `metadata` WHOLESALE. With no bag here it merged into `{}`, and the update erased the
+     * nine custom fields the product had been born with 540 ms earlier. Measured on the pre-seed box
+     * (2026-09-02): every coffee created at 00:31:44.47 with its fields, updated at 00:31:45.01, and left
+     * holding `{"tag_balcao": …}` and nothing else.
+     *
+     * The registry is the ONLY place that can answer this honestly during the race: the read cannot (the
+     * projection had not received the product — measured, 620 ms of lag), and a caller that guesses `{}` is
+     * asserting something it was never told. So the bag travels with the id, and a caller that gets no bag
+     * must refuse to write rather than assume an empty one.
+     */
+    rememberProduct(handle, id, bag) {
+      if (!handle || !id) return;
+      products.set(handle, id);
+      if (bag && typeof bag === 'object' && !Array.isArray(bag)) bags.set(handle, { ...bag });
+    },
+    /** The metadata bag this run created the product WITH, or `null` for a product it did not create — and
+     *  `null` means "I was not told", never "it is empty". The difference is the whole point. */
+    metadataOf(handle) {
+      return bags.has(handle) ? { ...bags.get(handle) } : null;
+    },
+    /** Register the SKU rows of one product, in the order the create returned them, with the bag each was
+     *  sent with. `markSubscribable` needs both: the id to write to, and the bag not to erase. */
+    rememberSkusOf(handle, rows) {
+      if (!handle || !Array.isArray(rows) || rows.length === 0) return;
+      skusByProduct.set(
+        handle,
+        rows.filter((r) => r?.id).map((r) => ({ code: r.code, id: r.id, metadata: { ...(r.metadata ?? {}) } })),
+      );
+    },
+    /** This product's SKUs as this run made them, or `null` for a product it did not create. */
+    skusOf(handle) {
+      return skusByProduct.has(handle) ? skusByProduct.get(handle).map((r) => ({ ...r })) : null;
     },
     /** Register a sku this run created. */
     rememberSku(code, id) {
