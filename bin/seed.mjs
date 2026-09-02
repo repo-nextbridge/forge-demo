@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 // The OUTLET store's own content (D2) — a module of its own, handed the port this file already built.
 // It lives beside the data it drives rather than in here, so two slices can fill two stores without
 // meeting in one file.
-import { seedCoffee } from '../seed/coffee.mjs';
+import { expectedMetadata, expectedPhotos, seedCoffee } from '../seed/coffee.mjs';
 // The COMMERCE pass (pre-seed) — what happens AFTER there is a catalogue: the notification channels silenced
 // while the box fills, the reviews through whichever door each shop deserves, and one live order per selling
 // store. It creates no logistics and installs no app: those belong to the filler, and this consumes them.
@@ -35,12 +35,15 @@ import { seedCommerce, silenceBuyerChannels } from '../seed/commerce.mjs';
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
 import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
-import { planRepoint, reuseKey, sha256 } from '../seed/media.mjs';
+import { planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs';
 // WHICH SKUs STILL NEED STOCKING — a function, and it takes BOTH reads on purpose. See the file: the version
 // that trusted `stock_levels` alone could not stock a product that had never been stocked, in silence.
 import { createMinted, unresolved } from '../seed/minted.mjs';
 import { planStock } from '../seed/stock.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
+// A13 — who really names a tenant's bootstrap store. Imported for ONE reason: so the failure below says the
+// truth instead of repeating a claim from an array that box.json declares superseded.
+import { bootstrapStoreOf, topologyDisagreement } from '../seed/topology.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
 // The COUNTER (T2·S2) — the store the totem serves. A module of its own beside its data, like the two above,
 // and it runs AFTER seedCoffee for a reason the kernel enforces: six of the twenty-one things it puts on sale
@@ -367,9 +370,21 @@ async function stores() {
       // the useful thing this script can do — its absence means the bootstrap step was skipped, and every
       // command below would then fail for a reason that names something else.
       if (!found) {
+        // ⛔ A13 — AND THE MESSAGE NAMES `seed/box.json`, NOT THIS ARRAY. Measured: `bin/box-up.sh:194` reads
+        // the bootstrap handle with `jq … select(.bootstrap) | .handle` FROM box.json and never from here,
+        // `.env.example` agrees with it, and for `forgeco` the two files disagree — this array says
+        // "outlet" and the box is built with "forge". The old sentence printed THIS handle and prescribed a
+        // one-shot that would never create it: a reader sent to verify something that was fine.
+        const box = JSON.parse(readFileSync(join(SEED, 'box.json'), 'utf8'));
+        const real = bootstrapStoreOf(box, tenant);
+        const clash = topologyDisagreement(box, catalog.stores, tenant);
         fail(
-          `the bootstrap store "${store.handle}" does not exist. Run the one-shot first:\n` +
-            '    docker compose run --rm kernel node dist/provision-ref.js',
+          `the bootstrap store this catalogue calls "${store.handle}" does not exist.\n` +
+            (clash ? `  ⚠️ AND THE TWO FILES DISAGREE — ${clash.sentence}\n` : '') +
+            `  What the box is actually built with is ${real ? `"${real.handle}"` : 'not declared in seed/box.json'}` +
+            ', and it is created by the one-shot below:\n' +
+            '    docker compose run --rm kernel node dist/provision-ref.js \\\n' +
+            `      (bin/box-up.sh passes --handle from seed/box.json${real ? `, i.e. "${real.handle}"` : ''})`,
         );
       }
       // …but what the catalogue DECLARES about it is still this file's promise to keep. `provision-ref`
@@ -580,8 +595,8 @@ const contentIndex = (() => {
 
 //
 // @param file  a bare name (resolved inside `seed/photos/`) or an absolute path.
-async function upload(file, { library = true } = {}) {
-  const path = file.startsWith('/') ? file : join(SEED, 'photos', file);
+async function upload(file, { library = true, dir = 'photos' } = {}) {
+  const path = file.startsWith('/') ? file : join(SEED, dir, file);
   const filename = path.slice(path.lastIndexOf('/') + 1);
   const mime = mimeOf(filename);
   if (!mime) fail(`upload(${path}): this seed does not know the mime of "${filename}".`);
@@ -660,23 +675,22 @@ async function products() {
   // twice. `products_admin` is the tenant's WHOLE catalogue, drafts and unpublished included, and no store to
   // scope by — which is exactly the question "did I already make this?".
   const catalogue = await readAll('products_admin');
-  const existing = new Set(catalogue.map((p) => p.handle));
+  const existing = new Map(catalogue.map((p) => [p.handle, p]));
   // The ids too: re-pointing a photograph needs the product, and `products_admin` is the only read here
   // that answers for a product which may not be published anywhere yet.
   existingIds = new Map(catalogue.map((p) => [p.handle, p.product_id ?? p.id]));
-  const photos = new Set(readdirSync(join(SEED, 'photos')));
+  const disk = photosOnDisk();
 
   for (const product of catalog.products) {
     if (existing.has(product.handle)) {
-      // ★ ALREADY THERE IS NOT THE SAME AS UNCHANGED. Its photograph may have been re-cut since; the step
-      // below is the only thing in this file that ever looks at a product it did not just create.
-      await repointMedia(product, photos);
+      // ★ ALREADY THERE IS NOT THE SAME AS UNCHANGED. Its photographs may have been re-cut since and its
+      // catalogue row may have grown fields; these two steps are the only thing in this file that ever
+      // looks at a product it did not just create.
+      await repointMedia(product, disk);
+      await reconcileContent(product, existing.get(product.handle));
       continue;
     }
-    if (!photos.has(product.photo)) {
-      fail(`product ${product.handle} names photo "${product.photo}", which seed/photos/ does not have.`);
-    }
-    const providerKey = await upload(product.photo);
+    const providerKeys = await uploadPhotoList(product, disk);
 
     // The SKUs, expanded from the option axes the catalogue declares. `option_values` is what ties a SKU to
     // its point on the grid, and `code` is derived from the handle and the values so a re-run is diffable
@@ -701,8 +715,21 @@ async function products() {
       skus,
       // The `cf.*` vocabulary, as the product's metadata — which is where a declared custom field's value
       // lives. Undeclared keys would be accepted silently, which is why step 2 runs first.
-      metadata: { ...product.custom_fields, ...(product.subtitle ? { subtitle: product.subtitle } : {}) },
-      media: [{ provider_key: providerKey, kind: 'image', position: 0, alt: product.title }],
+      metadata: expectedMetadata(product),
+      // ★ THE STORY THE MERCHANT WROTE — `content_sections` is what the coffee page draws under "Quem
+      // plantou" and what the shoe shop's tabs draw. Sent only when the dataset carries one, exactly as
+      // `seed/outlet.mjs` does it, because an empty list is a section the page would have to know to hide.
+      ...(product.content_sections?.length ? { content_sections: product.content_sections } : {}),
+      // ⚠️ BY POSITION AND NOT BY ROLE — `PdpCoffee.tsx` splits the list and draws `media[0]` as the bag and
+      // `media[1..]` as the story. `role` is carried too because the outlet's products do and the admin
+      // reads it, but nothing in the coffee fork looks at it.
+      media: providerKeys.map((provider_key, index) => ({
+        provider_key,
+        kind: 'image',
+        role: index === 0 ? 'cover' : 'gallery',
+        position: index,
+        alt: product.title,
+      })),
     });
     // ★★ THE ID IS REMEMBERED THE MOMENT IT IS MINTED, and this line is a fix, not bookkeeping.
     //
@@ -714,61 +741,145 @@ async function products() {
     existingIds.set(product.handle, out.product_id ?? out.id);
     // ★★ AND THE SKU IDS, for the same reason and the same race — see `stock()` below. `catalog.product.create`
     // returns them in the order the skus were sent, which is the order this array was built in.
-    minted.rememberProduct(product.handle, out.product_id ?? out.id);
+    //
+    // ⛔ AND THE BAG GOES WITH THEM. See `seed/minted.mjs`: a later module merges into this product's
+    // metadata and writes it back with a command that REPLACES the column, so a registry that answered
+    // "id, and I do not know the bag" made that module guess `{}` and erase nine fields. What was SENT is
+    // the only honest answer while the projection is still catching up.
+    minted.rememberProduct(product.handle, out.product_id ?? out.id, expectedMetadata(product));
     for (const [i, sku] of skus.entries()) minted.rememberSku(sku.code, out.sku_ids?.[i]);
+    minted.rememberSkusOf(
+      product.handle,
+      // `metadata: {}` and not "unknown": this file just created these SKUs and sent no bag with them.
+      skus.map((sku, i) => ({ code: sku.code, id: out.sku_ids?.[i], metadata: {} })),
+    );
     log(`product ${product.handle} — created with ${skus.length} sku(s) (${out.product_id ?? '?'})`);
   }
 }
 
 
+/** The two folders a declared photograph can come from, read once. `photos/` is the merchant's; the
+ *  stand-ins in `placeholder-media/` fill the frames whose real file has not been produced yet (A50). */
+function photosOnDisk() {
+  return {
+    photos: new Set(readdirSync(join(SEED, 'photos'))),
+    placeholders: new Set(readdirSync(join(SEED, 'placeholder-media'))),
+  };
+}
+
+async function uploadPhotoList(product, disk) {
+  const keys = [];
+  for (const name of expectedPhotos(product)) {
+    const found = resolvePhoto(name, disk);
+    if (!found) {
+      fail(
+        `product ${product.handle} declares the photograph "${name}", and neither it nor a stand-in is on ` +
+          `disk.\n  Looked in seed/photos/${name} and in seed/placeholder-media/ for its generated ` +
+          'stand-in.\n  Either drop the real file into seed/photos/ or run `node bin/make-placeholders.mjs`.',
+      );
+    }
+    keys.push(await upload(found.file, { dir: found.dir }));
+  }
+  if (keys.length === 0) fail(`product ${product.handle} declares no photograph at all.`);
+  return keys;
+}
+
 /**
- * ★★ THE PHOTOGRAPH OF A PRODUCT THAT ALREADY EXISTS — the half `products()` did not have.
+ * ★★ THE PHOTOGRAPHS OF A PRODUCT THAT ALREADY EXISTS — the half `products()` did not have, now for the
+ * whole ORDERED LIST rather than for one picture.
  *
  * A product is created ONCE, with its media inline, and from then on this file never looked at its pictures
  * again. So when the six coffee photographs were re-cut (1024x1536 -> 733x1266, less transparent margin)
  * re-running the seed changed nothing at all, and the shop kept serving the old frame. That is not the seed
- * being idempotent; it is the seed being blind.
+ * being idempotent; it is the seed being blind. The same blindness would now hide the three story frames
+ * from every coffee that existed before the dataset grew them.
  *
- * The desired state is the FILE ON DISK. `upload()` resolves it to a provider_key — the existing one when
- * the bytes match, a new one when they do not (see the content index above). If the product's current
- * reference already names that key, nothing happens and no command is spent. If it names another, the new
- * one is ATTACHED FIRST and the old one detached after: for the width of one command the product carries
- * two pictures, which is a strictly better failure than carrying none.
+ * The desired state is the FILES ON DISK, in the order the dataset lists them. `planMediaList` decides what
+ * to attach and what to drop, and it treats a key attached at the WRONG POSITION as work to do: the buy box
+ * takes `photos[0]`, so a list that merely CONTAINS the bag is not the same as a list that starts with it.
+ *
+ * ⚠️ ATTACH BEFORE DETACH: for the width of a few commands the product carries too many pictures, which is
+ * a strictly better failure than carrying none.
  *
  * ⚠️ THE OLD ASSET IS NOT DELETED, deliberately. Detaching drops the REFERENCE; the library row and the
  * bytes stay. An orphan costs a few MB on a demo box; deleting is destructive and irreversible, and this
  * script has no way to know who else points at those bytes.
  */
-async function repointMedia(product, photos) {
+async function repointMedia(product, disk) {
   const id = existingIds.get(product.handle);
   if (!id) return; // never created here — nothing this file knows how to re-point
-  if (!product.photo) return;
-  if (!photos.has(product.photo)) {
-    fail(`product ${product.handle} names photo "${product.photo}", which seed/photos/ does not have.`);
-  }
+  const names = expectedPhotos(product);
+  if (names.length === 0) return;
 
-  const want = await upload(product.photo);
+  const want = await uploadPhotoList(product, disk);
   const refs = rows(await read('product_media', { product_id: id }));
-  const plan = planRepoint(refs, want);
-  if (!plan.attach && plan.detach.length === 0) {
-    log(`product ${product.handle} — already there, photo unchanged`);
+  const plan = planMediaList(refs, want);
+  if (plan.attach.length === 0 && plan.detach.length === 0) {
+    log(`product ${product.handle} — already there, ${want.length} photograph(s) unchanged`);
     return;
   }
 
-  if (plan.attach) {
+  for (const item of plan.attach) {
     await command('catalog.media.attach', {
       owner_type: 'product',
       owner_id: id,
-      provider_key: want,
+      provider_key: item.provider_key,
       kind: 'image',
-      position: 0,
+      role: item.position === 0 ? 'cover' : 'gallery',
+      position: item.position,
       alt: product.title,
     });
   }
   for (const mediaId of plan.detach) await command('catalog.media.detach', { media_id: mediaId });
   log(
-    `product ${product.handle} — photo RE-POINTED (${plan.detach.length} old reference(s) detached; ` +
-      'the old assets are KEPT, not deleted)',
+    `product ${product.handle} — photographs RE-POINTED (${plan.attach.length} attached, ` +
+      `${plan.detach.length} old reference(s) detached; the old assets are KEPT, not deleted)`,
+  );
+}
+
+/**
+ * ⛔ THE CATALOGUE ROW OF A PRODUCT THAT ALREADY EXISTS — and this step is why A47 was possible.
+ *
+ * `products()` writes a product's fields ONCE, at creation. Everything the dataset grew afterwards — seven
+ * custom fields that became nine, the "Quem plantou" section that did not exist — reached a fresh box and
+ * NOTHING ELSE. On a bench that already carried the six coffees the seed reported success and changed
+ * nothing, which is indistinguishable from the dataset never having been edited.
+ *
+ * ⚠️ AND IT MERGES, NEVER REPLACES. `catalog.product.update` coalesces `metadata` wholesale, and by the time
+ * this runs a coffee may legitimately carry keys this file did not write — `tag_balcao`, the counter's seal
+ * (`seed/totem.mjs`). Sending the dataset's bag alone would erase it, which is the mirror image of the
+ * defect this whole slice exists to fix. What the dataset declares WINS on its own keys and touches no other.
+ *
+ * Idempotent BY VALUE: a product whose row already says this costs no command and writes no audit line.
+ */
+async function reconcileContent(product, current) {
+  const id = existingIds.get(product.handle);
+  if (!id) return;
+  const want = expectedMetadata(product);
+  const bag = current?.metadata && typeof current.metadata === 'object' ? current.metadata : {};
+  const drifted = Object.entries(want).filter(([key, value]) => bag[key] !== value);
+
+  const sections = product.content_sections ?? [];
+  const haveSections = Array.isArray(current?.content_sections) ? current.content_sections : [];
+  const sectionsDrifted =
+    JSON.stringify(sections.map((x) => [x.title, x.body])) !==
+    JSON.stringify(haveSections.map((x) => [x.title, x.body]));
+
+  if (drifted.length === 0 && !sectionsDrifted) return;
+  const merged = { ...bag, ...want };
+  await command('catalog.product.update', {
+    product_id: id,
+    ...(drifted.length > 0 ? { metadata: merged } : {}),
+    ...(sectionsDrifted ? { content_sections: sections } : {}),
+  });
+  // ★★ WHOEVER WRITES REGISTERS — the rule `seed/minted.mjs` states, and this line is not optional. The
+  // counter's seal, a few modules later, merges into this product's bag and writes it back with a command
+  // that REPLACES the column; if it read the projection it would be reading a row this write has not
+  // reached yet. Registering what was written closes exactly that window.
+  minted.rememberProduct(product.handle, id, merged);
+  log(
+    `product ${product.handle} — catalogue row RECONCILED (${drifted.length} field(s): ` +
+      `${drifted.map(([k]) => k).join(', ') || 'none'}${sectionsDrifted ? ' · content_sections' : ''})`,
   );
 }
 
