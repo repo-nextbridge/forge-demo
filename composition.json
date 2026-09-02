@@ -75,6 +75,10 @@
       "package": "@forge/ext-channel-whatsapp"
     },
     {
+      "id": "chrome",
+      "package": "@forgecommerce/ext-chrome"
+    },
+    {
       "id": "feed",
       "package": "@forgecommerce/ext-feed"
     },
@@ -138,8 +142,7 @@
   ],
   "notComposed": {
     "admin-dashboard": "SOLDERED, not optional. `apps/admin` imports it directly (a non-generated source under apps/*/src), so composing it from a list would register it twice — the oven refuses it by name with rule `hand-welded`. It is in every image already, including this box's; being off this list is the opposite of being absent.",
-    "demo-data": "SOLDERED, same rule and same proof: `apps/api/src/action-registry.ts` imports its populate/wipe/adopt-legacy by hand. It is also `surface: 'platform'` — a system app the tenant does not operate — and it is what drives this box's own seeding. Off the list, in the image.",
-    "chrome": "NOT ON THE PRODUCT'S OOTB LIST. `@forgecommerce/ext-chrome` landed in the monorepo on 02/09 (b61768dc2, the checkout header/footer slots) and was never added to `extensions/composition.base.json` — so no list anywhere composes it, and it renders nowhere, in Staging as much as here. An instance may carry LESS than the product offers or MORE than it needs, but it may not be the first place an app of the product is ever composed: that decision belongs upstream, on the base list, where every image gets it. Reported to the Forge side; the moment it lands on the base list this file goes red until it is on `apps`."
+    "demo-data": "SOLDERED, same rule and same proof: `apps/api/src/action-registry.ts` imports its populate/wipe/adopt-legacy by hand. It is also `surface: 'platform'` — a system app the tenant does not operate — and it is what drives this box's own seeding. Off the list, in the image."
   },
   "instanceApps": [
     {
