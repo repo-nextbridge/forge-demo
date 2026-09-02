@@ -317,6 +317,16 @@ export async function silenceBuyerChannels({ expect, command, read, log, fail })
  * THE COMMERCE PASS — the reviews, the live order, and the re-arm. Runs in the **window** phase, because
  * every one of those needs what the one-shots put there: the massive catalogue a cart can hold, the
  * logistics `place_order` demands, and the payment app that answers for a method.
+ *
+ * ⭐ THE LIVE ORDER NEEDS NO FENCE OF ITS OWN, because the sequence already is one: the channels were
+ * silenced at the end of the CURATED phase and are re-armed at the end of this one, so everything between —
+ * the one-shots' hundreds of dated orders and this single live one — is placed in silence. That is the whole
+ * reason the silencing was moved to the earlier phase.
+ *
+ * ⚠️ AND THE ONE WAY TO BREAK IT is to run `--phase window` ALONE against a box whose curated phase was not
+ * run in this cycle. Then the channels are armed, and the live order mails a real person. The sequence in
+ * the README never does that; a human debugging one phase might. Said here because the failure is silent to
+ * whoever causes it and loud to whoever receives it.
  */
 export async function seedCommerce({ expect, command, read, log, fail, post }) {
   const stores = await provenStores({ expect, read, log, fail });
@@ -331,6 +341,7 @@ export async function seedCommerce({ expect, command, read, log, fail, post }) {
   try {
     await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
+    await awaitQueueDrained({ read, log });
   } finally {
     const on = channelPlan(stores, { enabled: true });
     await toggleChannels(command, on);
@@ -360,6 +371,41 @@ async function provenStores({ expect, read, log, fail }) {
   const stores = visible.filter((s) => expect.includes(s.handle));
   log(`commerce — credential proven for ${stores.map((s) => s.handle).join(', ')}`);
   return stores;
+}
+
+/**
+ * ⏳ WAIT FOR THE NOTIFICATION QUEUE BEFORE RE-ARMING — and the wait is part of the gesture, not a courtesy
+ * paid when the batch happens to be small.
+ *
+ * ⚠️ MY OWN MEASUREMENT SAYS THIS SHOULD NOT BE NEEDED, and it is here anyway. The enabled check is taken at
+ * EMIT, not at dispatch: an order placed while its channel was silenced produced no record even after the
+ * channel was re-armed and the dispatcher had seventy further seconds. By that rule, orders placed inside the
+ * fence can never mail, whenever the queue drains.
+ *
+ * But the cost of being wrong is asymmetric. If the rule is subtler than I measured — a second path, a retry,
+ * a future change — the price is real e-mail to a real person, and it cannot be un-sent; the price of waiting
+ * is a few seconds of a seed nobody is watching. And the assumption "the queue empties by now" is exactly
+ * what bit this wave once already, with 1466 items in it. So: wait, and say what was seen.
+ *
+ * It waits for the record count to hold STILL, not for a status vocabulary this file has not verified — a
+ * dispatched notification writes a row, so a count that stops growing is a dispatcher that stopped working.
+ */
+async function awaitQueueDrained({ read, log, polls = 6, waitMs = 2_000 }) {
+  const count = async () => ((await read('internal/notifications', { limit: 1 }))?.total ?? 0);
+  let last = await count();
+  let still = 0;
+  for (let i = 0; i < polls && still < 2; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    const now = await count();
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
+  log(
+    still >= 2
+      ? `commerce — notification queue still at ${last} record(s); safe to re-arm`
+      : `commerce — the queue was still moving after ${(polls * waitMs) / 1000}s (${last} records); ` +
+          're-arming anyway and saying so, rather than waiting forever',
+  );
 }
 
 /** One toggle per row. Every row passed through `assertSeedableChannel` when the plan was built. */
@@ -523,14 +569,28 @@ async function placeOneLiveOrder({ store, command, read, log }) {
     cart_id,
     postal_code: QUOTE_SEED_POSTAL_CODE,
   });
-  const option = quote?.options?.[0];
-  if (!option) return skip(`the store quotes no shipping (${quote?.reason ?? 'no options'})`);
-  const point = option.pickup_locations?.[0];
+  const options = quote?.options ?? [];
+  if (options.length === 0) return skip(`the store quotes no shipping (${quote?.reason ?? 'no options'})`);
 
-  const address = point
-    ? addressOfPickupPoint(point)
-    : skip('it delivers, and this proof has no address to deliver to') ?? null;
-  if (!address) return null;
+  // ⭐ CHOOSE BY INTENTION, NOT BY POSITION — and the first version of this chose `options[0]`.
+  //
+  // It passed every run on the isolated bench, where EVERY store had a pickup point and `[0]` happened to be
+  // it. On the real box the delivery methods sort first, `[0]` is a delivery option with no point, and the
+  // proof skipped in all four stores. Nothing about the code changed; the accident changed sides.
+  //
+  // ⚠️ AND IT IS THE SAME DEFECT THIS SLICE HAD JUST CRITICISED IN SOMEBODY ELSE'S FILE, on the same day:
+  // `demo-scenario.ts` picks its method with `order by id limit 1` — position instead of intention — and a
+  // ULID ordering handed it a pickup method it never wanted. I wrote the criticism and then wrote the defect.
+  // A selection that names what it wants cannot be turned by the order of the rows.
+  const pickupOption = options.find((o) => o.kind === 'pickup' && (o.pickup_locations ?? []).length > 0);
+  const deliveryOption = options.find((o) => o.kind !== 'pickup');
+  const option = pickupOption ?? deliveryOption;
+  if (!option) return skip('no option is either a usable pickup or a delivery');
+  const point = pickupOption ? pickupOption.pickup_locations[0] : undefined;
+
+  // A collected order carries the counter's OWN address, read from the kernel; a delivered one carries the
+  // declared address below, which is fiction and says so.
+  const address = point ? addressOfPickupPoint(point) : PROOF_DELIVERY_ADDRESS;
 
   await command(
     'cart.set_delivery',
@@ -583,6 +643,27 @@ function addressOfPickupPoint(point) {
 /** A destination only opens the quote; for a pickup-only store its value reaches nothing. Measured in the
  *  totem wave with three deliberately distant CEPs: one option, the same one, every time. */
 const QUOTE_SEED_POSTAL_CODE = '01310-100';
+
+/**
+ * Where the proof order is DELIVERED when the store does not collect.
+ *
+ * ⚠️ IT IS FICTION AND IT IS DECLARED HERE ON PURPOSE. The alternative was to reach for an address by
+ * position — the first row of somebody else's table, the first customer of the history — and that is the very
+ * habit this file just had to unlearn twice in one day. An address written down is a thing a reader can
+ * recognise as invented; an address fetched by position is one they will assume is real.
+ *
+ * It is a real street in São Paulo with a plausible postcode, and it belongs to nobody: the proof order is
+ * never shipped, and this bench sends its mail to `hi+…@forgecommerce.pro`, a box that exists.
+ */
+const PROOF_DELIVERY_ADDRESS = {
+  line1: 'Avenida Paulista',
+  number: '1000',
+  neighborhood: 'Bela Vista',
+  city: 'São Paulo',
+  region: 'SP',
+  postal_code: '01310-100',
+  country_code: 'BR',
+};
 
 /**
  * The anonymous PDP form, for one store's products.

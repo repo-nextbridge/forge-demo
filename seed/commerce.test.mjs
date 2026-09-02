@@ -323,3 +323,29 @@ test('★ a missing config row is defaults, not death', async () => {
   assert.equal(configWrites[0][1].values.open_reviews, true);
   assert.equal(configWrites[1][1].values.open_reviews, false);
 });
+
+// ── ⏳ THE FENCE INCLUDES THE WAIT ───────────────────────────────────────────────────────────────────────
+test('★ the pass waits for the notification queue to hold still BEFORE re-arming', async () => {
+  const order = [];
+  let notifications = 10;
+  const read = async (name) => {
+    if (name === 'internal/stores') return [{ handle: 'cafe', id: 'c' }];
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null;
+    if (name === 'internal/notifications') { order.push('poll'); return { total: notifications }; }
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+  await seedCommerce({
+    expect: ['cafe'],
+    read,
+    command: async (n) => { if (n === 'notification.channel.set_enabled') order.push('toggle'); return {}; },
+    log: () => {},
+    fail: (m) => { throw new Error(m); },
+    post: async () => ({}),
+  });
+  // Every poll must come before the first re-arm toggle.
+  const firstToggle = order.indexOf('toggle');
+  assert.ok(order.includes('poll'), 'the queue was never polled');
+  assert.ok(order.indexOf('poll') < firstToggle, 'the wait must precede the re-arm');
+});
