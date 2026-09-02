@@ -272,14 +272,30 @@ async function theProducts(port) {
   // with its id. Asking what the run made costs nothing and covers exactly the window where the race exists;
   // the read stays the authority for everything an EARLIER run made, where there is no race to lose.
   //
-  // ⚠️ The registry holds no metadata — it holds what a COMMAND returned, and a create returns ids, not bags.
-  // A coffee resolved this way therefore starts with an empty bag, and `mergeMetadata` is what keeps that
-  // honest: merging into `{}` yields the seal and nothing else, which is exactly right for a product this run
-  // just created and whose bag it already knows.
+  // ⛔⛔ AND THE COMMENT THAT USED TO STAND HERE WAS FALSE, AND ITS FALSEHOOD ERASED THE COFFEE CATALOGUE.
+  // It said the registry holds no metadata, so a coffee resolved this way "starts with an empty bag, which
+  // is exactly right for a product this run just created and whose bag it already knows". It is not right
+  // and the run does not know it: `catalog.product.create` was given nine custom fields plus the subtitle,
+  // and `sealTheCoffees` below then merged the counter seal into that assumed `{}` and wrote the result back
+  // with `catalog.product.update` — which REPLACES `metadata` wholesale.
+  //
+  // Measured on the pre-seed box (2026-09-02): every coffee created at 00:31:44.47 carrying its fields,
+  // updated 540 ms later, and left holding `{"tag_balcao": "single origin"}` and nothing else. Six PDPs with
+  // an empty "Características" panel, a seed that reported success, and a guard nowhere.
+  //
+  // ★ SO THE BAG TRAVELS WITH THE ID NOW, and `null` means "I was not told" rather than "it is empty" —
+  // the distinction `sealTheCoffees` refuses to write without.
   for (const handle of data.publish_also.handles) {
-    if (known.has(handle)) continue;
+    const fresh = port.minted?.metadataOf(handle);
+    if (known.has(handle)) {
+      // ★ AND WHERE BOTH ANSWER, THE RUN'S OWN KNOWLEDGE WINS — for the BAG, not for the id. The catalogue
+      // step reconciles a coffee's fields on every run; the read below the seal is a projection that may
+      // not carry that write yet, and sealing on top of a stale bag is the same erasure in a slower costume.
+      if (fresh) known.get(handle).metadata = fresh;
+      continue;
+    }
     const id = port.minted?.product(handle);
-    if (id) known.set(handle, { id, metadata: {} });
+    if (id) known.set(handle, { id, metadata: fresh ?? null });
   }
 
   let created = 0;
@@ -389,14 +405,32 @@ async function repointMedia({ command, read, rows, log, uploadAsset }, productId
  */
 async function sealTheCoffees({ command, log }, known) {
   let sealed = 0;
+  const blind = [];
   for (const [handle, tag] of Object.entries(data.publish_also.tags ?? {})) {
     const product = known.get(handle);
     if (!product) continue; // already reported by the caller's `missing` check
+    // ⛔ NO BAG, NO WRITE. `catalog.product.update` replaces `metadata` wholesale, so writing without
+    // knowing what is already there is not a merge — it is a deletion wearing one. This is the exact line
+    // that erased nine custom fields per coffee when the unknown bag was silently read as `{}`.
+    if (product.metadata === null || product.metadata === undefined) {
+      blind.push(handle);
+      continue;
+    }
     const merged = mergeMetadata(product.metadata, { tag_balcao: tag });
     if (!merged) continue;
     await command('catalog.product.update', { product_id: product.id, metadata: merged });
     product.metadata = merged;
     sealed += 1;
+  }
+  if (blind.length > 0) {
+    throw new Error(
+      `totem — refusing to seal ${blind.length} coffee(s) whose metadata bag this run cannot see: ` +
+        `${blind.join(', ')}.\n` +
+        '  `catalog.product.update` REPLACES the bag, so sealing one whose contents are unknown deletes\n' +
+        '  whatever the catalogue step put there — measured, and it cost the six coffees their nine custom\n' +
+        '  fields. The bag comes from `read.internal.products_admin` for a product an earlier run made, and\n' +
+        '  from `minted.metadataOf()` for one THIS run made; neither answered, so nothing is written.',
+    );
   }
   log(
     sealed === 0
