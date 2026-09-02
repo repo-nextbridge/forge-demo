@@ -55,3 +55,107 @@ export function planRepoint(refs, want) {
   // forever behind a picture that looks right. "The wanted key is present" answers only half the question.
   return { attach: !images.some((m) => m.provider_key === want), detach: stale.map((m) => m.id) };
 }
+
+// ── THE COFFEE'S FOUR PHOTOGRAPHS — the list, its stand-ins, and the one rule that resolves a name ───────
+//
+// ★ THE CONVENTION IS POSITION, and `storefront-coffee/src/templates/pdp/PdpCoffee.tsx:5` states it: media[0]
+// is the bag (the transparent shot the buy box draws), media[1..3] are the story — one wide frame and two
+// squares. Nothing in the fork reads a role or a filename; it splits the list and draws what is there.
+//
+// ⚠️ WHICH MEANS THE DATASET WAS THE HOLE, NOT THE PAGE. `seed/catalog.json` declared `photo` — ONE — so the
+// three story frames had nowhere to live and the grid was correctly absent on every coffee. The list is what
+// makes them possible; the files are what make them appear.
+
+/**
+ * ★ THE THREE STORY SLOTS AND THEIR REAL DIMENSIONS, derived from the grid that draws them rather than
+ * guessed — `coffee.module.css`: `.richGrid` is `max-width: 1240px` in two columns with a ~32px gap, so the
+ * gallery column is ~604px; `.galleryWide` spans both at `4 / 3` and `.gallerySquare` is `1 / 1` at half the
+ * column minus the 16px gap (~294px). Doubled for a 2× screen, which is what `MediaImage` will ask for.
+ *
+ * A placeholder in the wrong ratio teaches a layout that does not exist — the curation would then be done
+ * against a lie, and the page would move when the real picture replaced it.
+ */
+export const STORY_SHOTS = [
+  { suffix: 'historia-1', width: 1208, height: 906, why: 'the wide frame, spanning both columns (4:3)' },
+  { suffix: 'historia-2', width: 588, height: 588, why: 'the left square under it (1:1)' },
+  { suffix: 'historia-3', width: 588, height: 588, why: 'the right square under it (1:1)' },
+];
+
+const baseOf = (file) => String(file).replace(/\.[^.]+$/, '');
+
+/** The FINAL name a story frame will have, derived from the bag photograph's — so the dataset names the file
+ *  the merchant is going to produce, and the day it lands in `seed/photos/` nothing else has to change. */
+export function storyFileFor(bagPhoto, shot) {
+  return `${baseOf(bagPhoto)}-${shot.suffix}.png`;
+}
+
+/** The whole ordered list one coffee's PDP wants: the bag, then the three story frames. */
+export function photoListFor(bagPhoto) {
+  return [bagPhoto, ...STORY_SHOTS.map((shot) => storyFileFor(bagPhoto, shot))];
+}
+
+/**
+ * The stand-in that serves a story frame until the real file exists — or `null` for a name that is not a
+ * story frame at all (the bag has no stand-in: a coffee with no bag photograph is a dataset error, not a
+ * hole to paper over).
+ *
+ * ⚠️ THE DIMENSION IS IN THE NAME, exactly as `bin/make-placeholders.mjs` does it for the window slots, and
+ * for the same reason: the set is one search for `placeholder-` and each file says what box it fills.
+ */
+export function placeholderForPhoto(file) {
+  const shot = STORY_SHOTS.find((s) => baseOf(file).endsWith(`-${s.suffix}`));
+  if (!shot) return null;
+  return `placeholder-${baseOf(file)}-${shot.width}x${shot.height}.png`;
+}
+
+/**
+ * ⭐ WHERE A DECLARED PHOTOGRAPH ACTUALLY COMES FROM — the A50 rule as a function.
+ *
+ * *"prefiro que suba algo errado do que não subir, senão fica difícil eu saber o que preciso criar"* (Renan,
+ * 2026-09-01). So a story frame whose real file is not on disk resolves to its stand-in and the shop is born
+ * with four photographs, one of which visibly says it is a placeholder. The day the real file lands in
+ * `seed/photos/` under the name the dataset already declares, this function stops choosing the stand-in —
+ * the dataset is not edited, and the seed re-points the picture on its next run.
+ *
+ * ⚠️ IT NEVER GUESSES BOTH WAYS. A name that is neither on disk nor a story frame with a stand-in returns
+ * `null`, and the caller's job is to die naming both files it looked for. Silently dropping a photograph is
+ * how a four-shot page ships as a one-shot page and nobody can tell whether that was the design.
+ *
+ * @param have.photos       Set of file names in `seed/photos/`
+ * @param have.placeholders Set of file names in `seed/placeholder-media/`
+ * @returns `{ file, dir, placeholder }` — `dir` is the folder key, never a path; the caller joins.
+ */
+export function resolvePhoto(file, { photos, placeholders }) {
+  if (photos.has(file)) return { file, dir: 'photos', placeholder: false };
+  const stand = placeholderForPhoto(file);
+  if (stand && placeholders.has(stand)) return { file: stand, dir: 'placeholder-media', placeholder: true };
+  return null;
+}
+
+/**
+ * ★★ WHAT TO DO ABOUT A PRODUCT'S WHOLE PICTURE LIST — `planRepoint` grown from one photograph to the
+ * ordered several, because the coffee page reads BY POSITION and a set has no positions.
+ *
+ * ⚠️ ATTACH BEFORE DETACH, still, and for the same reason: a run that dies in the window leaves a product
+ * with too many pictures rather than with none.
+ *
+ * ⚠️ AND A REFERENCE IN THE RIGHT PLACE IS NOT THE SAME AS A REFERENCE PRESENT. The bag must stay at
+ * position 0 — the buy box takes `photos[0]` — so a key that is attached at the WRONG position is planned
+ * for detach-and-reattach, never left alone. Matching on the key alone is what would let a re-cut list
+ * silently reorder the page.
+ *
+ * @param refs current image references (`{id, provider_key, position, kind}`)
+ * @param want the provider_keys the files on disk resolve to, IN ORDER
+ * @returns `{ attach: [{provider_key, position}], detach: string[] }`
+ */
+export function planMediaList(refs, want) {
+  const images = refs.filter((m) => m.kind === undefined || m.kind === 'image');
+  const attach = [];
+  const keep = new Set();
+  for (const [position, provider_key] of want.entries()) {
+    const at = images.find((m) => m.provider_key === provider_key && Number(m.position) === position);
+    if (at) keep.add(at.id);
+    else attach.push({ provider_key, position });
+  }
+  return { attach, detach: images.filter((m) => !keep.has(m.id)).map((m) => m.id) };
+}
