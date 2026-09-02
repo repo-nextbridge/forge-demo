@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # ★★ THE ONE COMMAND — a virgin box becomes this demo's bench. EXECUTE it; do not source it.
 #
-#   bash bin/box-up.sh
+#   bash bin/box-up.sh                birth: the eleven steps below, on `localhost`
+#   bash bin/box-up.sh --tailnet      PROMOTION: point the born box at this machine's tailnet (A15)
+#   bash bin/box-up.sh --localhost    the promotion, undone
+#
+# The two modes are not steps of the birth and section 0b says at length why: the box is born on `localhost`
+# by Renan's decision, and the addresses of a private network may not live in a versioned file.
 #
 # WHAT "ONE COMMAND" PROMISES, AND WHAT IT DOES NOT. It promises that a human types ONE thing and gets a
 # working bench — not that there is only one step underneath. There are seven, they are listed below in the
@@ -49,6 +54,18 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
+
+# ── THE ONE ARGUMENT, AND IT SELECTS A MODE RATHER THAN A STEP ──────────────────────────────────────────────
+# No argument = birth, which is everything below. `--tailnet` / `--localhost` run the PROMOTION block and
+# nothing else; it lives just after step 0 (it needs the environment sourced and the topology read) and exits
+# there. See its own header for why promotion is not a step of the birth.
+MODE=birth
+case "${1:-}" in
+  '')          ;;
+  --tailnet)   MODE=tailnet ;;
+  --localhost) MODE=localhost ;;
+  *) printf '\n[box-up] unknown argument "%s".\n  usage: bash bin/box-up.sh [--tailnet|--localhost]\n\n' "$1" >&2; exit 1 ;;
+esac
 
 : "${COMPOSE_PROJECT_NAME:=forge-preseed}"
 export COMPOSE_PROJECT_NAME
@@ -157,6 +174,68 @@ put_secret() { # <name> <value>  — never echoes the value
   chmod 600 "$file"
 }
 
+# ONE VARIABLE INTO `.env` — rewritten in place if it is there, appended if it is not. Never echoes a value:
+# every caller here writes a hostname or a store id, but the file it edits also holds addresses of a private
+# network, and a helper that printed what it wrote would put them in a scrollback and a log.
+#
+# ⚠️ THE VALUE IS PASSED THROUGH PYTHON, NOT `sed`, AND THE REASON IS STATED HONESTLY. `sed -i "s|^X=.*|X=$v|"`
+# is the shape already on this box (the totem's store id, a ULID — where it is provably safe), and MEASURED,
+# it also survives today's two JSON values: neither a host map nor a sibling list happens to contain a `|`,
+# an `&` or a backslash, which are the three characters sed's replacement side treats as syntax (`&` alone is
+# the quiet one — it expands to the whole matched line).
+#
+# So this is not a bug being fixed; it is a class being closed. The values here are GENERATED — from a store
+# id, from `seed/box.json`, from a hostname somebody types into `.env` — and "no `&` in any of them, ever" is
+# a property nobody is checking and nobody would notice losing. Python takes the value as an argv string and
+# writes it verbatim, so the property does not have to hold. The guard proves that by writing a value that
+# carries all three.
+put_env() { # <name> <value>   — value written verbatim, one line
+  python3 - "$HERE/.env" "$1" "$2" <<'PYEOF'
+import sys
+path, name, value = sys.argv[1], sys.argv[2], sys.argv[3]
+line = f'{name}={value}\n'
+seen = False
+out = []
+for existing in open(path, encoding='utf-8'):
+    if existing.startswith(f'{name}='):
+        out.append(line); seen = True
+    else:
+        out.append(existing)
+if not seen:
+    if out and not out[-1].endswith('\n'):
+        out.append('\n')
+    out.append(line)
+open(path, 'w', encoding='utf-8').write(''.join(out))
+PYEOF
+}
+
+# THE ADMIN'S SIBLING SWITCHER, DERIVED FROM `seed/box.json` (A44).
+#
+# ★ WHY IT IS DERIVED AND NOT WRITTEN DOWN. `FORGE_ADMIN_SIBLINGS` is the dropdown that lets an operator jump
+# from one brand's admin to the other's — `[{ "name": …, "url": … }]`, read by `apps/admin/src/lib/config.ts`.
+# It is ENV, so on the bench it was typed in by hand, and every rebirth wiped it: the switcher simply stopped
+# appearing, which is the least diagnosable failure this feature can have (an empty list renders the shell
+# EXACTLY as it did before the feature existed — `siblings.ts` says so, by design). Both facts it needs are
+# already declared in `seed/box.json`: `settings.tenant_name` and `admin_host`. So it is built from the file
+# that states the topology, and a third tenant added there arrives in the dropdown with no second edit.
+#
+# ⚠️ NOT SSO, AND THAT IS THE POINT. Each admin is its own host and the session cookie is host-only, so
+# switching brands means logging in again. Renan named that as correct rather than as a limitation: it is
+# what stops an operator acting on the wrong tenant while believing they are on the other.
+#
+# ⚠️ SINGLE-QUOTED FOR THE SAME REASON `FORGE_STORE_HOSTS` IS (see step 3b): `.env` is read by TWO parsers,
+# compose's and bash's, and a bare JSON value loses its inner double quotes to `source`.
+#
+# $1 = an optional host to use INSTEAD of each tenant's `admin_host` HOSTNAME, keeping that entry's PORT —
+#      which is how the tailnet promotion re-points the same two doors without a second copy of this logic.
+admin_siblings_json() { # [host]
+  local host="${1:-}"
+  jq -c --arg host "$host" '[ .tenants[]
+      | { name: (.settings.tenant_name // .id)
+        , url: ("http://" + (if $host == "" then .admin_host
+                             else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) } ]' "$BOX"
+}
+
 # ── 0 · the environment ─────────────────────────────────────────────────────────────────────────────────────
 # ⚠️ BEFORE STEP 1, AND THE VIRGIN-BOX TEST IS WHAT PUT IT HERE. This was sourced at step 5, on the reasoning
 # that the tokens it exports are only minted at step 3 — and the very first `docker compose` call died on
@@ -178,6 +257,136 @@ set -a
 set +a
 [ -n "${DATABASE_URL:-}" ] || die 'env-source.sh exported no DATABASE_URL — is .secrets missing forge-postgres-password?'
 [ -n "${FORGE_PUBLIC_ORIGIN:-}" ] || die 'no FORGE_PUBLIC_ORIGIN in .env — this script would otherwise probe a default port that may belong to another box.'
+
+# ── 0b · THE PROMOTION: THIS BOX ON THE TAILNET, AND WHY IT IS NOT A STEP OF THE BIRTH (A15) ────────────────
+#
+# ★★ THE BOX IS BORN ON `localhost`. Renan decided it, in those words: *"faz sentido nascer localhost sim e
+# só quando eu pedir subir pra tailscale"*. A birth that depended on somebody's private network would stop
+# proving the product and start proving the network — and the addresses of that network are HIS, so they may
+# not live in a versioned file. Both halves of that are why this is a MODE and not step 3b·2.
+#
+# WHAT IT REPAIRS. On 01/09 the bench was moved onto the tailnet BY HAND: four host keys added to
+# `FORGE_STORE_HOSTS`, the public origin and the gate's admin URL re-pointed, and four admin hostnames
+# claimed through the port. Every one of those is `.env` or data written at birth — so the next
+# `bash bin/box-up.sh` put the box back on `localhost` and the tailnet answered 404 again. The arrangement was
+# real work and nothing in the repository remembered it. Now it does.
+#
+# WHAT IT IS NOT, AND THIS IS THE HARD LINE. It does not run `tailscale`, it does not configure `tailscale
+# serve`, and it never reads Tailscale's state. It assumes the machine is ALREADY reachable on the tailnet at
+# the same published ports (`FORGE_HTTP_PORT`, `FORGE_ADMIN_HTTP_PORT`, `FORGE_ADMIN2_HTTP_PORT`), which is
+# what `tailscale serve` or a plain tailnet IP already gives, and it wires the BOX to that fact. Getting on
+# the network is the operator's gesture; knowing about it is this box's job.
+#
+#   bash bin/box-up.sh --tailnet      point this box at the tailnet
+#   bash bin/box-up.sh --localhost    put it back
+#
+# ⚠️ THE ADDRESSES COME FROM THE ENVIRONMENT, NEVER FROM A COMMITTED FILE. Two variables, and `.env` is
+# gitignored:
+#
+#   FORGE_TAILNET_HOST   the MagicDNS name this machine answers to. Required.
+#   FORGE_TAILNET_IP     its tailnet address. Optional, and it is the safety net for the case that actually
+#                        happened — a phone on the tailnet with MagicDNS off resolves the name to nothing.
+#
+# IDEMPOTENT, twice over: every `.env` value is REWRITTEN rather than appended to (`put_env`), and the host →
+# store map is rebuilt from scratch each run rather than added to, so running it three times leaves what
+# running it once leaves. REVERSIBLE: `--localhost` writes the same three values back and releases the
+# hostnames it claimed. Neither direction touches a store, a product or an order.
+if [ "$MODE" != birth ]; then
+  say "promotion · $MODE"
+
+  # THE HOSTNAMES, and the refusal is the first thing that happens. A run with nothing to promote to would
+  # otherwise write `http://:8200` into the origin every front derives its image URLs from.
+  # ⚠️ BOTH DIRECTIONS NEED THE NAMES, and `--localhost` needs them for the less obvious reason: releasing a
+  # hostname means naming it. A reverse that could run without them would leave the admin directory holding
+  # claims for a network the box no longer serves — a stale front door is worse than no front door.
+  [ -n "${FORGE_TAILNET_HOST:-}" ] || die "FORGE_TAILNET_HOST is unset, so this run has no hostname to $([ "$MODE" = tailnet ] && echo 'claim' || echo 'release').
+     Put this machine's tailnet name in .env (or export it for this run) — it is deliberately not in the repository."
+  net_hosts="$FORGE_TAILNET_HOST"
+  [ -n "${FORGE_TAILNET_IP:-}" ] && net_hosts="$net_hosts $FORGE_TAILNET_IP"
+
+  # ── the host → store map ────────────────────────────────────────────────────────────────────────────────
+  # ★ THE STORE ID IS READ BACK FROM THE MAP THAT IS ALREADY THERE, not resolved again. `provision-ref`
+  # returns it at birth and nothing but a rebirth changes it; asking the port for it here would need a
+  # credential this mode has no reason to hold, and re-running `provision-ref` to learn a value is a write to
+  # answer a read. If the map is empty the box was never born, and saying so is better than guessing.
+  root_store="$(python3 - "$HERE/.env" <<'PYEOF'
+import json, sys
+raw = ''
+for line in open(sys.argv[1], encoding='utf-8'):
+    if line.startswith('FORGE_STORE_HOSTS='):
+        raw = line.split('=', 1)[1].strip().strip("'")
+try:
+    mapping = json.loads(raw) if raw else {}
+except ValueError:
+    mapping = {}
+# `localhost` is the key step 3b always writes first, and the root store is what it points at.
+print(mapping.get('localhost') or next(iter(mapping.values()), ''))
+PYEOF
+)"
+  [ -n "$root_store" ] || die 'FORGE_STORE_HOSTS holds no store id — this box has not been born yet. Run `bash bin/box-up.sh` first.'
+
+  hosts="localhost 127.0.0.1 $(hostname 2>/dev/null)"
+  [ "$MODE" = tailnet ] && hosts="$hosts $net_hosts"
+  map=''
+  for h in $hosts; do
+    [ -n "$h" ] || continue
+    map="$map\"$h\":\"$root_store\",\"$h:${FORGE_HTTP_PORT:-8200}\":\"$root_store\","
+  done
+  put_env FORGE_STORE_HOSTS "'{${map%,}}'"
+  note "host → store map rebuilt · $(echo "$hosts" | wc -w) hostname(s)"
+
+  # ── the origin every front derives an address from ──────────────────────────────────────────────────────
+  # ⚠️ THIS ONE IS NOT COSMETIC. The kernel's local media driver mints every product-image URL from
+  # `FORGE_PUBLIC_ORIGIN`, so a box reached over the tailnet with `http://localhost:8200` here serves a
+  # catalogue of images a phone cannot fetch — and nothing logs an error, which is how it cost an evening.
+  if [ "$MODE" = tailnet ]; then
+    origin="http://$FORGE_TAILNET_HOST:${FORGE_HTTP_PORT:-8200}"
+    gate_admin="http://$FORGE_TAILNET_HOST:${FORGE_ADMIN_HTTP_PORT:-8201}"
+    sib_host="$FORGE_TAILNET_HOST"
+  else
+    origin="http://localhost:${FORGE_HTTP_PORT:-8200}"
+    gate_admin=''
+    sib_host=''
+  fi
+  put_env FORGE_PUBLIC_ORIGIN "$origin"
+  put_env FORGE_GATE_ADMIN_URL "$gate_admin"
+  put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host")'"
+  note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
+
+  # ── the admin front doors, claimed THROUGH THE PORT ─────────────────────────────────────────────────────
+  # `read.admin.by_host` keys on `host:port`, so each tenant's admin needs its own claim for each spelling of
+  # the machine. `admin-host.js` drives the two platform commands `provision-ref` drives — it is not a second
+  # write path, and it prints identifiers only.
+  claimed=0
+  for t in $TENANTS; do
+    aport="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host' "$BOX" | sed -n 's/.*\(:[0-9]*\)$/\1/p')"
+    [ -n "$aport" ] || { note "⚠️ $t has no port in its admin_host — skipping its claim"; continue; }
+    for h in $net_hosts; do
+      if [ "$MODE" = tailnet ]; then
+        dc run --rm kernel node dist/admin-host.js set "$h$aport" "$t" >/dev/null 2>&1 && claimed=$((claimed + 1))
+      else
+        dc run --rm kernel node dist/admin-host.js remove "$h$aport" >/dev/null 2>&1 && claimed=$((claimed + 1))
+      fi
+    done
+  done
+  note "admin directory · $claimed claim(s) $([ "$MODE" = tailnet ] && echo set || echo released)"
+
+  # ── the containers that read all of the above at BOOT ───────────────────────────────────────────────────
+  # Every variable touched here is read once, at process start. Without the recreate the files are right and
+  # the running box is not — which reads exactly like the change having done nothing.
+  say 'recreating the services that read the environment'
+  dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem >/dev/null 2>&1 \
+    || note '⚠️ some service did not come back — `docker compose ps`'
+  for i in $(seq 1 30); do
+    code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' "$origin/health" || true)"
+    [ "$code" = 200 ] && break
+    sleep 2
+  done
+  [ "${code:-}" = 200 ] || die "the kernel never answered $origin/health (last: ${code:-none})."
+  note "edge $origin/health → 200"
+  printf '\n' >&2
+  exit 0
+fi
 
 # ── 1 · the data tier ───────────────────────────────────────────────────────────────────────────────────────
 say '1 · postgres + redis'
@@ -330,6 +539,28 @@ CADDY
   note "coffee fork → /s/$CAFE_STORE (rule generated, routes stamped X-Forge-Served-By)"
 else
   note '⚠️ no café store id — the coffee fork will not receive its store'
+fi
+
+# ── 3d · THE ADMIN'S SIBLING SWITCHER (A44) ─────────────────────────────────────────────────────────────────
+#
+# ★ IT IS WRITTEN AT BIRTH BECAUSE IT DIES AT BIRTH. `FORGE_ADMIN_SIBLINGS` is the dropdown that carries an
+# operator from one brand's admin to the other's, and it is ENV — so it was hand-typed on the bench and every
+# rebirth erased it. The switcher then simply did not appear, and an absent switcher is indistinguishable
+# from a box that never had the feature (`siblings.ts` guarantees exactly that, on purpose).
+#
+# BEFORE STEP 5, and that is forced: the admin reads this at boot, so a value written after `dc up -d admin`
+# is a value the running container does not have.
+#
+# ⚠️ THE BENCH'S OWN VALUE IS `localhost`, WHICH IS NOT USELESS. A44 says the two doors are needed "when it
+# goes up"; born pointing at `localhost:8201` / `:8202` the switcher works on this laptop AND it is provably
+# there — an env that is only ever correct on a machine nobody has yet is an env nobody notices is broken.
+# `--tailnet` rewrites the same two entries against the tailnet name.
+say '3d · the admin sibling switcher'
+if siblings="$(admin_siblings_json)" && [ -n "$siblings" ] && [ "$siblings" != '[]' ]; then
+  put_env FORGE_ADMIN_SIBLINGS "'$siblings'"
+  note "$(echo "$TENANTS" | wc -w) admin door(s), from seed/box.json"
+else
+  note '⚠️ seed/box.json yielded no sibling list — the admin shell renders without the switcher'
 fi
 
 # ── 4 · the box's own platform credential ───────────────────────────────────────────────────────────────────
@@ -724,4 +955,6 @@ for t in $TENANTS; do
 done
 note "café      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/s/<cafe store id>   (the forked vitrine)"
 note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
+note ''
+note 'off the laptop: set FORGE_TAILNET_HOST (and FORGE_TAILNET_IP) in .env, then `bash bin/box-up.sh --tailnet`.'
 printf '\n' >&2

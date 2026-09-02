@@ -189,7 +189,10 @@
 .heroShotImg {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  /* ★ A43 — 520px → 430px, AND IT IS THE COPY'S FIX AS MUCH AS THE PHOTO'S. `.heroShot` is `flex: 1.7 1 340px`,
+   * so shrinking the shot gives the width back to the text column beside it — which is what lets the two-line
+   * headline above hold two lines. The two adjustments are one adjustment. */
+  max-width: 430px;
   height: auto;
   filter: drop-shadow(0 40px 60px color-mix(in srgb, var(--color-ink) 22%, transparent));
   /* ★ THE FLOAT. Slow and shallow on purpose — 7s and 10px. It is on the hero's ONE photo, which is where

@@ -41,23 +41,29 @@ test('renders the resolved url as the image src', () => {
   expect(container.querySelector('img')?.getAttribute('src')).toBe('https://h/media/demo/x');
 });
 
+// ⚠️ ADJACENT FINDING, NOT THIS SLICE'S SUBJECT — the placeholder's NAME moved in the kit (P4).
+// It used to be a hard-coded `aria-label="no image"`, and the kit removed it: `role="img"` + `aria-label` is
+// the pair a screen reader ANNOUNCES, so a Portuguese shopper heard an English phrase read out loud. The box
+// now answers to the NAME of the image it replaces (`altOf()` — the operator's alt, else the product title),
+// and an EMPTY alt stays decorative. This fork's tests were still asserting the old label, so they go red the
+// moment somebody rebuilds the coffee vitrine against current main — which is how this was found.
 test('no url (base unset) → clean placeholder, no broken <img>', () => {
-  const { container, getByLabelText } = render(
+  const { container, getByRole } = render(
     <Gallery media={noUrl} alt="Tenis" optimized={false} />,
   );
   expect(container.querySelector('img')).toBeNull();
-  expect(getByLabelText('no image')).toBeTruthy();
+  expect(getByRole('img', { name: 'Tenis' })).toBeTruthy();
 });
 
 test('url set but the object is missing → onError falls back to the placeholder (carve-out window)', () => {
-  const { container, getByLabelText } = render(
+  const { container, getByRole } = render(
     <Gallery media={withUrl} alt="Tenis" optimized={false} />,
   );
   const img = container.querySelector('img');
   if (!img) throw new Error('expected an <img>');
   fireEvent.error(img);
   expect(container.querySelector('img')).toBeNull();
-  expect(getByLabelText('no image')).toBeTruthy();
+  expect(getByRole('img', { name: 'Tenis' })).toBeTruthy();
 });
 
 // S6-IMAGES — the whole point of the alt column: each image says its own thing.

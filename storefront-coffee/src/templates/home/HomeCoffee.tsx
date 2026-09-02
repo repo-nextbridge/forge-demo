@@ -165,10 +165,15 @@ export function HomeCoffee({ base, products, reviews, rating, slots }: HomeCoffe
         <div className={styles.wrap}>
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>Torra semanal · Lotes pequenos</div>
+            {/* ★ A43 — TWO LINES, AND THE SECOND ONE IS THE MEASUREMENT. The break was never wrong; the
+             * line after it was 24 characters ("quem plantou a quem bebe") against a display that clamps to
+             * 88px, so it wrapped again and the hero read as three. The target is ~18 characters a line, and
+             * this pair is 18/14. `text-wrap: balance` on `.h1` cannot save a line that is simply too long.
+             * ⚠️ The <br /> stays: a hero that re-wraps at the shop's own copy is a hero nobody can compose. */}
             <h1 className={styles.h1}>
               Cafés que conectam
               <br />
-              quem plantou a quem bebe
+              campo e xícara
             </h1>
             <p className={styles.lede}>
               Seis cafés com nome, origem e produtor, torrados toda semana.
@@ -201,18 +206,33 @@ export function HomeCoffee({ base, products, reviews, rating, slots }: HomeCoffe
               ))}
             </div>
 
+            {/* ★ A50 — THE HERO SHOWS THE HOLE INSTEAD OF HIDING IT, and the ternary that used to be here is
+             * what hid it. `heroMedia ? <MediaImage/> : null` rendered the hero's ENTIRE right column as
+             * nothing when the first coffee had no cover photo — a page that looks deliberately one-columned
+             * and is actually a page missing a photograph. In a pre-Seed, where the whole job is to find out
+             * which materials still have to be made, an absence that looks like a design is the expensive
+             * kind: "prefiro que suba algo errado do que não subir, senão fica difícil eu saber o que
+             * preciso criar".
+             *
+             * ★ AND THE PLACEHOLDER IS NOT INVENTED HERE. `MediaImage` already draws one when it has no url,
+             * and since the kit's P4 slice that box carries the NAME of the image it stands in for (`role
+             * ="img"` + the alt) rather than an English "no image" a shopper would hear read out loud. So the
+             * fix is to stop intercepting it: this shop gets a labelled grey box that says which coffee is
+             * missing its photograph. An empty catalogue yields an empty alt, which the kit renders
+             * `aria-hidden` — a hole with nothing to name is not announced.
+             *
+             * ⚠️ `width`/`sizes` ARE 430, WITH THE CSS (A43 #2). They are the optimizer's hint, not the
+             * layout: left at 520 the browser fetches a derivative a third larger than the box it goes in. */}
             <div className={styles.heroShot}>
-              {heroMedia ? (
-                <MediaImage
-                  className={styles.heroShotImg}
-                  src={heroShot.url}
-                  providerKey={heroShot.providerKey}
-                  alt={heroMedia.alt ?? heroProduct?.title ?? ''}
-                  width={520}
-                  sizes="(max-width: 900px) 80vw, 520px"
-                  priority
-                />
-              ) : null}
+              <MediaImage
+                className={styles.heroShotImg}
+                src={heroShot.url}
+                providerKey={heroShot.providerKey}
+                alt={heroMedia?.alt ?? heroProduct?.title ?? ''}
+                width={430}
+                sizes="(max-width: 900px) 80vw, 430px"
+                priority
+              />
             </div>
 
             <div className={styles.props}>

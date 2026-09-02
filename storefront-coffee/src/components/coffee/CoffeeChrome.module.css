@@ -212,7 +212,13 @@
   color: var(--color-canvas);
 }
 
+/* A34 — the padlock and its two words are ONE line: inline-flex + a token gap, the same pair the kit's
+ * checkout header uses for the same seal. Without it the 13px svg sits on its own baseline and the mark
+ * reads as a bullet above the sentence instead of beside it. */
 .copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
   font-size: 11.5px;
   color: color-mix(in srgb, var(--color-canvas) 45%, transparent);
 }

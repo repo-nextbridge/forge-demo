@@ -126,6 +126,24 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M20 3.5V7h-3.5" />
     </>
   ),
+  // ★ A34 — the footer's "Compra segura" seal, and it is the ONE icon here the coffee artboards do not draw.
+  //
+  // The rule of this file is transcription, not interpretation — so it is transcribed from the PRODUCT rather
+  // than invented: `Lock` in `@forgecommerce/storefront-kit/src/icons.tsx`, path for path. That is not an
+  // arbitrary donor. The kit's own comment calls it "the 'compra segura' cue", and the checkout header
+  // (`subtemplates/header/variants/checkout.tsx`) already renders exactly this padlock beside exactly these
+  // two words. So a shopper who walks from this shop's footer into the checkout meets the same mark twice.
+  //
+  // ⚠️ COPIED RATHER THAN IMPORTED, which is this file's standing trade: every other glyph here is a local
+  // `ICONS` entry rendered by the local `Icon` (24×24, `currentColor`, stroke widths from the artboard), and
+  // importing one component's worth of SVG from the kit would give the footer a second icon vocabulary — a
+  // different default size, a different stroke weight — for one mark.
+  lock: (
+    <>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof ICONS;

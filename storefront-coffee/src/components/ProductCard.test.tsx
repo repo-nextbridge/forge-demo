@@ -38,13 +38,22 @@ test('renders the resolved media url as the image src', () => {
   expect(container.querySelector('img')?.getAttribute('src')).toBe('https://h/media/demo/x');
 });
 
+// ⚠️ ADJACENT FINDING, NOT THIS SLICE'S SUBJECT — the placeholder's NAME moved in the kit (P4).
+// It used to be a hard-coded `aria-label="no image"`, and the kit removed it: `role="img"` + `aria-label` is
+// the pair a screen reader ANNOUNCES, so a Portuguese shopper heard an English phrase read out loud. The box
+// now answers to the NAME of the image it replaces (`altOf()` — the operator's alt, else the product title),
+// and an EMPTY alt stays decorative. This fork's tests were still asserting the old label, so they go red the
+// moment somebody rebuilds the coffee vitrine against current main — which is how this was found.
 test('no url (base unset) → clean placeholder, no broken <img>', () => {
   const product = makeProduct({
+    title: 'Tênis Runner',
     media: [{ provider_key: 'demo/x', kind: 'image', role: 'hero', position: 0, alt: null }],
   });
-  const { container, getByLabelText } = renderShell({ product });
+  const { container, getByRole } = renderShell({ product });
   expect(container.querySelector('img')).toBeNull();
-  expect(getByLabelText('no image')).toBeTruthy();
+  // ⚠️ BY ROLE, not by label: the card's own stretch-link carries the product title as its aria-label too,
+  // so a bare label query finds two elements. `role="img"` is what the placeholder actually claims to be.
+  expect(getByRole('img', { name: 'Tênis Runner' })).toBeTruthy();
 });
 
 test("the cover's alt is the operator's; without one it falls back to the product title", () => {

@@ -3,8 +3,10 @@
  * The reference theme is loaded ABOVE this file (the root layout's static import of
  * `@forgecommerce/theme-storefront-vanilla/tokens.css`); this stylesheet is inlined by the store-scoped
  * layout, after it, at the same specificity. So it only has to carry what DIFFERS — measured against the
- * reference file, that is seven declarations, and every one of them is a value the design's own artboard
- * sets on itself.
+ * reference file, that is NINE declarations. Seven of them are values the design's own artboard sets on
+ * itself; the two added later (`--color-primary`, `--ext-banners-announcement-surface`) are the artboard's
+ * colours reaching two places the artboard could not name — the buy button and the app's strip. Each carries
+ * its own measurement below.
  *
  * SOURCE OF TRUTH: `Home Outlet.dc.html` and `Produto Outlet.dc.html` in the design project
  * ("Tema E-commerce Forge"). Their `applyTheme()` writes exactly three things — an accent, a roundness
@@ -29,6 +31,53 @@
    * lightness as the base's copper wash (#fdeee6 and #ffe4e6 are both L=94.7%), moved to the accent's hue,
    * so a focus ring reads as faint here exactly as faint as it reads on the reference theme. */
   --copper-100: #ffe4e6;
+
+  /* ★ A42 #1 — THE BUY BUTTON, AND WHY IT IS A THEME LINE AND NOT A COMPONENT ONE.
+   *
+   * Measured (`apps/storefront/.../pdp/PdpBuyRow.module.css:10,15`): the buy bar is
+   * `background: var(--color-primary)` and fades to `var(--color-accent)` on hover. The reference theme
+   * defines `--color-primary: var(--ink-900)` (`themes/storefront-vanilla/tokens.css:188`) — a DARK ground —
+   * so the outlet's bar was ink at rest and carmine only while the pointer was on it. "The button is
+   * sometimes pink" was never a component defect; it was this file never naming the resting colour.
+   *
+   * ⚠️ IT POINTS AT THE PRIMITIVE, NOT AT `--color-accent`. Two reasons, and the second is the load-bearing
+   * one. (1) It is what the base does — `--color-primary` is a semantic that resolves to a primitive there
+   * too, so the shape is unchanged. (2) `--color-accent` is a DIFFERENT ROLE (links, focus rings, the cart
+   * badge); aliasing the CTA to the role rather than to the colour would mean a future re-accent of the
+   * outlet could not move one without the other.
+   *
+   * ⚠️ AND IT COSTS THE HOVER, ON PURPOSE — name it rather than discover it. With primary and accent both
+   * resolving to `--copper-600`, `.bar:hover` computes the same ground as `.bar`, so the bar no longer
+   * changes colour under the pointer. That is exactly what "sempre rosa" asks for (a CTA that is one colour
+   * is a CTA that is one colour), and the affordance is not lost: `.bar` keeps its `transition` and the
+   * cursor, and the stepper beside it still reacts. A theme that wanted both would need a THIRD value for
+   * the hover, which is a decision about the outlet's palette and not a fix to make here in silence. */
+  --color-primary: var(--copper-600);
+
+  /* ★ A37 #3 — THE ANNOUNCEMENT STRIP, DRESSED BY THE THEME AND NAMED BY THE APP.
+   *
+   * The band at the top of the shop is the `banners` app's, and an app never picks a colour: it paints with
+   * `var(--color-ink)`, which this theme deliberately does NOT redefine (ink is the text of the whole store —
+   * re-pointing it would make every heading carmine). So the strip came out dark while the artboard shows it
+   * carmine, and the two ways out were both wrong: a per-block colour field is config nobody wants to fill,
+   * and moving `--color-ink` repaints the store.
+   *
+   * The way out that is neither: the app exposes ONE token of its OWN, namespaced `--ext-<app>-<thing>`, and
+   * a theme may or may not define it. Undefined, the app's fallback answers and nothing changes anywhere —
+   * which is why this declaration is safe to carry ahead of its other half.
+   *
+   * ⚠️ THE OTHER HALF IS NOT IN THIS REPOSITORY, AND IT IS NOT ONE LINE. It lives in the monorepo, and
+   * `scripts/composition/announcement-strip-parity.guard.test.ts` holds the app's `.bar` byte-equal to the
+   * kit's, so the token has to land on BOTH:
+   *
+   *     packages/storefront-kit/src/subtemplates/header/AnnouncementBar.module.css   .bar
+   *     extensions/banners/announcement.module.css                                   .bar
+   *       background: var(--ext-banners-announcement-surface, var(--color-ink));
+   *
+   * …and that guard's value regex accepts a bare `var(--x)` only, so a nested fallback fails it and the
+   * pattern has to be admitted there too. Measured, and named here so this line is not mistaken for dead
+   * code: it is one side of a contract whose other side is a monorepo slice. */
+  --ext-banners-announcement-surface: var(--copper-600);
 
   /* --- The corners -------------------------------------------------------------------------------- */
   /* The base is "Reto" — square, `--r*: 0`. The artboard's `applyTheme` maps `Suave` to 10/8/6, and the
