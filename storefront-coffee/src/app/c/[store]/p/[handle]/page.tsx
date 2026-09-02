@@ -16,7 +16,7 @@ import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { pdpMetadata } from '@/templates/pdp/meta';
-import { PdpView } from '@/templates/pdp/PdpView';
+import { PdpCoffeeView } from '@/templates/pdp/PdpCoffeeView';
 
 // 300s — the value of CATALOG_REVALIDATE_SECONDS (lib/edge-cache.ts), inlined because Next requires this
 // export to be a statically analyzable literal. A guard asserts the two never drift.
@@ -45,5 +45,8 @@ export default async function CachedProductAliasPage({ params }: { params: Promi
   // In THIS tree the base is HOST_BASE by construction, so the emitted URL is byte-identical to before; the
   // point is that the dynamic twin, where it is not, cannot express the move any other way.
   if (primaryCategory(product)) storePermanentRedirect(HOST_BASE, canonicalProductPath(product));
-  return <PdpView store={store} base={HOST_BASE} product={product} />;
+  // ★ THIS SHOP'S PRODUCT PAGE, in the host-shaped tree too — the dynamic twin
+  // (`app/s/[store]/(storefront)/p/[handle]`) has always rendered it, and a shop whose product page depended
+  // on WHICH of the two entries the shopper arrived through would be two shops.
+  return <PdpCoffeeView store={store} base={HOST_BASE} product={product} />;
 }

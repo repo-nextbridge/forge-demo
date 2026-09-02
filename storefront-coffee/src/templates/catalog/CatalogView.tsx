@@ -34,7 +34,7 @@ import { pageMetadata } from '@/templates/cms/meta';
 import { PageView } from '@/templates/cms/PageView';
 import { ListTemplate } from '@/templates/list/template';
 import { pdpMetadata } from '@/templates/pdp/meta';
-import { PdpView } from '@/templates/pdp/PdpView';
+import { PdpCoffeeView } from '@/templates/pdp/PdpCoffeeView';
 
 // S7-SF-PLP — metadata resolves at "page 1" (accumLimit(1) = 20). The RENDER path accumulates: page N fetches
 // accumLimit(N) items so the shelf shows pages 1..N at once (the "Carregar mais" model, lib/filters/plp.ts).
@@ -88,7 +88,6 @@ export async function CatalogView({
   catpath,
   page,
   state,
-  sku,
 }: {
   store: string;
   /** MULTISTORE M1-β — the store prefix of the current request. The two entries answer it differently and that
@@ -97,10 +96,6 @@ export async function CatalogView({
   catpath: string[];
   page: number;
   state: FilterState;
-  /** ★ QA16 — the `?sku=` of the request, meaningful only when this path resolves to a PRODUCT. Like `page`
-   * and the filters it is read by the DYNAMIC entry alone; the cacheable twin passes nothing and therefore
-   * renders the default variant, which is what a clean URL and a crawler ask for. */
-  sku?: string;
 }) {
   // Accumulate: fetch pages 1..N as one page-1 slice of accumLimit(N) items (the "Carregar mais" model).
   const r = await resolveCatchAll(readClient(), store, catpath, {
@@ -115,7 +110,22 @@ export async function CatalogView({
     const canonical = canonicalProductPath(r.product);
     const current = `/${catpath.join('/')}`;
     if (current !== canonical) storePermanentRedirect(base, canonical);
-    return <PdpView store={store} base={base} product={r.product} sku={sku} />;
+    // ★★ THIS SHOP'S PRODUCT PAGE ANSWERS HERE TOO, AND THAT IS THE WHOLE POINT OF THE ARM.
+    //
+    // `p/[handle]` renders `PdpCoffeeView` and 308s to this canonical path whenever the product HAS a primary
+    // category — so this branch is the one a shopper actually reaches. Every product in this shop is
+    // categorised, which made the split "uncategorised → this shop's page, categorised → the reference page"
+    // into "nobody ever sees this shop's page": `PdpCoffee`, `CoffeeBuyBox` and the whole `coffee.module.css`
+    // shipped inside the image and drew nothing. Measured on the bench (2026-09-02): all six coffees, 308 to
+    // the category path, ZERO `coffee_` classes in the HTML — the reference PDP wearing the theme's colours,
+    // which is exactly what the fork exists not to be.
+    //
+    // ⚠️ THERE IS NO `sku` PROP ANY MORE, and its removal is part of the fix rather than tidying alongside
+    // it. The reason `p/[handle]` already states: this shop's buy box opens on the merchant's starred SKU
+    // and has no swatch grid and no PLP behind it, so nothing here mints a URL naming a SKU. A prop that
+    // the only branch able to read it ignores is a wire that lies — and the next reader would have to
+    // measure the page to find out. The cost is named in `sku-param-thread.test.tsx`.
+    return <PdpCoffeeView store={store} base={base} product={r.product} />;
   }
 
   if (r.kind === 'page') {

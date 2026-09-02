@@ -1,14 +1,34 @@
-// ★★ QA16 / S2A-4 — THE `?sku=` OF THE REQUEST REACHES THE TEMPLATE, from the route file down.
+// ★★ WHICH PRODUCT PAGE EACH ROUTE ANSWERS WITH — and why `?sku=` is no longer threaded anywhere in this shop.
 //
-// The no-JS fix has two halves (see nojs-variant.e2e.test.tsx for the other): the swatches submit `?sku=<code>`,
-// and the SERVER answers with that variant. The second half is a chain of four hops —
+// ════════════════════════════════════════════════════════════════════════════════════════════════════════
+// WHAT THIS FILE USED TO PROVE, KEPT IN WORDS RATHER THAN DELETED QUIETLY. It walked the `?sku=` deep link
+// down four hops — `route(searchParams) → CatalogView → PdpView → PdpTemplate` — because every hop is an
+// OPTIONAL prop, which typecheck cannot hold: a hop that stops forwarding compiles, renders, and puts the
+// shopper back on the default variant with no error anywhere.
 //
-//     route(searchParams) → CatalogView → PdpView → PdpTemplate
+// ★ WHY IT STOPPED BEING TRUE (2026-09-02). The reference template was never what this shop meant to show.
+// `p/[handle]` rendered `PdpCoffeeView` but 308s to the canonical CATEGORY path whenever a product has a
+// primary category — and every coffee here does — so the catch-all answered every real visit, and it
+// rendered `PdpView`. Measured on the bench before the fix: all six products, 308, and ZERO `coffee_`
+// classes in the HTML. `PdpCoffee`, `CoffeeBuyBox` and the whole `coffee.module.css` shipped inside the
+// image and drew nothing; what the shopper saw was the reference PDP wearing the theme's colours.
 //
-// — and every one of them is an OPTIONAL prop, which typecheck cannot hold: a hop that quietly stops forwarding
-// compiles, renders, and puts the shopper back on the default variant with no error anywhere. So the chain is
-// walked here for real. Nothing is rendered: each async Server Component is invoked exactly as the framework
-// invokes it and the element it returns is read, the same technique the order-detail page test uses.
+// So BOTH product entries in BOTH trees now render this shop's page, and the `?sku=` chain has no host left
+// here. It is not broken — it is unused, for the reason `p/[handle]` already stated: this buy box opens on
+// the merchant's starred SKU, has no swatch grid and no PLP behind it, so nothing in this storefront mints a
+// URL naming a SKU. The reference chain is still proven where it still lives — `PdpView`'s own tests
+// (`slot-sku.test.tsx`) — and the DESIGN COST is unchanged and still named below.
+//
+// ⚠️ THE COST, NAMED HERE SO IT IS NOT DISCOVERED LATER: the reference PDP's variant picker works with
+// JavaScript OFF (swatches submit `?sku=` and the SERVER answers with that variant — `nojs-variant.e2e` is
+// the other half). This shop's buy box is a client component holding its selection in React state, so with
+// JS off the page renders and reads correctly and CANNOT BE BOUGHT FROM. A deliberate trade of the design
+// (a two-axis picker, a mode switch and a stepper in one panel), and a card — not a silence.
+//
+// Nothing is rendered here: each async Server Component is invoked exactly as the framework invokes it and
+// the element it returns is read, the same technique the order-detail page test uses. The coffee page is NOT
+// walked into — its buy box is a client component, and invoking one this way is a `useState` on a null
+// dispatcher.
 
 import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -85,72 +105,62 @@ beforeEach(() => {
   productByHandle.mockResolvedValue(uncategorized());
 });
 
-test('★★ the catch-all route hands `?sku=` all the way to the PDP template', async () => {
-  const element = await CatalogPage({
-    params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
-    searchParams: Promise.resolve({ sku: 'TEN-40' }),
-  });
-  await walk(element);
+/** Invoke ONE level: the element a route returned, whose type is the next async Server Component. Stopping
+ * after one step is what makes these arms possible — the coffee page's buy box is a client component, and
+ * `walk`ing into one is a `useState` on a null dispatcher. */
+async function step(node: unknown): Promise<{ type: unknown; props: Record<string, unknown> }> {
+  const el = node as { type: (p: unknown) => unknown; props: Record<string, unknown> };
+  return (await el.type(el.props)) as { type: unknown; props: Record<string, unknown> };
+}
 
-  expect(templateProps).toHaveBeenCalledTimes(1);
-  expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: 'TEN-40' });
+/** The name of the component an element will render — the question these arms actually ask. */
+const nameOf = (el: { type: unknown }) => (el.type as { name?: string })?.name;
+
+test('★★ the catch-all product branch renders THIS shop`s page, not the reference one', async () => {
+  const rendered = await step(
+    await CatalogPage({
+      params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
+      searchParams: Promise.resolve({ sku: 'TEN-40' }),
+    }),
+  );
+
+  // The POSITIVE: the branch ran, the port was asked, and the element names this shop's page.
+  expect(resolveCatchAll).toHaveBeenCalledTimes(1);
+  expect(nameOf(rendered)).toBe('PdpCoffeeView');
+  // And the NEGATIVE it is paired with — the reference template was never handed anything. Alone this would
+  // also be true of a route that returned null or threw, which is why it never stands by itself.
+  expect(templateProps).not.toHaveBeenCalled();
 });
 
-// ★★ D2-C1 — THIS ARM CHANGED SUBJECT BECAUSE THE SHOP DID, and the old assertion is kept in the sentence
-// below rather than deleted quietly.
+// ★ THE TWO ARMS THAT LIVED HERE PROVED THE `?sku=` PARSING RULE — a repeated parameter takes the first, a
+// blank one is an absence — by reading what arrived at the reference template. They are gone with the chain
+// they walked: this route has no reader for the parameter any more, so an assertion about how it is parsed
+// would be asserting over a value nothing consumes, and would go on passing after the rule itself broke.
 //
-// It used to assert that `/p/<handle>` threads `?sku=` down to the reference PDP template. That route now
-// renders THIS SHOP'S product page (`PdpCoffeeView`), which has no swatch grid and no PLP behind it —
-// nothing in this storefront mints a URL naming a SKU — so honouring the parameter would be answering a
-// question nobody asks. The catch-all arm above still proves the chain for the reference template, which is
-// still what a CATEGORIZED product renders.
-//
-// ⚠️ AND IT COSTS SOMETHING REAL, NAMED HERE SO IT IS NOT DISCOVERED LATER: the reference PDP's variant
-// picker works with JavaScript OFF (the swatches submit `?sku=` and the SERVER answers with that variant —
-// `nojs-variant.e2e.test.tsx` is the other half). This shop's buy box is a client component and holds its
-// selection in React state, so with JS off the page renders and reads correctly and CANNOT BE BOUGHT FROM.
-// That is a deliberate trade of the design (a two-axis picker, a mode switch and a stepper in one panel),
-// not an oversight — and it is a card, not a silence.
+// The rule still exists and still matters — it lives in `@forgecommerce/storefront-kit/sku-url`, and it is
+// proven where the reference storefront still honours it. Keeping a copy here would be a test that survives
+// its own subject.
+test('★★ and no shape of `?sku=` can put the reference template back', async () => {
+  for (const searchParams of [{}, { sku: 'TEN-40' }, { sku: ['TEN-40', 'TEN-39'] }, { sku: '' }]) {
+    templateProps.mockClear();
+    const rendered = await step(
+      await CatalogPage({
+        params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
+        searchParams: Promise.resolve(searchParams),
+      }),
+    );
+    expect(nameOf(rendered)).toBe('PdpCoffeeView');
+    expect(templateProps).not.toHaveBeenCalled();
+  }
+});
+
 test('★★ the /p/<handle> alias renders THIS shop`s page for an uncategorized product', async () => {
   const element = await ProductAliasPage({
     params: Promise.resolve({ store: 'demo', handle: 'tenis-esportivo' }),
     searchParams: Promise.resolve({ sku: 'TEN-39' }),
   });
 
-  // The route must resolve the product and return a page rather than 404 — the property this arm has always
-  // protected. It is NOT walked: the coffee page's buy box is a client component, and invoking one the way
-  // the framework invokes a Server Component is what this walker cannot do (`useState` of a null dispatcher).
-  expect(element).toBeTruthy();
+  expect(nameOf(element as { type: unknown })).toBe('PdpCoffeeView');
   expect(productByHandle).toHaveBeenCalledWith('demo', 'tenis-esportivo');
-  // And the reference template is NOT what answered: this route stopped being its host.
   expect(templateProps).not.toHaveBeenCalled();
-});
-
-test('★ no `?sku=` → the template is told nothing, and renders the default variant as it always did', async () => {
-  const element = await CatalogPage({
-    params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
-    searchParams: Promise.resolve({}),
-  });
-  await walk(element);
-
-  expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: undefined });
-});
-
-test('★ a repeated param takes the first, and a blank one is an absence (never an empty deep link)', async () => {
-  await walk(
-    await CatalogPage({
-      params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
-      searchParams: Promise.resolve({ sku: ['TEN-40', 'TEN-39'] }),
-    }),
-  );
-  expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: 'TEN-40' });
-
-  templateProps.mockClear();
-  await walk(
-    await CatalogPage({
-      params: Promise.resolve({ store: 'demo', catpath: ['p', 'tenis-esportivo'] }),
-      searchParams: Promise.resolve({ sku: '' }),
-    }),
-  );
-  expect(templateProps.mock.calls[0]?.[0]).toMatchObject({ initialSku: undefined });
 });

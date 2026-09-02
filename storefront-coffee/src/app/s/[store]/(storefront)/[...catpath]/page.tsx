@@ -10,7 +10,6 @@
 // the clean URL a crawler and most shoppers ask for is served from the edge and only the filtered/paginated
 // tail reaches this file. Port reads stay ISR-cached on both sides.
 
-import { skuParamFromSearch } from '@forgecommerce/storefront-kit/sku-url';
 import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { parseFilterState } from '@/lib/filters/filter-url';
@@ -48,10 +47,10 @@ export default async function CatalogPage({
       catpath={catpath}
       page={pageNum(search)}
       state={parseFilterState(search)}
-      // ★ QA16 — `?sku=` is the third thing this entry reads, and for the same reason as the other two: it
-      // changes the rendered page, so only the tree that may read a query can answer it. A request carrying
-      // it is never cache-safe (lib/edge-cache.ts), so it always lands here.
-      sku={skuParamFromSearch(search)}
+      // ★ QA16 USED TO PASS `?sku=` HERE, and it is gone rather than voided: the product branch of
+      // `CatalogView` now renders THIS shop's page, whose buy box owns its own selection, so the parameter
+      // had no reader left. `page` and the filters still belong to this entry for the original reason —
+      // they change the rendered page, so only the tree that may read a query can answer them.
     />
   );
 }
