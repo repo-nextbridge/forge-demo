@@ -10,8 +10,12 @@
 //   · the custom fields the eight products' technical sheets are written in, DECLARED before any of them
 //     is written — an undeclared key is accepted in silence and then invisible to every reader (the same
 //     order, and the same reason, as the coffee catalogue's);
+//   · the 33 CATEGORIES the vanilla's hand-curated header menu links to, created if nobody made them yet
+//     (A40 — a store served by the vanilla either carries that tree or ships 33 links into the void);
 //   · the photographs and the campaign art, through the media door;
-//   · the eight products, PUBLISHED into the outlet store and given their stock;
+//   · the products, PUBLISHED into the outlet store, CATEGORISED and given their stock;
+//   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
+//     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
 //   · the two collections the two shelves are sourced from;
 //   · the four Compose placements that ARE the home: the announcement band, the five-tile banner mosaic
 //     and the two shelves.
@@ -63,8 +67,9 @@ export async function seedOutlet(port) {
 
   await installApps(port);
   await declareFields(port);
+  const categories = await seedCategories(port);
   const assets = await uploadMedia(port);
-  const products = await seedProducts(port, store, assets);
+  const products = await seedProducts(port, store, assets, categories);
   await seedCollections(port, products);
   await compose(port, store, assets);
 
@@ -184,6 +189,52 @@ async function declareFields({ command, read, rows, log }) {
   }
 }
 
+// ── 2b. the categories ──────────────────────────────────────────────────────────────────────────────
+// A40, the Renan on 2026-09-02: the vanilla vitrine's header menu is a hand-curated literal in the kit
+// (`storefront-kit/.../header/navTree.ts`) — 5 tops, 28 leaves, 33 links — and EVERY store the vanilla
+// serves wears it whole. So the assortment either covers that tree or the shop ships links to an empty
+// list. His ruling was to populate the demo, not to teach the shared storefront a new trick. This step is
+// the first half of that: the tree has to EXIST before a product can name a node of it.
+//
+// ⚠️ THIS SEED IS NOT THE ONLY AUTHOR OF THESE 33, AND THAT IS FINE BY CONSTRUCTION. `seed/forge.mjs`
+// creates the same tree from the mounted dataset, and on this bench it runs SECOND (measured: the outlet's
+// commands at 00:31:44, the dataset's `catalog.category.create` at 00:32:01). Both look a category up BY
+// PATH before creating it, so whichever runs first wins the create and the other reuses the row — which is
+// exactly why `outlet.json` copies the dataset's path, name and handle verbatim rather than inventing a
+// vocabulary. A box with no dataset mounted at all gets the tree from here and nothing is missing.
+//
+// PARENTS FIRST: `path` is an ltree and a child written before its parent is a child of nothing.
+async function seedCategories({ command, readAll, log }) {
+  const existing = new Map(
+    (await readAll('categories_admin')).map((c) => [c.path ?? c.handle, c.category_id ?? c.id]),
+  );
+  const byPath = new Map();
+  let created = 0;
+  const byDepth = [...data.categories].sort((a, b) => {
+    const depth = a.path.split('.').length - b.path.split('.').length;
+    return depth !== 0 ? depth : a.path.localeCompare(b.path);
+  });
+  for (const category of byDepth) {
+    let id = existing.get(category.path);
+    if (!id) {
+      const out = await command('catalog.category.create', {
+        path: category.path,
+        name: category.name,
+        handle: category.handle,
+        status: 'active',
+      });
+      id = out.category_id ?? out.id;
+      created += 1;
+    }
+    byPath.set(category.path, id);
+  }
+  log(
+    `categories — ${data.categories.length} in the menu's tree: ${created} created, ` +
+      `${data.categories.length - created} already there`,
+  );
+  return byPath;
+}
+
 // ── 3. the bytes ────────────────────────────────────────────────────────────────────────────────────
 // THE PHOTOS COME BEFORE THE PRODUCTS. `catalog.product.create` takes media references, so a byte failure
 // discovered afterwards has already published a catalogue of refs pointing at nothing.
@@ -275,7 +326,16 @@ const subdirOf = (filename) => (filename.startsWith('banner-') ? 'banners' : 'pr
 // exists and is published can be found again by handle on the next run; one created and left unpublished
 // can not (the internal product read takes an id, and the store-scoped list only sees publications), so
 // the window where a crash leaves an orphan is one HTTP call wide instead of eight.
-async function seedProducts({ command, readAll, log }, store, assets) {
+//
+// ⚠️ AND "ALREADY THERE" IS NOT "ALREADY IN THIS SHOP", which is the trap A40 walked into. The read below
+// answers the whole TENANT (see the ★ note), so a product `seed/forge.mjs` created from the dataset is
+// "already there" while being published in the `forge` store and NOWHERE ELSE. Every product this file
+// names IS a dataset product — that is deliberate, it is what gives them a real photograph and a real size
+// grid — so the two seeds meet on all 32 handles, and which one runs first is an ordering this file must
+// not depend on. Hence: an existing product is still PUBLISHED and CATEGORISED here. Both commands are
+// idempotent at the kernel (`product_store` inserts `on conflict do nothing`; `product_category` upserts by
+// the pair), so the second run of either seed is a no-op and neither can leave the shop half-built.
+async function seedProducts({ command, readAll, log }, store, assets, categories) {
   // ★ S1 — MEASURED, AND IT WAS ONE PAGE AWAY FROM KILLING THE RE-RUN. This read is NOT store-scoped: asked
   // for the outlet, it answers the whole TENANT catalogue (measured on this bench: `?store=<cafe>` returned
   // all 14 products, `total: 14`). While the tenant held 14 products the single page of 100 was everything,
@@ -291,8 +351,10 @@ async function seedProducts({ command, readAll, log }, store, assets) {
   for (const product of data.products) {
     const already = existing.get(product.handle);
     if (already) {
+      await command('catalog.product.publish', { product_id: already, store_id: store.id });
+      await categorize({ command }, already, product, categories);
       ids.set(product.handle, already);
-      log(`product ${product.handle} — already there`);
+      log(`product ${product.handle} — already there; publication and category re-asserted`);
       continue;
     }
 
@@ -301,14 +363,21 @@ async function seedProducts({ command, readAll, log }, store, assets) {
       title: product.title,
       description: product.description,
       status: 'active',
-      options: product.options,
+      // A single-SKU product declares NO option axis, and sending `options: undefined` is not the same as
+      // omitting the key — measured on the dataset: 5 of the 24 A40 added (a boot, a chelsea, a slipper, a
+      // bag, a cap) come with one SKU and no grid at all.
+      ...(product.options?.length ? { options: product.options } : {}),
       // ONE PRICE ACROSS THE SIZE GRID, which is what the artboard draws: a card shows one figure struck
-      // through and one to pay. The de/por is `compare_at_amount` on the SKU — the operator's own number,
-      // not a promotion rule — and the theme's discount tag derives its percentage from the pair.
+      // through and one to pay.
+      //
+      // ⛔⛔ AND THE `compare_at_amount` IS **NOT** WRITTEN HERE. It used to be, and it did not survive the
+      // birth — this is the defect the Renan saw as "2 of the 8 have a discount". See `priceOutlet()` at the
+      // foot of this file for the whole story; the short version is that a LATER step of the birth converges
+      // every dataset SKU's `compare_at` to the dataset's own figure, and every product this file names is a
+      // dataset product. Written here it is erased minutes later, in silence.
       skus: product.skus.map((sku, index) => ({
         ...sku,
         amount: product.amount,
-        compare_at_amount: product.compare_at_amount,
         is_default: index === 0,
       })),
       metadata: product.metadata,
@@ -325,14 +394,44 @@ async function seedProducts({ command, readAll, log }, store, assets) {
     });
 
     await command('catalog.product.publish', { product_id: out.product_id, store_id: store.id });
+    await categorize({ command }, out.product_id, product, categories);
     await setStock({ command }, product, out.sku_ids);
     ids.set(product.handle, out.product_id);
     log(
-      `product ${product.handle} — created, published, ${out.sku_ids.length} sku(s) stocked ` +
-        `(${(product.compare_at_amount / 100).toFixed(2)} → ${(product.amount / 100).toFixed(2)})`,
+      `product ${product.handle} — created, published in ${product.category}, ` +
+        `${out.sku_ids.length} sku(s) stocked at ${(product.amount / 100).toFixed(2)} ` +
+        '(the "de" is the window phase\'s — see priceOutlet)',
     );
   }
   return ids;
+}
+
+/**
+ * The product's node in the menu's tree, as its CANONICAL one.
+ *
+ * ⚠️ `is_primary: true` IS A CLAIM THAT CAN BE REFUSED, and only in one way: the kernel rejects a SECOND
+ * primary on a product that already has a different one (`product already has a primary category; switch it
+ * explicitly`). Re-writing the SAME pair is an upsert and always succeeds. So this is safe precisely because
+ * `outlet.json` names the dataset's own `categoryPath` for every product — the two seeds write one row, not
+ * two claims. Point a product at a different node here and the second seed to run is the one that fails.
+ */
+async function categorize({ command }, productId, product, categories) {
+  const categoryId = categories.get(product.category);
+  if (!categoryId) {
+    throw new Error(
+      `product ${product.handle} names category "${product.category}", which outlet.json does not declare.`,
+    );
+  }
+  await command('catalog.product.categorize', {
+    product_id: productId,
+    category_id: categoryId,
+    is_primary: true,
+  });
+}
+
+/** The figure the shopper's discount tag will read, from the pair — never a number stored beside them. */
+export function discountPercent(product) {
+  return Math.round(100 * (1 - product.amount / product.compare_at_amount));
 }
 
 /** `stock` is a number (every SKU alike) or a list in SKU order — which is how a shoe ends up with two
@@ -342,6 +441,81 @@ async function setStock({ command }, product, skuIds) {
     const onHand = Array.isArray(product.stock) ? (product.stock[index] ?? 0) : product.stock;
     await command('inventory.set_level', { sku_id: skuId, on_hand: onHand, reason: 'goods_received' });
   }
+}
+
+// ── 4b. THE WINDOW'S HALF — the "de", written LAST because a step between the two phases erases it ────
+//
+// ⛔⛔ THIS IS NOT TIDINESS. THE DISCOUNT DOES NOT SURVIVE THE CURATED PHASE, AND IT IS NOBODY'S BUG.
+//
+// The birth is ordered (`bin/box-up.sh`): 8 · the CURATED seed (this file's `seedOutlet`) → 9 · `seed-demo`,
+// the MASSIVE one-shot → 10 · the past → 11 · the WINDOW (`bin/seed.mjs --phase window`, which calls this).
+//
+// Step 9 runs `apps/api/src/seed-media.ts`, whose contract is written at its head: "IDEMPOTENT BY
+// CONSTRUCTION: the desired state is the dataset ... A product OUTSIDE the dataset is never touched." For
+// every SKU it can match BY CODE it converges four fields to the dataset's declaration —
+// `compare_at_amount`, `ref`, `ean`, `is_default` — and the wanted value is `sku.compare_at_amount ?? null`.
+// The dataset declares a `compare_at` on almost none of these shoes, so `null` is what it writes.
+//
+// ★ AND EVERY PRODUCT THIS FILE NAMES IS A DATASET PRODUCT — deliberately, because that is what gives them a
+// real photograph, a real size grid and a real "de". Same handles, SAME SKU CODES. So they sit squarely
+// inside that step's jurisdiction and it does exactly what it promises to them.
+//
+// ⚠️ IT DOES NOT TOUCH `amount` — measured, that field is not in its diff. So the failure is the nastiest
+// shape there is: the "por" survives and the "de" vanishes, leaving a clearance store with low prices and no
+// visible discount anywhere. That is precisely what the Renan reported ("2 of the 8 have a discount") and
+// what the audit shows: 52 `catalog.sku.update` at 00:45:06, right after the massive step finished.
+//
+// SO THE WRITE MOVES TO THE PHASE DESIGNED FOR IT. The window exists because "the window promotes products
+// of the MASSIVE catalogue, so it must follow 9" — the same reason, and it is the LAST word on this tenant.
+// Creation, publication, categorisation and stock stay in the curated phase, where they belong; only the
+// figure another author converges is written after that author has spoken.
+//
+// ⚠️ AND IT WRITES WITHOUT ASKING FIRST, WHICH IS A DELIBERATE EXCEPTION TO THIS FILE'S "re-running is a
+// no-op". A diff would have to trust `products_admin`, a PROJECTION, about a column a competing writer just
+// changed — and the direction that hurts is the silent one: a doc still showing this file's old figure while
+// the table holds `null` makes the diff say "already right" and the shop ships with no discount. 182 SKU
+// updates is a cheap price for a guarantee that does not depend on projection lag (the same tenant already
+// spends 44 427 `inventory.adjust` in one birth). The read below is for the sku IDS and for the EVIDENCE the
+// log prints — how many had actually been cleared — never for deciding whether to write.
+export async function priceOutlet({ read, readAll, rows, command, log, fail }) {
+  const store = rows(await read('stores')).find((s) => s.handle === data.store);
+  if (!store) fail(`the store "${data.store}" does not exist; the curated phase has not run.`);
+
+  const wanted = new Map(data.products.map((p) => [p.handle, p]));
+  const catalogue = await readAll('products_admin');
+
+  let written = 0;
+  let hadBeenCleared = 0;
+  const missing = [];
+  for (const [handle, product] of wanted) {
+    const doc = catalogue.find((p) => p.handle === handle);
+    if (!doc) {
+      missing.push(handle);
+      continue;
+    }
+    for (const sku of doc.skus ?? []) {
+      const id = sku.id ?? sku.sku_id;
+      if (!id) continue;
+      if (sku.compare_at_amount !== product.compare_at_amount) hadBeenCleared += 1;
+      await command('catalog.sku.update', {
+        sku_id: id,
+        compare_at_amount: product.compare_at_amount,
+      });
+      written += 1;
+    }
+  }
+
+  if (missing.length > 0) {
+    fail(
+      `the window cannot price ${missing.length} product(s) the curated phase should have created:\n  ` +
+        `${missing.join('\n  ')}\n` +
+        '  Run `bin/seed.mjs` (the curated phase) for this tenant before the window.',
+    );
+  }
+  log(
+    `outlet — the "de" written on ${written} sku(s) of ${wanted.size} product(s); ` +
+      `${hadBeenCleared} of them did not carry it (that is the massive step's convergence, undone here)`,
+  );
 }
 
 // ── 5. the collections ──────────────────────────────────────────────────────────────────────────────
@@ -372,6 +546,13 @@ async function seedCollections({ command, read, log }, products) {
 
     // Pinning is idempotent by the command's own contract, so the order is re-asserted on every run —
     // which is what makes the artboard's order a fact of this file rather than of the first run.
+    //
+    // ★ AND THE ARTBOARD'S EIGHT STAY ON THE HOME BECAUSE THEY COME FIRST IN THE FILE. A40 added 24 more
+    // products to the two collections (its rule: the deepest cuts are `quase-de-graca`, the rest
+    // `acabando`), which fills the two `/collection/<handle>` pages the shelf headers link to. The HOME is
+    // untouched by that: each shelf renders `item_count` items — 5 and 3, the artboard's — from the top of
+    // the pin order, and the newcomers are appended after position 4 and 2 because `data.products` lists
+    // them after. Move one of the eight down this list and the home's shelf changes; that is the coupling.
     const members = data.products.filter((p) => p.shelf === collection.handle);
     for (const [position, product] of members.entries()) {
       await command('catalog.collection.pin', {

@@ -22,22 +22,81 @@
     "the 'Acabando!' shelf ends up with two units in 39, none in 41 and one in 43. The default warehouse's",
     "oversell policy is `block`, so a zero really is a size a shopper cannot buy.",
     "",
+    "★★ THE MENU IS THE ASSORTMENT'S CONTRACT (A40, decided by the Renan on 2026-09-02). The vanilla vitrine's",
+    "header menu is HAND-CURATED in the kit (`packages/storefront-kit/src/subtemplates/header/navTree.ts`), and",
+    "the Outlet wears it whole: 5 top categories, 28 leaves, 33 links. Any store served by the vanilla therefore",
+    "has to CARRY those categories or it ships links into the void — measured before this change: 8 products in 4",
+    "leaves, and 27 of the 33 links landing on an empty list. His ruling was to POPULATE, never to add a mechanism",
+    "to the shared storefront:",
+    "",
+    "  \"Como é storefront provavelmente seria um fork ... Criar mais mecanismos para o storefront não é a",
+    "   solução ... Nesse caso prefiro popular as mesmas categorias na demo, pois também fica mais bacana.\"",
+    "",
+    "So `categories` below MIRRORS that curated tree, and every leaf of it carries at least one published product.",
+    "⚠️ THE MIRROR IS THE FRAGILE PART: nothing in this repository compiles against `navTree.ts`. A leaf added",
+    "there and not here is a dead link again, and only a human notices. `seed/outlet.test.mjs` guards the half",
+    "that IS checkable — that every leaf DECLARED here has a product, and that every product names a declared",
+    "leaf.",
+    "",
+    "THE CATEGORIES ARE THE DATASET'S, PATH FOR PATH, NAME FOR NAME, HANDLE FOR HANDLE — and that is not a",
+    "courtesy, it is what keeps two seeds from fighting. `seed/forge.mjs` creates the very same 33 from the",
+    "mounted dataset, looking each one up BY PATH first; and `catalog.product.categorize` refuses a SECOND primary",
+    "category on a product. Whichever of the two seeds runs first wins the create and the other reuses it, and the",
+    "primary they both write is the same row. Diverge on a path here and that becomes a `validation_failed` in",
+    "whichever runs second.",
+    "",
+    "THE PRODUCTS ARE THE DATASET'S TOO — real catalogue, real photograph, real size grid — re-priced for a",
+    "clearance store. The `de` is the dataset's own figure, so it is plausible for the shoe; the `por` is this",
+    "file's. That is also why the handles must never be invented: `seed/forge.mjs` publishes all 2790 into the",
+    "`forge` store and finds these already there, by handle, and leaves them alone.",
+    "",
+    "★ THE DISCOUNT IS A RULE, NOT A TASTE (A40). The announcement band promises \"Até 70% OFF\" and the catalogue",
+    "has to honour it: EVERY product carries `compare_at_amount`, the floor is 30%, the ceiling is the band's own",
+    "70%, the bulk sits between 40 and 60, and a few sit near the ceiling as the bait. `seed/outlet.test.mjs`",
+    "fails on a product that has no `de`, or whose pair falls outside 30–70 — the guard reads the RESULT (the two",
+    "figures) and not a table of intentions.",
+    "",
+    "⛔⛔ AND THE `de` IS NOT WRITTEN WHEN THE PRODUCT IS CREATED — IT CANNOT BE. The birth runs 8 · the curated",
+    "seed → 9 · the massive one-shot → 10 · the past → 11 · the window. Step 9 (`apps/api/src/seed-media.ts`)",
+    "converges every SKU it matches BY CODE to the DATASET's `compare_at_amount ?? null`, and leaves `amount`",
+    "alone — and every product below is a dataset product with the dataset's own SKU codes, which is exactly what",
+    "makes it realistic. So a discount written in phase 8 is nulled in phase 9, in silence, leaving low prices and",
+    "no visible discount: the \"2 of the 8\" the Renan reported. The figures below are therefore applied by",
+    "`priceOutlet()` in the WINDOW phase, after that step has spoken. `seed/outlet.test.mjs` guards the ORDER as",
+    "well as the data — a data guard alone stays green while the shop shows nothing.",
+    "",
+    "",
     "WHAT IS DELIBERATELY ABSENT, AND IS NOT AN OVERSIGHT:",
-    "  · NO CATEGORIES AND NO BRANDS. The reference home renders 'Compre por categoria' and 'Marcas que",
-    "    amamos' as fixed sections whenever the store has either — and the Outlet's artboard draws NEITHER.",
-    "    Creating them would have added two sections the design does not have to the one page whose face is",
-    "    this slice's DoD. The cost is named in the slice report: the theme's hand-curated header menu points",
-    "    at category paths this store does not carry.",
+    "  · NO BRANDS. `catalog.brand.create` is the dataset seed's, and it runs after this one; a `brand_id` here",
+    "    would be a second author for 351 rows this file does not own. The cost is a PDP with no brand line on",
+    "    these 32 products, and it is named rather than hidden.",
     "  · NO PROMOTION ROWS. The de/por a shopper sees is `compare_at_amount`, which is the operator's own",
     "    figure on the SKU — not a promotion engine rule. The artboard shows struck-through prices and a",
     "    discount tag, and that is exactly what this produces.",
+    "  · NO CATEGORY BANNER ANYWHERE IN THIS FILE, and \"take the category banners off the Outlet\" is NOT done",
+    "    here — see the note at the end.",
     "",
     "THE PHOTOS in `outlet-media/` come from that same reference dataset (the artboard's own product shots",
     "are `fotos teste/*.webp` inside the design project, and its five mosaic tiles are empty placeholders —",
     "there is no banner artwork in the design to extract). Cover plus three gallery frames per product; the",
     "six banners are the dataset's curated campaign art.",
     "",
-    "⚠️ ONE TILE IS CROPPED, AND IT IS THE LIBRARY THAT IS SHORT, NOT THE GRID. The artboard's mosaic is two proportions — two near-square cells (296x300) and three wide ones — and this instance's banner art holds four campaigns, of which exactly ONE is square (`banner-bota`), plus two shelf-shaped pieces and one that carries LOREM IPSUM in the artwork itself (`banner-sportswear`, unusable in front of anybody). So the second square cell takes the adventure piece (462x373) and loses about 10% off each side of its headline. The alternative was the same campaign twice in one mosaic in its two official crops, which reads as a bug in the data rather than as merchandising — and cropping to fill is what the block's own manifest says a tile does with art of another proportion. The fix is one square campaign in the library, not a change here."
+    "⚠️ ONE TILE IS CROPPED, AND IT IS THE LIBRARY THAT IS SHORT, NOT THE GRID. The artboard's mosaic is two proportions — two near-square cells (296x300) and three wide ones — and this instance's banner art holds four campaigns, of which exactly ONE is square (`banner-bota`), plus two shelf-shaped pieces and one that carries LOREM IPSUM in the artwork itself (`banner-sportswear`, unusable in front of anybody). So the second square cell takes the adventure piece (462x373) and loses about 10% off each side of its headline. The alternative was the same campaign twice in one mosaic in its two official crops, which reads as a bug in the data rather than as merchandising — and cropping to fill is what the block's own manifest says a tile does with art of another proportion. The fix is one square campaign in the library, not a change here.",
+    "",
+    "⚠️ THE ONE THING A40 ASKED FOR THAT THIS FILE CANNOT DO: \"banners de categorias pode tirar do outlet\".",
+    "Measured on the bench: the Outlet's composition holds NO category banner — every banner tile it places links",
+    "to a `/collection/*`, and there is not one `list.*` placement in the store. The banner a shopper actually",
+    "meets is the CATEGORY'S OWN rich art (`category.banner`, drawn by the list template as `template_banner`),",
+    "and the `category` row is TENANT-scoped: 3 of the 33 carry one (`tenis`, `sandalias`, `acessorios`), all",
+    "written by `seed/forge.mjs` from the dataset, and all shared with the `forge` store where they are wanted.",
+    "Stripping them would strip them from both shops. So it is reported, not guessed at.",
+    "",
+    "⚠️ AND ONE PIECE OF PROSE IN `outlet.mjs` IS FALSE AND IS LEFT FOR ITS OWNER TO FIX: `compose()` says the",
+    "two fixed sections \"render nothing here because this store has neither\". Measured on the bench BEFORE this",
+    "change — the Outlet's home already served `data-testid=\"home-categories\"` (five tiles) and",
+    "`data-testid=\"home-brands\"`, because both reads are over TENANT rows: the 33 categories and the 351 brands",
+    "`seed/forge.mjs` writes reach every store of the tenant whatever its assortment. A40 keeps «Compre por",
+    "categoria» on this page deliberately; what changes here is that its five tiles now lead somewhere."
   ],
   "store": "outlet",
   "apps": [
@@ -316,10 +375,178 @@
       "name": "Acabando!"
     }
   ],
+  "categories": [
+    {
+      "path": "acessorios",
+      "name": "Acessórios",
+      "handle": "acessorios"
+    },
+    {
+      "path": "botas",
+      "name": "Botas",
+      "handle": "botas"
+    },
+    {
+      "path": "sandalias",
+      "name": "Sandálias",
+      "handle": "sandalias"
+    },
+    {
+      "path": "sapatos",
+      "name": "Sapatos",
+      "handle": "sapatos"
+    },
+    {
+      "path": "tenis",
+      "name": "Tênis",
+      "handle": "tenis"
+    },
+    {
+      "path": "acessorios.bolsas",
+      "name": "Bolsas",
+      "handle": "acessorios-bolsas"
+    },
+    {
+      "path": "acessorios.bones",
+      "name": "Bones",
+      "handle": "acessorios-bones"
+    },
+    {
+      "path": "acessorios.cachecois",
+      "name": "Cachecóis",
+      "handle": "acessorios-cachecois"
+    },
+    {
+      "path": "acessorios.cintos",
+      "name": "Cintos",
+      "handle": "acessorios-cintos"
+    },
+    {
+      "path": "acessorios.luvas",
+      "name": "Luvas",
+      "handle": "acessorios-luvas"
+    },
+    {
+      "path": "acessorios.meias",
+      "name": "Meias",
+      "handle": "acessorios-meias"
+    },
+    {
+      "path": "acessorios.palmilhas",
+      "name": "Palmilhas",
+      "handle": "acessorios-palmilhas"
+    },
+    {
+      "path": "botas.cano_longo",
+      "name": "Cano longo",
+      "handle": "botas-cano-longo"
+    },
+    {
+      "path": "botas.chelsea",
+      "name": "Chelsea",
+      "handle": "botas-chelsea"
+    },
+    {
+      "path": "botas.chukka",
+      "name": "Chukka",
+      "handle": "botas-chukka"
+    },
+    {
+      "path": "botas.chuva",
+      "name": "Chuva",
+      "handle": "botas-chuva"
+    },
+    {
+      "path": "botas.coturno",
+      "name": "Coturno",
+      "handle": "botas-coturno"
+    },
+    {
+      "path": "botas.trabalho",
+      "name": "Trabalho",
+      "handle": "botas-trabalho"
+    },
+    {
+      "path": "botas.trilha",
+      "name": "Trilha",
+      "handle": "botas-trilha"
+    },
+    {
+      "path": "sandalias.rasteira",
+      "name": "Rasteira",
+      "handle": "sandalias-rasteira"
+    },
+    {
+      "path": "sandalias.sandalia",
+      "name": "Sandália",
+      "handle": "sandalias-sandalia"
+    },
+    {
+      "path": "sandalias.slide",
+      "name": "Slide",
+      "handle": "sandalias-slide"
+    },
+    {
+      "path": "sandalias.tamanco",
+      "name": "Tamanco",
+      "handle": "sandalias-tamanco"
+    },
+    {
+      "path": "sapatos.mocassim",
+      "name": "Mocassim",
+      "handle": "sapatos-mocassim"
+    },
+    {
+      "path": "sapatos.pantufa",
+      "name": "Pantufa",
+      "handle": "sapatos-pantufa"
+    },
+    {
+      "path": "sapatos.salto",
+      "name": "Salto",
+      "handle": "sapatos-salto"
+    },
+    {
+      "path": "sapatos.sapatilha",
+      "name": "Sapatilha",
+      "handle": "sapatos-sapatilha"
+    },
+    {
+      "path": "sapatos.social",
+      "name": "Social",
+      "handle": "sapatos-social"
+    },
+    {
+      "path": "tenis.casual",
+      "name": "Casual",
+      "handle": "tenis-casual"
+    },
+    {
+      "path": "tenis.corrida",
+      "name": "Corrida",
+      "handle": "tenis-corrida"
+    },
+    {
+      "path": "tenis.futebol",
+      "name": "Futebol",
+      "handle": "tenis-futebol"
+    },
+    {
+      "path": "tenis.treino",
+      "name": "Treino",
+      "handle": "tenis-treino"
+    },
+    {
+      "path": "tenis.trilha",
+      "name": "Trilha",
+      "handle": "tenis-trilha"
+    }
+  ],
   "products": [
     {
       "handle": "mens-nike-air-zoom-pegasus-42-road-running",
       "title": "Nike Air Zoom Pegasus 42 Road Running",
+      "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 27990,
       "compare_at_amount": 90990,
@@ -449,6 +676,7 @@
     {
       "handle": "mens-adidas-supernova-rise-3-running-shoes",
       "title": "adidas Supernova Rise 3 Running Shoes",
+      "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 21990,
       "compare_at_amount": 69990,
@@ -556,6 +784,7 @@
     {
       "handle": "mens-asics-gel-nimbus-28-atc",
       "title": "ASICS Gel-Nimbus 28 ATC",
+      "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 24990,
       "compare_at_amount": 62990,
@@ -683,6 +912,7 @@
     {
       "handle": "mens-new-balance-fresh-foam-x-880-v15-gore-tex",
       "title": "New Balance Fresh Foam X 880 v15 GORE-TEX",
+      "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 19990,
       "compare_at_amount": 57990,
@@ -811,6 +1041,7 @@
     {
       "handle": "mens-on-cloudrunner-2-waterproof",
       "title": "On Cloudrunner 2 Waterproof",
+      "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 32990,
       "compare_at_amount": 97490,
@@ -896,6 +1127,7 @@
     {
       "handle": "mens-keen-wander-trail-running-shoes",
       "title": "KEEN Wander Trail Running Shoes",
+      "category": "tenis.trilha",
       "shelf": "acabando",
       "amount": 18990,
       "compare_at_amount": 45990,
@@ -1033,6 +1265,7 @@
     {
       "handle": "mens-ecco-byway-2-0-waterproof-lace-up-boots",
       "title": "ECCO Byway 2.0 Waterproof Lace-up Boots",
+      "category": "botas.coturno",
       "shelf": "acabando",
       "amount": 14990,
       "compare_at_amount": 38990,
@@ -1123,6 +1356,7 @@
     {
       "handle": "mens-nike-vapor-16-club",
       "title": "Nike Vapor 16 Club",
+      "category": "tenis.futebol",
       "shelf": "acabando",
       "amount": 11990,
       "compare_at_amount": 27990,
@@ -1232,6 +1466,2379 @@
         "mens-nike-vapor-16-club-gallery-2.jpg",
         "mens-nike-vapor-16-club-gallery-3.jpg",
         "mens-nike-vapor-16-club-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "mens-adidas-advantage-2-0",
+      "title": "adidas Advantage 2.0",
+      "category": "tenis.casual",
+      "shelf": "acabando",
+      "amount": 20990,
+      "compare_at_amount": 39000,
+      "stock": 12,
+      "description": "Os materiais primários que compõem este produto contêm no mínimo 20 por cento de conteúdo reciclado.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-39",
+          "ean": "7890000032483",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-40",
+          "ean": "7890000032490",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-41",
+          "ean": "7890000032506",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-42",
+          "ean": "7890000032513",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-43",
+          "ean": "7890000032520",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-44",
+          "ean": "7890000032537",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-45",
+          "ean": "7890000032544",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ADIDAS_ADVANTAGE_2_0-46",
+          "ean": "7890000032551",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "peso_g": 283
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 283 g (por pé)"
+        }
+      ],
+      "meta_title": "adidas Advantage 2.0 — Casual | Loja Demo",
+      "meta_description": "adidas Advantage 2.0 — Casual. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-adidas-advantage-2-0-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-new-balance-608v5-slip-resistant",
+      "title": "New Balance 608v5 Slip Resistant",
+      "category": "tenis.treino",
+      "shelf": "acabando",
+      "amount": 19190,
+      "compare_at_amount": 40000,
+      "stock": 7,
+      "description": "Os tênis New Balance 608v5 Slip Resistant oferecem suporte estabilizador para o seu treino.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-39",
+          "ean": "7890000104715",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-40",
+          "ean": "7890000104722",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-41",
+          "ean": "7890000104739",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-42",
+          "ean": "7890000104746",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-43",
+          "ean": "7890000104753",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-44",
+          "ean": "7890000104760",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-45",
+          "ean": "7890000104777",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_NEW_BALANCE_608V5_SLIP_RESISTANT-46",
+          "ean": "7890000104784",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Treino",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "peso_g": 397
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 397 g (por pé)"
+        }
+      ],
+      "meta_title": "New Balance 608v5 Slip Resistant — Treino | Loja Demo",
+      "meta_description": "New Balance 608v5 Slip Resistant — Treino. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-new-balance-608v5-slip-resistant-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-airwalk-work-airwalk-camino-int-met-mens-ct-eh",
+      "title": "Airwalk Work AIRWALK CAMINO INT MET - MEN'S CT EH",
+      "category": "botas.trabalho",
+      "shelf": "acabando",
+      "amount": 42990,
+      "compare_at_amount": 69000,
+      "stock": 4,
+      "description": "A Airwalk Work desenvolveu a Camino MET para trabalhadores que precisam de proteção sem abrir mão do estilo. O cabedal em couro premium full-grain combina com um bico composto sem metal e proteção metatarsal interna para",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-39",
+          "ean": "7890000034524",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-40",
+          "ean": "7890000034531",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-41",
+          "ean": "7890000034548",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-42",
+          "ean": "7890000034555",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-43",
+          "ean": "7890000034562",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-44",
+          "ean": "7890000034579",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-45",
+          "ean": "7890000034586",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_AIRWALK_WORK_AIRWALK_CAMINO_INT_MET_MENS_CT_EH-46",
+          "ean": "7890000034593",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Impermeável"
+        }
+      ],
+      "meta_title": "Airwalk Work AIRWALK CAMINO INT MET - MEN'S CT EH — Trabalho | Loja Demo",
+      "meta_description": "Airwalk Work AIRWALK CAMINO INT MET - MEN'S CT EH — Trabalho. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-airwalk-work-airwalk-camino-int-met-mens-ct-eh-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-anodyne-no-56-trail-boots",
+      "title": "Anodyne No. 56 Trail Boots",
+      "category": "botas.trilha",
+      "shelf": "quase-de-graca",
+      "amount": 24990,
+      "compare_at_amount": 79000,
+      "stock": 18,
+      "description": "Você estará preparado e protegido em qualquer terreno usando a Bota de Trilha Anodyne No. 56.",
+      "skus": [
+        {
+          "code": "MENS_ANODYNE_NO_56_TRAIL_BOOTS",
+          "ean": "7890000038164"
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Trilha",
+        "fechamento": "Velcro",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "Anodyne No. 56 Trail Boots — Trilha | Loja Demo",
+      "meta_description": "Anodyne No. 56 Trail Boots — Trilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-anodyne-no-56-trail-boots-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-avenger-work-boots-foreman-chelsea-ct",
+      "title": "Avenger Work Boots Foreman Chelsea CT",
+      "category": "botas.chelsea",
+      "shelf": "acabando",
+      "amount": 32990,
+      "compare_at_amount": 59000,
+      "stock": 9,
+      "description": "As botas de trabalho Avenger Foreman Chelsea CT apresentam um cabedal resistente em couro full grain, bico de segurança confiável e proteção EH para mantê-lo confortável e estável durante toda a jornada de trabalho.",
+      "skus": [
+        {
+          "code": "MENS_AVENGER_WORK_BOOTS_FOREMAN_CHELSEA_CT",
+          "ean": "7890000041720"
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Sem fechamento"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Sem fechamento"
+        }
+      ],
+      "meta_title": "Avenger Work Boots Foreman Chelsea CT — Chelsea | Loja Demo",
+      "meta_description": "Avenger Work Boots Foreman Chelsea CT — Chelsea. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-avenger-work-boots-foreman-chelsea-ct-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-ariat-spitfire-all-terrain-waterproof",
+      "title": "Ariat Spitfire All Terrain Waterproof",
+      "category": "botas.chukka",
+      "shelf": "acabando",
+      "amount": 37990,
+      "compare_at_amount": 89000,
+      "stock": 3,
+      "description": "Emane charme e estilo usando as clássicas botas western Ariat Spitfire All Terrain Waterproof. O calçado com cadarço apresenta cabedal em couro e forro em mesh respirável para conforto o dia todo",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-39",
+          "ean": "7890000038485",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-40",
+          "ean": "7890000038492",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-41",
+          "ean": "7890000038508",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-42",
+          "ean": "7890000038515",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-43",
+          "ean": "7890000038522",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ARIAT_SPITFIRE_ALL_TERRAIN_WATERPROOF-44",
+          "ean": "7890000038539",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Impermeável"
+        }
+      ],
+      "meta_title": "Ariat Spitfire All Terrain Waterproof — Chukka | Loja Demo",
+      "meta_description": "Ariat Spitfire All Terrain Waterproof — Chukka. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-ariat-spitfire-all-terrain-waterproof-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-david-tate-lasso",
+      "title": "David Tate Lasso",
+      "category": "botas.cano_longo",
+      "shelf": "quase-de-graca",
+      "amount": 26990,
+      "compare_at_amount": 89000,
+      "stock": 22,
+      "description": "Volte no tempo com a David Tate Lasso, uma bota de couro cano alto até o joelho com detalhes rústicos que você vai adorar, como um painel com cadarço nas costas e fivela no tornozelo.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-35",
+          "ean": "7890000284875",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-36",
+          "ean": "7890000284882",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-37",
+          "ean": "7890000284899",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "37"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-38",
+          "ean": "7890000284905",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-39",
+          "ean": "7890000284912",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DAVID_TATE_LASSO-40",
+          "ean": "7890000284929",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Alto",
+        "peso_g": 425
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 425 g (por pé)"
+        }
+      ],
+      "meta_title": "David Tate Lasso — Cano longo | Loja Demo",
+      "meta_description": "David Tate Lasso — Cano longo. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-david-tate-lasso-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-bogs-whiteout-plaid",
+      "title": "Bogs Whiteout Plaid",
+      "category": "botas.chuva",
+      "shelf": "acabando",
+      "amount": 52990,
+      "compare_at_amount": 90000,
+      "stock": 6,
+      "description": "As botas Bogs Whiteout Plaid são tão resistentes quanto estilosas. Projetada para quem gosta de estar com boa aparência mesmo colocando a mão na massa, não importa a previsão do tempo, esta bota combina toda a impermeabilidade",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-35",
+          "ean": "7890000258920",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-36",
+          "ean": "7890000258937",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-37",
+          "ean": "7890000258944",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "37"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-38",
+          "ean": "7890000258951",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-39",
+          "ean": "7890000258968",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-40",
+          "ean": "7890000258975",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-41",
+          "ean": "7890000258982",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_BOGS_WHITEOUT_PLAID-42",
+          "ean": "7890000258999",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "solado": "Borracha",
+        "fechamento": "Sem fechamento",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Solado: Borracha · Fechamento: Sem fechamento · Impermeável"
+        }
+      ],
+      "meta_title": "Bogs Whiteout Plaid — Chuva | Loja Demo",
+      "meta_description": "Bogs Whiteout Plaid — Chuva. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-bogs-whiteout-plaid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-allen-edmonds-davenport-fisherman-sandals",
+      "title": "Allen Edmonds Davenport Fisherman Sandals",
+      "category": "sandalias.sandalia",
+      "shelf": "acabando",
+      "amount": 39990,
+      "compare_at_amount": 80000,
+      "stock": 14,
+      "description": "Agora disponível em uma variedade de larguras e tamanhos para um ajuste excepcional e o máximo em conforto duradouro.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45"
+          ]
+        },
+        {
+          "name": "Cor",
+          "values": [
+            "Marrom",
+            "Preto"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-40-MARROM",
+          "ean": "7890000036771",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-40-PRETO",
+          "ean": "7890000036788",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-41-MARROM",
+          "ean": "7890000036795",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-41-PRETO",
+          "ean": "7890000036801",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-42-MARROM",
+          "ean": "7890000036818",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-42-PRETO",
+          "ean": "7890000036825",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-43-MARROM",
+          "ean": "7890000036832",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-43-PRETO",
+          "ean": "7890000036849",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-44-MARROM",
+          "ean": "7890000036856",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-44-PRETO",
+          "ean": "7890000036863",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-45-MARROM",
+          "ean": "7890000036870",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ALLEN_EDMONDS_DAVENPORT_FISHERMAN_SANDALS-45-PRETO",
+          "ean": "7890000036887",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Praia",
+        "solado": "Borracha",
+        "fechamento": "Velcro",
+        "peso_g": 295
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Velcro · Peso: 295 g (por pé)"
+        }
+      ],
+      "meta_title": "Allen Edmonds Davenport Fisherman Sandals — Sandália | Loja Demo",
+      "meta_description": "Allen Edmonds Davenport Fisherman Sandals — Sandália. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-allen-edmonds-davenport-fisherman-sandals-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-birkenstock-arizona-eva-essentials",
+      "title": "Birkenstock Arizona EVA Essentials",
+      "category": "sandalias.slide",
+      "shelf": "quase-de-graca",
+      "amount": 10990,
+      "compare_at_amount": 29000,
+      "stock": 5,
+      "description": "A largura Regular acomoda de Regular a Larga.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-41",
+          "ean": "7890000042451",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-42",
+          "ean": "7890000042468",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-43",
+          "ean": "7890000042475",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-44",
+          "ean": "7890000042482",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-45",
+          "ean": "7890000042499",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_BIRKENSTOCK_ARIZONA_EVA_ESSENTIALS-46",
+          "ean": "7890000042505",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "uso": "Praia",
+        "solado": "EVA",
+        "fechamento": "Sem fechamento",
+        "impermeavel": true
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Solado: EVA · Fechamento: Sem fechamento · Impermeável"
+        }
+      ],
+      "meta_title": "Birkenstock Arizona EVA Essentials — Slide | Loja Demo",
+      "meta_description": "Birkenstock Arizona EVA Essentials — Slide. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-birkenstock-arizona-eva-essentials-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-orthofeet-hudson",
+      "title": "Orthofeet Hudson",
+      "category": "sandalias.tamanco",
+      "shelf": "acabando",
+      "amount": 31990,
+      "compare_at_amount": 50000,
+      "stock": 11,
+      "description": "Este chinelo ortopédico masculino em couro, leve e confortável, oferece suporte total e amortecimento o dia todo, com tira ajustável para um encaixe e conforto ideais.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_ORTHOFEET_HUDSON-39",
+          "ean": "7890000122412",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_ORTHOFEET_HUDSON-40",
+          "ean": "7890000122429",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Sem fechamento"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Sem fechamento"
+        }
+      ],
+      "meta_title": "Orthofeet Hudson — Tamanco | Loja Demo",
+      "meta_description": "Orthofeet Hudson — Tamanco. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-orthofeet-hudson-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-clarks-wesley-sun",
+      "title": "Clarks Wesley Sun",
+      "category": "sandalias.rasteira",
+      "shelf": "acabando",
+      "amount": 13490,
+      "compare_at_amount": 30000,
+      "stock": 8,
+      "description": "Aproveite a estação com estilo e conforto incomparável com o Clarks Wesley Sun, o auge dos chinelos de couro atemporais. Perfeito para qualquer ocasião, esta nova adição à família Wesley apresenta",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44"
+          ]
+        },
+        {
+          "name": "Cor",
+          "values": [
+            "Grafite",
+            "Preto"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-39-GRAFITE",
+          "ean": "7890000051408",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-39-PRETO",
+          "ean": "7890000051415",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-40-GRAFITE",
+          "ean": "7890000051422",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-40-PRETO",
+          "ean": "7890000051439",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-41-GRAFITE",
+          "ean": "7890000051446",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-41-PRETO",
+          "ean": "7890000051453",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-42-GRAFITE",
+          "ean": "7890000051460",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-42-PRETO",
+          "ean": "7890000051477",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-43-GRAFITE",
+          "ean": "7890000051484",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-43-PRETO",
+          "ean": "7890000051491",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-44-GRAFITE",
+          "ean": "7890000051507",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            },
+            {
+              "option": "Cor",
+              "value": "Grafite"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CLARKS_WESLEY_SUN-44-PRETO",
+          "ean": "7890000051514",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Praia",
+        "solado": "EVA",
+        "fechamento": "Sem fechamento",
+        "peso_g": 225
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: EVA · Fechamento: Sem fechamento · Peso: 225 g (por pé)"
+        }
+      ],
+      "meta_title": "Clarks Wesley Sun — Rasteira | Loja Demo",
+      "meta_description": "Clarks Wesley Sun — Rasteira. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-clarks-wesley-sun-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-anne-klein-islander",
+      "title": "Anne Klein Islander",
+      "category": "sapatos.salto",
+      "shelf": "acabando",
+      "amount": 19990,
+      "compare_at_amount": 39000,
+      "stock": 16,
+      "description": "Alcance um visual elegante e impecável sem esforço usando o Anne Klein Islander. Estes saltos de bico fino contam com a tecnologia Iflex para flexão de 90 graus, estilo slip-on com fechamento em faixa elástica, e",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-35",
+          "ean": "7890000247894",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-36",
+          "ean": "7890000247900",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-37",
+          "ean": "7890000247917",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "37"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-38",
+          "ean": "7890000247924",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-39",
+          "ean": "7890000247931",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_ANNE_KLEIN_ISLANDER-40",
+          "ean": "7890000247948",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Sem fechamento",
+        "peso_g": 283
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Sem fechamento · Peso: 283 g (por pé)"
+        }
+      ],
+      "meta_title": "Anne Klein Islander — Salto | Loja Demo",
+      "meta_description": "Anne Klein Islander — Salto. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-anne-klein-islander-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-cole-haan-american-classics-hampton-penny-loafers",
+      "title": "Cole Haan American Classics Hampton Penny Loafers",
+      "category": "sapatos.mocassim",
+      "shelf": "quase-de-graca",
+      "amount": 22990,
+      "compare_at_amount": 69000,
+      "stock": 4,
+      "description": "Os Cole Haan American Classics Hampton Penny Loafers combinam a sofisticação atemporal de um sapato social com inovação moderna, criando o equilíbrio perfeito entre estilo e conforto. Estes mocassins de couro apresentam",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-39",
+          "ean": "7890000051828",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-40",
+          "ean": "7890000051835",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-41",
+          "ean": "7890000051842",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-42",
+          "ean": "7890000051859",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-43",
+          "ean": "7890000051866",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-44",
+          "ean": "7890000051873",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLE_HAAN_AMERICAN_CLASSICS_HAMPTON_PENNY_LOAFERS-45",
+          "ean": "7890000051880",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Social",
+        "solado": "Couro",
+        "fechamento": "Sem fechamento",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Couro · Fechamento: Sem fechamento"
+        }
+      ],
+      "meta_title": "Cole Haan American Classics Hampton Penny Loafers — Mocassim | Loja Demo",
+      "meta_description": "Cole Haan American Classics Hampton Penny Loafers — Mocassim. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-cole-haan-american-classics-hampton-penny-loafers-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-calvin-klein-brodie-2",
+      "title": "Calvin Klein Brodie 2",
+      "category": "sapatos.social",
+      "shelf": "acabando",
+      "amount": 21990,
+      "compare_at_amount": 39000,
+      "stock": 10,
+      "description": "É sempre bom ter um bom sapato social coringa à disposição, como o Calvin Klein Brodie 2, com linhas clássicas e limpas, pronto para qualquer ocasião.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-39",
+          "ean": "7890000048781",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-40",
+          "ean": "7890000048798",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-41",
+          "ean": "7890000048804",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-42",
+          "ean": "7890000048811",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-43",
+          "ean": "7890000048828",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-44",
+          "ean": "7890000048835",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CALVIN_KLEIN_BRODIE_2-45",
+          "ean": "7890000048842",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Social",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "peso_g": 397
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 397 g (por pé)"
+        }
+      ],
+      "meta_title": "Calvin Klein Brodie 2 — Social | Loja Demo",
+      "meta_description": "Calvin Klein Brodie 2 — Social. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-calvin-klein-brodie-2-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-dansko-matilda",
+      "title": "Dansko Matilda",
+      "category": "sapatos.sapatilha",
+      "shelf": "acabando",
+      "amount": 31990,
+      "compare_at_amount": 79000,
+      "stock": 20,
+      "description": "A Dansko Matilda é uma Mary Jane rasteira com uma fivela marcante e uma silhueta clean e clássica. Confeccionada em couro macio e trabalhado, apresenta ferragens ergonômicas e fechamento em velcro.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "34",
+            "35",
+            "36"
+          ]
+        },
+        {
+          "name": "Cor",
+          "values": [
+            "Preto",
+            "Marrom",
+            "Marinho"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_DANSKO_MATILDA-34-PRETO",
+          "ean": "7890000283151",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-34-MARROM",
+          "ean": "7890000283168",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-34-MARINHO",
+          "ean": "7890000283175",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            },
+            {
+              "option": "Cor",
+              "value": "Marinho"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-35-PRETO",
+          "ean": "7890000283182",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-35-MARROM",
+          "ean": "7890000283199",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-35-MARINHO",
+          "ean": "7890000283205",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            },
+            {
+              "option": "Cor",
+              "value": "Marinho"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-36-PRETO",
+          "ean": "7890000283212",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            },
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-36-MARROM",
+          "ean": "7890000283229",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_DANSKO_MATILDA-36-MARINHO",
+          "ean": "7890000283236",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            },
+            {
+              "option": "Cor",
+              "value": "Marinho"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Velcro"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "Dansko Matilda — Sapatilha | Loja Demo",
+      "meta_description": "Dansko Matilda — Sapatilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-dansko-matilda-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-deer-stags-spun-slipper",
+      "title": "Deer Stags Spun Slipper",
+      "category": "sapatos.pantufa",
+      "shelf": "acabando",
+      "amount": 18890,
+      "compare_at_amount": 30000,
+      "stock": 6,
+      "description": "Fique aquecido o ano todo com o conforto do macio Deer Stags Spun Slipper. Com seu estilo SLIPPEROOZ, esta pantufa de conforto e suporte com sola indoor/outdoor e forro de pele sintética extremamente macio,",
+      "skus": [
+        {
+          "code": "MENS_DEER_STAGS_SPUN_SLIPPER",
+          "ean": "7890000066389"
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Camurça",
+        "uso": "Corrida",
+        "amortecimento": "Baixo",
+        "solado": "EVA",
+        "peso_g": 255
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Camurça · Solado: EVA · Amortecimento: Baixo · Peso: 255 g (por pé)"
+        }
+      ],
+      "meta_title": "Deer Stags Spun Slipper — Pantufa | Loja Demo",
+      "meta_description": "Deer Stags Spun Slipper — Pantufa. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-deer-stags-spun-slipper-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-darn-tough-vermont-element-no-show-tab-lightweight-with-cushion",
+      "title": "Darn Tough Vermont Element No Show Tab Lightweight with Cushion",
+      "category": "acessorios.meias",
+      "shelf": "acabando",
+      "amount": 4690,
+      "compare_at_amount": 10000,
+      "stock": 13,
+      "description": "Se você está pronto para encarar o desafio, as meias Darn Tough Vermont Element No Show Tab Lightweight with Cushion vão te dar toda a cobertura que você precisa.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "M",
+            "G",
+            "GG"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_DARN_TOUGH_VERMONT_ELEMENT_NO_SHOW_TAB_LIGHTWEIGHT_WITH_CUSHION-M",
+          "ean": "7890000064408",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "M"
+            }
+          ]
+        },
+        {
+          "code": "MENS_DARN_TOUGH_VERMONT_ELEMENT_NO_SHOW_TAB_LIGHTWEIGHT_WITH_CUSHION-G",
+          "ean": "7890000064415",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "G"
+            }
+          ]
+        },
+        {
+          "code": "MENS_DARN_TOUGH_VERMONT_ELEMENT_NO_SHOW_TAB_LIGHTWEIGHT_WITH_CUSHION-GG",
+          "ean": "7890000064422",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "GG"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Knit",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Knit"
+        }
+      ],
+      "meta_title": "Darn Tough Vermont Element No Show Tab Lightweight with Cushion — Meias | Loja Demo",
+      "meta_description": "Darn Tough Vermont Element No Show Tab Lightweight with Cushion — Meias. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-darn-tough-vermont-element-no-show-tab-lightweight-with-cushion-cover.jpg"
+      ]
+    },
+    {
+      "handle": "aldo-alesia",
+      "title": "ALDO Alesia",
+      "category": "acessorios.bolsas",
+      "shelf": "quase-de-graca",
+      "amount": 10490,
+      "compare_at_amount": 30000,
+      "stock": 3,
+      "description": "A ALDO Alesia é uma bolsa de ombro elegante com silhueta retangular suavizada por bordas arredondadas. Sua superfície brilhante adiciona um toque moderno.",
+      "skus": [
+        {
+          "code": "ALDO_ALESIA",
+          "ean": "7890000002011"
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Sintético",
+        "solado": "Poliuretano"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Solado: Poliuretano"
+        }
+      ],
+      "meta_title": "ALDO Alesia — Bolsas | Loja Demo",
+      "meta_description": "ALDO Alesia — Bolsas. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "aldo-alesia-cover.jpg"
+      ]
+    },
+    {
+      "handle": "adidas-golf-braided-stretch-belt",
+      "title": "adidas Golf Braided Stretch Belt",
+      "category": "acessorios.cintos",
+      "shelf": "acabando",
+      "amount": 10590,
+      "compare_at_amount": 20000,
+      "stock": 9,
+      "description": "Os materiais principais que compõem este produto contêm no mínimo 20% de conteúdo reciclado.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Marinho",
+            "Preto",
+            "Cinza"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "ADIDAS_GOLF_BRAIDED_STRETCH_BELT-MARINHO",
+          "ean": "7890000000017",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Marinho"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_GOLF_BRAIDED_STRETCH_BELT-PRETO",
+          "ean": "7890000000024",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_GOLF_BRAIDED_STRETCH_BELT-CINZA",
+          "ean": "7890000000031",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Cinza"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Camurça"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Camurça"
+        }
+      ],
+      "meta_title": "adidas Golf Braided Stretch Belt — Cintos | Loja Demo",
+      "meta_description": "adidas Golf Braided Stretch Belt — Cintos. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "adidas-golf-braided-stretch-belt-cover.jpg"
+      ]
+    },
+    {
+      "handle": "arcteryx-rho-gloves",
+      "title": "Arc'teryx Rho Gloves",
+      "category": "acessorios.luvas",
+      "shelf": "acabando",
+      "amount": 7990,
+      "compare_at_amount": 20000,
+      "stock": 15,
+      "description": "Mantenha a ponta dos dedos aquecida usando as luvas Arc'teryx Rho.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "PP",
+            "M",
+            "GG"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "ARCTERYX_RHO_GLOVES-PP",
+          "ean": "7890000003407",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "PP"
+            }
+          ]
+        },
+        {
+          "code": "ARCTERYX_RHO_GLOVES-M",
+          "ean": "7890000003414",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "M"
+            }
+          ]
+        },
+        {
+          "code": "ARCTERYX_RHO_GLOVES-GG",
+          "ean": "7890000003421",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "GG"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Unissex",
+        "material": "Sintético"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético"
+        }
+      ],
+      "meta_title": "Arc'teryx Rho Gloves — Luvas | Loja Demo",
+      "meta_description": "Arc'teryx Rho Gloves — Luvas. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "arcteryx-rho-gloves-cover.jpg"
+      ]
+    },
+    {
+      "handle": "aetrex-speed-orthotic",
+      "title": "Aetrex Speed Orthotic",
+      "category": "acessorios.palmilhas",
+      "shelf": "acabando",
+      "amount": 25990,
+      "compare_at_amount": 39000,
+      "stock": 5,
+      "description": "ENTRE TAMANHOS? A Aetrex recomenda aumentar o tamanho para calçados e Órteses.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-7",
+          "ean": "7890000001755",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "7"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-8",
+          "ean": "7890000001762",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "8"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-9",
+          "ean": "7890000001779",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "9"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-10",
+          "ean": "7890000001786",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "10"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-11",
+          "ean": "7890000001793",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "11"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-12",
+          "ean": "7890000001809",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "12"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-13",
+          "ean": "7890000001816",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "13"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-14",
+          "ean": "7890000001823",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "14"
+            }
+          ]
+        },
+        {
+          "code": "AETREX_SPEED_ORTHOTIC-15",
+          "ean": "7890000001830",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "15"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Mesh",
+        "pisada": "Neutra",
+        "solado": "Poliuretano",
+        "peso_g": 57
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Poliuretano · Peso: 57 g (por pé)"
+        }
+      ],
+      "meta_title": "Aetrex Speed Orthotic — Palmilhas | Loja Demo",
+      "meta_description": "Aetrex Speed Orthotic — Palmilhas. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "aetrex-speed-orthotic-cover.jpg"
+      ]
+    },
+    {
+      "handle": "black-clover-cyprus-3-snapback-adjustable-hat",
+      "title": "Black Clover Cyprus 3 Snapback Adjustable Hat",
+      "category": "acessorios.bones",
+      "shelf": "acabando",
+      "amount": 8790,
+      "compare_at_amount": 20000,
+      "stock": 7,
+      "description": "Redefina o seu jogo de headwear com o boné Black Clover Cyprus 3, onde o conforto ajustável encontra um toque afiado e sofisticado. Desenhado no clássico corte Black Clover, este boné é feito para toda ocasi",
+      "skus": [
+        {
+          "code": "BLACK_CLOVER_CYPRUS_3_SNAPBACK_ADJUSTABLE_HAT",
+          "ean": "7890000006101"
+        }
+      ],
+      "metadata": {
+        "genero": "Unissex",
+        "material": "Sintético"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético"
+        }
+      ],
+      "meta_title": "Black Clover Cyprus 3 Snapback Adjustable Hat — Bones | Loja Demo",
+      "meta_description": "Black Clover Cyprus 3 Snapback Adjustable Hat — Bones. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "black-clover-cyprus-3-snapback-adjustable-hat-cover.jpg"
+      ]
+    },
+    {
+      "handle": "barefoot-dreams-cozychic-mosaic-wrap",
+      "title": "Barefoot Dreams CozyChic Mosaic Wrap",
+      "category": "acessorios.cachecois",
+      "shelf": "acabando",
+      "amount": 34990,
+      "compare_at_amount": 60000,
+      "stock": 17,
+      "description": "Chame atenção e acrescente um toque de sofisticação a qualquer look com o Barefoot Dreams Cozychic Mosaic Wrap. Este wrap best-seller é uma peça statement que combina estilo e conforto sem esforço.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Rosa",
+            "Marrom"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "BAREFOOT_DREAMS_COZYCHIC_MOSAIC_WRAP-ROSA",
+          "ean": "7890000004237",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Rosa"
+            }
+          ]
+        },
+        {
+          "code": "BAREFOOT_DREAMS_COZYCHIC_MOSAIC_WRAP-MARROM",
+          "ean": "7890000004244",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Unissex",
+        "material": "Sintético",
+        "uso": "Social",
+        "amortecimento": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Amortecimento: Baixo"
+        }
+      ],
+      "meta_title": "Barefoot Dreams CozyChic Mosaic Wrap — Cachecóis | Loja Demo",
+      "meta_description": "Barefoot Dreams CozyChic Mosaic Wrap — Cachecóis. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "barefoot-dreams-cozychic-mosaic-wrap-cover.jpg"
       ]
     }
   ]

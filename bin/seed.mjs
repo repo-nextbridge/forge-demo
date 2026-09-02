@@ -49,6 +49,10 @@ import { seedOutlet } from '../seed/outlet.mjs';
 // and it runs AFTER seedCoffee for a reason the kernel enforces: six of the twenty-one things it puts on sale
 // are the coffee shop's OWN products, published into a second store rather than created a second time.
 import { seedTotem } from '../seed/totem.mjs';
+// The OUTLET'S WINDOW HALF, imported apart from `seedOutlet` because it runs in the OTHER phase: the
+// massive step converges the `compare_at` of every dataset SKU, and every outlet product is one — so the
+// "de" is written after step 9 or not at all. Its own header carries the measurement.
+import { priceOutlet } from '../seed/outlet.mjs';
 // The FORGE store's SHOP WINDOW (S4) — banners, shelves, pages and the merchandising promotions. A module of
 // its own beside the catalogue's, and it runs AFTER it for a reason the commands enforce: a shelf sourced from
 // a category and a promotion targeting a handle both resolve against products that have to be published first.
@@ -79,7 +83,8 @@ const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env
 //   --phase curated   (default)  the terrain and the curated content: stores, vocabulary, declared fields,
 //                                the six coffees, the outlet's eight, the counter's menu, the placeholders.
 //   --phase window               the shop window of the sports store: the composed blocks, the app settings,
-//                                the institutional pages, the DATASET's promotions, and the cache bust.
+//                                the institutional pages, the DATASET's promotions, the cache bust — and the
+//                                OUTLET'S "DE", which the massive step erases if it is written in `curated`.
 //
 // ⚠️ THEY ARE TWO INVOCATIONS BECAUSE A THIRD PROCESS RUNS BETWEEN THEM. The massive half — the 2 790-product
 // catalogue and the assortment — is filled by `dist/seed-demo.js`, a one-shot INSIDE the container. The order
@@ -1339,6 +1344,17 @@ log('curated — done. Next: the one-shot (`dist/seed-demo.js`), then `--phase w
 
 // ── ★ THE WINDOW — AFTER the one-shot, never before. The header of `--phase` says why. ──────────────────────
 if (phase === 'window') {
+// ⛔ THE OUTLET'S "DE" IS WRITTEN HERE AND NOWHERE ELSE, and it is the same reason the promotions are here:
+// step 9 has a say about these rows and it speaks after the curated phase. `seed-media.ts` converges every
+// SKU it matches BY CODE to the dataset's `compare_at_amount ?? null`, and every product of the outlet IS a
+// dataset product — so a discount written in phase 8 is gone by the time anybody looks at the shop, with the
+// price left low and no "de" beside it. The whole account is at `priceOutlet()`. Creation, publication,
+// categorisation and stock stay in the curated phase; only this one figure waits.
+if (here('outlet')) {
+  await priceOutlet({ api, token, tenant, command, read, readAll, rows, log, fail, minted });
+} else {
+  log('outlet — not on this tenant; no "de" to write');
+}
 if (here('forge')) {
   await seedVitrine({
   api,
