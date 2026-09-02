@@ -105,6 +105,45 @@ map of how the box is born:
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
 
+(Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
+fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then.)
+
+### 2b. Two things that used to be typed by hand, and died at every rebirth
+
+Both were real arrangements on the bench that the next `bash bin/box-up.sh` erased, and neither loss was
+loud — which is why they are here rather than in somebody's notes.
+
+**The admin's brand switcher.** `FORGE_ADMIN_SIBLINGS` is the dropdown that carries an operator from one
+brand's admin to the other's. It is env, so it was hand-typed and rebirths wiped it — and an unset value
+yields an **empty list**, which renders the admin shell *exactly* as it did before the feature existed. It is
+now **derived at birth** (step 3d) from `seed/box.json`: one entry per tenant, `settings.tenant_name` for the
+name and `admin_host` for the door. Add a third tenant there and it arrives in the dropdown with no second
+edit. ⚠️ Switching brands means **logging in again** — each admin is its own host and the session cookie is
+host-only. That is the guard that stops an operator acting on one tenant while believing they are on the
+other, not a missing feature.
+
+**This box on a tailnet.** The bench is born on `localhost`, deliberately: a birth that depended on somebody's
+private network would stop proving the product. When it has to be reachable from a phone or another machine,
+that is a **promotion**, and it is one command:
+
+```bash
+# in .env — never in a tracked file; both are addresses of your own network
+FORGE_TAILNET_HOST=<this machine's MagicDNS name>
+FORGE_TAILNET_IP=<its tailnet address>      # optional: the safety net for a device with MagicDNS off
+
+bash bin/box-up.sh --tailnet        # and `--localhost` puts it back
+```
+
+It rebuilds the host → store map, re-points `FORGE_PUBLIC_ORIGIN` (**not cosmetic** — the kernel mints every
+product-image URL from it, so a box reached over the tailnet with `localhost` here serves a catalogue of
+images a phone cannot fetch, and nothing logs an error) and `FORGE_GATE_ADMIN_URL`, re-derives the sibling
+list against the new hostname, claims each tenant's admin door **through the port** (`admin-host.js`, the same
+two platform commands `provision-ref` drives — never a second write path), and recreates the services that
+read all of it at boot. Idempotent and reversible; it touches no store, product or order.
+
+⛔ **It does not run `tailscale`.** Getting the machine onto the network is your gesture; this only wires the
+box to the fact that it is. It assumes the same published ports already answer there.
+
 ### Step 10 has two halves, the second in a `finally` — and it must run inside the silence
 
 `seed-history` refuses to run when a tenant has **more than one active delivery method** — it will not pick

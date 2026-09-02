@@ -115,6 +115,24 @@ services:
     depends_on:
       - kernel
 
+  # ── THE ADMIN'S SIBLING SWITCHER (A44) ──────────────────────────────────────────────────────────────────
+  #
+  # ⚠️ THIS BLOCK IS THE HALF THAT WAS MISSING, AND MEASURED: `compose.yml` passes the admin sixteen
+  # variables and `FORGE_ADMIN_SIBLINGS` is not one of them. So the value could sit in `.env`, correct and
+  # complete, and the container would never see it — the dropdown stays absent and nothing anywhere says why.
+  #
+  # It is written HERE rather than in `compose.yml` for the reason that file's own comments give: `compose.yml`
+  # is the PRODUCT's file, this one is the box's. The switcher is a fact about THIS instance — that it hosts
+  # two brands whose admins are two ports of one container — and `apps/admin/src/lib/siblings.ts` is explicit
+  # that the list is configuration of whoever deploys and must never be discovered from the kernel (listing an
+  # instance's tenants is a PLATFORM read; a tenant operator learning who else lives on the box is a leak).
+  #
+  # The VALUE is derived at birth by `bin/box-up.sh` (step 3d) from `seed/box.json`, and rewritten by
+  # `--tailnet`. Compose only has to carry it across.
+  admin:
+    environment:
+      FORGE_ADMIN_SIBLINGS: ${FORGE_ADMIN_SIBLINGS:-}
+
   # ★ THE EDGE PUBLISHES ONE MORE PORT, AND THAT IS THE WHOLE ROUTING CHANGE.
   #
   # `caddy/Caddyfile.local` gains a `:82` site pointing at `totem:3000`, mirroring the `:81` the admin already

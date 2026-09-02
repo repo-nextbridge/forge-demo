@@ -125,7 +125,14 @@ export function CoffeeChrome({
             <a href={`${home}#assinatura`}>Assinatura</a>
             <a href={storeHref(base, '/checkout')}>Minha sacola</a>
           </nav>
-          <div className={styles.copy}>© 2026 forge.co · Cafés que conectam</div>
+          {/* ★ A34 — WHAT THE LAST LINE OF THE FOOTER IS FOR. It used to be a copyright notice, which is a
+           * claim nobody reads and this demo does not need to make. The line a shop actually wants there is
+           * the one that answers the question a shopper has at the bottom of the page, and the mark that
+           * answers it is the same padlock the checkout's own header carries. */}
+          <div className={styles.copy}>
+            <Icon name="lock" size={13} strokeWidth={1.5} />
+            Compra segura
+          </div>
         </div>
       </footer>
     </MinicartProvider>
