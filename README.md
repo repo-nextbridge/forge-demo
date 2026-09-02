@@ -18,7 +18,11 @@ four places (an app, a decision, its own fields, its storefront).
 ```
 compose.yml            the stack. Ours to edit — three ★-marked differences from the template, each with its reason.
 forge.lock             the pin: which Forge this box runs, by digest, and where those bytes came from.
-composition.json       WHICH APPS the images compose. An instance's answer, not the product's.
+composition.json       WHICH APPS the images compose. An instance's answer, not the product's — and
+                       since 02/09 that answer is EVERY app the platform offers (17) plus the two this box
+                       wrote, because a demo that ships apps missing hides capabilities that exist. An app
+                       the product carries and this box does NOT compose is named in `notComposed` with a
+                       reason; `bin/composition.guard.mjs` grades that against the monorepo.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
 apps/                  the apps THIS box wrote: `demo-gate` (§4) and `payment-pos` (§4b). Composed into the images.
@@ -429,8 +433,17 @@ It is idempotent — re-running it is a no-op.
 
 The same run stands the **Outlet** up (`seed/outlet.mjs`, its data in `seed/outlet.json`): it installs the
 two apps that store composes with, uploads its photographs and campaign art, publishes eight products with
-their prices and their stock, pins the two collections its shelves are sourced from, and places the four
+their prices and their stock, pins the two collections its shelves are sourced from, and places the five
 Compose blocks that are its home page. Not one line of front-end code — a theme, data, and a composition.
+
+⚠️ **Four of those five are in ONE slot.** The reference home draws its sections in a fixed order and the two
+headings this store keeps — «Compre por categoria» and «Marcas que amamos» — are theme chrome, not slots, with
+exactly one slot between them (`home.below_categories`). So the mosaic, the two shelves and the «Outlet Kids»
+banner are `position` 0..3 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
+`home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s `_home_why`. That
+also makes `compose()` the one step in this seed that **removes**: it governs those slots rather than
+appending to them, because a box that ran the previous version has the old page in the old slots and appending
+would draw both.
 
 The same run also stands the **Balcão** up (`seed/totem.mjs`, its data in `seed/totem.json`) — the counter
 store the totem serves, handle `balcao`, on the same tenant and with no theme (the totem is an app of its

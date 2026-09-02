@@ -17,8 +17,9 @@
 //   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
 //     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
 //   · the two collections the two shelves are sourced from;
-//   · the four Compose placements that ARE the home: the announcement band, the five-tile banner mosaic
-//     and the two shelves.
+//   · the five Compose placements that ARE the home: the announcement band, and — all four in the SINGLE
+//     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
+//     banner mosaic, the "Quase de graça" shelf, the "Acabando!" shelf and the «Outlet Kids» banner.
 //
 // ⚠️ CONFINED TO THE OUTLET STORE — with one measured asterisk. Everything store-scoped below names
 // `data.store` and nothing else. Two steps are not store-scoped because the kernel models them per TENANT
@@ -30,11 +31,24 @@
 // but "installing an app touches only my store" is not true, and the slice report says so out loud.
 //
 // IDEMPOTENT BY CONSTRUCTION, like its sibling: everything is keyed by a name this file chooses, the read
-// face is asked first, and what is already there is skipped. Re-running converges and never deletes.
+// face is asked first, and what is already there is skipped. Re-running converges.
+//
+// ⚠️ WITH ONE EXCEPTION SINCE 02/09, AND IT IS DELIBERATE: `compose()` GOVERNS the home's slots rather than
+// appending to them, so a block in them that this file does not declare is REMOVED. Everything else here
+// still only ever adds — no product, photograph, collection or custom field is deleted by re-running. The
+// reason the home is different is written at `compose()`; the short version is that the previous version of
+// this file put the same three blocks in three OTHER slots, and a seed that only appends would leave that
+// page drawn above the new one and report success.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// ⚠️ THE MIME COMES FROM THE FILE, and it did not used to. `upload()` announced `image/jpeg` for every byte
+// it sent, which was true of the six JPEGs this store shipped with and false the moment a PNG arrived — and
+// the media door VALIDATES the declared mime against the extension (`plan-upload.ts`), so it would have been
+// a refusal at the edge, not a picture that looked wrong. Same function, same reason and the same tests as
+// `bin/seed.mjs` and `seed/forge.mjs`: one answer to "what is this file", not three.
+import { mimeOf } from './forge.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const MEDIA = join(SEED, 'outlet-media');
@@ -250,7 +264,7 @@ async function uploadMedia(port) {
   const { command, readAll, log } = port;
   const wanted = [
     ...data.mosaic.media.map((m) => m.file),
-    ...data.shelves.flatMap((s) => (s.banner ? [s.banner] : [])),
+    ...data.kidsBanner.media.map((m) => m.file),
     ...data.products.flatMap((p) => p.photos),
   ];
 
@@ -276,6 +290,8 @@ async function uploadMedia(port) {
 
 async function upload({ api, token, tenant, command, fail }, filename) {
   const bytes = readFileSync(join(MEDIA, subdirOf(filename), filename));
+  const mime = mimeOf(filename);
+  if (!mime) fail(`upload(${filename}): this seed does not know the mime of that extension.`);
   // The media face wants the tenant spelled out too (`403 forbidden: "tenant required"` without it,
   // measured) — it is its own adapter, not the command one, so the wrapper above does not reach it.
   const plan = await fetch(`${api}/v1/media/commands/media.request_upload`, {
@@ -285,7 +301,7 @@ async function upload({ api, token, tenant, command, fail }, filename) {
       authorization: `Bearer ${token}`,
       'x-forge-tenant': tenant,
     },
-    body: JSON.stringify({ filename, mime: 'image/jpeg', kind: 'image', size: bytes.byteLength }),
+    body: JSON.stringify({ filename, mime, kind: 'image', size: bytes.byteLength }),
   });
   if (!plan.ok) fail(`media.request_upload(${filename}) → HTTP ${plan.status}\n  ${await plan.text()}`);
   const body = await plan.json();
@@ -302,7 +318,7 @@ async function upload({ api, token, tenant, command, fail }, filename) {
 
   const put = await fetch(url.startsWith('http') ? url : `${api}${url}`, {
     method: 'PUT',
-    headers: { 'content-type': 'image/jpeg' },
+    headers: { 'content-type': mime },
     body: bytes,
   });
   if (!put.ok) fail(`PUT ${filename} → HTTP ${put.status}`);
@@ -310,7 +326,7 @@ async function upload({ api, token, tenant, command, fail }, filename) {
   const created = await command('asset.create', {
     provider_key: key,
     filename,
-    mime: 'image/jpeg',
+    mime,
     kind: 'image',
     size: bytes.byteLength,
   });
@@ -566,105 +582,224 @@ async function seedCollections({ command, read, log }, products) {
 }
 
 // ── 6. the home ─────────────────────────────────────────────────────────────────────────────────────
-// FOUR PLACEMENTS ARE THE WHOLE PAGE, and that is the thesis of this slice: the Outlet's home is the
-// reference vitrine with four rows of configuration in it, and not one line of front-end code.
+// FOUR BLOCKS IN ONE SLOT ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home
+// is the reference vitrine with four rows of configuration in it, and not one line of front-end code.
 //
-// The slots are the theme's declared ones, in the artboard's order:
-//   header.announcement → the band  ·  home.hero → the mosaic  ·  home.banner_strip → "Quase de graça"
-//   home.below_shelf → "Acabando!"
-// The two sections the reference home draws BELOW these ("Compre por categoria", "Marcas que amamos") are
-// theme chrome over core reads, not slots — they render nothing here because this store has neither, and
-// that absence is what lets the page end where the artboard ends. See `outlet.json`.
+// ★★ 02/09 — WHY THEY ARE ALL IN ONE SLOT NOW. He asked for «Compre por categoria» FIRST, then the mosaic,
+// the two shelves and the kids banner, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
+// reference home (theme chrome over core reads, not slots), and between them the template declares exactly
+// ONE slot — `home.below_categories`. So the order he asked for is not a choice of slots, it is `position`
+// 0..3 inside that one. `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
+// empty ON PURPOSE, and so is the PLP. See `outlet.json`'s `_home_why`.
+//
+// ⚠️ AND THAT IS WHY THIS FUNCTION GOVERNS RATHER THAN APPENDS — the change is not cosmetic, so read it.
+//
+// The old rule was "is there a placement of this app+component in this slot? then configure it, else place
+// it". With TWO `banners/banner` blocks in one slot that question stops identifying anything: it matches the
+// mosaic and the kids banner equally, so one of them would overwrite the other forever.
+//
+// Worse, appending is now WRONG in a way nothing would report. Every box that ran the previous version has
+// the mosaic in `home.hero`, "Quase de graça" in `home.banner_strip` and "Acabando!" in `home.below_shelf`.
+// A seed that only adds would leave that whole page drawn ABOVE the new one and call it success — the exact
+// order he asked us to change, still there, twice.
+//
+// So within the slots this file OWNS (`storefront:home.*` and `storefront:list.*`, for `banners` and
+// `shelves` only) what this file says is there IS what is there: existing instances are REUSED — moved and
+// reconfigured, keeping their ids and their audit trail — and a surplus one is removed. Two deliberate
+// consequences, said out loud because the sibling seeds promise the opposite:
+//   · IT DELETES. `seed/vitrine.mjs` never does, on the grounds that an extra block in a slot is a human's.
+//     That is right for the `forge` store, whose window is curated by hand. It is wrong here: this home has a
+//     declared shape and a block nobody declared is what a half-migrated box looks like.
+//   · IT CLEANS THE PLP. `extension.install` of `shelves` places an empty instance in `list.below_shelf` in
+//     EVERY store of the tenant; he asked for a PLP with nothing on it, so the outlet's copy is reused as the
+//     host of a shelf that IS wanted, or removed. Nothing is placed in `list.*`.
+//
+// The announcement band is NOT governed here: it lives in `header.announcement`, it is a `single` block, and
+// the old upsert identifies it perfectly.
 async function compose({ command, read, rows, log }, store, assets) {
-  // ⚠️ INSTALLING AN APP ALREADY PLACES ITS DECLARED HOOKS, and the first run of this file learned it the
-  // hard way: `extension.install` of `shelves` creates two placements of its own — one per `hooks` entry
-  // in its manifest (`home.below_shelf`, `list.below_shelf`) — each with an EMPTY config. So "is there a
-  // placement in this slot?" is the wrong question: the answer was yes before the operator did anything,
-  // and skipping on it left the "Acabando!" shelf sitting in the page configured with nothing, rendering
-  // nothing, with the seed reporting success.
-  //
-  // The right question is whether the config in that slot is the one this file describes. Absent → place;
-  // present and different (an empty default, or an edit to `outlet.json`) → update it; already equal →
-  // leave it alone. That is also the operator's own gesture: an app drops its block in and a human then
-  // fills the drawer.
-  const existing = new Map(
-    rows(await read('extension_composition', { store: store.id })).map((row) => [
-      `${row.extension_id}:${row.component}:${row.target}`,
-      row,
-    ]),
+  // The slots whose contents this file decides, and the two apps whose blocks it decides them for. A block
+  // some other app puts on this home is not this function's business and is left alone.
+  const GOVERNED_SLOT = /^storefront:(home|list)\./;
+  const GOVERNED_APPS = new Set(['banners', 'shelves']);
+
+  const placements = rows(await read('extension_composition', { store: store.id }));
+
+  // ── the announcement band: one block, one slot, upsert ────────────────────────────────────────────
+  const band = {
+    extension_id: 'banners',
+    component: 'announcement',
+    slot: data.announcement.slot,
+    config: { text: data.announcement.text },
+    what: 'the announcement band',
+  };
+  const existingBand = placements.find(
+    (row) =>
+      row.extension_id === band.extension_id &&
+      row.component === band.component &&
+      row.target === band.slot,
   );
+  if (!existingBand) {
+    await command('composition.place', {
+      store: store.id,
+      extension_id: band.extension_id,
+      component: band.component,
+      slot: band.slot,
+      config: band.config,
+    });
+    log(`compose ${band.slot} — placed ${band.what}`);
+  } else if (sameConfig(existingBand.config, band.config)) {
+    log(`compose ${band.slot} — ${band.what} is already configured`);
+  } else {
+    await command('composition.update_config', {
+      store: store.id,
+      placement_id: existingBand.placement_id,
+      config: band.config,
+    });
+    log(`compose ${band.slot} — configured ${band.what}`);
+  }
+
+  // ── the home: four blocks, one slot, ordered by position ──────────────────────────────────────────
+  const mediaConfig = (items) =>
+    items.map((m) => ({
+      asset_id: assets.get(m.file).id,
+      // Widths are PERCENTAGES and the block flows the tiles by them: 50 + 25 + 25 fills the first row, the
+      // following 50 + 50 wraps to a second. Heights are PIXELS, derived from the art (see `outlet.json`).
+      // ⚠️ `alt` is NOT sent: the block's item schema has no such field and the config is validated STRICTLY,
+      // so passing it is a refusal. It stays in the data as documentation — see `outlet.json`.
+      width: m.width,
+      height: m.height,
+      ...(m.link ? { link: m.link } : {}),
+    }));
 
   const wanted = [
     {
       extension_id: 'banners',
-      component: 'announcement',
-      slot: data.announcement.slot,
-      config: { text: data.announcement.text },
-      what: 'the announcement band',
-    },
-    {
-      extension_id: 'banners',
       component: 'banner',
       slot: data.mosaic.slot,
-      config: {
-        style: data.mosaic.style,
-        // Widths are PERCENTAGES and the block flows the tiles by them: 50 + 25 + 25 fills the first row,
-        // the following 50 + 50 wraps to a second. That is the artboard's grid — one tile spanning two of
-        // four columns at 300px tall, two single columns beside it, then two half-width tiles at 220 —
-        // expressed in the block's own vocabulary instead of in CSS somebody would have had to write.
-        media: data.mosaic.media.map((m) => ({
-          asset_id: assets.get(m.file).id,
-          width: m.width,
-          height: m.height,
-          ...(m.link ? { link: m.link } : {}),
-        })),
-      },
+      position: data.mosaic.position,
+      config: { style: data.mosaic.style, media: mediaConfig(data.mosaic.media) },
       what: `the ${data.mosaic.media.length}-tile mosaic`,
     },
     ...data.shelves.map((shelf) => ({
       extension_id: 'shelves',
       component: 'shelf',
       slot: shelf.slot,
+      position: shelf.position,
       config: {
         title: shelf.title,
         layout: shelf.layout,
         source: 'collection',
         source_collection: shelf.collection,
         item_count: shelf.item_count,
-        ...(shelf.banner ? { banner_asset: assets.get(shelf.banner).id } : {}),
-        ...(shelf.banner_link ? { banner_link: shelf.banner_link } : {}),
       },
       what: `the "${shelf.title}" shelf`,
     })),
+    {
+      extension_id: 'banners',
+      component: 'banner',
+      slot: data.kidsBanner.slot,
+      position: data.kidsBanner.position,
+      config: { style: data.kidsBanner.style, media: mediaConfig(data.kidsBanner.media) },
+      what: 'the «Outlet Kids» banner',
+    },
   ];
 
-  for (const block of wanted) {
-    const found = existing.get(`${block.extension_id}:${block.component}:${block.slot}`);
-    if (!found) {
+  const plan = planHome(placements, wanted, { apps: GOVERNED_APPS, slot: GOVERNED_SLOT });
+
+  // ⚠️ SURPLUS FIRST. `composition.place`/`move` with an explicit position SHIFT everything at or after it in
+  // that slot, so removing afterwards would renumber a slot this function had just ordered.
+  for (const { row, kind } of plan.remove) {
+    await command('composition.remove', { store: store.id, placement_id: row.placement_id });
+    log(
+      `compose ${row.target} — removed a surplus ${kind} block` +
+        `${Object.keys(row.config ?? {}).length === 0 ? " (an install's empty default)" : ''}`,
+    );
+  }
+
+  for (const { block, reuse: row } of plan.ops) {
+    if (!row) {
       await command('composition.place', {
         store: store.id,
         extension_id: block.extension_id,
         component: block.component,
         slot: block.slot,
+        position: block.position,
         config: block.config,
       });
-      log(`compose ${block.slot} — placed ${block.what}`);
+      log(`compose ${block.slot}#${block.position} — placed ${block.what}`);
       continue;
     }
-    if (sameConfig(found.config, block.config)) {
-      log(`compose ${block.slot} — ${block.what} is already configured`);
+    if (row.target !== block.slot || row.position !== block.position) {
+      await command('composition.move', {
+        store: store.id,
+        placement_id: row.placement_id,
+        slot: block.slot,
+        position: block.position,
+      });
+      log(`compose ${block.slot}#${block.position} — moved ${block.what} here from ${row.target}#${row.position}`);
+    }
+    if (sameConfig(row.config, block.config)) {
+      log(`compose ${block.slot}#${block.position} — ${block.what} is already configured`);
       continue;
     }
     await command('composition.update_config', {
       store: store.id,
-      placement_id: found.placement_id,
+      placement_id: row.placement_id,
       config: block.config,
     });
     log(
-      `compose ${block.slot} — configured ${block.what}` +
-        `${Object.keys(found.config ?? {}).length === 0 ? " (the install's empty default)" : ''}`,
+      `compose ${block.slot}#${block.position} — configured ${block.what}` +
+        `${Object.keys(row.config ?? {}).length === 0 ? " (the install's empty default)" : ''}`,
     );
   }
+}
+
+/**
+ * ★ THE HOME'S PLAN — pure, so the reconciliation is MEASURED and not merely read. Given what the store holds
+ * and what `outlet.json` declares, it answers "which instance does each wanted block reuse, and what is
+ * surplus". Exported for `seed/outlet-home.test.mjs`; `compose()` above only drives the port from it.
+ *
+ * ⚠️ THE PAIRING IS BY ORDER WITHIN AN APP+COMPONENT GROUP, and there is no better key available. A wanted
+ * block has no identity the kernel stores: `hook_placement` carries the app, the component, the slot, the
+ * position and a config validated STRICTLY against the block's schema — there is nowhere to write "this is
+ * the mosaic". Matching on the config would mean a block that a human edited in Compose is not recognised
+ * and gets duplicated, which is the worse failure. So: the first `banners/banner` on this home is the mosaic
+ * and the second is the kids banner, in the read's own order (it sorts by target, then position).
+ *
+ * @param placements {Array} the store's resolved composition (read `extension_composition`)
+ * @param wanted {Array} the blocks this file declares, each with extension_id/component/slot/position
+ * @param governed {{ apps: Set<string>, slot: RegExp }} whose blocks, in which slots, this file decides
+ */
+export function planHome(placements, wanted, governed) {
+  const held = new Map();
+  for (const row of placements) {
+    if (!governed.apps.has(row.extension_id)) continue;
+    if (!governed.slot.test(row.target)) continue;
+    const key = `${row.extension_id}:${row.component}`;
+    if (!held.has(key)) held.set(key, []);
+    held.get(key).push(row);
+  }
+
+  const taken = new Map();
+  const ops = [];
+  for (const block of wanted) {
+    const key = `${block.extension_id}:${block.component}`;
+    const index = taken.get(key) ?? 0;
+    taken.set(key, index + 1);
+    ops.push({ block, reuse: (held.get(key) ?? [])[index] });
+  }
+
+  const remove = [];
+  for (const [key, pool] of held) {
+    for (const row of pool.slice(taken.get(key) ?? 0)) {
+      remove.push({ row, kind: key.replace(':', '/') });
+    }
+  }
+
+  // ASCENDING position: each `place`/`move` shifts what is at or after it, so filling 0,1,2,3 in that order
+  // lands every block on the number it asked for.
+  ops.sort((a, b) => a.block.position - b.block.position);
+  return { remove, ops };
 }
 
 /** Config equality, by value and independent of key order — the kernel echoes back what it stored, and a
