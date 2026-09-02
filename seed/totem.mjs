@@ -381,18 +381,35 @@ async function repointMedia({ command, read, rows, log, uploadAsset }, productId
 }
 
 /**
- * ★ THE SEAL ON THE SIX COFFEES — the one write in this file that edits a product of another slice.
+ * What the COUNTER adds to a coffee the e-commerce owns: its seal, and (A48) its own one-liner.
+ *
+ * Both are optional per handle, and an empty bag means this coffee needs no write at all.
+ */
+export function counterFieldsFor(handle, catalogue = data) {
+  const tag = catalogue.publish_also.tags?.[handle];
+  const desc = catalogue.publish_also.desc_totem?.[handle];
+  return { ...(tag ? { tag_balcao: tag } : {}), ...(desc ? { desc_totem: desc } : {}) };
+}
+
+/**
+ * ★ THE COUNTER'S MARKS ON THE SIX COFFEES — the one write in this file that edits a product of another slice.
  *
  * It is an ADDITION and it is merged, never sent whole: see `mergeMetadata` above for what a literal here
- * would have erased. It is also idempotent BY VALUE — a coffee that already carries its seal costs no
+ * would have erased. It is also idempotent BY VALUE — a coffee that already carries its marks costs no
  * command — so a second run of this seed writes nothing and leaves no audit row.
+ *
+ * ★ A48 ADDED A SECOND MARK (`desc_totem`) AND NOT A SECOND PASS, deliberately: two passes over the same six
+ * products would be two `catalog.product.update` per coffee, each REPLACING the bag the other just wrote, and
+ * the second would be reading a `product.metadata` this loop had already gone stale on. One bag, one write.
  */
 async function sealTheCoffees({ command, log }, known) {
   let sealed = 0;
-  for (const [handle, tag] of Object.entries(data.publish_also.tags ?? {})) {
+  for (const handle of data.publish_also.handles) {
+    const additions = counterFieldsFor(handle);
+    if (Object.keys(additions).length === 0) continue;
     const product = known.get(handle);
     if (!product) continue; // already reported by the caller's `missing` check
-    const merged = mergeMetadata(product.metadata, { tag_balcao: tag });
+    const merged = mergeMetadata(product.metadata, additions);
     if (!merged) continue;
     await command('catalog.product.update', { product_id: product.id, metadata: merged });
     product.metadata = merged;
@@ -400,8 +417,8 @@ async function sealTheCoffees({ command, log }, known) {
   }
   log(
     sealed === 0
-      ? 'totem — the six coffees already carry their counter seal'
-      : `totem — ${sealed} coffee(s) given their counter seal (metadata MERGED, never replaced)`,
+      ? 'totem — the six coffees already carry their counter marks (seal + desc_totem)'
+      : `totem — ${sealed} coffee(s) given their counter marks (metadata MERGED, never replaced)`,
   );
 }
 

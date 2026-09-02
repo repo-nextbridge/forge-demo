@@ -26,6 +26,7 @@ import {
   type BagResult,
 } from '@/app/actions';
 import type { Menu } from '@/lib/menu';
+import { cardDescription } from '@/lib/menu-card';
 import type { CounterMethod, PosOutcome } from '@/lib/pos';
 import { deltaFor, priceLabelOf, type ProductDetail, skuFor } from '@/lib/product-select';
 import { money } from '@/lib/money';
@@ -344,7 +345,9 @@ export function Totem({
                             </div>
                             <div>
                               <div className={styles.cardName}>{p.name}</div>
-                              <div className={styles.cardDesc}>{p.description}</div>
+                              {/* A48 — the counter's own one-liner when the product has one, the short
+                                  description when it does not. The MODAL below keeps `description`. */}
+                              <div className={styles.cardDesc}>{cardDescription(p)}</div>
                             </div>
                             <div className={styles.cardFoot}>
                               <div>

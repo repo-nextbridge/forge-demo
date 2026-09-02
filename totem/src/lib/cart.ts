@@ -27,9 +27,60 @@ export async function currentCartId(): Promise<string | undefined> {
   return (await cookies()).get(CART_COOKIE)?.value || undefined;
 }
 
-/** The cart id to write to, minting one if this is the first touch of a new customer. */
+/**
+ * ★★ IS THE POINTER THIS BROWSER IS HOLDING STILL A CART OF THIS COUNTER? — the question A52 was the answer to.
+ *
+ * ── THE DEFECT, MEASURED (2026-09-02) ─────────────────────────────────────────────────────────────────────
+ *
+ * "não consigo add nenhum sku no totem". `ensureCartId` used to trust the cookie blindly, so a `forge_cart`
+ * that named a cart this store cannot see made EVERY add fail, FOREVER, for that browser — the pointer was
+ * never rewritten and nothing ever probed it. Reproduced against the live counter through its own server
+ * action, with a pointer the counter does not own:
+ *
+ *     addItem(sku_…, 1) with Cookie: forge_cart=<a cart of the COFFEE SHOP>
+ *     → {"ok":false,"kind":"refused","message":"command cart.add_line failed: validation_failed (cart not found)"}
+ *
+ * ── AND THE POINTER REALLY DOES ARRIVE FROM THE OTHER SHOP, because COOKIES IGNORE THE PORT (RFC 6265 §8.5).
+ * On the bench the coffee vitrine and this totem are the SAME HOST on two ports, and `forge_cart` is a
+ * FROZEN name shared by every Forge front (`storefront-kit/cookies.ts`). So a customer who browsed the shop
+ * and then walked up to the counter handed the till the shop's cart id. A cart the kernel swept, or one left
+ * by a previous seed of this box, produces the same dead end.
+ *
+ * ── WHY A PROBE AND NOT A RETRY. The kit's own `ensureCart` (checkout-flow.ts) already answers this exact
+ * question for the reference storefront — reuse the cookie only while it names an ACTIVE cart, otherwise mint
+ * and rebind — and this is that rule, not a second one. Retrying a refused write would have to decide which
+ * commands are safe to send twice, and two of this app's path are capped at ten a minute.
+ *
+ * ⚠️ A READ BLIP MUST NOT THROW AWAY A LIVE BASKET, so a probe that FAILS reuses the pointer. The common case
+ * is a healthy cart; losing a customer's order because one read timed out would be a worse defect than the
+ * one this closes.
+ */
+async function pointerStillUsable(cartId: string): Promise<boolean> {
+  const store = resolveTotemStore();
+  try {
+    const cart = await totemRead().cart(store.id, cartId);
+    // `null` is the port answering 404 — this store does not have that cart (foreign, swept, or from an
+    // older box). Any status but `active` is a cart that `cart.add_line` would refuse anyway.
+    return cart !== null && cart.status === 'active';
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The cart id to write to, minting one if this is the first touch of a new customer — or if the pointer this
+ * browser brought is not a cart this counter can write to. See `pointerStillUsable`.
+ */
 export async function ensureCartId(): Promise<string> {
-  return (await currentCartId()) ?? (await startFresh());
+  const existing = await currentCartId();
+  if (existing && (await pointerStillUsable(existing))) return existing;
+  if (existing)
+    // The one line that says a customer's pointer was discarded. Without it this recovery is invisible, and
+    // an invisible recovery is how the NEXT version of A52 gets debugged from scratch.
+    console.error(
+      `[totem] discarding a cart pointer this counter cannot write to (cart=${existing}) — minting a fresh cart`,
+    );
+  return startFresh();
 }
 
 /** Mint a new cart and point this browser at it. Also the recovery path for a pointer gone stale. */

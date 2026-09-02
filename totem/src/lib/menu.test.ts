@@ -13,7 +13,7 @@ const products = vi.fn();
 vi.mock('./port', () => ({ totemRead: () => ({ products }) }));
 vi.mock('./store', () => ({ resolveTotemStore: () => ({ id: 'sto_test', handle: 'balcao' }) }));
 
-const { readMenu, SECTIONS } = await import('./menu');
+const { cardDescription, readMenu, SECTIONS } = await import('./menu');
 
 const list = (items: unknown[]) => ({ items, page: 1, limit: 50, total: items.length });
 const product = (over: Record<string, unknown> = {}) => ({
@@ -121,5 +121,67 @@ describe('the order of the bands is ours, and the kernel has no opinion to borro
     // spelling; it was never a shape the kernel could store, and this is the test that keeps somebody from
     // "fixing" the code back towards the contract.
     for (const s of SECTIONS) expect(s.category).toMatch(/^[A-Za-z0-9_]+$/);
+  });
+});
+
+// ── A48 · THE COUNTER'S OWN ONE-LINER ───────────────────────────────────────────────────────────────────
+//
+// "no totem a descrição curta ficou grande demais… o ideal é talvez um campo próprio só para descrição
+// totem. Na rolagem aparece essa mini descrição e ao abrir o modal a descrição curta. E na loja de café
+// normal aparece só a descrição curta." (Renan, 2026-09-02)
+//
+// The whole feature is a product CUSTOM FIELD plus a `??`. What these tests defend is the `??`: a card that
+// went mute for every product nobody wrote a line for would turn an upgrade into a requirement, and it is
+// exactly the kind of regression that looks like nothing in a diff.
+
+/** The one card of a one-product menu, refusing to guess. Keeps the A48 cases about the FIELD, not about
+ * whether an index exists. */
+async function onlyCard() {
+  const menu = await readMenu();
+  if (!menu.visible) throw new Error('the menu was invisible — the fixture answered null somewhere');
+  const card = menu.sections[0]?.items[0];
+  if (!card) throw new Error('the fixture produced no card');
+  return card;
+}
+
+describe('desc_totem — the counter reads its own field, and falls back when there is none', () => {
+  it('★ prefers the counter\'s one-liner over the shop\'s paragraph', async () => {
+    products.mockResolvedValue(
+      list([
+        product({
+          handle: 'forge-alvorada',
+          description: 'O café de todo dia. Torra média, corpo redondo e doçura fácil — chocolate ao leite, caramelo e nozes. Vem da Mogiana Paulista, onde a altitude e a colheita tardia dão ao grão o açúcar que sustenta a xícara.',
+          metadata: { tag_balcao: 'blend', desc_totem: 'Torra média, doce e fácil — todo dia' },
+        }),
+      ]),
+    );
+    const card = await onlyCard();
+    expect(cardDescription(card)).toBe('Torra média, doce e fácil — todo dia');
+    // …and the SHORT description is still on the wire, because the modal is the surface that shows it.
+    expect(card.description).toMatch(/^O café de todo dia\./);
+  });
+
+  it('★★ THE FALLBACK: a product with no desc_totem keeps its description — the card is never mute', async () => {
+    products.mockResolvedValue(list([product({ metadata: { tag_balcao: 'quente' } })]));
+    const card = await onlyCard();
+    expect(card.descTotem).toBeUndefined();
+    expect(cardDescription(card)).toBe('Espresso, leite vaporizado e espuma densa');
+  });
+
+  it('falls back on a product with no metadata bag at all', async () => {
+    products.mockResolvedValue(list([product({ metadata: null })]));
+    expect(cardDescription(await onlyCard())).toBe('Espresso, leite vaporizado e espuma densa');
+  });
+
+  it('falls back on a CLEARED field — deleting the text in the admin must not blank the card', async () => {
+    products.mockResolvedValue(list([product({ metadata: { desc_totem: '   ' } })]));
+    expect(cardDescription(await onlyCard())).toBe('Espresso, leite vaporizado e espuma densa');
+  });
+
+  it('survives a metadata bag that is not an object — a strange bag must not take the menu down', async () => {
+    for (const bag of [['x'], 'text', 7]) {
+      products.mockResolvedValue(list([product({ metadata: bag })]));
+      expect(cardDescription(await onlyCard())).toBe('Espresso, leite vaporizado e espuma densa');
+    }
   });
 });

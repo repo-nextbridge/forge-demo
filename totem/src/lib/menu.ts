@@ -21,6 +21,7 @@
 // caches the negative answer, because the negative answer has a short shelf life by construction.
 
 import type { CatalogList, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { MenuCard } from './menu-card';
 import { coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
 import { money } from './money';
 import { totemRead } from './port';
@@ -103,16 +104,15 @@ const CHIP_BY_HANDLE: Record<string, string> = {
   'forge-edicao-do-produtor': 'lote numerado',
 };
 
-export type MenuCard = {
-  handle: string;
-  name: string;
-  description: string;
-  imageUrl: string | undefined;
-  chip: string | undefined;
-  /** True when the product's SKUs do not all cost the same — the artboard's "a partir de". */
-  fromPrice: boolean;
-  priceLabel: string;
-};
+/** The counter's own one-liner off a product's metadata bag, or undefined. Never throws on a strange bag. */
+function descTotemOf(p: ProductDoc): string | undefined {
+  const bag = p.metadata;
+  if (typeof bag !== 'object' || bag === null || Array.isArray(bag)) return undefined;
+  const value = (bag as Record<string, unknown>).desc_totem;
+  // An empty string is somebody clearing the field in the admin, and it must fall back like an absent one —
+  // otherwise "I deleted the text" and "the card went blank" are the same gesture.
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
 
 export type MenuSection = {
   id: SectionId;
@@ -152,6 +152,7 @@ function toCard(p: ProductDoc): MenuCard | undefined {
     handle: p.handle,
     name: p.title,
     description: p.description ?? '',
+    descTotem: descTotemOf(p),
     imageUrl: mediaSrc(coverOf(p.media)).url,
     chip: CHIP_BY_HANDLE[p.handle],
     fromPrice: price.from,
@@ -187,3 +188,5 @@ export async function readMenu(): Promise<Menu> {
   });
   return { visible: true, sections };
 }
+
+export { cardDescription, type MenuCard } from './menu-card';

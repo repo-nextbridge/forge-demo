@@ -77,6 +77,13 @@
       "type": "text",
       "facetable": false,
       "why": "The word on the seal over the photograph ('quente', 'gelado', 'do forno'…). It is on the PRODUCT and not in the totem's source so the merchant can change it from the admin, and so the seed and the app cannot drift into two vocabularies."
+    },
+    {
+      "key": "desc_totem",
+      "label": "Descrição do totem",
+      "type": "text",
+      "facetable": false,
+      "why": "A48 — THE COUNTER'S OWN ONE-LINER, and the cleanest example in this instance of trava 3 (dado novo → campo próprio). The scrolling card is a tile on a screen a metre away; the shop's paragraph is written for a product page you read sitting down. One product, one price, one kernel — and each surface chooses what to read: the TOTEM's card prefers this, the totem's MODAL keeps the short description, and the coffee shop's vitrine never asks for it and sees no difference. No kernel change, no contract, no new surface. ⚠️ It is OPTIONAL by design: a product without it falls back to `description`, so the field is an upgrade and never a requirement — see `totem/src/lib/menu.ts`."
     }
   ],
   "_custom_fields_why": "Portuguese keys, like `regiao`/`torra`/`notas` in seed/catalog.json. These are a merchant's vocabulary in a Brazilian shop's admin, not identifiers of this repository's code — the code around them is English, as the house rule says.",
@@ -322,6 +329,15 @@
       "forge-edicao-do-produtor": "lote numerado"
     },
     "why": "MULTISTORE, in one list. These six are NOT created here: they are the e-commerce's own products, put on sale in a second store and filed under the counter's 'Pra levar' band. The price the totem prints is the same SKU the shop sells, live from the kernel — which is the thing that cannot be faked by a second catalogue.",
+    "desc_totem": {
+      "forge-alvorada": "Torra média, doce e fácil — todo dia",
+      "forge-serra-do-caparao": "Microlote 1.200 m — mel e maçã verde",
+      "forge-cerrado-mineiro": "Denominação de origem — chocolate 70%",
+      "forge-noturno": "Torra escura, feita para o leite",
+      "forge-descafeinado": "Swiss Water — café às nove da noite",
+      "forge-edicao-do-produtor": "Lote numerado da Dona Cida — 88 SCA"
+    },
+    "_desc_totem_why": "A48 — the counter's own one-liner for the six coffees, and the ONLY items that needed one: their `description` is the shop's paragraph (200+ characters, written for a product page) and on a card a metre away it ran over the tile. The counter's fifteen own products already carry a one-line description, so they are DELIBERATELY absent here — the fallback in `totem/src/lib/menu.ts` shows their `description` unchanged, which is what makes this field an upgrade instead of a requirement, and what puts the fallback under a customer's eyes on the bench rather than only under a test's. ⚠️ Written by MERGE, like the seal: see `_tags_why`.",
     "_tags_why": "The seal each of the six wears on the totem's card. Writing it means EDITING a product of the coffee shop, so `seed/totem.mjs` merges it into the metadata it reads rather than replacing the bag — `catalog.product.update` replaces `metadata` wholesale, and a replacement here would erase `regiao`/`torra`/`notas`/`sca`."
   },
 

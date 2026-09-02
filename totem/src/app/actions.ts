@@ -14,10 +14,11 @@
 // that fires twice for one tap is not waste, it is somebody's order refused. Measured; see `port.ts`.
 
 import { revalidatePath } from 'next/cache';
-import { endSession, ensureCartId, readCheckout, startFresh } from '@/lib/cart';
+import { endSession, ensureCartId, readCheckout } from '@/lib/cart';
 import { prepareForPayment } from '@/lib/counter-order';
 import { readMenu } from '@/lib/menu';
 import { PortRateLimited, totemCommand, totemRead } from '@/lib/port';
+import { logPortRefusal } from '@/lib/refusal-log';
 import { readProduct } from '@/lib/product';
 import { chooseCounterMethod, type CounterMethod, initiateCounterPayment, type PosOutcome, simulateScan } from '@/lib/pos';
 import { resolveTotemStore } from '@/lib/store';
@@ -41,12 +42,30 @@ export type BagResult =
   | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number; bag: Bag }
   | { ok: false; kind: 'refused'; message: string; bag: Bag };
 
-/** Run a write, and turn the two failures a counter screen must be able to SAY into data rather than a crash. */
-async function withBag(write: () => Promise<unknown>): Promise<BagResult> {
+/**
+ * Run a write, and turn the two failures a counter screen must be able to SAY into data rather than a crash.
+ *
+ * ★★ AND RECORD THE REFUSAL BEFORE TRANSLATING IT (A52, 2026-09-02). The screen's sentence — "Não foi
+ * possível concluir. Chame um atendente." — is the right thing to show a customer and the wrong thing to be
+ * the ONLY trace: this function used to catch every error, hand back the polite sentence and log nothing, so
+ * a totem that refused every single add left a container whose whole log was `✓ Ready in 181ms`. The port had
+ * been answering `validation_failed (cart not found)` all along, and nobody could see it. See
+ * `lib/refusal-log.ts` for the rule and `app/actions.refusal-voice.test.ts` for the guard that keeps it.
+ *
+ * The rate-limited branch is logged too, and on purpose: a counter that spends its ten-a-minute budget is the
+ * one failure an operator can actually act on while the queue is still standing there.
+ */
+async function withBag(
+  write: () => Promise<unknown>,
+  /** The action's name and the ids that locate the refusal. IDS ONLY — never a buyer's details. */
+  where: { action: string } & Record<string, string | undefined>,
+): Promise<BagResult> {
+  const { action, ...context } = where;
   try {
     await write();
     return { ok: true, bag: await currentBag() };
   } catch (error) {
+    logPortRefusal(action, context, error);
     if (error instanceof PortRateLimited)
       return {
         ok: false,
@@ -66,20 +85,41 @@ async function withBag(write: () => Promise<unknown>): Promise<BagResult> {
 export async function addItem(skuId: string, qty: number): Promise<BagResult> {
   const store = resolveTotemStore();
   const cartId = await ensureCartId();
-  return withBag(() => totemCommand().addLine(store.id, cartId, skuId, qty));
+  return withBag(() => totemCommand().addLine(store.id, cartId, skuId, qty), {
+    action: 'addItem',
+    store: store.id,
+    cart: cartId,
+    sku: skuId,
+  });
 }
 
 export async function changeQty(lineId: string, qty: number): Promise<BagResult> {
   const store = resolveTotemStore();
   const cartId = await ensureCartId();
-  if (qty <= 0) return withBag(() => totemCommand().removeLine(store.id, cartId, lineId));
-  return withBag(() => totemCommand().updateLine(store.id, cartId, lineId, qty));
+  if (qty <= 0)
+    return withBag(() => totemCommand().removeLine(store.id, cartId, lineId), {
+      action: 'changeQty(0 → remove)',
+      store: store.id,
+      cart: cartId,
+      line: lineId,
+    });
+  return withBag(() => totemCommand().updateLine(store.id, cartId, lineId, qty), {
+    action: 'changeQty',
+    store: store.id,
+    cart: cartId,
+    line: lineId,
+  });
 }
 
 export async function removeItem(lineId: string): Promise<BagResult> {
   const store = resolveTotemStore();
   const cartId = await ensureCartId();
-  return withBag(() => totemCommand().removeLine(store.id, cartId, lineId));
+  return withBag(() => totemCommand().removeLine(store.id, cartId, lineId), {
+    action: 'removeItem',
+    store: store.id,
+    cart: cartId,
+    line: lineId,
+  });
 }
 
 /**
@@ -94,13 +134,23 @@ export async function applyCoupon(code: string): Promise<BagResult> {
   const cartId = await ensureCartId();
   const trimmed = code.trim();
   if (!trimmed) return { ok: true, bag: await currentBag() };
-  return withBag(() => totemCommand().applyCoupon(store.id, cartId, trimmed));
+  // ⚠️ The code itself is NOT logged: a coupon a customer typed is the one string on this path that is
+  // theirs, and a till's log is read over somebody's shoulder.
+  return withBag(() => totemCommand().applyCoupon(store.id, cartId, trimmed), {
+    action: 'applyCoupon',
+    store: store.id,
+    cart: cartId,
+  });
 }
 
 export async function removeCoupon(code: string): Promise<BagResult> {
   const store = resolveTotemStore();
   const cartId = await ensureCartId();
-  return withBag(() => totemCommand().removeCoupon(store.id, cartId, code));
+  return withBag(() => totemCommand().removeCoupon(store.id, cartId, code), {
+    action: 'removeCoupon',
+    store: store.id,
+    cart: cartId,
+  });
 }
 
 export type PayResult =
@@ -144,6 +194,9 @@ export async function payWith(name: string, method: CounterMethod): Promise<PayR
       bag,
     };
   } catch (error) {
+    // The same voice as `withBag`, for the same reason: this is the LAST tap of an order, and a silent
+    // refusal here is a customer standing at a screen that will not say what happened.
+    logPortRefusal('payWith', { store: store.id, method }, error);
     if (error instanceof PortRateLimited)
       return { ok: false, kind: 'rate_limited', retryAfterSeconds: error.retryAfterSeconds };
     return {
@@ -172,11 +225,11 @@ export async function resetCounter(): Promise<{ bag: Bag }> {
   return { bag: EMPTY_BAG };
 }
 
-/** A fresh cart on demand — the recovery path when the pointer refers to a cart the kernel swept. */
-export async function restartCart(): Promise<BagResult> {
-  await startFresh();
-  return { ok: true, bag: await currentBag() };
-}
+// ⚠️ `restartCart` USED TO LIVE HERE, and its removal is half of the A52 fix. Its doc comment called it "the
+// recovery path when the pointer refers to a cart the kernel swept" — and NOTHING CALLED IT, in any file, at
+// any time (grepped across the repository, 2026-09-02). So the app documented a recovery it did not have, and
+// a browser holding an unusable pointer stayed broken for the whole life of the cookie. The recovery is now
+// where it can never be forgotten: `ensureCartId` probes before it reuses (see `lib/cart.ts`).
 
 /** The menu, re-read. Used by the screen when the counter store was not yet visible on the first render. */
 export async function refreshMenu() {

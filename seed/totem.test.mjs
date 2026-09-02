@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { MEDIA_DIR, expandSkus, mergeMetadata, productMetadata, skuCode, totem } from './totem.mjs';
+import { MEDIA_DIR, counterFieldsFor, expandSkus, mergeMetadata, productMetadata, skuCode, totem } from './totem.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const catalog = JSON.parse(readFileSync(join(SEED, 'catalog.json'), 'utf8'));
@@ -237,7 +237,43 @@ test('every custom field a product writes is declared in the same file', () => {
       assert.ok(declared.has(key), `product ${p.handle} writes "${key}", which nothing declares`);
     }
   }
+  // The six coffees are written by MERGE and not by `productMetadata`, so their keys need the same check —
+  // this is the half that would have shipped an undeclared `desc_totem` and a field nothing could edit.
+  for (const handle of totem.publish_also.handles) {
+    for (const key of Object.keys(counterFieldsFor(handle))) {
+      assert.ok(declared.has(key), `the counter writes "${key}" on ${handle}, which nothing declares`);
+    }
+  }
   assert.ok(declared.has('tag_balcao'), 'the seal itself has to be declared');
+  assert.ok(declared.has('desc_totem'), 'A48 — the counter\'s own one-liner has to be declared');
+});
+
+// ── A48 · the counter's own one-liner on the six coffees ────────────────────────────────────────────────
+test("the six coffees carry a SHORT desc_totem — they are the ones whose paragraph overflowed the card", () => {
+  for (const handle of totem.publish_also.handles) {
+    const line = totem.publish_also.desc_totem?.[handle];
+    assert.ok(line, `${handle} has no desc_totem — its card would show the shop's paragraph again`);
+    // The whole point of the field is length. A "short" line longer than the paragraph it replaces would
+    // pass every other test in this file and still be the defect Renan reported.
+    assert.ok(line.length <= 60, `desc_totem of ${handle} is ${line.length} chars — that is not a card line`);
+  }
+});
+
+test('the counter writes seal AND one-liner in ONE bag, so neither pass erases the other', () => {
+  const fields = counterFieldsFor('forge-alvorada');
+  assert.deepEqual(Object.keys(fields).sort(), ['desc_totem', 'tag_balcao']);
+  // And the merge onto a coffee that already carries the shop's own fields keeps every one of them.
+  const merged = mergeMetadata({ regiao: 'Mogiana', torra: 'média' }, fields);
+  assert.deepEqual(merged, {
+    regiao: 'Mogiana',
+    torra: 'média',
+    tag_balcao: 'blend',
+    desc_totem: totem.publish_also.desc_totem['forge-alvorada'],
+  });
+});
+
+test('a coffee with no counter marks costs no write — an empty bag is not a command', () => {
+  assert.deepEqual(counterFieldsFor('a-handle-nobody-marked'), {});
 });
 
 // ── the money ───────────────────────────────────────────────────────────────────────────────────────────
