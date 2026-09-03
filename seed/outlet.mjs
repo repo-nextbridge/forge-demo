@@ -635,42 +635,21 @@ async function compose({ command, read, rows, log }, store, assets) {
 
   const placements = rows(await read('extension_composition', { store: store.id }));
 
-  // ── the store's own mark: one block, one slot, upsert ─────────────────────────────────────────────
-  // ⚠️ NOT GOVERNED BY `planHome` BELOW, and deliberately: that function owns `home.*`/`list.*` for the two
-  // apps that draw the page, so a mark in `header.brand` is outside its jurisdiction and survives it. Same
-  // upsert shape as the band next door — placed once, reconfigured when the words change, never doubled
-  // (the block is `single`, so a second placement would be the kernel's refusal rather than two marks).
-  const mark = {
-    extension_id: 'chrome',
-    component: 'brand',
-    slot: data.brand.slot,
-    config: { text: data.brand.text, tail: data.brand.tail },
-    what: "the store's mark",
-  };
-  // ⚠️ MATCHED BY APP + COMPONENT, AND NOT BY SLOT — which is the difference between an upsert and a 409.
-  // `brand` is `single`, so its identity in a store IS the pair: one instance, whatever slot it names. The
-  // band next door can be matched by slot because a store may carry several of them; this one cannot, and
-  // asking the slot made the second run of this seed answer "not placed yet" about a placement that was
-  // right there. Measured on the birth of 2026-09-03: `composition.place → HTTP 409, block 'brand' is
-  // single: an active instance already exists in this store`, and the whole curated phase stopped on it.
-  const existingMark = placements.find(
-    (row) => row.extension_id === mark.extension_id && row.component === mark.component,
-  );
-  if (!existingMark) {
-    await command('composition.place', {
-      store: store.id,
-      extension_id: mark.extension_id,
-      component: mark.component,
-      slot: mark.slot,
-      config: mark.config,
-    });
-    log(`compose ${mark.slot} — placed ${mark.what}`);
-  } else if (sameConfig(existingMark.config, mark.config)) {
-    log(`compose ${mark.slot} — ${mark.what} is already configured`);
-  } else {
-    await command('composition.update_config', { placement_id: existingMark.id, config: mark.config });
-    log(`compose ${mark.slot} — ${mark.what} reconfigured`);
-  }
+  // ── the store's own mark: DECLARED IN outlet.json, NOT PLACED HERE, and the reason is measured ──────
+  //
+  // The `brand` block of the `chrome` app would give this store `forge` + `.outlet` instead of the shared
+  // kit's literal. The data for it is in `outlet.json` and the theme already paints the dark band around it.
+  // It is not placed because placing it BUYS NOTHING AND COSTS THE BIRTH, both measured on 2026-09-03:
+  //
+  //   · the app reaches no deployable's registry. `/app/extensions/chrome` is in the image and the placement
+  //     saved cleanly, and neither the vitrine's nor the checkout's built chunks carry one reference to it.
+  //     The block cannot render, so the mark would not change whatever we place.
+  //   · and the placement is `single`, so a second run answers 409 (`an active instance already exists in
+  //     this store`) unless the idempotency check finds the existing row — which two different shapes of
+  //     that check failed to do, and each failure STOPPED THE WHOLE CURATED PHASE and left the box half fed.
+  //
+  // ⇒ it comes back with the slice that makes the chrome app reach a registry, and that slice is where the
+  // idempotency question gets answered against the read's real shape rather than against a guess.
 
   // ── the announcement band: one block, one slot, upsert ────────────────────────────────────────────
   const band = {
