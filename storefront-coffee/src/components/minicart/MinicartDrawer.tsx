@@ -483,7 +483,9 @@ export function MinicartDrawer({
                     onQty={updateQty}
                     onRemove={remove}
                     currency={snapshot.currency}
-                    pair={linePricePair(line.line_id, snapshot.pricing)}
+                    // PACK 03/09 — this takes the LINE now, not its id: the struck price has to be the
+                    // merchant's own `compare_at` where there is one, and only the line carries it.
+                    pair={linePricePair(line, snapshot.pricing)}
                     promos={lineDiscountLabels(line.line_id, snapshot.pricing)}
                     hint={i === 0 ? hintKey : 0}
                   />

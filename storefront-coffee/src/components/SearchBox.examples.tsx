@@ -15,7 +15,19 @@ function item(
   price: number,
   compareAt: number | null,
 ): SuggestProduct {
-  return { title, handle, price, compare_at: compareAt, image: null, category: 'Tênis' };
+  // `image_key` joined SuggestProduct in PACK 03/09 (the vitrine's image door): the suggest payload carries
+  // the media KEY so the dropdown can address a derivative through /api/img instead of the kernel's absolute
+  // URL. This catalog fixture draws no photo at all, so both halves are null — but the field is required, and
+  // the oven is where a fork finds that out. See docs/conventions/media-and-images.md §3.
+  return {
+    title,
+    handle,
+    price,
+    compare_at: compareAt,
+    image: null,
+    image_key: null,
+    category: 'Tênis',
+  };
 }
 
 const PREVIEW: SuggestResult = {
