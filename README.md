@@ -519,14 +519,14 @@ It is idempotent — re-running it is a no-op.
 
 The same run stands the **Outlet** up (`seed/outlet.mjs`, its data in `seed/outlet.json`): it installs the
 two apps that store composes with, uploads its photographs and campaign art, publishes the products
-`outlet.json` names with their prices and their stock, pins the three collections its shelves are sourced
-from, and places the six Compose blocks that are its home page. Not one line of front-end code — a theme,
-data, and a composition.
+`outlet.json` names with their prices and their stock, pins the three collections its shelves and its
+campaign art are sourced from, and places the four Compose blocks that are its home page. Not one line of
+front-end code — a theme, data, and a composition.
 
-⚠️ **Five of those six are in ONE slot.** The reference home draws its sections in a fixed order and the two
+⚠️ **Three of those four are in ONE slot.** The reference home draws its sections in a fixed order and the two
 headings this store keeps — «Compre por categoria» and «Marcas que amamos» — are theme chrome, not slots, with
-exactly one slot between them (`home.below_categories`). So the mosaic, the two shelves, the «Outlet Kids»
-banner and the «Outlet Kids» shelf are `position` 0..4 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
+exactly one slot between them (`home.below_categories`). So the banner mosaic, «Quase de graça» and «Outlet
+Kids» are `position` 0..2 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
 `home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s `_home_why`. That
 also makes `compose()` the one step in this seed that **removes**: it governs those slots rather than
 appending to them, because a box that ran the previous version has the old page in the old slots and appending
