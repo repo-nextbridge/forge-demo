@@ -202,7 +202,7 @@ rather than one with a step still to come.
 
 ⚠️ **Step 8 must precede step 9, and that order is forced rather than chosen.** The boundary is
 CURATED × MASSIVE: `bin/seed.mjs` owns what a human wrote (the six coffees, the counter's menu, the outlet's
-eight) while the dataset owns the generated volume **and the assortment** — and an assortment *publishes* a
+assortment) while the dataset owns the generated volume **and the assortment** — and an assortment *publishes* a
 handle it did not define. Run the one-shot first and the publish step has nothing to point at:
 
 ```
@@ -211,8 +211,8 @@ and no such product exists — neither in this dataset nor in this tenant.
 ```
 
 Both run **per tenant, each with its own token**. The shoe tenant happens to survive without the curated
-step — its assortment selects by category rather than by handle — but the outlet's eight products are
-curated, so skipping it there leaves that store quietly different from what the demo expects.
+step — its assortment selects by category rather than by handle — but the outlet's products are curated by
+handle, so skipping it there leaves that store quietly different from what the demo expects.
 
 ⚠️ **Step 8 raises the action ceiling, and only on its own invocation.** The kernel caps app code at
 `DEFAULT_ACTION_TIMEOUT_MS` = 5 minutes. That cap is a **liveness guard for whoever calls** — it exists so an
@@ -418,7 +418,7 @@ targets — the crutch hid the dependency. Removing it did not create one.
 ### The two halves of the seed, and the order between them
 
 **This script owns the CURATED half** — what a human wrote: the six coffees with their descriptions, the
-counter's menu, the outlet's eight, and the curated promotions (the counter's coupon, the morning combo, the
+counter's menu, the outlet's assortment, and the curated promotions (the counter's coupon, the morning combo, the
 subscriber discount). It is the identity of this demo.
 
 **The dataset and `demo-data`'s `populate` own the MASSIVE half** — what a generator produced: the 2 790
@@ -471,14 +471,15 @@ all through the door: the script holds an API key, never a database credential, 
 It is idempotent — re-running it is a no-op.
 
 The same run stands the **Outlet** up (`seed/outlet.mjs`, its data in `seed/outlet.json`): it installs the
-two apps that store composes with, uploads its photographs and campaign art, publishes eight products with
-their prices and their stock, pins the two collections its shelves are sourced from, and places the five
-Compose blocks that are its home page. Not one line of front-end code — a theme, data, and a composition.
+two apps that store composes with, uploads its photographs and campaign art, publishes the products
+`outlet.json` names with their prices and their stock, pins the three collections its shelves are sourced
+from, and places the six Compose blocks that are its home page. Not one line of front-end code — a theme,
+data, and a composition.
 
-⚠️ **Four of those five are in ONE slot.** The reference home draws its sections in a fixed order and the two
+⚠️ **Five of those six are in ONE slot.** The reference home draws its sections in a fixed order and the two
 headings this store keeps — «Compre por categoria» and «Marcas que amamos» — are theme chrome, not slots, with
-exactly one slot between them (`home.below_categories`). So the mosaic, the two shelves and the «Outlet Kids»
-banner are `position` 0..3 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
+exactly one slot between them (`home.below_categories`). So the mosaic, the two shelves, the «Outlet Kids»
+banner and the «Outlet Kids» shelf are `position` 0..4 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
 `home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s `_home_why`. That
 also makes `compose()` the one step in this seed that **removes**: it governs those slots rather than
 appending to them, because a box that ran the previous version has the old page in the old slots and appending
@@ -540,8 +541,8 @@ target on that action; until then this module drives the same port with the same
 
 ### Where the `forge` store's catalogue comes from — and why it is not in this repository
 
-The coffee store and the outlet carry their content here (`seed/catalog.json`, `seed/outlet.json`): six and
-eight products, small enough to read in a diff. The **`forge`** store — the sports shop the box serves at its
+The coffee store and the outlet carry their content here (`seed/catalog.json`, `seed/outlet.json`): a few
+dozen products, small enough to read in a diff. The **`forge`** store — the sports shop the box serves at its
 root — does not. Its catalogue is the **platform's example dataset**: 33 categories, 351 brands, 2 790
 products, 44 427 SKUs and 18 582 photographs. It arrives by **path**, and the path is configuration:
 

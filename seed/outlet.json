@@ -66,10 +66,32 @@
     "well as the data — a data guard alone stays green while the shop shows nothing.",
     "",
     "",
+    "★★ 03/09 — THE SHOP NOW CARRIES CHILDREN'S SHOES, AND EVERY LABEL ITS HOME PROMOTES (s2-2, s2-4). Two",
+    "findings of the same shape as A40's: a page promising something the assortment did not have.",
+    "  · The «OUTLET KIDS · R$ 149,90» piece linked to a collection of 22 ADULT products, and the whole",
+    "    catalogue held no `genero: Infantil` at all — so the header's «Infantil» link and the banner both led",
+    "    nowhere. 16 children's products now sit in a THIRD collection, `outlet-kids`, one per menu leaf that",
+    "    can hold one; the banner and a new shelf both point at it. The art's own number is a real product:",
+    "    the pink adidas VL Court in the piece is priced at its de R$ 299,90 / por R$ 149,90.",
+    "  · 4 of the 8 «Marcas que amamos» tiles landed on an empty list, because that list is a literal in the",
+    "    VITRINE and resolves against the TENANT's brands. `featured_brands` below mirrors it and the shop now",
+    "    stocks all eight. See `_featured_brands_why`.",
+    "",
+    "EVERY PRODUCT DECLARES ITS `brand`, AND THIS SEED STILL WRITES NONE — the field is the dataset's answer,",
+    "copied here so a guard can ask «does the shop carry the label its home is promoting?» without a hand-",
+    "written list of the ones somebody once fixed. Same standing as `category`: a mirror of the dataset that",
+    "the tests read and the port never receives. (`categorize` fails loudly when `category` drifts, because the",
+    "kernel refuses a second primary; NOTHING fails when `brand` drifts — that one is on the reader.)",
+    "",
     "WHAT IS DELIBERATELY ABSENT, AND IS NOT AN OVERSIGHT:",
-    "  · NO BRANDS. `catalog.brand.create` is the dataset seed's, and it runs after this one; a `brand_id` here",
-    "    would be a second author for 351 rows this file does not own. The cost is a PDP with no brand line on",
-    "    these 32 products, and it is named rather than hidden.",
+    "  · NO BRANDS WRITTEN. `catalog.brand.create` is the dataset seed's, and it runs after this one; a `brand_id`",
+    "    here would be a second author for 351 rows this file does not own.",
+    "    ⚠️ AND THE OLD COST WRITTEN HERE — «a PDP with no brand line on these products» — IS FALSE, measured",
+    "    twice. The demo-data install re-asserts `brand_id` on a product it finds ALREADY THERE, by handle",
+    "    (`extensions/demo-data/populate.ts`, the `catalog.product.update` after the reuse branch), and every",
+    "    product below is one of its own. The QA saw the consequence from the other side: `/b/nike` inside the",
+    "    outlet lists product. So these products DO wear their label — this file simply is not the author.",
+    "    That is exactly why `brand` can be declared here as data and never sent to the port.",
     "  · NO PROMOTION ROWS. The de/por a shopper sees is `compare_at_amount`, which is the operator's own",
     "    figure on the SKU — not a promotion engine rule. The artboard shows struck-through prices and a",
     "    discount tag, and that is exactly what this produces.",
@@ -306,7 +328,8 @@
     "text": "Outlet oficial · Até 70% OFF · Frete grátis acima de R$ 600"
   },
   "_home_why": [
-    "★★ 02/09 — THE FOUR BLOCKS OF THE HOME NOW LIVE IN ONE SLOT, AND THAT IS THE TEMPLATE'S DOING.",
+    "★★ 02/09 — THE BLOCKS OF THE HOME ALL LIVE IN ONE SLOT, AND THAT IS THE TEMPLATE'S DOING.",
+    "(03/09: they are FIVE now — the «Outlet Kids» shelf joined at position 4. See s2-8 in the banner's `_why`.)",
     "",
     "He asked for this order: «Compre por categoria» → the banner mosaic → «Quase de graça» → «Acabando»",
     "(with its banner) → «Marcas que amamos». The reference home draws its sections in a FIXED order",
@@ -315,7 +338,7 @@
     "  1 home.hero · 2 home.banner_strip · 3 home.below_shelf · 4 «Compre por categoria» (FIXED SECTION,",
     "  not a slot) · 5 home.below_categories · 6 «Marcas que amamos» (FIXED SECTION) · 7 home.below_brands",
     "",
-    "There is exactly ONE slot between the two fixed sections he named, so all four blocks go into it and the",
+    "There is exactly ONE slot between the two fixed sections he named, so all of them go into it and the",
     "ORDER IS `position`, not the slot name. A slot takes N blocks — the `forge` store already stacks two",
     "shelves that way.",
     "",
@@ -409,6 +432,26 @@
       "collection": "acabando",
       "layout": "grid",
       "item_count": 3
+    },
+    {
+      "slot": "storefront:home.below_categories",
+      "position": 4,
+      "title": "Outlet Kids",
+      "collection": "outlet-kids",
+      "layout": "grid",
+      "item_count": 4,
+      "_why": [
+        "s2-8 — THE COMPANY THE «OUTLET KIDS» BANNER WAS MISSING, and it is a shelf rather than more art",
+        "because the art does not exist. See the banner's own `_why` for the two doors that are shut; this is",
+        "the third: the banner stops being a lone tile under a shelf and becomes the HEAD of a section that",
+        "has a body — one card of campaign art, then four of the children's shoes it is promising.",
+        "",
+        "AND IT IS THE ONLY BLOCK ON THIS HOME WITH SOMETHING TO SAY THAT THE CARDS CANNOT: `/collection/",
+        "outlet-kids` is where both the banner and this shelf's «Ver todos →» lead, and it is the same list.",
+        "",
+        "POSITION 4 KEEPS THE ORDER HE ASKED FOR — «Compre por categoria» → mosaic → the two shelves → the",
+        "kids banner → «Marcas que amamos». This is APPENDED after the banner, so nothing he named moves."
+      ]
     }
   ],
   "kidsBanner": {
@@ -416,14 +459,33 @@
     "position": 3,
     "style": "mosaic",
     "_why": [
-      "The «Outlet Kids» piece, the last thing on the home before «Marcas que amamos». A one-item mosaic is how",
+      "The «Outlet Kids» piece, the last banner on the home before «Marcas que amamos». A one-item mosaic is how",
       "the banners app draws a single tile: `carousel` would give it arrows and dots it has nothing to page.",
       "",
-      "WHY 33% AND NOT FULL WIDTH — the art is 912x752 (ratio 1.21) and it is FULL of content top to bottom: the",
-      "title, the price and a three-icon strip at the foot. A full-width tile at any sane height crops it to a",
-      "band and cuts two of the three off. 33% of the column is ~496px, and 496x400 is 1.24 — the proportion the",
-      "file name itself claims (462x373) and within 2% of the art's own. It reads as the card the artboard drew.",
+      "★★ 03/09 — s2-8: WHY THE TILE STAYS AT A THIRD, AND WHERE ITS COMPANY CAME FROM INSTEAD. The QA read the",
+      "row as a missing slot: one card on the left, two thirds of white to its right. Both doors that would fill",
+      "the ROW are shut, and they were MEASURED rather than assumed:",
+      "  · FULL WIDTH DECAPITATES THE ART. It is 912x752 (w/h 1.21) and carries content at every edge — the",
+      "    OUTLET wordmark top-left, the «GRANDES MARCAS» badge top-right, the de/por price bottom-left, a",
+      "    three-icon strip along the foot. `object-fit: cover` in a full-width frame shows a horizontal BAND:",
+      "    rendered at 1504x600 it keeps «KIDS», the price and the shoe and loses the wordmark AND the whole",
+      "    icon strip. Showing it whole across the column needs ~980px of height — a poster, not a banner.",
+      "  · THERE IS NO SECOND CARD TO PUT BESIDE IT. The campaign art this instance owns is six pieces",
+      "    (`forge-materials/demo-2/outlet/`), five of them already in the mosaic above. The only other",
+      "    card-shaped art in the house is the dataset's `banner-shelf-aventura{,-kids}.jpg` (462x373) and both",
+      "    print «ATÉ 25% OFF» — BELOW this shop's own 33% floor and beside a band promising «Até 70%». Trading",
+      "    a layout gap for a false promise is the worse deal.",
+      "So the row gains company one block down instead: the «Outlet Kids» SHELF (position 4) — see its `_why`.",
+      "",
+      "THE HEIGHT IS THE CELL'S OWN, and 400 was not. The old figure was derived for a ~1504px content column",
+      "(33% ≈ 496px, and 496x400 ≈ 1.24 ≈ the art). The demo is shown at 1366, where the column is ~1191px and",
+      "the cell renders 384px wide — a 400px-tall frame is then 21% too tall for the art, and `cover` pays for",
+      "that by cropping the SIDES: the QA's shot has the O of OUTLET and half the badge sliced off. 384/1.213 =",
+      "317, so 317 is the height at which this tile shows the whole piece on the screen this demo is given on.",
       "Retuning it is two numbers in Compose, no deploy.",
+      "",
+      "THE LINK GOES WHERE THE PROMISE IS. It used to point at `/collection/acabando` — 22 products, every one",
+      "of them adult (s2-2). It now points at `/collection/outlet-kids`, which is the children's assortment.",
       "",
       "⚠️ Its `alt` is documentation too — see the mosaic's note."
     ],
@@ -431,8 +493,8 @@
       {
         "file": "banner-outlet-kids-912x752.png",
         "width": 33,
-        "height": 400,
-        "link": "/collection/acabando",
+        "height": 317,
+        "link": "/collection/outlet-kids",
         "alt": "Outlet Kids: grandes marcas, preços pequenos — de R$ 299,90 por R$ 149,90"
       }
     ]
@@ -445,7 +507,54 @@
     {
       "handle": "acabando",
       "name": "Acabando!"
+    },
+    {
+      "handle": "outlet-kids",
+      "name": "Outlet Kids",
+      "_why": [
+        "s2-2 — WHAT THE BANNER WAS PROMISING AND THE SHOP DID NOT HAVE. The «OUTLET KIDS · GRANDES MARCAS",
+        "PREÇO PEQUENO · R$ 149,90» piece linked to `/collection/acabando`: 22 products, every one of them",
+        "adult. This collection is the destination that makes the art true — it is where the banner and the",
+        "«Outlet Kids» shelf both point, and every product pinned to it carries `genero: Infantil`.",
+        "",
+        "THE ART'S OWN NUMBER IS A PRODUCT, not a rounding. `adidas-kids-vl-court-3-0-shoes-little-kid-big-kid`",
+        "IS the pink suede shoe with the green stripes and the gum sole in the piece, and it is priced at the",
+        "figure the piece prints: de R$ 299,90, por R$ 149,90."
+      ]
     }
+  ],
+  "featured_brands": [
+    "johnston-murphy",
+    "cole-haan",
+    "corral-boots",
+    "columbia",
+    "adidas",
+    "nike",
+    "ugg",
+    "new-balance"
+  ],
+  "_featured_brands_why": [
+    "★★ 03/09 — s2-4: THE «Marcas que amamos» TILES ARE A HAND-CURATED LITERAL IN THE VITRINE, AND THIS IS ITS",
+    "MIRROR — exactly the arrangement `categories` above has with the header menu, for exactly the same reason.",
+    "",
+    "The reference vitrine's home block picks eight brand slugs from a list written in its own source",
+    "(`apps/storefront/src/components/BrandsGrid.tsx`, `FEATURED_BRANDS`) and resolves each against",
+    "`read.brands`, which answers for the TENANT. So a slug resolves — the tile renders, the wordmark shows —",
+    "whether or not THIS STORE carries a single product of it, and `/b/<slug>` under the outlet is then an",
+    "honest, empty list. Measured by the QA: 4 of the 8 (Johnston Murphy, Corral Boots, Columbia, Ugg) landed",
+    "on «0 produtos — Nada por aqui»; the other 4 had product because the outlet happened to carry it.",
+    "",
+    "⛔ THE FIX IS NOT OURS TO MAKE IN THE VITRINE. `apps/storefront` is the forkable reference storefront and",
+    "the Renan has twice refused to grow a mechanism there to accommodate this shop — «prefiro popular as",
+    "mesmas categorias na demo». Deriving the eight from what the STORE stocks is a change to the product, and",
+    "it belongs upstream, on its own card. What is OURS is the assortment: this shop now carries at least one",
+    "product of every label its home promotes.",
+    "",
+    "⚠️ THE MIRROR IS THE FRAGILE HALF, and nothing here compiles against it: this repository has no package",
+    "manager and no dependency on the storefront. A slug swapped over there and not here is an empty tile",
+    "again, and only a human notices — the same standing risk `categories` carries against `navTree.ts`.",
+    "`seed/outlet.test.mjs` guards the half that IS checkable: every slug listed here has a product in this",
+    "file that declares it."
   ],
   "categories": [
     {
@@ -618,6 +727,7 @@
     {
       "handle": "mens-nike-air-zoom-pegasus-42-road-running",
       "title": "Nike Air Zoom Pegasus 42 Road Running",
+      "brand": "nike",
       "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 27990,
@@ -748,6 +858,7 @@
     {
       "handle": "mens-adidas-supernova-rise-3-running-shoes",
       "title": "adidas Supernova Rise 3 Running Shoes",
+      "brand": "adidas",
       "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 21990,
@@ -856,6 +967,7 @@
     {
       "handle": "mens-asics-gel-nimbus-28-atc",
       "title": "ASICS Gel-Nimbus 28 ATC",
+      "brand": "asics",
       "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 24990,
@@ -984,6 +1096,7 @@
     {
       "handle": "mens-new-balance-fresh-foam-x-880-v15-gore-tex",
       "title": "New Balance Fresh Foam X 880 v15 GORE-TEX",
+      "brand": "new-balance",
       "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 19990,
@@ -1113,6 +1226,7 @@
     {
       "handle": "mens-on-cloudrunner-2-waterproof",
       "title": "On Cloudrunner 2 Waterproof",
+      "brand": "on",
       "category": "tenis.corrida",
       "shelf": "quase-de-graca",
       "amount": 32990,
@@ -1199,6 +1313,7 @@
     {
       "handle": "mens-keen-wander-trail-running-shoes",
       "title": "KEEN Wander Trail Running Shoes",
+      "brand": "keen",
       "category": "tenis.trilha",
       "shelf": "acabando",
       "amount": 18990,
@@ -1337,6 +1452,7 @@
     {
       "handle": "mens-ecco-byway-2-0-waterproof-lace-up-boots",
       "title": "ECCO Byway 2.0 Waterproof Lace-up Boots",
+      "brand": "ecco",
       "category": "botas.coturno",
       "shelf": "acabando",
       "amount": 14990,
@@ -1428,6 +1544,7 @@
     {
       "handle": "mens-nike-vapor-16-club",
       "title": "Nike Vapor 16 Club",
+      "brand": "nike",
       "category": "tenis.futebol",
       "shelf": "acabando",
       "amount": 11990,
@@ -1543,6 +1660,7 @@
     {
       "handle": "mens-adidas-advantage-2-0",
       "title": "adidas Advantage 2.0",
+      "brand": "adidas",
       "category": "tenis.casual",
       "shelf": "acabando",
       "amount": 20990,
@@ -1668,6 +1786,7 @@
     {
       "handle": "mens-new-balance-608v5-slip-resistant",
       "title": "New Balance 608v5 Slip Resistant",
+      "brand": "new-balance",
       "category": "tenis.treino",
       "shelf": "acabando",
       "amount": 19190,
@@ -1794,6 +1913,7 @@
     {
       "handle": "mens-airwalk-work-airwalk-camino-int-met-mens-ct-eh",
       "title": "Airwalk Work AIRWALK CAMINO INT MET - MEN'S CT EH",
+      "brand": "airwalk-work",
       "category": "botas.trabalho",
       "shelf": "acabando",
       "amount": 42990,
@@ -1918,6 +2038,7 @@
     {
       "handle": "mens-anodyne-no-56-trail-boots",
       "title": "Anodyne No. 56 Trail Boots",
+      "brand": "anodyne",
       "category": "botas.trilha",
       "shelf": "quase-de-graca",
       "amount": 24990,
@@ -1952,6 +2073,7 @@
     {
       "handle": "mens-avenger-work-boots-foreman-chelsea-ct",
       "title": "Avenger Work Boots Foreman Chelsea CT",
+      "brand": "avenger-work-boots",
       "category": "botas.chelsea",
       "shelf": "acabando",
       "amount": 32990,
@@ -1985,6 +2107,7 @@
     {
       "handle": "mens-ariat-spitfire-all-terrain-waterproof",
       "title": "Ariat Spitfire All Terrain Waterproof",
+      "brand": "ariat",
       "category": "botas.chukka",
       "shelf": "acabando",
       "amount": 37990,
@@ -2089,6 +2212,7 @@
     {
       "handle": "womens-david-tate-lasso",
       "title": "David Tate Lasso",
+      "brand": "david-tate",
       "category": "botas.cano_longo",
       "shelf": "quase-de-graca",
       "amount": 26990,
@@ -2193,6 +2317,7 @@
     {
       "handle": "womens-bogs-whiteout-plaid",
       "title": "Bogs Whiteout Plaid",
+      "brand": "bogs",
       "category": "botas.chuva",
       "shelf": "acabando",
       "amount": 52990,
@@ -2317,6 +2442,7 @@
     {
       "handle": "mens-allen-edmonds-davenport-fisherman-sandals",
       "title": "Allen Edmonds Davenport Fisherman Sandals",
+      "brand": "allen-edmonds",
       "category": "sandalias.sandalia",
       "shelf": "acabando",
       "amount": 39990,
@@ -2536,6 +2662,7 @@
     {
       "handle": "mens-birkenstock-arizona-eva-essentials",
       "title": "Birkenstock Arizona EVA Essentials",
+      "brand": "birkenstock",
       "category": "sandalias.slide",
       "shelf": "quase-de-graca",
       "amount": 10990,
@@ -2639,6 +2766,7 @@
     {
       "handle": "mens-orthofeet-hudson",
       "title": "Orthofeet Hudson",
+      "brand": "orthofeet",
       "category": "sandalias.tamanco",
       "shelf": "acabando",
       "amount": 31990,
@@ -2697,6 +2825,7 @@
     {
       "handle": "mens-clarks-wesley-sun",
       "title": "Clarks Wesley Sun",
+      "brand": "clarks",
       "category": "sandalias.rasteira",
       "shelf": "acabando",
       "amount": 13490,
@@ -2916,6 +3045,7 @@
     {
       "handle": "womens-anne-klein-islander",
       "title": "Anne Klein Islander",
+      "brand": "anne-klein",
       "category": "sapatos.salto",
       "shelf": "acabando",
       "amount": 19990,
@@ -3019,6 +3149,7 @@
     {
       "handle": "mens-cole-haan-american-classics-hampton-penny-loafers",
       "title": "Cole Haan American Classics Hampton Penny Loafers",
+      "brand": "cole-haan",
       "category": "sapatos.mocassim",
       "shelf": "quase-de-graca",
       "amount": 22990,
@@ -3134,6 +3265,7 @@
     {
       "handle": "mens-calvin-klein-brodie-2",
       "title": "Calvin Klein Brodie 2",
+      "brand": "calvin-klein",
       "category": "sapatos.social",
       "shelf": "acabando",
       "amount": 21990,
@@ -3249,6 +3381,7 @@
     {
       "handle": "womens-dansko-matilda",
       "title": "Dansko Matilda",
+      "brand": "dansko",
       "category": "sapatos.sapatilha",
       "shelf": "acabando",
       "amount": 31990,
@@ -3422,6 +3555,7 @@
     {
       "handle": "mens-deer-stags-spun-slipper",
       "title": "Deer Stags Spun Slipper",
+      "brand": "deer-stags",
       "category": "sapatos.pantufa",
       "shelf": "acabando",
       "amount": 18890,
@@ -3457,6 +3591,7 @@
     {
       "handle": "mens-darn-tough-vermont-element-no-show-tab-lightweight-with-cushion",
       "title": "Darn Tough Vermont Element No Show Tab Lightweight with Cushion",
+      "brand": "darn-tough-vermont",
       "category": "acessorios.meias",
       "shelf": "acabando",
       "amount": 4690,
@@ -3525,6 +3660,7 @@
     {
       "handle": "aldo-alesia",
       "title": "ALDO Alesia",
+      "brand": "aldo",
       "category": "acessorios.bolsas",
       "shelf": "quase-de-graca",
       "amount": 10490,
@@ -3557,6 +3693,7 @@
     {
       "handle": "adidas-golf-braided-stretch-belt",
       "title": "adidas Golf Braided Stretch Belt",
+      "brand": "adidas-golf",
       "category": "acessorios.cintos",
       "shelf": "acabando",
       "amount": 10590,
@@ -3624,6 +3761,7 @@
     {
       "handle": "arcteryx-rho-gloves",
       "title": "Arc'teryx Rho Gloves",
+      "brand": "arc-teryx",
       "category": "acessorios.luvas",
       "shelf": "acabando",
       "amount": 7990,
@@ -3691,6 +3829,7 @@
     {
       "handle": "aetrex-speed-orthotic",
       "title": "Aetrex Speed Orthotic",
+      "brand": "aetrex",
       "category": "acessorios.palmilhas",
       "shelf": "acabando",
       "amount": 25990,
@@ -3827,6 +3966,7 @@
     {
       "handle": "black-clover-cyprus-3-snapback-adjustable-hat",
       "title": "Black Clover Cyprus 3 Snapback Adjustable Hat",
+      "brand": "black-clover",
       "category": "acessorios.bones",
       "shelf": "acabando",
       "amount": 8790,
@@ -3858,6 +3998,7 @@
     {
       "handle": "barefoot-dreams-cozychic-mosaic-wrap",
       "title": "Barefoot Dreams CozyChic Mosaic Wrap",
+      "brand": "barefoot-dreams",
       "category": "acessorios.cachecois",
       "shelf": "acabando",
       "amount": 34990,
@@ -3911,6 +4052,2107 @@
       "meta_description": "Barefoot Dreams CozyChic Mosaic Wrap — Cachecóis. Entrega para todo o Brasil e troca fácil em até 30 dias.",
       "photos": [
         "barefoot-dreams-cozychic-mosaic-wrap-cover.jpg"
+      ]
+    },
+    {
+      "handle": "adidas-kids-vl-court-3-0-shoes-little-kid-big-kid",
+      "title": "adidas Kids VL Court 3.0 Shoes (Little Kid/Big Kid)",
+      "brand": "adidas-kids",
+      "category": "tenis.casual",
+      "shelf": "outlet-kids",
+      "amount": 14990,
+      "compare_at_amount": 29990,
+      "stock": 12,
+      "description": "Quando não há tempo para trocar de roupa, um tênis versátil é essencial. Feitos de camurça macia, os adidas Kids VL Court 3.0 Shoes acompanham as crianças da hora da brincadeira até a hora do jantar sem abrir mão do conf",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34"
+          ]
+        },
+        {
+          "name": "Cor",
+          "values": [
+            "Pink",
+            "Marrom"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-27-PINK",
+          "ean": "7890000001212",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "27"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-27-MARROM",
+          "ean": "7890000001229",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "27"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-28-PINK",
+          "ean": "7890000001236",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "28"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-28-MARROM",
+          "ean": "7890000001243",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "28"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-29-PINK",
+          "ean": "7890000001250",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "29"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-29-MARROM",
+          "ean": "7890000001267",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "29"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-30-PINK",
+          "ean": "7890000001274",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "30"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-30-MARROM",
+          "ean": "7890000001281",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "30"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-31-PINK",
+          "ean": "7890000001298",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "31"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-31-MARROM",
+          "ean": "7890000001304",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "31"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-32-PINK",
+          "ean": "7890000001311",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "32"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-32-MARROM",
+          "ean": "7890000001328",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "32"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-33-PINK",
+          "ean": "7890000001335",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "33"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-33-MARROM",
+          "ean": "7890000001342",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "33"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-34-PINK",
+          "ean": "7890000001359",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            },
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_VL_COURT_3_0_SHOES_LITTLE_KID_BIG_KID-34-MARROM",
+          "ean": "7890000001366",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            },
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Camurça",
+        "uso": "Treino",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Camurça · Solado: Borracha · Fechamento: Cadarço"
+        }
+      ],
+      "meta_title": "adidas Kids VL Court 3.0 Shoes (Little Kid/Big Kid) — Casual | Loja Demo",
+      "meta_description": "adidas Kids VL Court 3.0 Shoes (Little Kid/Big Kid) — Casual. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "adidas-kids-vl-court-3-0-shoes-little-kid-big-kid-cover.jpg",
+        "adidas-kids-vl-court-3-0-shoes-little-kid-big-kid-gallery-2.jpg",
+        "adidas-kids-vl-court-3-0-shoes-little-kid-big-kid-gallery-3.jpg",
+        "adidas-kids-vl-court-3-0-shoes-little-kid-big-kid-gallery-4.jpg"
+      ]
+    },
+    {
+      "handle": "nike-kids-cosmic-runner-se-2-infant-toddler",
+      "title": "Nike Kids Cosmic Runner SE 2 (Infant/Toddler)",
+      "brand": "nike-kids",
+      "category": "tenis.corrida",
+      "shelf": "outlet-kids",
+      "amount": 8490,
+      "compare_at_amount": 19000,
+      "stock": 9,
+      "description": "Leve seu pequeno para brincar ao ar livre com o confortável e estiloso Nike Kids Cosmic Runner SE 2 Shoes. O tênis baixo é feito com cabedal em mesh leve e respirável e design com cadarço, além",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "25",
+            "26"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-19",
+          "ean": "7890000171861",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "19"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-20",
+          "ean": "7890000171878",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "20"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-21",
+          "ean": "7890000171885",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "21"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-22",
+          "ean": "7890000171892",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "22"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-23",
+          "ean": "7890000171908",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "23"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-25",
+          "ean": "7890000171915",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "25"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_COSMIC_RUNNER_SE_2_INFANT_TODDLER-26",
+          "ean": "7890000171922",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "26"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Mesh",
+        "solado": "Borracha",
+        "fechamento": "Velcro",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "Nike Kids Cosmic Runner SE 2 (Infant/Toddler) — Corrida | Loja Demo",
+      "meta_description": "Nike Kids Cosmic Runner SE 2 (Infant/Toddler) — Corrida. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "nike-kids-cosmic-runner-se-2-infant-toddler-cover.jpg"
+      ]
+    },
+    {
+      "handle": "adidas-kids-goletto-ix-firm-ground-multi-ground-soccer-cleats-toddler-little-kid-big-kid",
+      "title": "adidas Kids Goletto Ix Firm Ground/Multi Ground Soccer Cleats (Toddler/Little Kid/Big Kid)",
+      "brand": "adidas-kids",
+      "category": "tenis.futebol",
+      "shelf": "outlet-kids",
+      "amount": 7990,
+      "compare_at_amount": 19000,
+      "stock": 7,
+      "description": "Calce estas chuteiras adidas Kids Goletto IX Firm Ground/Multi Ground e prepare-se para brilhar no campo. Seu cabedal sintético macio traz acolchoamento e perfurações exatamente nos pontos certos",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Azul",
+            "Preto",
+            "Branco"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "ADIDAS_KIDS_GOLETTO_IX_FIRM_GROUND_MULTI_GROUND_SOCCER_CLEATS_TODDLER_LITTLE_KID_BIG_KID-AZUL",
+          "ean": "7890000000444",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Azul"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_GOLETTO_IX_FIRM_GROUND_MULTI_GROUND_SOCCER_CLEATS_TODDLER_LITTLE_KID_BIG_KID-PRETO",
+          "ean": "7890000000451",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_GOLETTO_IX_FIRM_GROUND_MULTI_GROUND_SOCCER_CLEATS_TODDLER_LITTLE_KID_BIG_KID-BRANCO",
+          "ean": "7890000000468",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Couro",
+        "uso": "Futebol",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo",
+        "peso_g": 170
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 170 g (por pé)"
+        }
+      ],
+      "meta_title": "adidas Kids Goletto Ix Firm Ground/Multi Ground Soccer Cleats (Toddler/Little Kid/Big Kid) — Futebol | Loja Demo",
+      "meta_description": "adidas Kids Goletto Ix Firm Ground/Multi Ground Soccer Cleats (Toddler/Little Kid/Big Kid) — Futebol. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "adidas-kids-goletto-ix-firm-ground-multi-ground-soccer-cleats-toddler-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "columbia-kids-dart-canyon-low-little-kid-big-kid",
+      "title": "Columbia Kids Dart Canyon Low (Little Kid/Big Kid)",
+      "brand": "columbia-kids",
+      "category": "tenis.trilha",
+      "shelf": "outlet-kids",
+      "amount": 11990,
+      "compare_at_amount": 29000,
+      "stock": 6,
+      "description": "Fique bem e se sinta bem em qualquer clima com o calçado Columbia Kids Dart Canyon Low (Little Kid/Big Kid), feito para mantê-lo confortável e protegido durante toda a estação. Este calçado baixo é",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "32",
+            "33",
+            "34"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "COLUMBIA_KIDS_DART_CANYON_LOW_LITTLE_KID_BIG_KID-32",
+          "ean": "7890000011303",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "32"
+            }
+          ]
+        },
+        {
+          "code": "COLUMBIA_KIDS_DART_CANYON_LOW_LITTLE_KID_BIG_KID-33",
+          "ean": "7890000011310",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "33"
+            }
+          ]
+        },
+        {
+          "code": "COLUMBIA_KIDS_DART_CANYON_LOW_LITTLE_KID_BIG_KID-34",
+          "ean": "7890000011327",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Lona",
+        "uso": "Trilha",
+        "pisada": "Pronada",
+        "amortecimento": "Alto",
+        "fechamento": "Velcro",
+        "cano": "Baixo",
+        "peso_g": 227
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Lona · Fechamento: Velcro · Amortecimento: Alto · Peso: 227 g (por pé)"
+        }
+      ],
+      "meta_title": "Columbia Kids Dart Canyon Low (Little Kid/Big Kid) — Trilha | Loja Demo",
+      "meta_description": "Columbia Kids Dart Canyon Low (Little Kid/Big Kid) — Trilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "columbia-kids-dart-canyon-low-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "nike-kids-team-hustle-d-12-se-little-kid",
+      "title": "Nike Kids Team Hustle D 12 SE (Little Kid)",
+      "brand": "nike-kids",
+      "category": "tenis.treino",
+      "shelf": "outlet-kids",
+      "amount": 13990,
+      "compare_at_amount": 29000,
+      "stock": 8,
+      "description": "O Nike Kids Team Hustle D 12 SE foi desenvolvido para jovens atletas sempre prontos para jogar. É feito com cabedal em mesh respirável, forro e palmilha em material sintético.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-27",
+          "ean": "7890000178440",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "27"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-28",
+          "ean": "7890000178457",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "28"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-29",
+          "ean": "7890000178464",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "29"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-30",
+          "ean": "7890000178471",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "30"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-31",
+          "ean": "7890000178488",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "31"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-32",
+          "ean": "7890000178495",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "32"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-33",
+          "ean": "7890000178501",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "33"
+            }
+          ]
+        },
+        {
+          "code": "NIKE_KIDS_TEAM_HUSTLE_D_12_SE_LITTLE_KID-34",
+          "ean": "7890000178518",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Mesh",
+        "solado": "Borracha",
+        "fechamento": "Velcro"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh · Solado: Borracha · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "Nike Kids Team Hustle D 12 SE (Little Kid) — Treino | Loja Demo",
+      "meta_description": "Nike Kids Team Hustle D 12 SE (Little Kid) — Treino. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "nike-kids-team-hustle-d-12-se-little-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "bogs-kids-essential-rain-mid-toddler-little-kid-big-kid",
+      "title": "Bogs Kids Essential Rain Mid (Toddler/Little Kid/Big Kid)",
+      "brand": "bogs-kids",
+      "category": "botas.chuva",
+      "shelf": "outlet-kids",
+      "amount": 9490,
+      "compare_at_amount": 20000,
+      "stock": 5,
+      "description": "Observação: as informações de tamanho na caixa serão ligeiramente diferentes da nossa numeração (Ex.: Bogs 7I = 7 Toddler, Bogs 1K = 1 Little Kid). Selecione o tamanho regular do seu filho ao fazer o pedido.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Pink",
+            "Preto",
+            "Chumbo",
+            "Amarelo",
+            "Marinho",
+            "Turquesa"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-PINK",
+          "ean": "7890000006262",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-PRETO",
+          "ean": "7890000006279",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-CHUMBO",
+          "ean": "7890000006286",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Chumbo"
+            }
+          ]
+        },
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-AMARELO",
+          "ean": "7890000006293",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Amarelo"
+            }
+          ]
+        },
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-MARINHO",
+          "ean": "7890000006309",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Marinho"
+            }
+          ]
+        },
+        {
+          "code": "BOGS_KIDS_ESSENTIAL_RAIN_MID_TODDLER_LITTLE_KID_BIG_KID-TURQUESA",
+          "ean": "7890000006316",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Turquesa"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "solado": "Borracha",
+        "impermeavel": true,
+        "peso_g": 390
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Solado: Borracha · Peso: 390 g (por pé) · Impermeável"
+        }
+      ],
+      "meta_title": "Bogs Kids Essential Rain Mid (Toddler/Little Kid/Big Kid) — Chuva | Loja Demo",
+      "meta_description": "Bogs Kids Essential Rain Mid (Toddler/Little Kid/Big Kid) — Chuva. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "bogs-kids-essential-rain-mid-toddler-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "keen-kids-wanduro-mid-waterproof-little-kid-big-kid",
+      "title": "KEEN Kids Wanduro Mid Waterproof (Little Kid/Big Kid)",
+      "brand": "keen-kids",
+      "category": "botas.trilha",
+      "shelf": "outlet-kids",
+      "amount": 14990,
+      "compare_at_amount": 39000,
+      "stock": 4,
+      "description": "Aprimore as aventuras de trekking do seu pequeno com as confortáveis e respiráveis botas de trilha Keen Kids Wanduro Mid Waterproof. Com construção de cabedal têxtil e sintético, os calçados possuem um fá",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Preto",
+            "Azul"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "KEEN_KIDS_WANDURO_MID_WATERPROOF_LITTLE_KID_BIG_KID-PRETO",
+          "ean": "7890000027960",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "KEEN_KIDS_WANDURO_MID_WATERPROOF_LITTLE_KID_BIG_KID-AZUL",
+          "ean": "7890000027977",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Azul"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético",
+        "uso": "Trilha",
+        "fechamento": "Elástico",
+        "impermeavel": true,
+        "peso_g": 283
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Fechamento: Elástico · Peso: 283 g (por pé) · Impermeável"
+        }
+      ],
+      "meta_title": "KEEN Kids Wanduro Mid Waterproof (Little Kid/Big Kid) — Trilha | Loja Demo",
+      "meta_description": "KEEN Kids Wanduro Mid Waterproof (Little Kid/Big Kid) — Trilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "keen-kids-wanduro-mid-waterproof-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mini-melissa-hip-hello-kitty-and-friends-toddler-little-kid",
+      "title": "Mini Melissa Hip + Hello Kitty And Friends (Toddler/Little Kid)",
+      "brand": "mini-melissa",
+      "category": "sandalias.sandalia",
+      "shelf": "outlet-kids",
+      "amount": 9990,
+      "compare_at_amount": 19000,
+      "stock": 6,
+      "description": "Construção vegana verificada.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Branco",
+            "Preto",
+            "Pink",
+            "Vermelho"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MINI_MELISSA_HIP_HELLO_KITTY_AND_FRIENDS_TODDLER_LITTLE_KID-BRANCO",
+          "ean": "7890000161930",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        },
+        {
+          "code": "MINI_MELISSA_HIP_HELLO_KITTY_AND_FRIENDS_TODDLER_LITTLE_KID-PRETO",
+          "ean": "7890000161947",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "MINI_MELISSA_HIP_HELLO_KITTY_AND_FRIENDS_TODDLER_LITTLE_KID-PINK",
+          "ean": "7890000161954",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Pink"
+            }
+          ]
+        },
+        {
+          "code": "MINI_MELISSA_HIP_HELLO_KITTY_AND_FRIENDS_TODDLER_LITTLE_KID-VERMELHO",
+          "ean": "7890000161961",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Vermelho"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "uso": "Praia",
+        "fechamento": "Velcro",
+        "cano": "Baixo",
+        "impermeavel": true,
+        "peso_g": 81
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Fechamento: Velcro · Peso: 81 g (por pé) · Impermeável"
+        }
+      ],
+      "meta_title": "Mini Melissa Hip + Hello Kitty And Friends (Toddler/Little Kid) — Sandália | Loja Demo",
+      "meta_description": "Mini Melissa Hip + Hello Kitty And Friends (Toddler/Little Kid) — Sandália. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mini-melissa-hip-hello-kitty-and-friends-toddler-little-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "adidas-kids-adilette-shower-slide-toddler-little-kid-big-kid",
+      "title": "adidas Kids Adilette Shower Slide (Toddler/Little Kid/Big Kid)",
+      "brand": "adidas-kids",
+      "category": "sandalias.slide",
+      "shelf": "outlet-kids",
+      "amount": 5990,
+      "compare_at_amount": 10000,
+      "stock": 14,
+      "description": "Eles vão adorar o conforto duradouro do descontraído adidas Kids Adilette Shower Slide. Com sua construção slip-on, esses calçados apresentam cabedal sintético durável, projetado com uma s",
+      "skus": [
+        {
+          "code": "ADIDAS_KIDS_ADILETTE_SHOWER_SLIDE_TODDLER_LITTLE_KID_BIG_KID",
+          "ean": "7890000000055"
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético",
+        "uso": "Praia",
+        "fechamento": "Sem fechamento"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Fechamento: Sem fechamento"
+        }
+      ],
+      "meta_title": "adidas Kids Adilette Shower Slide (Toddler/Little Kid/Big Kid) — Slide | Loja Demo",
+      "meta_description": "adidas Kids Adilette Shower Slide (Toddler/Little Kid/Big Kid) — Slide. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "adidas-kids-adilette-shower-slide-toddler-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "josmo-batman-slipper-toddler-little-kid",
+      "title": "Josmo Batman Slipper(Toddler/Little Kid)",
+      "brand": "josmo",
+      "category": "sapatos.pantufa",
+      "shelf": "outlet-kids",
+      "amount": 3990,
+      "compare_at_amount": 10000,
+      "stock": 11,
+      "description": "O Josmo Kids Batman Slipper foi criado para oferecer conforto aconchegante e estilo de super-herói, perfeito para os pequenos fãs do Cavaleiro das Trevas. Apresenta cabedal têxtil macio com estampas marcantes do Batman, um design pull-on (sem cadarço), des",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "20",
+            "21",
+            "22",
+            "23"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "JOSMO_BATMAN_SLIPPER_TODDLER_LITTLE_KID-20",
+          "ean": "7890000027366",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "20"
+            }
+          ]
+        },
+        {
+          "code": "JOSMO_BATMAN_SLIPPER_TODDLER_LITTLE_KID-21",
+          "ean": "7890000027373",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "21"
+            }
+          ]
+        },
+        {
+          "code": "JOSMO_BATMAN_SLIPPER_TODDLER_LITTLE_KID-22",
+          "ean": "7890000027380",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "22"
+            }
+          ]
+        },
+        {
+          "code": "JOSMO_BATMAN_SLIPPER_TODDLER_LITTLE_KID-23",
+          "ean": "7890000027397",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "23"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético",
+        "pisada": "Pronada",
+        "solado": "Poliuretano",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Solado: Poliuretano"
+        }
+      ],
+      "meta_title": "Josmo Batman Slipper(Toddler/Little Kid) — Pantufa | Loja Demo",
+      "meta_description": "Josmo Batman Slipper(Toddler/Little Kid) — Pantufa. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "josmo-batman-slipper-toddler-little-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "nina-kids-marissa-toddler-little-kid-big-kid",
+      "title": "Nina Kids Marissa (Toddler/Little Kid/Big Kid)",
+      "brand": "nina-kids",
+      "category": "sapatos.sapatilha",
+      "shelf": "outlet-kids",
+      "amount": 8990,
+      "compare_at_amount": 20000,
+      "stock": 7,
+      "description": "Aquelas fofuras com as sapatilhas mais fofas, as Nina Kids Marissa!",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Rosa",
+            "Preto",
+            "Prata",
+            "Branco"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "NINA_KIDS_MARISSA_TODDLER_LITTLE_KID_BIG_KID-ROSA",
+          "ean": "7890000179041",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Rosa"
+            }
+          ]
+        },
+        {
+          "code": "NINA_KIDS_MARISSA_TODDLER_LITTLE_KID_BIG_KID-PRETO",
+          "ean": "7890000179058",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "NINA_KIDS_MARISSA_TODDLER_LITTLE_KID_BIG_KID-PRATA",
+          "ean": "7890000179065",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Prata"
+            }
+          ]
+        },
+        {
+          "code": "NINA_KIDS_MARISSA_TODDLER_LITTLE_KID_BIG_KID-BRANCO",
+          "ean": "7890000179072",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Couro",
+        "fechamento": "Zíper",
+        "peso_g": 142
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Fechamento: Zíper · Peso: 142 g (por pé)"
+        }
+      ],
+      "meta_title": "Nina Kids Marissa (Toddler/Little Kid/Big Kid) — Sapatilha | Loja Demo",
+      "meta_description": "Nina Kids Marissa (Toddler/Little Kid/Big Kid) — Sapatilha. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "nina-kids-marissa-toddler-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "florsheim-kids-reveal-cap-toe-ox-jr-toddler-little-kid-big-kid",
+      "title": "Florsheim Kids Reveal Cap Toe Ox, Jr. (Toddler/Little Kid/Big Kid)",
+      "brand": "florsheim-kids",
+      "category": "sapatos.social",
+      "shelf": "outlet-kids",
+      "amount": 13990,
+      "compare_at_amount": 30000,
+      "stock": 5,
+      "description": "Ele vai ficar super elegante com o sofisticado Florsheim Kids Reveal Cap Toe Ox, Jr.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Branco",
+            "Preto",
+            "Caramelo"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "FLORSHEIM_KIDS_REVEAL_CAP_TOE_OX_JR_TODDLER_LITTLE_KID_BIG_KID-BRANCO",
+          "ean": "7890000018197",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        },
+        {
+          "code": "FLORSHEIM_KIDS_REVEAL_CAP_TOE_OX_JR_TODDLER_LITTLE_KID_BIG_KID-PRETO",
+          "ean": "7890000018203",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        },
+        {
+          "code": "FLORSHEIM_KIDS_REVEAL_CAP_TOE_OX_JR_TODDLER_LITTLE_KID_BIG_KID-CARAMELO",
+          "ean": "7890000018210",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Caramelo"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Couro",
+        "solado": "Poliuretano",
+        "fechamento": "Cadarço",
+        "peso_g": 227
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Poliuretano · Fechamento: Cadarço · Peso: 227 g (por pé)"
+        }
+      ],
+      "meta_title": "Florsheim Kids Reveal Cap Toe Ox, Jr. (Toddler/Little Kid/Big Kid) — Social | Loja Demo",
+      "meta_description": "Florsheim Kids Reveal Cap Toe Ox, Jr. (Toddler/Little Kid/Big Kid) — Social. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "florsheim-kids-reveal-cap-toe-ox-jr-toddler-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "columbia-core-iii-gloves-little-kid-big-kid",
+      "title": "Columbia Core III Gloves (Little Kid/Big Kid)",
+      "brand": "columbia",
+      "category": "acessorios.luvas",
+      "shelf": "outlet-kids",
+      "amount": 4990,
+      "compare_at_amount": 10000,
+      "stock": 10,
+      "description": "Mantenha as mãos dos seus pequenos aquecidas e protegidas escolhendo as luvas Columbia Kids Core III. Estas luvas apresentam materiais respiráveis em múltiplas camadas com a tecnologia Omni-Tech para repelir a água e liberar",
+      "skus": [
+        {
+          "code": "COLUMBIA_CORE_III_GLOVES_LITTLE_KID_BIG_KID",
+          "ean": "7890000011280"
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético",
+        "solado": "Poliuretano",
+        "fechamento": "Velcro"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Solado: Poliuretano · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "Columbia Core III Gloves (Little Kid/Big Kid) — Luvas | Loja Demo",
+      "meta_description": "Columbia Core III Gloves (Little Kid/Big Kid) — Luvas. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "columbia-core-iii-gloves-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "adidas-kids-athletic-cushioned-6-pack-crew-little-kid-big-kid",
+      "title": "adidas Kids Athletic Cushioned 6-Pack Crew (Little Kid/Big Kid)",
+      "brand": "adidas-kids",
+      "category": "acessorios.meias",
+      "shelf": "outlet-kids",
+      "amount": 3990,
+      "compare_at_amount": 9000,
+      "stock": 16,
+      "description": "Desfrute de conforto supremo e um caimento clássico usando as meias adidas Kids Athletic Cushioned, pacote com 6 pares, com acolchoamento no pé para conforto e durabilidade. As meias apresentam calcanhar reforçado e",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "M",
+            "G"
+          ]
+        },
+        {
+          "name": "Cor",
+          "values": [
+            "Branco",
+            "Cinza"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "ADIDAS_KIDS_ATHLETIC_CUSHIONED_6_PACK_CREW_LITTLE_KID_BIG_KID-M-BRANCO",
+          "ean": "7890000000062",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "M"
+            },
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_ATHLETIC_CUSHIONED_6_PACK_CREW_LITTLE_KID_BIG_KID-M-CINZA",
+          "ean": "7890000000079",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "M"
+            },
+            {
+              "option": "Cor",
+              "value": "Cinza"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_ATHLETIC_CUSHIONED_6_PACK_CREW_LITTLE_KID_BIG_KID-G-BRANCO",
+          "ean": "7890000000086",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "G"
+            },
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        },
+        {
+          "code": "ADIDAS_KIDS_ATHLETIC_CUSHIONED_6_PACK_CREW_LITTLE_KID_BIG_KID-G-CINZA",
+          "ean": "7890000000093",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "G"
+            },
+            {
+              "option": "Cor",
+              "value": "Cinza"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Mesh"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Mesh"
+        }
+      ],
+      "meta_title": "adidas Kids Athletic Cushioned 6-Pack Crew (Little Kid/Big Kid) — Meias | Loja Demo",
+      "meta_description": "adidas Kids Athletic Cushioned 6-Pack Crew (Little Kid/Big Kid) — Meias. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "adidas-kids-athletic-cushioned-6-pack-crew-little-kid-big-kid-cover.jpg"
+      ]
+    },
+    {
+      "handle": "callaway-cg-junior-tour-kids-adjustable-hat",
+      "title": "Callaway CG Junior Tour Kids Adjustable Hat",
+      "brand": "callaway",
+      "category": "acessorios.bones",
+      "shelf": "outlet-kids",
+      "amount": 11990,
+      "compare_at_amount": 19000,
+      "stock": 6,
+      "description": "Os futuros jogadores de torneio podem ficar com a cara certa usando o Callaway CG Junior Tour Adjustable Hat, um boné de desempenho em tamanho infantil com a mesma silhueta estruturada e conforto com absorção de umidade encontrados na Callaway",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Branco",
+            "Preto"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "CALLAWAY_CG_JUNIOR_TOUR_KIDS_ADJUSTABLE_HAT-BRANCO",
+          "ean": "7890000007122",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Branco"
+            }
+          ]
+        },
+        {
+          "code": "CALLAWAY_CG_JUNIOR_TOUR_KIDS_ADJUSTABLE_HAT-PRETO",
+          "ean": "7890000007139",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Preto"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético"
+        }
+      ],
+      "meta_title": "Callaway CG Junior Tour Kids Adjustable Hat — Bones | Loja Demo",
+      "meta_description": "Callaway CG Junior Tour Kids Adjustable Hat — Bones. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "callaway-cg-junior-tour-kids-adjustable-hat-cover.jpg"
+      ]
+    },
+    {
+      "handle": "ugg-kids-bixbee-and-beanie-infant-toddler",
+      "title": "UGG Kids Bixbee and Beanie (Infant/Toddler)",
+      "brand": "ugg-kids",
+      "category": "acessorios.cachecois",
+      "shelf": "outlet-kids",
+      "amount": 17990,
+      "compare_at_amount": 39000,
+      "stock": 4,
+      "description": "Os materiais primários que compõem este produto contêm no mínimo 20% de conteúdo reciclado.",
+      "skus": [
+        {
+          "code": "UGG_KIDS_BIXBEE_AND_BEANIE_INFANT_TODDLER",
+          "ean": "7890000195485"
+        }
+      ],
+      "metadata": {
+        "genero": "Infantil",
+        "material": "Sintético",
+        "fechamento": "Velcro"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético · Fechamento: Velcro"
+        }
+      ],
+      "meta_title": "UGG Kids Bixbee and Beanie (Infant/Toddler) — Cachecóis | Loja Demo",
+      "meta_description": "UGG Kids Bixbee and Beanie (Infant/Toddler) — Cachecóis. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "ugg-kids-bixbee-and-beanie-infant-toddler-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-johnston-murphy-colby-plain-toe",
+      "title": "Johnston & Murphy Colby Plain Toe",
+      "brand": "johnston-murphy",
+      "category": "sapatos.social",
+      "shelf": "acabando",
+      "amount": 15990,
+      "compare_at_amount": 39000,
+      "stock": 4,
+      "description": "Renove sua coleção de calçados com o oxford Colby Lace-Up Plain Toe da Johnston & Murphy. Confeccionado em cabedal, forração e palmilha de couro, esse par de sapatos tem bico redondo, fechamento com cadarço",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "40",
+            "41",
+            "42"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_JOHNSTON_MURPHY_COLBY_PLAIN_TOE-40",
+          "ean": "7890000084925",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_JOHNSTON_MURPHY_COLBY_PLAIN_TOE-41",
+          "ean": "7890000084932",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_JOHNSTON_MURPHY_COLBY_PLAIN_TOE-42",
+          "ean": "7890000084949",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Social",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "peso_g": 272
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Cadarço · Peso: 272 g (por pé)"
+        }
+      ],
+      "meta_title": "Johnston & Murphy Colby Plain Toe — Social | Loja Demo",
+      "meta_description": "Johnston & Murphy Colby Plain Toe — Social. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-johnston-murphy-colby-plain-toe-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-ugg-ascot-leather",
+      "title": "UGG Ascot Leather",
+      "brand": "ugg",
+      "category": "sapatos.pantufa",
+      "shelf": "quase-de-graca",
+      "amount": 24990,
+      "compare_at_amount": 69000,
+      "stock": 5,
+      "description": "Entre no conforto puro com este favorito atemporal: o chinelo UGG Ascot Leather. Feito com cabedal em couro ou camurça, em um formato de calçar.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-39",
+          "ean": "7890000152969",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-40",
+          "ean": "7890000152976",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-41",
+          "ean": "7890000152983",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-42",
+          "ean": "7890000152990",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-43",
+          "ean": "7890000153003",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-44",
+          "ean": "7890000153010",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-45",
+          "ean": "7890000153027",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_UGG_ASCOT_LEATHER-46",
+          "ean": "7890000153034",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "solado": "Borracha",
+        "fechamento": "Sem fechamento",
+        "peso_g": 312
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Borracha · Fechamento: Sem fechamento · Peso: 312 g (por pé)"
+        }
+      ],
+      "meta_title": "UGG Ascot Leather — Pantufa | Loja Demo",
+      "meta_description": "UGG Ascot Leather — Pantufa. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-ugg-ascot-leather-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-corral-boots-a3589",
+      "title": "Corral Boots A3589",
+      "brand": "corral-boots",
+      "category": "botas.coturno",
+      "shelf": "quase-de-graca",
+      "amount": 49900,
+      "compare_at_amount": 149000,
+      "stock": 3,
+      "description": "Esteja sempre pronta para comemorar com o visual lindo e o caimento confortável da bota Corral A3589.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-34",
+          "ean": "7890000278416",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "34"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-35",
+          "ean": "7890000278423",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-36",
+          "ean": "7890000278430",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-37",
+          "ean": "7890000278447",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "37"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-38",
+          "ean": "7890000278454",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-39",
+          "ean": "7890000278461",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_CORRAL_BOOTS_A3589-40",
+          "ean": "7890000278478",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Couro",
+        "solado": "Couro"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Couro"
+        }
+      ],
+      "meta_title": "Corral Boots A3589 — Coturno | Loja Demo",
+      "meta_description": "Corral Boots A3589 — Coturno. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-corral-boots-a3589-cover.jpg"
+      ]
+    },
+    {
+      "handle": "womens-johnston-murphy-ali-woven-loafers",
+      "title": "Johnston & Murphy Ali Woven Loafers",
+      "brand": "johnston-murphy",
+      "category": "sapatos.mocassim",
+      "shelf": "quase-de-graca",
+      "amount": 15990,
+      "compare_at_amount": 40000,
+      "stock": 4,
+      "description": "Experimente a interseção perfeita entre detalhe sofisticado e conforto acolchoado usando os Johnston & Murphy Ali Woven Loafers. Confeccionados em cabedal de couro Nappa macio, esses mocassins oferecem uma bela",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-35",
+          "ean": "7890000310284",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "35"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-36",
+          "ean": "7890000310291",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "36"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-37",
+          "ean": "7890000310307",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "37"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-38",
+          "ean": "7890000310314",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "38"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-39",
+          "ean": "7890000310321",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-40",
+          "ean": "7890000310338",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "WOMENS_JOHNSTON_MURPHY_ALI_WOVEN_LOAFERS-41",
+          "ean": "7890000310345",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Couro",
+        "uso": "Social",
+        "fechamento": "Sem fechamento",
+        "peso_g": 272
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Fechamento: Sem fechamento · Peso: 272 g (por pé)"
+        }
+      ],
+      "meta_title": "Johnston & Murphy Ali Woven Loafers — Mocassim | Loja Demo",
+      "meta_description": "Johnston & Murphy Ali Woven Loafers — Mocassim. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "womens-johnston-murphy-ali-woven-loafers-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-corral-boots-c4173",
+      "title": "Corral Boots C4173",
+      "brand": "corral-boots",
+      "category": "botas.coturno",
+      "shelf": "quase-de-graca",
+      "amount": 45900,
+      "compare_at_amount": 129000,
+      "stock": 3,
+      "description": "As Corral Boots C4173 são botas altas com bordado em tom areia, silhueta de bico quadrado estreito e saltos Cuban ao estilo cowboy. Seu cabedal de couro é projetado com alças laterais para facilitar o calçar.",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "42",
+            "43",
+            "44",
+            "45"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_CORRAL_BOOTS_C4173-42",
+          "ean": "7890000063029",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CORRAL_BOOTS_C4173-43",
+          "ean": "7890000063036",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CORRAL_BOOTS_C4173-44",
+          "ean": "7890000063043",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_CORRAL_BOOTS_C4173-45",
+          "ean": "7890000063050",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Couro",
+        "uso": "Praia",
+        "solado": "Couro",
+        "cano": "Médio"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Couro · Solado: Couro"
+        }
+      ],
+      "meta_title": "Corral Boots C4173 — Coturno | Loja Demo",
+      "meta_description": "Corral Boots C4173 — Coturno. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-corral-boots-c4173-cover.jpg"
+      ]
+    },
+    {
+      "handle": "mens-columbia-benson-ii",
+      "title": "Columbia Benson II",
+      "brand": "columbia",
+      "category": "tenis.casual",
+      "shelf": "acabando",
+      "amount": 17990,
+      "compare_at_amount": 40000,
+      "stock": 6,
+      "description": "Encare cada aventura com confiança escolhendo os tênis Columbia Benson II. Com cabedal multi-mesh respirável e sobreposições duráveis em camurça para proteção extra, estes tênis contam com Omni-",
+      "options": [
+        {
+          "name": "Tamanho",
+          "values": [
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-39",
+          "ean": "7890000060028",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "39"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-40",
+          "ean": "7890000060035",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "40"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-41",
+          "ean": "7890000060042",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "41"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-42",
+          "ean": "7890000060059",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "42"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-43",
+          "ean": "7890000060066",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "43"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-44",
+          "ean": "7890000060073",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "44"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-45",
+          "ean": "7890000060080",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "45"
+            }
+          ]
+        },
+        {
+          "code": "MENS_COLUMBIA_BENSON_II-46",
+          "ean": "7890000060097",
+          "option_values": [
+            {
+              "option": "Tamanho",
+              "value": "46"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Masculino",
+        "material": "Camurça",
+        "uso": "Trilha",
+        "pisada": "Pronada",
+        "amortecimento": "Alto",
+        "solado": "Borracha",
+        "fechamento": "Cadarço",
+        "cano": "Baixo"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Camurça · Solado: Borracha · Fechamento: Cadarço · Amortecimento: Alto"
+        }
+      ],
+      "meta_title": "Columbia Benson II — Casual | Loja Demo",
+      "meta_description": "Columbia Benson II — Casual. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "mens-columbia-benson-ii-cover.jpg"
+      ]
+    },
+    {
+      "handle": "ugg-all-weather-fluff-packable-scarf",
+      "title": "UGG All Weather Fluff Packable Scarf",
+      "brand": "ugg",
+      "category": "acessorios.cachecois",
+      "shelf": "acabando",
+      "amount": 15990,
+      "compare_at_amount": 39000,
+      "stock": 5,
+      "description": "Os principais materiais que compõem este produto contêm no mínimo 20 por cento de conteúdo reciclado.",
+      "options": [
+        {
+          "name": "Cor",
+          "values": [
+            "Marrom",
+            "Verde"
+          ]
+        }
+      ],
+      "skus": [
+        {
+          "code": "UGG_ALL_WEATHER_FLUFF_PACKABLE_SCARF-MARROM",
+          "ean": "7890000195164",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Marrom"
+            }
+          ]
+        },
+        {
+          "code": "UGG_ALL_WEATHER_FLUFF_PACKABLE_SCARF-VERDE",
+          "ean": "7890000195171",
+          "option_values": [
+            {
+              "option": "Cor",
+              "value": "Verde"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "genero": "Feminino",
+        "material": "Sintético"
+      },
+      "content_sections": [
+        {
+          "title": "Ficha Técnica",
+          "body": "Material: Sintético"
+        }
+      ],
+      "meta_title": "UGG All Weather Fluff Packable Scarf — Cachecóis | Loja Demo",
+      "meta_description": "UGG All Weather Fluff Packable Scarf — Cachecóis. Entrega para todo o Brasil e troca fácil em até 30 dias.",
+      "photos": [
+        "ugg-all-weather-fluff-packable-scarf-cover.jpg"
       ]
     }
   ]
