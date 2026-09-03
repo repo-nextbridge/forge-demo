@@ -212,13 +212,22 @@ async function assertCredentialTenant() {
 // internal read face (`index.ts`'s own comment on `commandRateLimit` says so). A pacer that counted only
 // writes would be a pacer that is wrong by exactly the number of reads.
 const RATE_PER_SECOND = Number(process.env.FORGE_SEED_RATE_PER_SECOND ?? 85);
+// ⚠️ THE BUCKET HOLDS AT LEAST ONE TOKEN, AND WITHOUT THIS LINE THE KNOB BELOW 1/s HANGS THE SEED FOREVER.
+// The ceiling used to be the rate itself, so a rate under one meant `tokens` could never reach the `>= 1`
+// the pump waits for: the queue filled, the timer re-armed, and nothing was ever sent. Measured on the bench
+// of 2026-09-03 — and it matters because a rate under 1/s is exactly what some faces need. The anonymous
+// create face (`/v1/ext-public`, where the reviews seeder posts) caps at 30 per 60 s per address, so the
+// honest pace there is 0.5/s, and the refusal's own advice ("lower it with FORGE_SEED_RATE_PER_SECOND=<n>")
+// pointed at a number the pacer could not carry. A knob that cannot express the value its own error message
+// asks for is worse than no knob.
+const BUCKET_CEILING = Math.max(RATE_PER_SECOND, 1);
 const pacer = (() => {
-  let tokens = RATE_PER_SECOND;
+  let tokens = BUCKET_CEILING;
   let last = Date.now();
   const queue = [];
   const refill = () => {
     const now = Date.now();
-    tokens = Math.min(RATE_PER_SECOND, tokens + ((now - last) / 1000) * RATE_PER_SECOND);
+    tokens = Math.min(BUCKET_CEILING, tokens + ((now - last) / 1000) * RATE_PER_SECOND);
     last = now;
   };
   const pump = () => {
