@@ -59,6 +59,13 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
   name: 'Pay at the counter',
   kind: 'app',
   version: '0.1.0',
+  // ⚠️ DECLARING THIS IS HALF THE ICON, AND THE OTHER HALF IS `"./icon"` IN package.json. A COMPOSED app's
+  // icon is soldered from the package's EXPORTS (`packages/codegen/src/composition.ts:550`), which never
+  // opens the manifest to notice a disagreement — so a path declared here with no module to back it 404s at
+  // `/v1/extensions/payment-pos/icon` and the admin's Apps area silently falls back to the name initial.
+  // That is exactly what happened to `demo-gate`. `bin/composition.guard.mjs` now holds both halves together
+  // and compares the BYTES, so redrawing `icon.png` without re-encoding `icon.ts` is red too.
+  icon: 'icon.png',
   description: DESCRIPTION_EN,
   maturity: 'stable',
   i18n: {
