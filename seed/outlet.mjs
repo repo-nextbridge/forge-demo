@@ -635,6 +635,40 @@ async function compose({ command, read, rows, log }, store, assets) {
 
   const placements = rows(await read('extension_composition', { store: store.id }));
 
+  // ── the store's own mark: one block, one slot, upsert ─────────────────────────────────────────────
+  // ⚠️ NOT GOVERNED BY `planHome` BELOW, and deliberately: that function owns `home.*`/`list.*` for the two
+  // apps that draw the page, so a mark in `header.brand` is outside its jurisdiction and survives it. Same
+  // upsert shape as the band next door — placed once, reconfigured when the words change, never doubled
+  // (the block is `single`, so a second placement would be the kernel's refusal rather than two marks).
+  const mark = {
+    extension_id: 'chrome',
+    component: 'brand',
+    slot: data.brand.slot,
+    config: { text: data.brand.text, tail: data.brand.tail },
+    what: "the store's mark",
+  };
+  const existingMark = placements.find(
+    (row) =>
+      row.extension_id === mark.extension_id &&
+      row.component === mark.component &&
+      row.target === mark.slot,
+  );
+  if (!existingMark) {
+    await command('composition.place', {
+      store: store.id,
+      extension_id: mark.extension_id,
+      component: mark.component,
+      slot: mark.slot,
+      config: mark.config,
+    });
+    log(`compose ${mark.slot} — placed ${mark.what}`);
+  } else if (sameConfig(existingMark.config, mark.config)) {
+    log(`compose ${mark.slot} — ${mark.what} is already configured`);
+  } else {
+    await command('composition.update_config', { placement_id: existingMark.id, config: mark.config });
+    log(`compose ${mark.slot} — ${mark.what} reconfigured`);
+  }
+
   // ── the announcement band: one block, one slot, upsert ────────────────────────────────────────────
   const band = {
     extension_id: 'banners',

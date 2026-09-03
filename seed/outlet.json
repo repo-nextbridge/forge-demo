@@ -374,6 +374,22 @@
     "seed that only appends would leave the OLD home (hero + banner_strip + below_shelf) drawn above the new one",
     "on every box that ran the previous version. See the header of that function."
   ],
+  "_brand_why": [
+    "THE STORE'S OWN MARK, and it is DATA rather than a token — which is the whole reason it is a block and",
+    "not a line in themes/outlet/tokens.css. A theme is colour, radius and typeface; a wordmark is content,",
+    "and the artboard's header says `forge` in white with `.outlet` painted in the accent. Without this",
+    "placement the shared kit prints its own literal `forge.` at the top of every page of a store that is",
+    "not Forge — measured on the bench of 2026-09-03, in light ink on the new dark band.",
+    "",
+    "`text` + `tail` rather than `logo`: the app takes either, and this store has no logo FILE. The tail is",
+    "painted with the accent by the block's own stylesheet, so the two halves of the artboard's mark come",
+    "from one placement and no image at all."
+  ],
+  "brand": {
+    "slot": "storefront:header.brand",
+    "text": "forge",
+    "tail": ".outlet"
+  },
   "mosaic": {
     "slot": "storefront:home.below_categories",
     "position": 0,
