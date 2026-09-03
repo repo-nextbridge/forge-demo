@@ -490,7 +490,17 @@ async function seedProducts(port, { catalog, store, categoryIdByPath, brandIdByS
       `${tenantCatalogue.size} in the tenant catalogue`,
   );
 
-  const todo = planProducts(catalog.products, { publishedHere: published, ownedElsewhere });
+  // ★★ pk6 · M10 — THE IDLE SHELF IS SUBTRACTED HERE TOO, and forgetting it is why the shelf existed and the
+  // bench did not change. The monorepo's `populate` learned to withhold these handles; this seed is the OTHER
+  // author of this shop's assortment, and an author that publishes what the other withholds wins in silence —
+  // the pool would stay at 2 and the dashboard's three stock states would stay empty, with nothing red
+  // anywhere. `catalog.idle_shelf` is optional: a dataset without one behaves exactly as before.
+  const idleShelf = new Set(catalog.idle_shelf?.handles ?? []);
+  const todo = planProducts(catalog.products, {
+    publishedHere: published,
+    ownedElsewhere,
+    idleShelf,
+  });
   if (todo.length === 0) {
     log(`forge — all ${catalog.products.length} product(s) already on sale; nothing to do`);
     return;
@@ -729,9 +739,11 @@ export async function awaitQuietCatalogue({ read, log, fail }, opts = {}) {
  *                                 of this module created it and died before publishing — either way nobody
  *                                 else can be relying on it, so this run finishes it.
  */
-export function planProducts(products, { publishedHere, ownedElsewhere }) {
+export function planProducts(products, { publishedHere, ownedElsewhere, idleShelf }) {
+  const idle = idleShelf ?? new Set();
   return products
     .filter((p) => !publishedHere.has(p.handle))
+    .filter((p) => !idle.has(p.handle))
     .map((p) => ({ ...p, mine: !ownedElsewhere.has(p.handle) }));
 }
 

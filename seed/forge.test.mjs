@@ -252,6 +252,28 @@ test('a product ALREADY ON SALE in another store is listed here and NOT re-stock
   );
 });
 
+test('★★ a handle on the IDLE SHELF is never published here, however the other filters fall', () => {
+  // ★★ pk6 · M10 — THE SHELF IS DECLARED IN THE CATALOG AND SUBTRACTED BY TWO AUTHORS. The monorepo's
+  // `populate` withholds these handles; THIS module is the other author of this shop's assortment, and an
+  // author that publishes what the other withholds wins in silence — the stock-alert pool would stay at 2
+  // and the dashboard's three states would stay empty, with nothing red anywhere.
+  //
+  // The idle handle is passed here as a product on sale NOWHERE, which is the case that otherwise reads as
+  // "this run is the one to finish it": the shelf has to beat the heal path, not merely coexist with it.
+  const plan = planProducts([{ handle: 'idle' }, { handle: 'live' }], {
+    publishedHere: new Set(),
+    ownedElsewhere: new Set(),
+    idleShelf: new Set(['idle']),
+  });
+  assert.deepEqual(plan, [{ handle: 'live', mine: true }]);
+});
+
+test('a dataset with NO idle shelf behaves exactly as before', () => {
+  // The knob is optional, and an absent one must not become an empty publication.
+  const plan = planProducts([{ handle: 'a' }], { publishedHere: new Set(), ownedElsewhere: new Set() });
+  assert.deepEqual(plan, [{ handle: 'a', mine: true }]);
+});
+
 test('a product on sale NOWHERE is this run to finish — the heal path after a run that died', () => {
   const plan = planProducts([{ handle: 'half-made' }], {
     publishedHere: new Set(),
