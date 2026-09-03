@@ -404,3 +404,79 @@ test('the registry hands back COPIES — a caller cannot mutate what the run rec
   minted.metadataOf('h').a = 99;
   assert.equal(minted.metadataOf('h').a, 1);
 });
+
+// ── ⛔ p5-3 · WHICH VARIANTS THIS MENU HAS, WRITTEN DOWN ─────────────────────────────────────────────────
+//
+// A sonda reported the four house specials as MISSING a "cúpula/canudo" variant "expected by the brief"
+// (2026-09-03). The premise does not survive reading the brief. The approved menu
+// (`forge-materials/DEMO2-CATALOGO-CAFE.md`, agreed 01/09) heads that section
+//
+//     ## 🥤 Especiais da Casa (geladas, chantilly, cúpula e canudo — pedido do Renan)
+//
+// and then lists every drink in it as "— P · G". The parenthetical is the section's ADJECTIVES — how the
+// drinks arrive on the counter — and the axis list is the line after each name. Nothing in that document,
+// or anywhere in this repository, ever asked for a cup a shopper picks. Serving style is not an option:
+// an axis exists so somebody can CHOOSE, and a lid nobody may decline is a picture, not a variant. (The
+// chantilly of that same parenthetical is where it belongs — in the Frappé Forge's description.)
+//
+// So the dataset was right and the reading of it was the thing missing, which is why this is a TEST and not
+// an edit: the whole menu's axes are pinned to the approved document, and the next person who wonders
+// whether a variant is absent by accident reads the answer instead of guessing it. It also catches the
+// opposite mistake — a well-meant axis added here would be a variant the counter's staff cannot make.
+
+/** The approved menu of 01/09, one line per product: the axes a shopper may CHOOSE, in order. */
+const APPROVED_AXES = {
+  'espresso-forge': 'Dose: Simples · Duplo',
+  'coado-do-dia': 'Tamanho: P 200ml · G 350ml',
+  cappuccino: 'Tamanho: P · M · G | Leite: Integral · Aveia',
+  latte: 'Tamanho: P · M · G | Leite: Integral · Aveia',
+  mocha: 'Tamanho: P · M · G',
+  'cold-brew': 'Versão: Puro · Com tônica e limão',
+  'frappe-forge-chocolate': 'Tamanho: P 400ml · G 550ml',
+  'frappe-caramelo-salgado': 'Tamanho: P 400ml · G 550ml',
+  'frappe-morango-chocolate-branco': 'Tamanho: P 400ml · G 550ml',
+  'chai-cremoso-gelado': 'Tamanho: P 400ml · G 550ml',
+  'pao-de-queijo': 'Porção: Unidade · Porção c/ 3',
+  croissant: 'Sabor: Manteiga · Chocolate',
+  'bolo-do-dia': 'Sabor: Banana com canela · Cenoura com brigadeiro',
+  'cookie-forge': 'Sabor: Baunilha com gotas · Duplo chocolate',
+  'caneca-esmaltada': '(no axis)',
+};
+
+const axesOf = (p) =>
+  (p.options ?? []).map((o) => `${o.name}: ${o.values.join(' · ')}`).join(' | ') || '(no axis)';
+
+test('★★ p5-3 — every product offers exactly the variants the approved menu names, and no others', () => {
+  const drift = [];
+  for (const [handle, approved] of Object.entries(APPROVED_AXES)) {
+    const p = product(handle);
+    assert.ok(p, `the menu lost "${handle}" — FROZEN_HANDLES above should have caught this first`);
+    const seen = axesOf(p);
+    if (seen !== approved) drift.push(`${handle}: menu says "${approved}", dataset offers "${seen}"`);
+  }
+  assert.deepEqual(
+    drift,
+    [],
+    'the counter offers variants the approved menu does not name, or lacks ones it does:\n  ' +
+      `${drift.join('\n  ')}\n` +
+      'forge-materials/DEMO2-CATALOGO-CAFE.md is the agreement; change it there first.',
+  );
+  // …and the set is CLOSED: a product added to the dataset without a line above is unreviewed, not exempt.
+  assert.deepEqual(
+    totem.products.map((p) => p.handle).filter((h) => !(h in APPROVED_AXES)),
+    [],
+    'a product reached the counter without a line in the approved menu',
+  );
+});
+
+test('★ p5-3 — the house specials carry ONE axis, and it is size: serving style is not something to pick', () => {
+  const specials = totem.products.filter((p) => p.category === 'especiais');
+  assert.equal(specials.length, 4, 'the approved menu has four house specials');
+  for (const p of specials) {
+    assert.deepEqual(
+      (p.options ?? []).map((o) => o.name),
+      ['Tamanho'],
+      `"${p.handle}" grew a second axis — the menu gives the specials size and nothing else`,
+    );
+  }
+});

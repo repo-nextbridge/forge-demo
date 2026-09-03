@@ -20,7 +20,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { resolveMediaFile } from './forge.mjs';
-import { brl, freeShippingFloor, planPlacements, sameConfig, selectPromotions } from './vitrine.mjs';
+import {
+  brl,
+  freeShippingFloor,
+  planPlacements,
+  planProgressBars,
+  sameConfig,
+  selectPromotions,
+} from './vitrine.mjs';
 
 /** The instance's own declarations, read from the file the seed reads — never retyped here. */
 const vitrine = JSON.parse(readFileSync(new URL('./vitrine.json', import.meta.url), 'utf8'));
@@ -279,6 +286,126 @@ test('another store’s promotion is not this store’s promise; a TENANT-WIDE o
 test('the lowest qualifying floor wins — it is the cheapest threshold the shop actually honours', () => {
   const higher = { ...UNCAPPED, conditions: [{ kind: 'min_subtotal', amount: 50_000 }] };
   assert.equal(freeShippingFloor([higher, UNCAPPED], 'sto_forge'), 29_900);
+});
+
+// ── ⛔ p1-3 · THE CART'S PROGRESS BAR ANNOUNCED THE OTHER HALF OF THAT SAME PAIR ─────────────────────────
+//
+// MEASURED 03/09 on the shoe shop: the band said "Frete grátis acima de R$ 299" (derived, correct) and the
+// bar under the cart said "Faltam R$ 20,10 para Frete com desconto de até R$ 10,00" — the CAPPED promotion,
+// a higher floor and a weaker benefit, in the same flow. The bar draws whatever carries `show_progress`, and
+// that flag came from the dataset's pricing bench, where the capped rule was the only freight rule there was.
+//
+// The fixtures are the two rows above: `CAPPED` is the dataset's, `UNCAPPED` is the one the kernel's history
+// seed creates. `show_progress` is added per test, because it is the field under measurement.
+
+const withBar = (promotion) => ({ ...promotion, id: `promo_${promotion.name}`, show_progress: true });
+const withoutBar = (promotion) => ({ ...promotion, id: `promo_${promotion.name}`, show_progress: false });
+
+test('★★ the bar moves to the promotion that actually ZEROES the freight, and off the one that does not', () => {
+  const { raise, lower } = planProgressBars([withBar(CAPPED), withoutBar(UNCAPPED)], 'sto_forge');
+  assert.deepEqual(
+    raise.map((p) => p.name),
+    ['DEMO-HIST-01-FORGE'],
+  );
+  assert.deepEqual(
+    lower.map((p) => p.name),
+    ['PROMO-06-FREE-SHIPPING-CAPPED'],
+  );
+});
+
+test('★ and it says WHY in the shop’s own numbers — a log line nobody has to decode', () => {
+  const { lower } = planProgressBars([withBar(CAPPED), withoutBar(UNCAPPED)], 'sto_forge');
+  assert.match(lower[0].why, /R\$ 10\b/, 'the cap is the reason, and it is quoted from the benefit');
+});
+
+test('★★ already right is NOTHING to do — the pass is idempotent, run after run', () => {
+  const { raise, lower } = planProgressBars([withoutBar(CAPPED), withBar(UNCAPPED)], 'sto_forge');
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, []);
+});
+
+test('★ a shop whose ONLY freight promise is capped keeps its bar — a weak promise is better than none', () => {
+  // Nothing here zeroes the freight, so there is no truer bar to move to; lowering this one would delete a
+  // capability rather than correct it. Same posture as `announce`, one step down: it places no band at all
+  // in this shop, because a band is a sentence and this bar is the promotion's own label.
+  const { raise, lower } = planProgressBars([withBar(CAPPED)], 'sto_forge');
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, []);
+});
+
+test('★ free shipping on SOME carriers is not the promise either — the same three conditions as the band', () => {
+  const partial = {
+    ...UNCAPPED,
+    benefit: { kind: 'free_shipping', max_covered_amount: null, shipping_method_ids: ['shm_1'] },
+  };
+  const { raise, lower } = planProgressBars([withBar(partial)], 'sto_forge');
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, [], 'nothing better exists, so this bar stays');
+});
+
+test('★ a promotion with no threshold is invisible to the bar — neither raised nor lowered', () => {
+  const noFloor = { ...UNCAPPED, conditions: [] };
+  const { raise, lower } = planProgressBars([withBar(noFloor), withoutBar(CAPPED)], 'sto_forge');
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, []);
+});
+
+test('⛔ a GIFT-over-a-threshold bar is a different promise and is never touched', () => {
+  // PROMO-05 carries `show_progress` too, and it is right: "faltam R$ X para o brinde" contradicts nothing.
+  // A plan that lowered every bar but one would have deleted it while looking like a freight fix.
+  const gift = {
+    name: 'PROMO-05-GIFT-SHINE-SPONGE',
+    id: 'promo_gift',
+    state: 'active',
+    store_id: 'sto_forge',
+    show_progress: true,
+    benefit: { kind: 'gift', items: [{ sku_id: 'sku_1', qty: 1 }] },
+    conditions: [{ kind: 'min_subtotal', amount: 50_000 }],
+  };
+  const { lower } = planProgressBars([gift, withBar(CAPPED), withoutBar(UNCAPPED)], 'sto_forge');
+  assert.deepEqual(
+    lower.map((p) => p.name),
+    ['PROMO-06-FREE-SHIPPING-CAPPED'],
+  );
+});
+
+test('another store’s bar is not this store’s to move; a TENANT-WIDE one is', () => {
+  const elsewhere = planProgressBars([withBar({ ...CAPPED, store_id: 'sto_outlet' })], 'sto_forge');
+  assert.deepEqual(elsewhere.lower, []);
+  const tenantWide = planProgressBars(
+    [withBar({ ...CAPPED, store_id: null }), withoutBar({ ...UNCAPPED, store_id: null })],
+    'sto_forge',
+  );
+  assert.deepEqual(
+    tenantWide.lower.map((p) => p.name),
+    ['PROMO-06-FREE-SHIPPING-CAPPED'],
+  );
+});
+
+test('a paused promotion draws nothing and is left alone', () => {
+  const { raise, lower } = planProgressBars(
+    [withBar({ ...CAPPED, state: 'paused' }), withoutBar({ ...UNCAPPED, state: 'paused' })],
+    'sto_forge',
+  );
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, []);
+});
+
+test('★ two uncapped promises: the LOWEST floor carries the bar, and a tie is broken deterministically', () => {
+  const higher = { ...UNCAPPED, name: 'AAA-HIGHER', conditions: [{ kind: 'min_subtotal', amount: 50_000 }] };
+  const { raise } = planProgressBars([withoutBar(higher), withoutBar(UNCAPPED)], 'sto_forge');
+  assert.deepEqual(
+    raise.map((p) => p.name),
+    ['DEMO-HIST-01-FORGE'],
+  );
+  // Same floor, two rows: the id decides, so a second run of the seed agrees with the first.
+  const twin = { ...UNCAPPED, name: 'ZZZ-TWIN' };
+  const tie = planProgressBars([withoutBar(twin), withoutBar(UNCAPPED)], 'sto_forge');
+  assert.deepEqual(
+    tie.raise.map((p) => p.name),
+    ['DEMO-HIST-01-FORGE'],
+    'promo_DEMO… sorts before promo_ZZZ…',
+  );
 });
 
 test('★★ the declared sentence carries a PLACEHOLDER and no number — a typed floor is the defect', () => {
