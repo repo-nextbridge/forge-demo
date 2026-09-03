@@ -8,17 +8,17 @@
 // `x-forge-store` the middleware sets) made every page in the group dynamic AT RUNTIME — proven by a trivial,
 // data-free page in this group answering `500 — Page changed from static to dynamic at runtime, reason:
 // headers`. App Router still hands not-found.tsx no route params, so the store is not knowable here at all
-// any more: the chips became a CLIENT fragment that resolves the store from the request Host itself, through
-// /api/categories. No JS / failed fetch / no browsable categories → no chips, never a crash — the two CTAs
-// are the real way out and stay server-rendered.
+// any more: the way out became a CLIENT fragment that asks /api/categories which store this request is about.
+// No JS / failed fetch / unknown store → the server-rendered CTAs stand and no chip row appears, never a crash.
 
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
-import { NotFoundChips } from '@/components/NotFoundChips';
 import { NotFoundContent } from '@/components/NotFoundContent';
+import { NotFoundWayOut } from '@/components/NotFoundWayOut';
 
 export default function StoreNotFound() {
-  // MULTISTORE M1-β — HOST_BASE here is a LIMIT, not a fact (see NotFoundContent's `base` doc): this boundary
-  // gets no route params and lives in the static shell, so the store is unknowable — the same reason the chips
-  // became a client fragment. Under `/s/<store>` these CTAs therefore lead to the Host's store.
-  return <NotFoundContent base={HOST_BASE} chips={<NotFoundChips />} />;
+  // MULTISTORE M1-β — HOST_BASE here is what the SERVER can know and nothing more: this boundary gets no route
+  // params and lives in the static shell, so the store is unknowable here — the same reason the chips became a
+  // client fragment. p3-7: the fragment therefore carries the CTAs too, and re-renders them against the store
+  // `/api/categories` confirms, so a shopper under `/s/<store>` stops being sent to the Host's store.
+  return <NotFoundContent base={HOST_BASE} wayOut={<NotFoundWayOut base={HOST_BASE} />} />;
 }

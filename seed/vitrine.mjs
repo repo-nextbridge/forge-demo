@@ -85,6 +85,7 @@ export async function seedVitrine(port) {
   await seedPages(port, store, declared);
   await seedPromotions(port, store, dir);
   await announce(port, store);
+  await progressBars(port, store);
   await revalidate(port, store);
 
   log('vitrine — done. Re-running this is a no-op.');
@@ -663,15 +664,21 @@ export function brl(cents) {
  *
  * ⚠️ TWO READS, BECAUSE THE LIST DOES NOT CARRY THE CONDITIONS. `read.internal.promotions_admin` answers the
  * benefit, the target and the derived state — everything the operator's list column shows — and NOT
- * `conditions`, which is where `min_subtotal` lives. `read.internal.promotion_admin` (singular) spreads the
- * whole row. So the list narrows the candidates by benefit and the detail is asked only of those, which on
- * this box is one or two rows rather than a fan-out.
+ * `conditions` (where `min_subtotal` lives), `store_id` or `show_progress`. `read.internal.promotion_admin`
+ * (singular) spreads the whole row. So the list narrows the candidates by benefit and the detail is asked
+ * only of those, which on this box is one or two rows rather than a fan-out.
+ *
+ * ⚠️ THE NARROWING IS `free_shipping` AND NOTHING MORE, and the missing clause was a defect (p1-3). It used
+ * to drop the CAPPED and method-restricted rows here, because the only caller wanted the promotion that
+ * zeroes the freight — and `freeShippingFloor` re-applies exactly that filter anyway. The second caller
+ * (`planProgressBars`) needs the ones this shop must NOT advertise, and a read that had already thrown them
+ * away could only conclude that everything was fine. Narrow at the decision, never at the read.
  *
  * ⚠️ AND IT PAGES BY `offset`, NOT BY `page`: `promotions_admin` takes `limit`/`offset` and IGNORES a `page`
  * parameter, so the shared `readAll` would ask for the same first page forever. Harmless at eight
  * promotions, silently duplicating at a hundred and one.
  */
-async function promotionsWithConditions({ read, rows }, storeId) {
+async function freightPromotions({ read, rows }, storeId) {
   const list = [];
   for (let offset = 0; offset <= 10_000; offset += 100) {
     const payload = await read('promotions_admin', { limit: 100, offset });
@@ -681,13 +688,7 @@ async function promotionsWithConditions({ read, rows }, storeId) {
     const total = Number(payload?.total);
     if (Number.isFinite(total) && list.length >= total) break;
   }
-  const candidates = list.filter(
-    (p) =>
-      p?.state === 'active' &&
-      p?.benefit?.kind === 'free_shipping' &&
-      (p.benefit.max_covered_amount ?? null) === null &&
-      (p.benefit.shipping_method_ids ?? []).length === 0,
-  );
+  const candidates = list.filter((p) => p?.state === 'active' && p?.benefit?.kind === 'free_shipping');
   const detailed = [];
   for (const item of candidates) {
     const detail = await read('promotion_admin', { promotion_id: item.id });
@@ -697,7 +698,125 @@ async function promotionsWithConditions({ read, rows }, storeId) {
 }
 
 async function freeShippingFloorOfStore(port, store) {
-  return freeShippingFloor(await promotionsWithConditions(port, store.id), store.id);
+  return freeShippingFloor(await freightPromotions(port, store.id), store.id);
+}
+
+// ── 6c. WHICH FREIGHT PROMISE THE CART'S PROGRESS BAR ANNOUNCES ────────────────────────────────────────
+/**
+ * ⛔ p1-3, MEASURED ON THE BENCH 2026-09-03 — THE SHOP MADE TWO FREIGHT PROMISES AND THE CART ANNOUNCED THE
+ * WEAKER ONE, WHICH WAS ALSO THE ONE WITH THE HIGHER FLOOR.
+ *
+ * The band on the first line said *"Frete grátis acima de R$ 299"* — correct, derived by `announce` above.
+ * The bar in the minicart and the checkout said *"Faltam R$ 20,10 para Frete com desconto de até R$ 10,00"*,
+ * closing at R$ 300,00. A shopper reading the two together is told the shop has one rule and then shown a
+ * different, meaner one; and at R$ 559,80 the Entrega Padrão did come out **Grátis**, so the free shipping
+ * the bar never mentioned is the rule the till actually applies.
+ *
+ * ★ NOBODY CHOSE THIS. The bar draws every promotion the merchant flagged with `show_progress`
+ * (`packages/storefront-kit/src/components/promo/ThresholdProgress.tsx`: the engine decides which ones
+ * qualify, the front only draws them, and it deliberately does not truncate). The flag arrived from the
+ * DATASET's pricing bench, where `PROMO-06-FREE-SHIPPING-CAPPED` carries it — a sensible thing to demonstrate
+ * on a bench with one freight rule, and a false sentence in a shop that grew a second one from the kernel's
+ * own history seed (`DEMO-HIST-01-FORGE`, floor R$ 299, no cap). `seed/vitrine.json`'s `_why_two_freights`
+ * saw the pair coming and left the flag where it was; this is the half it left open.
+ *
+ * ⇒ SO THE FLAG IS DERIVED FROM THE BENEFIT, exactly like the band's floor, and by the SAME predicate: the
+ * promise a shop may put in front of a shopper is the one it actually keeps. A capped or method-restricted
+ * free shipping is not free shipping in the sense the sentence means, so it may not carry the bar; the
+ * uncapped one at the lowest floor must, because a threshold nobody is told they are approaching is a
+ * capability the shop is paying for and hiding.
+ *
+ * ⛔ AND IT IS DERIVED RATHER THAN WATCHED. A guard over the bar's copy was proposed and REFUSED (02/09,
+ * see `announce` above): the label is the merchant's free text and policing it in the product is the
+ * customisation-in-the-core mistake. What a seed may do is set the shop's own data so the sentence that gets
+ * drawn is true.
+ *
+ * ⚠️ IT RE-ASSERTS ON EVERY RUN, unlike `seedPromotions` (which leaves an existing promotion alone so an
+ * operator's pause is not undone). The posture is `announce`'s, and the reason is the same: this is not a
+ * merchant's editorial choice being overwritten but a promise being kept consistent with the price. An
+ * operator who wants the capped bar back turns it on after the seed, as they would any other setting.
+ *
+ * ⚠️ AND IT RUNS IN THE **WINDOW** PHASE, after the one-shot that creates the uncapped promotion. In the
+ * curated phase there is nothing to raise and the capped bar would be correctly left standing.
+ */
+
+/**
+ * The bars this store should be drawing, against the ones it is.
+ *
+ * Pure: the promotions in, two lists out — `raise` (must show progress and does not) and `lower` (shows
+ * progress and may not). Only FREIGHT promotions are considered: a gift-over-a-threshold bar is a different
+ * promise, with nothing to contradict, and this must not touch it.
+ *
+ * A promotion with no `min_subtotal` has no threshold to draw and is invisible to the bar either way, so it
+ * is neither raised nor lowered. A tenant-wide promotion (`store_id: null`) reaches this store and counts.
+ */
+export function planProgressBars(promotions, storeId) {
+  const floorOf = (p) => (p.conditions ?? []).find((c) => c?.kind === 'min_subtotal')?.amount;
+  const freights = (promotions ?? []).filter(
+    (p) =>
+      p?.state === 'active' &&
+      p?.benefit?.kind === 'free_shipping' &&
+      (p.store_id === storeId || p.store_id === null || p.store_id === undefined) &&
+      Number.isInteger(floorOf(p)) &&
+      floorOf(p) > 0,
+  );
+  // The same three conditions `freeShippingFloor` names, because it is the same question: is this promise
+  // "frete grátis" in the sense a person reading it means?
+  const keeps = freights.filter(
+    (p) =>
+      (p.benefit.max_covered_amount ?? null) === null &&
+      (p.benefit.shipping_method_ids ?? []).length === 0,
+  );
+  // The cheapest threshold the shop honours — and `id` breaks a tie so two runs of this seed agree.
+  const announced =
+    [...keeps].sort((a, b) => floorOf(a) - floorOf(b) || String(a.id).localeCompare(String(b.id)))[0] ??
+    null;
+
+  const raise = announced && announced.show_progress !== true ? [describe(announced)] : [];
+  // ★ NOTHING IS LOWERED UNTIL SOMETHING TRUER EXISTS. A capped bar is not a lie on its own — it draws the
+  // promotion's OWN label ("Frete com desconto de até R$ 10,00"), which is exactly what that rule gives. What
+  // was measured is a CONTRADICTION: a shop keeping a better promise elsewhere while the cart advertises the
+  // weaker one. In a shop with no better promise, taking this bar away deletes the only threshold a shopper
+  // is told they are approaching — a capability removed under cover of a correction.
+  const lower = !announced
+    ? []
+    : freights.filter((p) => p.show_progress === true && p.id !== announced.id).map((p) => describe(p));
+  return { raise, lower };
+
+  function describe(p) {
+    const capped = (p.benefit.max_covered_amount ?? null) !== null;
+    const partial = (p.benefit.shipping_method_ids ?? []).length > 0;
+    return {
+      id: p.id,
+      name: p.name,
+      label: p.label,
+      floor: floorOf(p),
+      why: capped
+        ? `it covers at most ${brl(p.benefit.max_covered_amount)} of the freight`
+        : partial
+          ? 'it is free on some shipping methods only'
+          : announced && p.id !== announced.id
+            ? `"${announced.label}" zeroes the freight from ${brl(floorOf(announced))}`
+            : 'it is the promise this shop actually keeps',
+    };
+  }
+}
+
+async function progressBars(port, store) {
+  const { command, read, rows, log } = port;
+  const { raise, lower } = planProgressBars(await freightPromotions({ read, rows }, store.id), store.id);
+  if (raise.length === 0 && lower.length === 0) {
+    log("vitrine — freight progress bar: already on the promotion this shop keeps; nothing to change");
+    return;
+  }
+  for (const p of lower) {
+    await command('promotion.update', { promotion_id: p.id, show_progress: false });
+    log(`vitrine — "${p.name}" no longer draws a progress bar: ${p.why}`);
+  }
+  for (const p of raise) {
+    await command('promotion.update', { promotion_id: p.id, show_progress: true });
+    log(`vitrine — "${p.name}" now draws the cart's progress bar — ${p.why}, from ${brl(p.floor)}`);
+  }
 }
 
 // ── 7. the cache ───────────────────────────────────────────────────────────────────────────────────────
