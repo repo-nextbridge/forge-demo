@@ -1,9 +1,9 @@
 {
-  "forgeVersion": "v0.3.0-pre.d9d15f330",
+  "forgeVersion": "v0.3.0-pre.cb2154ef7",
   "provenance": {
     "origin": "local build",
-    "built_from": "pk3/integra@d9d15f330",
-    "built_at": "2026-09-03T06:15:44Z",
+    "built_from": "pk6/integra@cb2154ef7",
+    "built_at": "2026-09-03T22:08:37Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -35,10 +35,10 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:879bb5cc1a4ccf47d07720fb483fa3e9dc5aae8723ad6e9ee252e6e2ce1a617a",
-    "storefront": "forge-demo-storefront@sha256:8ecb7aa614dec361cd36ac0178a53b9a9a2198905b44c4e8da0de300bad0de35",
-    "checkout": "forge-demo-checkout@sha256:19f23ce4cdb3b318c207eb9061d9dddd868ca56a94c468787a40193c7fec9386",
-    "admin": "forge-demo-admin@sha256:bdf5999bdb4e4c64bc3d8682f88add5427a92cf94ea78c8d3d8bf1a84cc07f3a"
+    "kernel": "forge-demo-kernel@sha256:ea22fc5d7f77a64fb904acb8545c54f5caa76be835962ddb5de3b057ed486f14",
+    "storefront": "forge-demo-storefront@sha256:53f3db56f04239c6a7fe311147b33e6243e1944b96e24ade5ef09862167d9efa",
+    "checkout": "forge-demo-checkout@sha256:c14a691085270fc2abdd628d7eccf29365e3f50b36966c13380d394878fcab7e",
+    "admin": "forge-demo-admin@sha256:f70da1634817d8f76df07204b31bd810325e6bfc100e527c23640dca7a0617c0"
   },
   "offerable": false,
   "why_not_offerable": "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer's app must never be handed to another. That is a property of what this box asked for, not a defect."

@@ -30,6 +30,7 @@
 // error, never a silent clamp. The client is the side that knows how many skus are on screen, so the client is
 // the side that batches.
 
+import { withStoreParam } from '@/lib/store-param';
 import type { MyPrice } from '@forgecommerce/storefront-kit/customer-client';
 import { batchSkus as splitBatches } from '@/lib/batch-skus';
 
@@ -64,7 +65,11 @@ export async function fetchIdentityPrices(
   const results = await Promise.all(
     batches.map(async (batch) => {
       try {
-        const res = await fetchImpl(`/api/my-prices?skus=${encodeURIComponent(batch.join(','))}`);
+        // ★ pk6 — the browser half of the same fact: the store this page is standing in rides along, or the
+        // route above answers 204 and the overlay silently never arrives.
+        const res = await fetchImpl(
+          withStoreParam(`/api/my-prices?skus=${encodeURIComponent(batch.join(','))}`),
+        );
         // 204 = anonymous. Anything not ok = the page keeps its anonymous prices.
         if (res.status === 204 || !res.ok) return {};
         return (await res.json()) as Record<string, MyPrice>;

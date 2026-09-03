@@ -23,6 +23,7 @@ import { customerClient } from '@forgecommerce/storefront-kit/kernel-write-clien
 import { readCustomerSession } from '@forgecommerce/storefront-kit/session';
 import { NextResponse } from 'next/server';
 import { MY_PRICES_MAX_SKUS } from '@/lib/prices/overlay';
+import { resolveRequestStore } from '@/lib/store-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +59,19 @@ export async function GET(req: Request): Promise<NextResponse> {
     );
   }
 
+  // ★★ pk6 — THE STORE RIDES ALONG, and this fork learned it a release late. The kernel compares the store a
+  // member-price overlay names against the session's own (pk5/k3), and pk6/M5 found that `my_prices` was
+  // dropping it on the floor — a promotion scoped to a shop never reached the overlay, not even in that shop.
+  // The kit's signature changed with the fix; the reference storefront was updated in the same slice and THIS
+  // fork was not, because it compiles in another repo. It surfaced in the OVEN, four minutes into a build.
+  //
+  // No store claims this request → 204, the same answer an anonymous visit gets: the page keeps the anonymous
+  // price, which is true for everyone. Never a wrong overlay.
+  const store = await resolveRequestStore(req);
+  if (!store) return new NextResponse(null, { status: 204 });
+
   try {
-    const prices = await customerClient().myPrices(token, skus);
+    const prices = await customerClient().myPrices(store, token, skus);
     return NextResponse.json(prices ?? {}, { headers: { 'cache-control': PRIVATE_CACHE } });
   } catch {
     // A failed overlay leaves the page exactly as it rendered — the anonymous-safe price, which is true for
