@@ -72,7 +72,8 @@ const ICONS: Record<string, ReactElement> = {
       <path d="M9.5 11.5h3" />
     </>
   ),
-  // Trust strip — "Frete grátis acima de R$ 149".
+  // Trust strip — the delivery mark. (It used to be captioned with a free-shipping floor; that number was
+  // never this file's to know — see the note on ANNOUNCEMENT in CoffeeChrome.tsx.)
   truck: (
     <>
       <rect x="1.5" y="7" width="13" height="9.5" rx="1" />

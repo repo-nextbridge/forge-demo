@@ -111,6 +111,45 @@
    * `--coffee-*`: three roles this shop has and a general storefront does not. They are prefixed because
    * they are THIS STORE's vocabulary and must never read as platform tokens. */
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+
+  /* ★★ s3-15 — AND THE DISPLAY FACE HAS TO REACH THE CHECKOUT, WHICH MEANS OVERRIDING THE BASE'S OWN WORDS.
+   *
+   * Declaring `--font-display` gave this shop a serif that only the shop's OWN stylesheets asked for. The
+   * café's forked vitrine writes `var(--font-display)` by hand on the pages it designed (home, PDP), so those
+   * were right — and everything else in the store was not. Measured on the bench, 2026-09-03: the checkout's
+   * headings ("Sacola", "Suas informações", the confirmation title) rendered in Poppins, and so did the
+   * headings of every page of the vitrine this fork INHERITED rather than drew (search, listing, 404). Colour
+   * and body text already crossed to the checkout — only the face that is the shop's signature did not.
+   *
+   * The cause is that the base theme routes every typographic role through `--font-sans`
+   * (`--type-display-sm-family: var(--font-sans)`, and eleven more), so a theme that overrides `--font-sans`
+   * moves ALL of them and a theme that adds a second family moves NONE. The two-family pairing has to be
+   * spelled at the ROLE level, which is where the base already has the words:
+   *
+   *   display + headline → the display face   ·   body / ui / caption / micro / label-caps → the text face
+   *
+   * ⚠️ THE WEIGHT TRAVELS WITH THE FACE. The base sets these roles bold/semibold, which is right for Urbanist
+   * and wrong for Fraunces — the artboard (`cafe-checkout.html`, `cafe-home.html`) draws every serif heading
+   * at 400, and a serif at 700 in a shop whose whole voice is quiet reads as a different brand. So the weight
+   * is re-pointed with the family, in the same block, rather than left for someone to notice later.
+   *
+   * ⚠️ AND `--type-ui-*` IS DELIBERATELY NOT HERE. The bag bar, the buttons and the form labels are Poppins in
+   * the artboard; a shop that put its serif on button text would have swapped a missing signature for a
+   * costume. What the design makes serif is what NAMES something — a page title, a section title, a price.
+   */
+  --type-display-xl-family: var(--font-display);
+  --type-display-xl-weight: var(--font-weight-regular);
+  --type-display-lg-family: var(--font-display);
+  --type-display-lg-weight: var(--font-weight-regular);
+  --type-display-md-family: var(--font-display);
+  --type-display-md-weight: var(--font-weight-regular);
+  --type-display-sm-family: var(--font-display);
+  --type-display-sm-weight: var(--font-weight-regular);
+  --type-headline-lg-family: var(--font-display);
+  --type-headline-lg-weight: var(--font-weight-regular);
+  --type-headline-md-family: var(--font-display);
+  --type-headline-md-weight: var(--font-weight-regular);
+
   --coffee-deep: #3c4a3e; /* the green: primary CTA, the seal icons, the subscription price */
   --coffee-deep-hover: #2f3b31;
   --coffee-sand: #dcc7a6; /* the halo behind a bag, the avatar disc, ::selection */

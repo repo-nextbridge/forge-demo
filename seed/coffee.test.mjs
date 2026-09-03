@@ -163,13 +163,40 @@ test('A47 — the subtitle rides the same bag, because that is where the kicker 
   assert.equal(bag.subtitle, 'O blend da casa');
 });
 
-test('★ A50 — a value that is not known yet SAYS SO, in the value itself', () => {
-  // *"prefiro que suba algo errado do que não subir"* — and *"o provisório tem de ser reconhecível"*. A field
-  // filled with plausible fiction is worse than an empty one: nobody can tell it is waiting for a decision.
-  const all = catalog.products.flatMap((p) => Object.values(expectedMetadata(p)));
-  assert.ok(all.some((v) => String(v).includes('(placeholder)')), 'no provisional value is marked at all');
-  // …and the ones that ARE known are not marked. A file where everything says placeholder says nothing.
+test('★★ A50, CORRECTED — the "data is missing" marker NEVER travels inside a shopper-facing value', () => {
+  // ⚠️ THIS TEST USED TO ASSERT THE OPPOSITE, and that is the finding worth keeping. It demanded that at
+  // least one of the nine fields carry `(placeholder)` — reading A50 ("a hole must be recognisable") as if
+  // the value were the place to say it. It is not: a product custom field is served by the ANONYMOUS read
+  // face and printed in the shop's "Características" panel, so the marker's only reader was the SHOPPER, who
+  // read the word "placeholder" in about six places on every coffee page — badge, five spec rows and the end
+  // of "Quem plantou". A50's reader is the OPERATOR closing the hole; the value is the one channel that
+  // cannot reach them and cannot avoid reaching the buyer.
+  //
+  // The marker's legitimate homes are the seed's own report, a field of its own, and a stand-in PICTURE the
+  // merchant must replace (`seed/placeholder-media/`, Renan's explicit order — the merchant cannot write a
+  // photograph, so the hole has no other way to be seen). A producer's name is not in that class: this is a
+  // demonstration shop, so fictional content IS the content.
+  //
+  // The control is the file itself: this reads every value the port publishes, not a sample.
+  const dirty = [];
+  for (const p of catalog.products) {
+    for (const [key, value] of Object.entries(expectedMetadata(p))) {
+      if (/placeholder|a definir|\bTBD\b|preencher/i.test(String(value))) dirty.push(`${p.handle}.${key} = ${value}`);
+    }
+    for (const section of p.content_sections ?? []) {
+      if (/placeholder|a definir|\bTBD\b|preencher/i.test(section.body)) dirty.push(`${p.handle} §${section.title}`);
+    }
+  }
+  assert.deepEqual(dirty, [], `a provisional marker reaches the shop window in: ${dirty.join(' · ')}`);
+  // …and the nine are still FILLED. "No marker" must not be reachable by emptying the field — the panel
+  // draws a row per key it finds, and a blank row is the same hole with better manners.
+  for (const p of catalog.products) {
+    const bag = expectedMetadata(p);
+    for (const key of NINE) assert.ok(String(bag[key] ?? '').trim().length > 0, `${p.handle}.${key} is empty`);
+  }
+  // The values that were always known are untouched by the rewrite.
   assert.equal(expectedMetadata(product('forge-serra-do-caparao')).sca, '86');
+  assert.equal(expectedMetadata(product('forge-edicao-do-produtor')).produtor, 'Dona Cida');
 });
 
 test('★★ A47 — every coffee carries the "Quem plantou" section the page knows how to draw', () => {

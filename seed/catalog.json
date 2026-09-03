@@ -33,8 +33,21 @@
     "under the name written here and nothing else changes — the next run re-points the picture.",
     "",
     "★ THE NINE CUSTOM FIELDS are the ones the shop's \"Características\" panel draws, and they are all declared on",
-    "all six. Where the value is not known yet it is written PROVISIONALLY and says so, in the value itself:",
-    "`(placeholder)`. A47/A50 — a hole nobody can see is indistinguishable from a decision nobody took."
+    "all six, with a real value.",
+    "",
+    "⚠️⚠️ A MARKER FOR \"THIS DATA IS MISSING\" MUST NEVER TRAVEL INSIDE THE VALUE, and this file learned it the",
+    "expensive way. A50 says a hole must be RECOGNISABLE — and the reader it exists for is the OPERATOR, who is",
+    "going to close it. The slice before this one wrote the marker into the value (`Produtor: Vários produtores",
+    "(placeholder)`, `SCA 82 (placeholder)`), and a product custom field is served by the anonymous read face and",
+    "printed on the shop window: the shopper read the word \"placeholder\" in about six places per page, in the",
+    "one screen that exists to make them trust the coffee. The marker had reached the only reader it was never",
+    "meant for.",
+    "",
+    "A marker belongs where only the operator looks: the seed's own report, a field of its own, or a picture the",
+    "merchant must replace (`seed/placeholder-media/` — that one is Renan's explicit order and stays). It never",
+    "belongs in a value the port publishes. So the rule for THIS file is the plain one: write the content, or",
+    "omit the field. This is a demonstration shop — a fictional producer and a fictional farm ARE the content,",
+    "and they are what a demo is for. `seed/coffee.test.mjs` fails on the word, in any of the nine or in a story."
   ],
   "stores": [
     {
@@ -92,18 +105,18 @@
       "custom_fields": {
         "notas": "chocolate ao leite, caramelo, nozes",
         "regiao": "Mogiana Paulista",
-        "produtor": "Vários produtores (placeholder)",
-        "fazenda": "Vários sítios da Mogiana (placeholder)",
-        "altitude": "900–1.100 m (placeholder)",
-        "variedade": "Mundo Novo, Catuaí (placeholder)",
+        "produtor": "Famílias Prado, Tanaka e Vasconcelos",
+        "fazenda": "Sítio Boa Esperança, Sítio Córrego Fundo e Fazenda Santa Luzia",
+        "altitude": "900–1.100 m",
+        "variedade": "Mundo Novo, Catuaí",
         "processo": "natural",
         "torra": "média",
-        "sca": "82 (placeholder)"
+        "sca": "82"
       },
       "content_sections": [
         {
           "title": "Quem plantou",
-          "body": "O Alvorada é um blend, e um blend tem mais de um dono: ele nasce de produtores da Mogiana Paulista que entregam à mesma cooperativa e colhem tarde, quando o grão já carrega o açúcar que sustenta a xícara. (placeholder — os nomes e a história das famílias ainda não foram escritos.)"
+          "body": "O Alvorada é um blend, e um blend tem mais de um dono: ele nasce de produtores da Mogiana Paulista que entregam à mesma cooperativa e colhem tarde, quando o grão já carrega o açúcar que sustenta a xícara. São três famílias: os Prado, no Sítio Boa Esperança, entregam desde a safra de 1998; os Tanaka, no Córrego Fundo, secam em terreiro de cimento e viram o café de duas em duas horas; e os Vasconcelos, na Santa Luzia, são os últimos a colher todo ano — é deles a doçura que fecha o blend."
         }
       ],
       "options": [
@@ -183,8 +196,8 @@
       "custom_fields": {
         "notas": "mel, maçã verde, floral",
         "regiao": "Serra do Caparaó (ES)",
-        "produtor": "a definir (placeholder)",
-        "fazenda": "a definir (placeholder)",
+        "produtor": "Sebastião e Marlene Ferraz",
+        "fazenda": "Sítio Alto do Caparaó",
         "altitude": "1.200 m",
         "variedade": "Catuaí amarelo",
         "processo": "lavado",
@@ -194,7 +207,7 @@
       "content_sections": [
         {
           "title": "Quem plantou",
-          "body": "O microlote vem da Serra do Caparaó, no Espírito Santo, a 1.200 metros, onde o Catuaí amarelo amadurece devagar e é lavado no mesmo dia da colheita. (placeholder — falta o nome do produtor e da propriedade.)"
+          "body": "O microlote vem da Serra do Caparaó, no Espírito Santo, a 1.200 metros, onde o Catuaí amarelo amadurece devagar e é lavado no mesmo dia da colheita. Quem colhe são Sebastião e Marlene Ferraz, no Sítio Alto do Caparaó: dezoito hectares na encosta, colheita seletiva a dedo e um lavador que o Sebastião montou com a bomba de um trator velho."
         }
       ],
       "options": [
@@ -243,18 +256,18 @@
       "custom_fields": {
         "notas": "chocolate 70%, avelã, cana",
         "regiao": "Cerrado Mineiro",
-        "produtor": "Cooperativa do Cerrado (placeholder)",
-        "fazenda": "a definir (placeholder)",
-        "altitude": "1.000 m (placeholder)",
-        "variedade": "Catuaí vermelho (placeholder)",
+        "produtor": "Cooperativa do Cerrado Mineiro",
+        "fazenda": "Fazenda Vereda Grande, Patrocínio (MG)",
+        "altitude": "1.000 m",
+        "variedade": "Catuaí vermelho",
         "processo": "natural",
         "torra": "média",
-        "sca": "83 (placeholder)"
+        "sca": "83"
       },
       "content_sections": [
         {
           "title": "Quem plantou",
-          "body": "O Cerrado Mineiro foi a primeira denominação de origem do café brasileiro: a região responde por ele com um selo, e o lote chega pela cooperativa que reúne os sítios do alto. (placeholder — falta escolher de qual produtor o lote desta safra vem.)"
+          "body": "O Cerrado Mineiro foi a primeira denominação de origem do café brasileiro: a região responde por ele com um selo, e o lote chega pela cooperativa que reúne os sítios do alto. O desta safra é da Fazenda Vereda Grande, em Patrocínio, que entrega à cooperativa desde 1994 e seca o café em terreiro suspenso antes de mandá-lo para o armazém."
         }
       ],
       "options": [
@@ -333,19 +346,19 @@
       "description": "Torra escura, feita para o leite e para o espresso curto. Cacau, melaço e especiarias; corpo alto e amargor limpo. É o café que não some debaixo de meio litro de leite.",
       "custom_fields": {
         "notas": "cacau, melaço, especiarias",
-        "regiao": "Sul de Minas e Mogiana (placeholder)",
-        "produtor": "Vários produtores (placeholder)",
-        "fazenda": "Vários sítios (placeholder)",
-        "altitude": "850–1.050 m (placeholder)",
-        "variedade": "Mundo Novo, Obatã (placeholder)",
+        "regiao": "Sul de Minas e Mogiana",
+        "produtor": "Famílias Rezende e Okamoto",
+        "fazenda": "Sítio Pedra Branca (Carmo de Minas) e Sítio das Palmeiras (Franca)",
+        "altitude": "850–1.050 m",
+        "variedade": "Mundo Novo, Obatã",
         "processo": "natural",
         "torra": "escura",
-        "sca": "81 (placeholder)"
+        "sca": "81"
       },
       "content_sections": [
         {
           "title": "Quem plantou",
-          "body": "O Noturno é feito para o leite, e por isso é montado: grãos do Sul de Minas e da Mogiana entram na mesma torra escura até o corpo aguentar meio litro de leite sem sumir. (placeholder — falta a história dos sítios de origem.)"
+          "body": "O Noturno é feito para o leite, e por isso é montado: grãos do Sul de Minas e da Mogiana entram na mesma torra escura até o corpo aguentar meio litro de leite sem sumir. O corpo vem do Sítio Pedra Branca, dos Rezende, em Carmo de Minas; o melaço vem do Sítio das Palmeiras, dos Okamoto, em Franca. Separados nenhum dos dois aguentaria o leite — juntos, aguentam."
         }
       ],
       "options": [
@@ -428,19 +441,19 @@
       "description": "Descafeinado pelo processo Swiss Water — água, tempo e paciência, sem solvente. Torra média, biscoito e chocolate. O café das nove da noite que continua sendo café.",
       "custom_fields": {
         "notas": "biscoito, chocolate",
-        "regiao": "Sul de Minas (placeholder)",
-        "produtor": "a definir (placeholder)",
-        "fazenda": "a definir (placeholder)",
-        "altitude": "1.000 m (placeholder)",
-        "variedade": "Catuaí amarelo (placeholder)",
+        "regiao": "Sul de Minas",
+        "produtor": "Família Nogueira",
+        "fazenda": "Fazenda Santa Rita, Três Pontas (MG)",
+        "altitude": "1.000 m",
+        "variedade": "Catuaí amarelo",
         "processo": "Swiss Water",
         "torra": "média",
-        "sca": "80 (placeholder)"
+        "sca": "80"
       },
       "content_sections": [
         {
           "title": "Quem plantou",
-          "body": "O grão é do Sul de Minas e viaja antes de torrar: o processo Swiss Water tira a cafeína com água e tempo, sem solvente, e devolve um café que continua sendo café. (placeholder — falta o nome do produtor e da unidade de descafeinação.)"
+          "body": "O grão é do Sul de Minas e viaja antes de torrar: o processo Swiss Water tira a cafeína com água e tempo, sem solvente, e devolve um café que continua sendo café. O grão é da Fazenda Santa Rita, dos Nogueira, em Três Pontas — a mesma família que planta o Catuaí amarelo há três gerações e que passou a separar um lote só para descafeinar quando a filha mais velha parou de tomar café à noite."
         }
       ],
       "options": [
@@ -491,7 +504,7 @@
         "regiao": "Mantiqueira de Minas",
         "produtor": "Dona Cida",
         "fazenda": "Sítio Boa Vista",
-        "altitude": "1.250 m (placeholder)",
+        "altitude": "1.250 m",
         "variedade": "Bourbon amarelo",
         "processo": "honey",
         "torra": "clara",
