@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// THE BOX — the stores this bench has and the settings every screen inherits. ONE TENANT PER RUN.
+// THE BOX — the stores this bench has, the settings every screen inherits, and (for a tenant the mounted
+// example dataset is NOT about) the apps and the freight that the dataset's one-shot would otherwise have
+// brought along with a catalogue that is not its own. ONE TENANT PER RUN.
 //
 //   node bin/seed-box.mjs --tenant forgeco
 //   node bin/seed-box.mjs --tenant forgecafe
@@ -115,9 +117,26 @@ async function stores() {
     if (found) {
       // IDEMPOTENT BY VALUE. A second run must converge, and re-writing a theme that already matches spends a
       // command and an audit row to change nothing.
-      if (store.theme_key && found.theme_key !== store.theme_key) {
-        await command('tenant.store.update', { id: found.id, theme_key: store.theme_key });
-        log(`store ${store.handle} — already there; theme_key → ${store.theme_key}`);
+      //
+      // ★ `masked_checkout_enabled` JOINS THE THEME HERE, and for the same reason it is declared at all: the
+      // column is born OFF and the value used to be flipped ON by `configureStore` inside the dataset
+      // one-shot. A tenant that no longer runs that one-shot needs the box to state it, and re-asserting it
+      // every birth is the point — a re-provision resets the store to the defaults.
+      const patch = {};
+      if (store.theme_key && found.theme_key !== store.theme_key) patch.theme_key = store.theme_key;
+      if (
+        store.masked_checkout_enabled !== undefined &&
+        found.masked_checkout_enabled !== store.masked_checkout_enabled
+      ) {
+        patch.masked_checkout_enabled = store.masked_checkout_enabled;
+      }
+      if (Object.keys(patch).length > 0) {
+        await command('tenant.store.update', { id: found.id, ...patch });
+        log(
+          `store ${store.handle} — already there; ${Object.entries(patch)
+            .map(([k, v]) => `${k} → ${v}`)
+            .join(', ')}`,
+        );
       } else {
         log(`store ${store.handle} — already there`);
       }
@@ -138,7 +157,19 @@ async function stores() {
       name: store.name,
       ...(store.theme_key ? { theme_key: store.theme_key } : {}),
     });
-    log(`store ${store.handle} — created (${out.store_id ?? out.id ?? '?'})`);
+    const id = out.store_id ?? out.id;
+    log(`store ${store.handle} — created (${id ?? '?'})`);
+    // ⚠️ THE FLAG IS A SECOND COMMAND AND NOT A FIELD OF THE FIRST. `tenant.store.create` takes name, handle,
+    // host and theme_key — nothing else (packages/core/src/commands/store.ts, `storeInput`); the checkout
+    // flags live only on `tenant.store.update`. Sending it on create is how a declaration goes quietly
+    // nowhere, which is the failure mode this whole slice is about.
+    if (store.masked_checkout_enabled !== undefined && id) {
+      await command('tenant.store.update', {
+        id,
+        masked_checkout_enabled: store.masked_checkout_enabled,
+      });
+      log(`store ${store.handle} — masked_checkout_enabled → ${store.masked_checkout_enabled}`);
+    }
   }
 }
 
@@ -157,6 +188,129 @@ async function settings() {
     `settings — ${Object.entries(values)
       .map(([k, v]) => `${k}=${v}`)
       .join(' · ')}`,
+  );
+}
+
+/** Every row of an internal read that answers either a bare array or a `{items}` envelope. */
+const rows = (payload) => (Array.isArray(payload) ? payload : (payload?.items ?? []));
+
+// ── ★★ THE HALF OF THE DATASET ONE-SHOT THAT WAS NEVER THE DATASET'S ────────────────────────────────────────
+//
+// ⛔ THE DEFECT THIS PAIR OF STEPS EXISTS FOR, MEASURED ON THE BENCH OF 02/09 AND WORTH THE PARAGRAPH.
+//
+// `bin/box-up.sh` step 9 ran `dist/seed-demo.js` `for t in $TENANTS`. That entrypoint fills the tenant it is
+// POINTED AT from whatever dataset the box mounts — and this box mounts ONE, the footwear catalogue. So the
+// coffee tenant was handed 2 790 footwear products, 44 427 SKUs, 351 footwear brands, 33 footwear categories
+// and the dataset's eleven footwear custom fields (AMORTECIMENTO, CANO, DROP MM, …), on top of its own 21.
+//
+// ★ AND THE KERNEL DID NOTHING WRONG, which is the half that decides where the repair belongs. The same
+// handles carry DIFFERENT product ids in the two schemas (`adidas-golf-braided-stretch-belt` is
+// `prod_01M1FRFC9D…` in forgeco at 00:32:03 and `prod_01M1FS95MQ…` in forgecafe at 00:46:08): two independent,
+// correctly-scoped writes, not one leaking sideways. The entrypoint filled exactly the tenant it was given.
+// The defect was the loop that gave it a second one, so the repair is here and not in the monorepo.
+//
+// ★★ BUT SKIPPING STEP 9 IS NOT FREE, AND THIS IS THE PART THAT IS EASY TO GET WRONG. `seed-demo.js` fuses
+// two jobs under one name: fill the store from the dataset, and PROVISION the tenant — install its storefront
+// apps, give it delivery, turn on its checkout flags. Only the first is the dataset's. Measured, the coffee
+// tenant's ONLY delivery methods were born at 00:58:33, inside that one-shot; before it the tenant had nothing
+// but the counter's pickup. Dropping step 9 without this would leave a coffee shop that cannot be paid, cannot
+// be delivered from, and fails step 10 by name.
+//
+// So the box declares that half itself, for the tenant the dataset is not about. `seed/box.json` carries the
+// `why` for each list; this file is only the hand.
+
+/** ★ THE APPS THIS TENANT CONSENTS TO — idempotent by the installation list, which is the read that answers
+ *  the question being asked.
+ *
+ *  ⚠️ `read.extensions` is the WRONG read here and it answers plausibly: it takes a STORE and lists the apps
+ *  with a block PLACEMENT there, so an app can be installed and working and still be absent from it. The
+ *  tenant's installations are `read.installed_extensions`, which takes no store. `seed/commerce.mjs` carries
+ *  the same warning over the same trap, one file away. */
+async function apps() {
+  const wanted = spec.apps ?? [];
+  if (wanted.length === 0) return;
+  const installed = new Set(
+    rows(await read('installed_extensions'))
+      .filter((e) => (e.status ?? 'active') === 'active')
+      .map((e) => e.extension_id ?? e.id),
+  );
+  for (const id of wanted) {
+    if (installed.has(id)) {
+      log(`app ${id} — already installed`);
+      continue;
+    }
+    await command('extension.install', { extension_id: id });
+    log(`app ${id} — installed`);
+  }
+}
+
+/** ★ THE TENANT'S OWN FREIGHT. Idempotent by NAME, which is what makes the name a key: two methods called
+ *  "Entrega Padrão" is an ambiguity a shopper resolves by guessing, and `seed-history` resolves by refusing.
+ *
+ *  The shape is `seed/totem.mjs`'s, deliberately — that file already drives these three commands with this
+ *  credential, so nothing here is a new power. `shipping.rate.set` is an UPSERT on (method, zone, bracket),
+ *  so re-asserting a rate is free and the check below only saves the command, never the correctness. */
+async function delivery() {
+  const wanted = spec.delivery;
+  if (!wanted) return;
+
+  const zone =
+    rows(await read('shipping_zones')).find((z) => z.name === wanted.zone.name) ??
+    (await (async () => {
+      const out = await command('shipping.zone.create', wanted.zone);
+      log(`shipping zone "${wanted.zone.name}" — created (${out.zone_id})`);
+      return { id: out.zone_id };
+    })());
+  const zoneId = zone.id ?? zone.zone_id;
+
+  const existing = rows(await read('shipping_methods_admin'));
+  const rated = rows(await read('shipping_rates'));
+  for (const m of wanted.methods) {
+    const found = existing.find((row) => row.name === m.name);
+    const methodId =
+      (found?.id ?? found?.method_id) ??
+      (await (async () => {
+        const out = await command('shipping.method.create', {
+          name: m.name,
+          kind: 'delivery',
+          dimensional_divisor: m.dimensional_divisor,
+          max_weight_grams: m.max_weight_grams,
+          active: true,
+        });
+        log(`shipping method "${m.name}" — created, kind delivery (${out.method_id})`);
+        return out.method_id;
+      })());
+    for (const rate of m.rates) {
+      const already = rated.some(
+        (r) =>
+          (r.method_id ?? r.shipping_method_id) === methodId &&
+          r.zone_id === zoneId &&
+          Number(r.weight_bracket_max_grams) === rate.weight_bracket_max_grams,
+      );
+      if (already) continue;
+      await command('shipping.rate.set', { method_id: methodId, zone_id: zoneId, ...rate });
+      log(`rate "${m.name}" ≤${rate.weight_bracket_max_grams}g — ${rate.price} cents`);
+    }
+  }
+}
+
+/** ⛔ ONE OWNER PER GESTURE, AND THE FILE IS GRADED ON IT RATHER THAN TRUSTED.
+ *
+ *  A tenant the dataset IS about gets its apps, its freight and its checkout flags from `dist/seed-demo.js`
+ *  at step 9. If such a tenant also declared them here, both would run and neither would know: `populate`'s
+ *  shipping is idempotent by its own app LEDGER, not by reading what is already there, so it would create a
+ *  SECOND "Entrega Padrão" — and a tenant with two active delivery methods is exactly what step 10 refuses.
+ *  A duplicate born from two owners is the failure this repository has already paid for twice. */
+function assertOneOwner() {
+  if (spec.dataset !== true) return;
+  const declared = ['apps', 'delivery'].filter((k) => spec[k] !== undefined);
+  if (declared.length === 0) return;
+  fail(
+    `seed/box.json declares ${declared.join(' + ')} for "${tenant}", which also declares \`dataset: true\`.\n` +
+      '  A dataset tenant is provisioned by `dist/seed-demo.js` (step 9 of bin/box-up.sh) — apps, delivery\n' +
+      '  and checkout flags all come from there. Declaring them here too gives one gesture two owners, and\n' +
+      '  the visible cost is a SECOND "Entrega Padrão": `populate` is idempotent by its own ledger and does\n' +
+      '  not see a method this script created. Step 10 then refuses the tenant for having two.',
   );
 }
 
@@ -216,9 +370,14 @@ async function verifyAdminHost() {
 
 async function main() {
   log(`tenant ${tenant} · ${api}`);
+  assertOneOwner();
   await assertCredentialTenant();
   await stores();
   await settings();
+  // AFTER the stores and BEFORE anything that fills them. Step 8 (the curated seed), step 10 (the past) and
+  // step 11 (the window's live order) each need a paid, deliverable shop to exist already.
+  await apps();
+  await delivery();
   await verifyAdminHost();
   log('done.');
 }

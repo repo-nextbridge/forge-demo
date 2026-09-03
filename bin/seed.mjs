@@ -477,22 +477,32 @@ async function vocabulary() {
  */
 const VOCABULARY_FIELDS = ['cart', 'cart_empty_title'];
 
-const FIELDS = [
-  { key: 'regiao', label: 'Região', type: 'text', facetable: true },
-  { key: 'produtor', label: 'Produtor', type: 'text', facetable: false },
-  { key: 'fazenda', label: 'Fazenda', type: 'text', facetable: false },
-  { key: 'altitude', label: 'Altitude', type: 'text', facetable: false },
-  { key: 'variedade', label: 'Variedade', type: 'text', facetable: true },
-  { key: 'processo', label: 'Processo', type: 'text', facetable: true },
-  { key: 'torra', label: 'Torra', type: 'text', facetable: true },
-  { key: 'notas', label: 'Notas sensoriais', type: 'text', facetable: false },
-  { key: 'sca', label: 'Pontuação SCA', type: 'text', facetable: false },
-];
+// ⛔⛔ THE PRODUCT VOCABULARY IS NOT DECLARED HERE ANY MORE, AND THE MOVE IS THE WHOLE FIX — READ THIS BEFORE
+// PUTTING A KEY BACK.
+//
+// A `FIELDS` const used to sit on this line: the nine words a COFFEE is described by (torra, fazenda,
+// produtor, sca, notas, variedade, processo, regiao, altitude). `customFields()` declared them on whatever
+// tenant this run was pointed at, and `bin/box-up.sh` points it at every tenant the box has. Measured on the
+// bench of 02/09, in the registry rather than reasoned about: all nine sit in the FOOTWEAR tenant's
+// `custom_field_definition` with `source = 'merchant'` — this script's own signature. Every shoe in that shop
+// offered a roast, and the merchant had no way to know who had asked for it.
+//
+// ★ A CUSTOM FIELD DEFINITION IS PER TENANT. So the declaration belongs with the products that fill it, and
+// it is now `custom_fields` in `seed/catalog.json`, applied only on the run whose tenant owns the coffee
+// store — the same `here(catalog.products_store)` gate the six coffees themselves already sit behind.
+//
+// ★ `seed/outlet.mjs` REACHED THE SAME CONCLUSION FROM THE OTHER SIDE and its header is worth reading beside
+// this one: the FOOTWEAR vocabulary belongs to the dataset, so that file stopped declaring it. Same rule,
+// opposite direction, and between the two of them nobody declares somebody else's words.
 
 async function customFields() {
   const declared = new Set(
     rows(await read('custom_field_definitions')).map((d) => `${d.owner_entity}:${d.key}`),
   );
+  // ★ THE STORE'S WORDS STAY TENANT-WIDE, and that is not an oversight. `vocabulary_cart` /
+  //   `vocabulary_cart_empty_title` are reserved keys of a STORE, and every store of every tenant has a cart
+  //   to name — the kernel publishes them on `read.store_flags` for whichever store is asked. There is no
+  //   vertical in them: they are the mechanism, not somebody's vocabulary.
   for (const key of VOCABULARY_FIELDS) {
     const name = `vocabulary_${key}`;
     if (declared.has(`store:${name}`)) {
@@ -502,7 +512,16 @@ async function customFields() {
     await command('custom_field.define', { owner_entity: 'store', key: name, type: 'text' });
     log(`cf ${name} — declared (store)`);
   }
-  for (const field of FIELDS) {
+
+  // ★ THE PRODUCT WORDS ARE THE COFFEE SHOP'S. Not "the tenant this run happens to point at".
+  if (!here(catalog.products_store)) {
+    log(
+      `cf — the "${catalog.products_store}" store is not on this tenant, so its ` +
+        `${(catalog.custom_fields ?? []).length} product field(s) are not mine to declare`,
+    );
+    return;
+  }
+  for (const field of catalog.custom_fields ?? []) {
     if (declared.has(`product:${field.key}`)) {
       log(`cf ${field.key} — already declared`);
       continue;

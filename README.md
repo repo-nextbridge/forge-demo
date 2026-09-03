@@ -101,13 +101,14 @@ map of how the box is born:
 | 3 | **`provision-ref` × tenant** | tenant + its FIRST store + FIRST operator + login driver + the admin-host claim |
 | 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
 | 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
-| 6 | **`seed-box.mjs` × tenant** | the remaining stores, and the settings every screen inherits |
+| 6 | **`seed-box.mjs` × tenant** | the remaining stores, the settings every screen inherits, and — for a tenant the mounted dataset is **not** about — its apps, its freight and its checkout flag |
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
-| 9 | **`seed-demo` × tenant** | the **massive** catalogue — the one-shot that fills |
+| 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`) |
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
+| 12 | **`verify-seed.mjs` × tenant** | the **verdict** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
 fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then.)
@@ -235,10 +236,43 @@ checkout, admin. **Two are built here** and carry this repository's own front co
 counter). A box that starts only the four pinned ones comes up **green and missing exactly the two screens
 this demo exists to show**, which is why `bin/box-up.sh` names them.
 
-**Steps 3, 6 and 7 each run twice, once per tenant, and that is the shape rather than a workaround.**
+**Steps 3, 6, 8, 10 and 11 each run once per tenant, and that is the shape rather than a workaround.**
 `provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — one tenant, one store, from the
 environment — and a credential belongs to one tenant, which the write face enforces with a `403`. Widening
 either entrypoint to take N tenants would move a boundary the kernel exists to hold into a script.
+
+### ⛔ Step 9 is the one that does **not** run per tenant, and the difference cost this bench a whole shop
+
+A box mounts **one** example dataset, and a dataset is a **brand's** — this one is the footwear catalogue.
+`dist/seed-demo.js` fills the tenant it is *pointed at*, from whatever is mounted. Step 9 used to loop over
+every tenant, so on the bench of **02/09** the coffee tenant held **2 811 products** (its own 21 plus the
+dataset's 2 790), **44 490 SKUs**, 351 brands nobody sells, a category tree of `botas/sandalias/sapatos/tenis`
+and the eleven footwear custom fields in the form of every café. The footwear products were *unpublished* in
+both coffee stores, so the vitrine was spotless — the dirt was in the tenant's **data** and on the merchant's
+**screens**, which is why no check caught it.
+
+**The kernel was innocent, and establishing that decided where the repair went.** The same handles carry
+**different** product ids in the two schemas (`adidas-golf-braided-stretch-belt` is `prod_01M1FRFC9D…` in
+`forgeco` at 00:32:03 and `prod_01M1FS95MQ…` in `forgecafe` at 00:46:08): two independent, correctly-scoped
+writes, not one crossing a boundary. The entrypoint filled exactly the tenant the loop named. **The loop was
+the defect**, so the fix is here and not in the monorepo.
+
+So `seed/box.json` now declares **`dataset`** per tenant, and step 9 reads that. ⚠️ **Skipping it is not
+free:** `seed-demo.js` fuses two jobs — fill the store from the dataset, *and* provision the tenant (apps,
+freight, checkout flags). Only the first is the dataset's, so a `dataset: false` tenant declares `apps` and
+`delivery` in `seed/box.json` and **step 6** applies them. A `dataset: true` tenant must **not** declare them:
+`populate` is idempotent by its own app ledger and cannot see a method a script wrote, so two owners means a
+second *"Entrega Padrão"* — and **step 10 refuses a tenant with two active delivery methods**.
+`bin/seed-box.mjs` refuses that arrangement before writing anything.
+
+**The mirror had the same shape and a different author.** `bin/seed.mjs` declared the nine coffee words
+(`torra`, `fazenda`, `produtor`, `sca`, …) on whatever tenant it was pointed at, so every shoe in the footwear
+shop offered a roast. The registry names each author in its `source` column — `merchant` for those nine,
+`app:demo-data` for the dataset's eleven — and that is what proved both halves belong to this repository. The
+coffee vocabulary now lives in `seed/catalog.json`, behind the same gate the six coffees are.
+
+`bin/tenant-isolation.guard.mjs` grades all of it by **effect**: the tenants the real shell derivation selects,
+the commands that leave the door, and the lines `verify-seed` prints when it is shown the 02/09 bench.
 
 **No token is ever printed.** Steps 3 and 4 each emit a secret exactly once; the script captures them straight
 into `.secrets` through a temp file it shreds, and reports only `filed`.
@@ -425,8 +459,13 @@ subscriber discount). It is the identity of this demo.
 products and which shop sells what. That runs as a one-shot INSIDE the box:
 
 ```bash
-docker compose run --rm kernel node dist/seed-demo.js --confirm    # once per tenant
+docker compose run --rm kernel node dist/seed-demo.js --confirm    # once, for the DATASET tenant
 ```
+
+⛔ **Once — for the tenant the dataset is about, not once per tenant.** It fills whatever tenant
+`FORGE_REF_TENANT` names, from whatever dataset is mounted, so pointing it at a second brand's tenant puts one
+brand's catalogue in another's. `bin/box-up.sh` reads `dataset` from `seed/box.json` to decide; running this
+by hand, you are the one deciding.
 
 ⚠️ **ORDER: this script FIRST, the one-shot after.** `populate` PUBLISHES the curated handles it does not
 define, so they have to exist before it runs. Inverted, the publication fails out loud naming the handle and
@@ -443,10 +482,18 @@ FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tena
 FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
 ```
 
-One tenant per run, like the seed, and for the same reason. It prints the four shops against what the seed
-DECLARES (never a bare count), **the negative** — no free-shipping promotion and no freight born for the
-counter — the four cuts of the stock screen with a count in each, and the placeholder art in the Asset
-Library.
+One tenant per run, like the seed, and for the same reason. **`bin/box-up.sh` runs it as step 12**, so the
+birth itself is graded rather than merely finished. It prints the four shops against what the seed DECLARES
+(never a bare count), **the negative** — no free-shipping promotion and no freight born for the counter —
+**whose catalogue and whose words** the tenant is holding, the four cuts of the stock screen with a count in
+each, and the placeholder art in the Asset Library.
+
+⚠️ **The catalogue check reads `products_admin`, not the shop window, and that is the point.** The footwear
+products that reached the coffee tenant on 02/09 were *unpublished*, so every count taken through the public
+face was correct and the tenant was still wrong. `products_admin` answers for the whole tenant, drafts
+included. The vocabulary check reads the registry's own `source` column, so it names the **author** of a
+crossed field — `app:demo-data` (the dataset's, arriving with the install) or `merchant` (a seed's) — instead
+of matching a list of names that would rot.
 
 ⚠️ **It refuses rather than reporting a half-filled box.** No credential, an unreachable box, a token whose
 tenant is not the one asked for, a store the public face cannot resolve yet, a shop with fewer products than
