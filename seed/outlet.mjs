@@ -647,11 +647,14 @@ async function compose({ command, read, rows, log }, store, assets) {
     config: { text: data.brand.text, tail: data.brand.tail },
     what: "the store's mark",
   };
+  // ⚠️ MATCHED BY APP + COMPONENT, AND NOT BY SLOT — which is the difference between an upsert and a 409.
+  // `brand` is `single`, so its identity in a store IS the pair: one instance, whatever slot it names. The
+  // band next door can be matched by slot because a store may carry several of them; this one cannot, and
+  // asking the slot made the second run of this seed answer "not placed yet" about a placement that was
+  // right there. Measured on the birth of 2026-09-03: `composition.place → HTTP 409, block 'brand' is
+  // single: an active instance already exists in this store`, and the whole curated phase stopped on it.
   const existingMark = placements.find(
-    (row) =>
-      row.extension_id === mark.extension_id &&
-      row.component === mark.component &&
-      row.target === mark.slot,
+    (row) => row.extension_id === mark.extension_id && row.component === mark.component,
   );
   if (!existingMark) {
     await command('composition.place', {
