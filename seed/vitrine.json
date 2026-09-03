@@ -50,6 +50,32 @@
     ]
   },
 
+  "announcement": {
+    "slot": "storefront:header.announcement",
+    "free_shipping_text": "Frete grátis acima de {floor}",
+    "_why": [
+      "THE FIRST LINE OF THE SHOP IS A PROMISE, AND THE ONLY INTERESTING QUESTION ABOUT IT IS WHETHER THE",
+      "KERNEL KEEPS IT. His instruction for this band was one clause long: \"coloca uma frase: Frete grátis",
+      "para compras acima de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE FRETE GRÁTIS.\"",
+      "",
+      "⇒ SO THE SENTENCE IS HERE AND THE NUMBER IS NOT. `{floor}` is filled from the promotion itself at seed",
+      "time (`seed/vitrine.mjs`, `freeShippingFloor`), and if this store carries no promotion that actually",
+      "zeroes the freight, NO BAND IS PLACED. A typed number is a promise with an expiry date nobody wrote",
+      "down: the day the promotion moves, the shop keeps advertising the old floor and every test stays green.",
+      "",
+      "⚠️ AND THE NUMBER IS R$ 299, NOT R$ 300, WHICH IS WHY DERIVING IS NOT A FLOURISH. This store carries",
+      "TWO active free-shipping promotions with different rules — see `promotions._why_two_freights` below —",
+      "and only one of them is free shipping in the sense a shopper means. Anybody writing this sentence by",
+      "looking at the admin's list has an even chance of writing the wrong one.",
+      "",
+      "⛔ AND THERE IS NO GUARD CONFIRMING THE SENTENCE AGAINST THE PROMOTIONS, deliberately. It was proposed",
+      "and REFUSED, 02/09: \"esse guard não faz muito sentido, essa barra não é um campo livre no app?\" — it",
+      "is. The band is a free-text field of the `banners` app, written by the merchant in Compose; the kernel",
+      "does not read marketing copy and must not start. The answer to a sentence that can rot is to DERIVE it,",
+      "not to police it."
+    ]
+  },
+
   "promotions": {
     "apply": [
       "PROMO-04-SOCKS-BUY3PAY2",
@@ -76,6 +102,28 @@
       "and a promotion created without one is TENANT-WIDE — it would price the coffee shop and the Outlet too.",
       "The platform's own bench runner (apps/api/scripts/seed-promotions.ts) omits it, which is right for the",
       "single-store instance it was written for and wrong for this box's three."
+    ],
+    "_why_two_freights": [
+      "★ MEASURED 02/09, AND IT IS WHY THE ANNOUNCEMENT BAND ABOVE DERIVES ITS NUMBER. This store ends up with",
+      "TWO active free-shipping promotions, from two authors who never met:",
+      "",
+      "  · PROMO-06-FREE-SHIPPING-CAPPED — this list's own, from the dataset's pricing bench. Floor R$ 300,00,",
+      "    and it covers AT MOST R$ 10,00 of the freight (`max_covered_amount: 1000`). Its own label is honest",
+      "    about that — \"Frete com desconto de até R$ 10,00\" — and it carries `show_progress`, which is what",
+      "    puts \"faltam R$ X\" in the cart.",
+      "  · DEMO-HIST-01-FORGE — created by the KERNEL's own demo-data app when it seeds the dated past. Floor",
+      "    R$ 299,00 and NO cap: this is the one that actually zeroes the freight.",
+      "",
+      "⇒ A sentence written by looking at the first one would promise free shipping over R$ 300 and be false",
+      "for any freight above ten reais. The band therefore selects on the BENEFIT (uncapped, no method",
+      "restriction) rather than on a name, and takes the lowest floor among the ones that qualify.",
+      "",
+      "⚠️ AND THE CAPPED ONE IS PROBABLY DEAD, WHICH IS AN OBSERVATION AND NOT A CHANGE. The engine orders two",
+      "comparable exclusive benefits by magnitude and an uncapped free shipping reaches infinity",
+      "(packages/core/src/promo/conflict.ts, `magnitudeOf`), so wherever the R$ 300 floor is met the R$ 299 one",
+      "is met too and wins. It is LEFT IN PLACE anyway: removing a name from this list does not delete the row",
+      "from a box that already has it, and `show_progress` is a capability the demo shows nowhere else.",
+      "Written down here rather than acted on — the decision of whether the pair survives is the merchant's."
     ],
     "_excluded": {
       "PROMO-01A-ADISTAR-20": "half of a pair — 20% against PROMO-01B's 10% on the same shoe",
