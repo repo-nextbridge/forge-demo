@@ -32,7 +32,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // ⚠️ THE EXPECTATIONS ARE IMPORTED, NEVER RE-TYPED. `seed/coffee.mjs` is what the SEED writes from; a
 // verifier with its own copy of the nine field names would agree with a stale catalogue and say so proudly.
-import { expectedCoffees } from '../seed/coffee.mjs';
+import { COFFEE_PROMOTIONS, expectedCoffees } from '../seed/coffee.mjs';
+// The pool is graded here for the same reason everything else is: what it declares is worthless until the
+// box holds it, and the one way it can go wrong is invisible on every screen.
+import { poolProducts } from '../seed/pool.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -452,6 +455,53 @@ if (!seen.includes('cafe')) {
       );
     } else {
       bad(want.handle, problems.join(' · '));
+    }
+  }
+
+  // ── ★★ WHAT A SUBSCRIBER GETS (D14) — the PERKS, graded on the box and not on the declaration ─────────
+  //
+  // The buy box prints three of them ("Frete grátis · 10% OFF sempre · Pause quando quiser") and until
+  // 03/09 the freight one did not exist as data — a promise the checkout could not keep, with nothing
+  // anywhere saying so. `seed/coffee.test.mjs` holds the sentence and the declaration together; this asks
+  // the box whether the declaration landed, which is the failure class this whole file exists for.
+  {
+    const held = await allOf('promotions_admin');
+    for (const spec of COFFEE_PROMOTIONS) {
+      const got = held.find((p) => p.name === spec.name);
+      if (!got) {
+        bad(`the perk "${spec.name}"`, 'not in this tenant at all — the coffee phase did not create it');
+        continue;
+      }
+      const problems = [];
+      if ((got.benefit?.kind ?? null) !== spec.benefit.kind)
+        problems.push(`benefit is ${got.benefit?.kind ?? '(none)'}, declared ${spec.benefit.kind}`);
+      if (got.status !== 'active') problems.push(`status is ${got.status} — a draft perk charges what the page says it will not`);
+      if (got.store_id !== store.id) problems.push(`scoped to ${got.store_id ?? 'the whole tenant'}, not to the coffee shop`);
+      if (got.target?.field !== 'sub_plan') problems.push(`targets ${JSON.stringify(got.target)} — not the subscribed line`);
+      if (problems.length === 0) ok(`the perk "${spec.name}"`, `${got.benefit.kind}, active, on sub_plan lines`);
+      else bad(`the perk "${spec.name}"`, problems.join(' · '));
+    }
+  }
+
+  // ── ⛔ THE STOCK POOL (D5) — products this tenant HOLDS and NO shop sells ──────────────────────────────
+  //
+  // The one thing about them that can silently go wrong is the one that empties the demo's whole past:
+  // being published. `seed-history` takes its three alert states from products nothing sells, and a pool
+  // product on a shelf leaves the pool — after which the past refuses by a number nobody connects to this.
+  {
+    const catalogue = new Map(
+      (await allOf('products_admin')).map((p) => [p.handle, p.product_id ?? p.id]),
+    );
+    for (const declared of poolProducts()) {
+      const id = catalogue.get(declared.handle);
+      if (!id) {
+        bad(`the pool's ${declared.handle}`, 'not in the catalogue — seed/pool.mjs did not create it');
+        continue;
+      }
+      const shops = rows(await internal('product_stores', { product_id: id }));
+      const where = (Array.isArray(shops) ? shops : []).length;
+      if (where === 0) ok(`the pool's ${declared.handle}`, 'in the catalogue, on sale NOWHERE — which is the point');
+      else bad(`the pool's ${declared.handle}`, `published to ${where} store(s) — it has left the stock pool`);
     }
   }
 
