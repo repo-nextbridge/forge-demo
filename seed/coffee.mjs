@@ -16,11 +16,12 @@
 //      OF `if` IN THE FORK. The vitrine asks `sku.metadata.sub_enabled === true` and that is the entire
 //      rule. A product falls out of the offer by not being marked, which is what makes the boundary real.
 //
-//   2. THE SUBSCRIBER DISCOUNT, as a PROMOTION TARGETING THE LINE'S OWN FIELD. The design shows a struck
-//      price on the subscription option; the checkout has to actually take it off. It is written here as an
-//      item promotion whose target is `{ kind: 'custom_field', field: 'sub_plan', operator: 'exists' }` —
-//      the target the kernel learned in this same stack — so the chain is proven end to end: the app
-//      DECLARES the line field, the shopper's choice WRITES it, and the promotion engine PRICES on it.
+//   2. WHAT A SUBSCRIBER GETS, as PROMOTIONS TARGETING THE LINE'S OWN FIELD. The design shows a struck
+//      price AND free freight on the subscription option; the checkout has to actually take both off. They
+//      are written here as promotions whose target is `{ kind: 'custom_field', field: 'sub_plan', operator:
+//      'exists' }` — the target the kernel learned in this same stack — so the chain is proven end to end:
+//      the app DECLARES the line field, the shopper's choice WRITES it, and the promotion engine PRICES on
+//      it. See `COFFEE_PROMOTIONS`.
 //      ⚠️ ORDER MATTERS AND THE KERNEL ENFORCES IT: `promotion.create` refuses a custom-field target whose
 //      key is not an active `cart_line` declaration ("custom field not declared: sub_plan"). The app must be
 //      installed first — installing is what materializes its declaration. That refusal is a feature and this
@@ -82,7 +83,63 @@ export const SUB_ENABLED_FIELD = 'sub_enabled';
  * the vitrine's copy names this file and this file names the vitrine's. Change one and change both. */
 const SUBSCRIBER_PERCENT_BP = 1000;
 
-const PROMOTION_NAME = 'Assinante 10% OFF';
+/**
+ * ★ WHAT A SUBSCRIBED LINE IS, AS A TARGET — written once because two promotions below aim at it.
+ *
+ * `operator: 'exists'` and not `eq`: the benefit is for subscribing, not for one rhythm. A shopper on the
+ * weekly plan and one on the monthly plan are both subscribers, and an `eq` per rhythm would be three
+ * promotions somebody has to keep equal by hand.
+ *
+ * ⚠️ ORDER MATTERS AND THE KERNEL ENFORCES IT: `promotion.create` refuses a custom-field target whose key is
+ * not an active `cart_line` declaration ("custom field not declared: sub_plan"). Installing the app is what
+ * materializes the declaration, which is why `installApps()` runs first.
+ */
+const SUBSCRIBED_LINE = { kind: 'custom_field', field: 'sub_plan', operator: 'exists' };
+
+/**
+ * ★★ WHAT A SUBSCRIBER GETS, DECLARED — the promotions this store is BORN with.
+ *
+ * ⛔ D14, MEASURED ON THE BENCH OF 2026-09-03: the fork promises three perks beside the subscription option
+ * (`storefront-coffee/src/templates/pdp/CoffeeBuyBox.tsx:190`) — *"Frete grátis · 10% OFF sempre · Pause
+ * quando quiser"* — and the tenant held FOUR promotions, none of them `free_shipping`. The 10% was real; the
+ * freight was a sentence. A subscriber reached the payment step and paid the R$ 19,90 the shop had just told
+ * them they would not pay.
+ *
+ * ⇒ THE DATA IS MADE TRUE RATHER THAN THE SENTENCE MADE SMALLER (Renan, 2026-09-03: *"Dataset com promoção,
+ * é justamente pra mostrar para o prospect essa possibilidade"*). The perk line is a constant of the FORK —
+ * the shop's own chrome — and what a seed can honestly do about a promise a shop makes is make the shop able
+ * to keep it. Same reasoning, and the same words, as the coupon in `seed/commerce.mjs`.
+ *
+ * ⚠️ THE FREIGHT PROMOTION NAMES NO DELIVERY METHOD (`shipping_method_ids` absent = every method, which is
+ * the contract's own default: `packages/contracts/src/promotion.ts:81`). The kernel offers the narrower
+ * shape and warns that free freight on the express modality is how a merchant bleeds margin — but the
+ * sentence this promotion exists to keep carries NO qualifier, and a promotion that silently excluded
+ * "Entrega Expressa" would be the same lie in the other direction. If the shop ever wants to qualify it, the
+ * sentence in the fork changes first and this follows.
+ *
+ * ⚠️ `stackable: true` ON BOTH, and it is NOT what lets them co-exist. The engine runs ONE CONTEST PER CLASS
+ * (`packages/core/src/promo/engine.ts:41`, `CLASS_ORDER = ['item','order','shipping']`) and the class is
+ * DERIVED from the benefit — `percentage` → `item`, `free_shipping` → `shipping` — so these two never meet
+ * in a pool and would both apply even at `false`. The flag is for the day a SECOND promotion of the same
+ * class exists: stacking is bilateral in this kernel, so a promotion born unstackable silently switches the
+ * next one off.
+ */
+export const COFFEE_PROMOTIONS = [
+  {
+    name: 'Assinante 10% OFF',
+    label: 'Assinante 10% OFF',
+    // `scope: 'each_item'` because the design prints the discount PER BAG, next to the bag. An order-level
+    // percentage would total the same and would be unable to say what the page says.
+    benefit: { kind: 'percentage', percent_bp: SUBSCRIBER_PERCENT_BP, scope: 'each_item' },
+    why: 'The struck price the product page prints beside the subscription option, actually taken off at the till.',
+  },
+  {
+    name: 'Assinante frete grátis',
+    label: 'Assinante · frete grátis',
+    benefit: { kind: 'free_shipping' },
+    why: 'The first of the three perks the buy box promises, and the one that did not exist (D14).',
+  },
+];
 
 // ── ★★ THE EXPECTATIONS, AS FUNCTIONS — the thing every guard in this repository is derived from ─────────
 //
@@ -148,7 +205,7 @@ export async function seedCoffee(port) {
 
   await installApps(port);
   await markSubscribable(port, store);
-  await subscriberPromotion(port, store);
+  await subscriberPromotions(port, store);
 
   log('coffee — done. Re-running this is a no-op.');
 }
@@ -293,46 +350,39 @@ export async function markSubscribable({ command, readAll, minted, log }, store)
   );
 }
 
-// ── 3. the subscriber discount ──────────────────────────────────────────────────────────────────────────
+// ── 3. what a subscribed line gets ──────────────────────────────────────────────────────────────────────
 /**
- * The 10% every subscribed line gets, as an ITEM promotion targeting the line's own declared field.
+ * Every promotion of `COFFEE_PROMOTIONS`, as an item/shipping promotion targeting the LINE'S OWN declared
+ * field. The chain the store exists to prove, end to end: the app DECLARES `sub_plan` on the cart line, the
+ * shopper's choice WRITES it, and the promotion engine PRICES on it.
  *
- * `operator: 'exists'` and not `eq`: the discount is for subscribing, not for one rhythm. A shopper on the
- * weekly plan and one on the monthly plan are both subscribers, and an `eq` per rhythm would be three
- * promotions that have to be kept equal by hand.
+ * Scoped to this store: the Outlet and the control store share this box, and a tenant-wide subscriber
+ * benefit would be a promotion the other shops never asked for.
  *
- * `scope: 'each_item'` because the design prints the discount PER BAG, next to the bag. An order-level
- * percentage would total the same and would be unable to say what the page says.
- *
- * Scoped to this store: the Outlet and the control store share this tenant, and a tenant-wide subscriber
- * discount would be a promotion the other two shops never asked for.
+ * Idempotent by NAME, which is this repository's key for a promotion in three other places
+ * (`seed/commerce.mjs`, `seed/totem.mjs`, `demo-data`'s history executor) — so a re-run converges and a
+ * promotion a human renamed on the bench is left alone rather than duplicated.
  */
-async function subscriberPromotion({ command, read, readAll, rows, log }, store) {
-  const existing = (await readAll('promotions_admin')).find(
-    (p) => p.name === PROMOTION_NAME,
-  );
-  if (existing) {
-    log(`coffee — promotion "${PROMOTION_NAME}" already exists (${existing.id})`);
-    return;
+export async function subscriberPromotions({ command, readAll, log }, store) {
+  const existing = new Map((await readAll('promotions_admin')).map((p) => [p.name, p]));
+  for (const spec of COFFEE_PROMOTIONS) {
+    if (existing.has(spec.name)) {
+      log(`coffee — promotion "${spec.name}" already exists (${existing.get(spec.name).id})`);
+      continue;
+    }
+    const out = await command('promotion.create', {
+      name: spec.name,
+      label: spec.label,
+      store_id: store.id,
+      benefit: spec.benefit,
+      target: SUBSCRIBED_LINE,
+      // Born ACTIVE, deliberately, unlike the command's own default: a draft subscriber benefit is a shop
+      // that prints "10% OFF · Frete grátis" on the product page and charges both at the till.
+      status: 'active',
+      stackable: true,
+    });
+    log(`coffee — promotion "${spec.name}" created (${out.promotion_id ?? '?'}) — ${spec.why}`);
   }
-
-  const out = await command('promotion.create', {
-    name: PROMOTION_NAME,
-    label: 'Assinante 10% OFF',
-    store_id: store.id,
-    benefit: { kind: 'percentage', percent_bp: SUBSCRIBER_PERCENT_BP, scope: 'each_item' },
-    // ★ THE WHOLE POINT. The app declares `sub_plan` on the cart line; the shopper's choice writes it; this
-    // is what prices on it. The kernel refuses this target if the declaration is not active — which is why
-    // installApps() runs first, and why a failure here reads "custom field not declared: sub_plan" rather
-    // than a promotion that quietly never applies.
-    target: { kind: 'custom_field', field: 'sub_plan', operator: 'exists' },
-    // Born ACTIVE, deliberately, unlike the command's own default: a draft subscriber discount is a shop
-    // that shows "10% OFF" on the product page and charges full price at the till.
-    status: 'active',
-    stackable: true,
-  });
-  log(`coffee — promotion "${PROMOTION_NAME}" created (${out.promotion_id ?? '?'}), 10% off every
-    line carrying a subscription plan`);
 }
 
 // ── ⚠️ THE REVIEWS ARE NOT SEEDED, AND THIS IS WHY ──────────────────────────────────────────────────────

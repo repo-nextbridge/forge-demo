@@ -24,6 +24,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+  COFFEE_PROMOTIONS,
   expectedCoffee,
   expectedCoffees,
   expectedMetadata,
@@ -31,6 +32,7 @@ import {
   markSubscribable,
   SUB_ENABLED_FIELD,
   SUBSCRIBABLE_HANDLES,
+  subscriberPromotions,
 } from './coffee.mjs';
 import { photoListFor, placeholderForPhoto, planMediaList, resolvePhoto, STORY_SHOTS } from './media.mjs';
 import { createMinted } from './minted.mjs';
@@ -310,4 +312,64 @@ test('★ expectedCoffee names the curation, so a verifier can measure the NEGAT
   assert.equal(expectedCoffee(product('forge-alvorada')).subscribable, true);
   assert.equal(expectedCoffee(product('forge-edicao-do-produtor')).subscribable, false);
   assert.equal(expectedCoffees().length, catalog.products.length);
+});
+
+// ── 6 · WHAT A SUBSCRIBER GETS (D14) ────────────────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED ON THE BENCH OF 2026-09-03 (`select name, benefit from promotion` in the coffee
+// tenant's schema): FOUR promotions — Assinante 10% OFF · Primeiro café 10% · Combo da manhã · Primeira
+// xícara 10% — and NOT ONE with a `free_shipping` benefit. The buy box promised freight it could not give.
+
+/** The perk line of the FORK, read off disk rather than re-typed: this is the sentence the data below has to
+ *  keep, and a slice that edits the sentence must meet this file. */
+const BUY_BOX = readFileSync(
+  join(SEED, '..', 'storefront-coffee', 'src', 'templates', 'pdp', 'CoffeeBuyBox.tsx'),
+  'utf8',
+);
+
+test('★★ D14 — a subscribed line gets BOTH perks the buy box prints: the 10% AND the freight', async () => {
+  const { port, sent } = fakeBox({ published: [] });
+  await subscriberPromotions(port, { id: 'sto_cafe' });
+
+  const created = sent.filter((c) => c.name === 'promotion.create').map((c) => c.input);
+  assert.equal(created.length, 2, 'the store is not born with two subscriber promotions');
+  const kinds = created.map((p) => p.benefit.kind).sort();
+  assert.deepEqual(kinds, ['free_shipping', 'percentage']);
+  for (const promotion of created) {
+    // The whole chain in one assertion: the app declares the field, the shopper writes it, this prices on it.
+    assert.deepEqual(promotion.target, {
+      kind: 'custom_field',
+      field: 'sub_plan',
+      operator: 'exists',
+    });
+    assert.equal(promotion.status, 'active', 'a draft perk is a shop that charges what it says it will not');
+    assert.equal(promotion.store_id, 'sto_cafe', 'the other shops of this box never asked for it');
+    assert.equal(promotion.stackable, true);
+  }
+});
+
+test('⛔ D14 — THE CONTROL: the fork PRINTS "Frete grátis", so the dataset must carry a free_shipping', () => {
+  // ★ THIS IS THE TIE, and it is what makes the guard fail for the right reason. The sentence is a constant
+  // of the fork; the benefit is a row in a database. Neither half can see the other, so this test holds
+  // them together: delete the promotion and this goes red, delete the sentence and it goes red too.
+  assert.match(BUY_BOX, /Frete grátis/, 'the buy box no longer promises free freight — then delete the promotion');
+  assert.ok(
+    COFFEE_PROMOTIONS.some((p) => p.benefit.kind === 'free_shipping'),
+    'the buy box promises "Frete grátis" and no promotion of this store delivers it (D14)',
+  );
+});
+
+test('★ D14 — the freight promotion names NO delivery method, because the sentence carries no qualifier', () => {
+  // `shipping_method_ids` absent = every method (packages/contracts/src/promotion.ts:81, the contract's own
+  // default). The kernel offers the narrower shape; the shop's sentence is what decides not to use it.
+  const freight = COFFEE_PROMOTIONS.find((p) => p.benefit.kind === 'free_shipping');
+  assert.equal(freight.benefit.shipping_method_ids, undefined);
+  assert.equal(freight.benefit.max_covered_amount, undefined, 'a capped perk needs the sentence to say so');
+});
+
+test('D14 — a box that already holds both spends no command', async () => {
+  const published = COFFEE_PROMOTIONS.map((p, i) => ({ id: `promo_${i}`, name: p.name }));
+  const { port, sent } = fakeBox({ published });
+  await subscriberPromotions(port, { id: 'sto_cafe' });
+  assert.equal(sent.length, 0, 'a re-run must create nothing — the name is the idempotence key');
 });
