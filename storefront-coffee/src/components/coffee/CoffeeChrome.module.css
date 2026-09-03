@@ -62,23 +62,45 @@
   color: var(--color-accent);
 }
 
+/* ⚠️⚠️ THE CROP IS IN THE FILE, NOT IN THIS STYLESHEET, AND THAT IS THE FIX — s3-11.
+ *
+ * The mark used to ship as the artboard's export: a 1536x1024 canvas with the wordmark floating in the middle
+ * of it, occupying 858x233 of it (12.7% of the pixels). This rule cropped it in CSS — a box with the window's
+ * aspect ratio, `overflow: hidden`, and an `<img>` blown up to `width: 179.6%` and dragged into place with
+ * negative margins. The arithmetic was right. It never drew, on any viewport, because of ONE line in
+ * `src/styles/globals.css`:
+ *
+ *     img { max-width: 100%; }
+ *
+ * the reference storefront's responsive baseline — correct, deliberate, and inherited by this fork. It clamps
+ * `179.6%` back to 100%, so the image rendered at the window's own 112px instead of 201px, and the negative
+ * margins (-49px, -47px) then pushed the un-enlarged picture clean out of the 112x33 window. The centre of the
+ * header was empty, in the header of every page, and both halves looked correct in isolation: the crop
+ * measurements in this file, and the one-line reset in that one. A cropped asset has no such seam.
+ *
+ * So the asset is now trimmed to the wordmark (858x233 / 809x219, `magick <file> -trim`) and this is a plain
+ * box: a width, and the file's own aspect ratio. Nothing here has to be re-measured when the mark is
+ * re-exported — `CoffeeChrome.logo.guard.test.tsx` reads the PNG headers and fails if the ratio drifts from
+ * what is written below. It also cost 930 KB off every cold page load, which was the same 1536x1024 canvas
+ * being downloaded to show a 112px wordmark.
+ *
+ * ⚠️ AND NEVER RE-INTRODUCE A `width` OVER 100% ON AN `<img>` IN THIS APP. It cannot work: the reset above is
+ * app-wide and would have to be defeated with `max-width: none`, which is a second thing to remember. Size
+ * the box, not the picture. */
 .logo {
   flex: 0 1 auto;
   display: block;
   width: min(14vw, 112px);
   min-width: 76px;
-  /* ⚠️ THE CROP IS THE ARTBOARD'S, MEASURED, NOT A GUESS. The logo file is a 1536x1024 canvas with the mark
-   * floating in the middle of it; these three numbers are the window the design cuts out of it (source rect
-   * ~361,375 855x254). Changing the file means re-measuring them — do not "tidy" them into round values. */
-  aspect-ratio: 855 / 254;
-  overflow: hidden;
+  aspect-ratio: 858 / 233;
   line-height: 0;
 }
 
 .logo img {
-  width: 179.6%;
+  width: 100%;
+  height: 100%;
   display: block;
-  margin: -43.85% 0 0 -42.22%;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -186,19 +208,19 @@
   flex-wrap: wrap;
 }
 
+/* The negative mark, same story and same fix as `.logo` above — its own file, its own ratio. */
 .footerLogo {
   display: block;
   width: clamp(96px, 11vw, 124px);
-  /* The negative mark is a different crop of a different file — measured the same way. */
-  aspect-ratio: 807 / 240;
-  overflow: hidden;
+  aspect-ratio: 809 / 219;
   line-height: 0;
 }
 
 .footerLogo img {
-  width: 190.33%;
+  width: 100%;
+  height: 100%;
   display: block;
-  margin: -48.7% 0 0 -46.59%;
+  object-fit: contain;
   pointer-events: none;
 }
 

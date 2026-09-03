@@ -1,6 +1,20 @@
 // NotFoundContent — the shared body of the theme's 404 (HANDOVER §9): the giant "4·0·4" with the zero in the
 // copper accent, a pt-BR line, and the two CTAs (filled "Voltar à loja" + house icon → accent on hover; outline
-// "Buscar produtos" + search icon → accent on hover). Two hosts render it: the store-scoped
+// "Buscar cafés" + search icon → accent on hover).
+//
+// ★ s3-16 — THE SECOND CTA SAYS WHAT THIS SHOP SELLS, AND THE MEASUREMENT BEHIND THAT IS WORTH THE LINE.
+// It was reported as a promise the store cannot keep ("o café não tem busca, mas o 404 manda buscar"). Half
+// of that is false and the half that is true is a different thing. MEASURED on the bench 2026-09-03:
+// `/s/<cafe>/search?q=cafe` answers 200 with five real results, facets and sort — the search this page links
+// to WORKS, and this CTA is the honest way out of a dead link. What the shop has no search BOX: the café's
+// chrome deliberately mounts no search field (`CoffeeChrome.tsx` says so, and the artboard draws none), so
+// this page is the only door to it. That is a design decision of the shop's header, not a lie on this page.
+//
+// What WAS wrong is the word. This is a fork, and a fork's copy is the shop's own: the reference storefront
+// says "produtos" because it does not know what it sells, and this one does. Same href, same behaviour, the
+// shop's noun.
+//
+// Two hosts render it: the store-scoped
 // `(storefront)/not-found.tsx` (wrapped by the store chrome, so it passes real category `chips`), and the
 // store-LESS root `app/not-found.tsx` (unknown host — no store, so `brand` shows the logo and there are no
 // chips: category data is a store's, never faked). Server-rendered, semantic tokens for color.
@@ -50,8 +64,8 @@ export function NotFoundContent({
       <div className={styles.group}>
         <h1 className={styles.title}>Página não encontrada</h1>
         <p className={styles.text}>
-          O link pode estar quebrado ou a página foi movida. Que tal buscar o que você procurava ou
-          voltar para o início?
+          O link pode estar quebrado ou a página saiu do ar. Volte para a loja ou procure o café que
+          você queria.
         </p>
       </div>
 
@@ -66,7 +80,7 @@ export function NotFoundContent({
           data-testid="not-found-search"
         >
           <Search size={15} />
-          Buscar produtos
+          Buscar cafés
         </a>
       </div>
 

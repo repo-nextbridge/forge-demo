@@ -31,10 +31,37 @@ import { Icon } from './icons';
 import { SacolaBadge } from './SacolaBadge';
 import styles from './CoffeeChrome.module.css';
 
-/** What the announcement bar says. Copy, in the shop's own words — not a token and not store data: this
- *  strip is part of the design the fork owns, and a merchant who wants it editable asks for a block. */
-const ANNOUNCEMENT =
-  'Frete grátis acima de R$ 149 · 10% OFF na primeira compra com o cupom PRIMEIRAXICARA';
+/**
+ * ⛔⛔ WHAT THE ANNOUNCEMENT BAR SAYS — AND WHY IT NO LONGER PROMISES ANYTHING PRICED.
+ *
+ * It used to read: *"Frete grátis acima de R$ 149 · 10% OFF na primeira compra com o cupom PRIMEIRAXICARA"*,
+ * on every page of the shop. MEASURED against this box on 2026-09-03 (`promotion` / `promotion_code` of the
+ * café store, `sto_…NVKSD`), BOTH halves were false, and neither could be seen from here:
+ *
+ *   · FREE SHIPPING. The store has exactly ONE rule that can zero a freight — the shipping-class promotion
+ *     `DEMO-HIST-01-CAFE`, active, `min_subtotal` 29900 after discounts, no cap, whose own label reads
+ *     "Frete grátis acima de R$ 299". There is no second author: every `shipping_rate.free_above_amount` in
+ *     this tenant is NULL. The strip was under-charging the promise by R$ 150.
+ *   · THE COUPON. `PRIMEIRAXICARA` does not exist in this tenant at all. The nearest code, `PRIMEIROCAFE`,
+ *     belongs to the BALCÃO store — which is why the checkout answers `{"ok":true}` and discounts nothing: the
+ *     code resolves within the tenant, and pricing then skips a promotion scoped to another store.
+ *
+ * ★★ SO THE FIX IS NOT A BETTER NUMBER — IT IS THIS FILE NOT BEING AN AUTHOR OF PRICED PROMISES.
+ * A figure written here is a second author over a rule that lives in the kernel: it cannot be validated, it
+ * does not move when the merchant edits the promotion, and it is wrong in silence — which is exactly how it
+ * spent the week saying R$ 149. The shop's commercial promises belong in the store's own data (the Outlet
+ * already does it: a `header.announcement` block seeded with the sentence, the floor derived from the
+ * promotion's `min_subtotal`), never in a constant inside the fork.
+ *
+ * What is left here is what a fork legitimately owns: the shop's VOICE. Every clause below is a fact this
+ * storefront already states on its own product page (the four seals and the "Envio em até 24h" fact), it is
+ * true of every coffee in the catalogue, and no promotion can make it false.
+ *
+ * ⚠️ `CoffeeChrome.announcement.guard.test.tsx` fails on a currency figure, a percentage or a coupon-shaped
+ * word appearing in this string. Putting a price back means either seeding the announcement as store data or
+ * arguing with that guard — and the second one is the move this comment exists to stop.
+ */
+const ANNOUNCEMENT = 'Torra da semana · Moagem no seu método · Envio em até 24h';
 
 /**
  * ★ THE LOGO ARRIVES AS A MODULE IMPORT, NOT FROM `public/`.
@@ -42,8 +69,13 @@ const ANNOUNCEMENT =
  * Next emits an imported image under `/_next/static/`, which the edge middleware already excludes from
  * host->store rewriting and the Dockerfile already copies. A file in `public/` needs BOTH of those to have
  * been arranged for it — they have been, under `public/assets/`, but an import needs neither and cannot be
- * got wrong. The `<img>` is deliberate over `next/image`: this mark is cropped by the design (see the CSS)
- * and never resized, so the optimizer would be a round trip that changes nothing.
+ * got wrong. The `<img>` is deliberate over `next/image`: the mark is a small, already-trimmed PNG drawn at
+ * one size, so the optimizer would be a round trip that changes nothing.
+ *
+ * ⚠️ THE FILE IS CROPPED TO THE WORDMARK AND THE STYLESHEET IS NOT — s3-11, and the note on `.logo` in
+ * `CoffeeChrome.module.css` is the whole story. Re-export the mark TRIMMED (`magick <file> -trim +repage`);
+ * an export that keeps the artboard's empty canvas around it draws a wordmark a few pixels tall inside a box
+ * of nothing, and `CoffeeChrome.logo.guard.test.tsx` beside this file fails naming the file and its ratio.
  */
 function Logo({ href, negative = false }: { href: string; negative?: boolean }) {
   const asset = negative ? logoNegative : logo;

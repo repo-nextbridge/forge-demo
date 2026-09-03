@@ -20,6 +20,12 @@ describe('NotFoundContent', () => {
     // ...and each carries its leading icon (house / magnifier), per the prototype.
     expect(home.querySelector('svg')).toBeTruthy();
     expect(search.querySelector('svg')).toBeTruthy();
+    // ★ s3-16 — AND THE WAY OUT IS WORDED IN THIS SHOP'S NOUN, not the reference storefront's "produtos".
+    // The href is unchanged and the search behind it works (measured: /search?q=cafe → 5 results); what was
+    // wrong was a fork repeating a word written by a storefront that does not know what it sells. Asserted
+    // because copy with no test is copy that drifts back on the next cut.
+    expect(search.textContent).toContain('cafés');
+    expect(search.textContent).not.toContain('produtos');
   });
 
   test('store-scoped: renders real category chips linking to their paths', () => {

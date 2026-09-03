@@ -139,3 +139,84 @@ test('★ A43 #2 — the coffee hero\'s shot leaves the headline room to hold tw
       'line, and the two-line hero rendered as three. Widening this undoes the copy fix next door.',
   );
 });
+
+// ── s3-15 · THE COFFEE SHOP'S TWO FAMILIES, AND THE ONE THAT DID NOT CROSS TO THE CHECKOUT ────────────────
+//
+// Same failure as A42 #1 at the top of this file, in typography: the theme declared a token the BASE HAS NO
+// WORD FOR (`--font-display`) and stopped there. The forked vitrine writes `var(--font-display)` by hand on
+// the two pages it designed, so the shop looked right where it had been drawn and was Poppins everywhere it
+// had been inherited — including the checkout, the deployable nobody forks and the one place the shopper is
+// deciding whether to trust the store. Reported as "cores e Poppins aplicam, mas a Fraunces não chega".
+//
+// The base routes every typographic ROLE through `--font-sans`, so a two-family design has to be spelled at
+// the role level. This grades the resolved value, exactly like the colour checks above.
+const coffee = customProperties(join(ROOT, 'themes/coffee-store/tokens.css'));
+
+test('★★ s3-15 — the coffee shop\'s DISPLAY roles resolve to its serif, so the checkout wears it too', () => {
+  const display = resolve(coffee, '--font-display');
+  assert.ok(display?.includes('Fraunces'), `--font-display does not resolve to the design's serif: ${display}`);
+  // The roles the checkout's own stylesheets ask for by name: `checkout-page.module.css` (headline-lg, the
+  // step titles), `ConfirmationView.module.css` and `OrderTemplate.module.css` (display-sm, the big
+  // confirmation title). The display scale is included whole — a shop with a serif h1 and a sans h2 is worse
+  // than a shop with neither.
+  for (const role of [
+    '--type-display-xl-family',
+    '--type-display-lg-family',
+    '--type-display-md-family',
+    '--type-display-sm-family',
+    '--type-headline-lg-family',
+    '--type-headline-md-family',
+  ]) {
+    assert.equal(
+      resolve(coffee, role),
+      display,
+      `${role} does not resolve to this shop's display face. The base points it at --font-sans, so a theme ` +
+        'that only ADDS --font-display leaves the checkout (and every inherited page of the vitrine) in ' +
+        'Poppins — silently, because the base\'s value is a perfectly good font.',
+    );
+  }
+});
+
+test('★ s3-15 — and the TEXT roles are left alone, so the serif does not become a costume', () => {
+  // The artboard puts Poppins on everything that is not a title: the bag bar, buttons, labels, body. A guard
+  // that only demanded "serif somewhere" would pass a shop that set every role to Fraunces, which is a
+  // different shop.
+  const sans = resolve(coffee, '--font-sans');
+  assert.ok(sans?.includes('Poppins'), `--font-sans does not resolve to the design's text face: ${sans}`);
+  for (const role of ['--type-body-family', '--type-ui-family', '--type-caption-family', '--type-micro-family',
+    '--type-label-caps-family']) {
+    // Not overridden at all is the correct state: the base already points these at --font-sans, which this
+    // theme re-points. `null` means "the chain leaves this file", i.e. inherited.
+    assert.equal(
+      resolve(coffee, role),
+      null,
+      `${role} is overridden in the coffee theme. These roles are the shop's TEXT and must stay on ` +
+        '--font-sans; overriding them is how a display face turns into a costume.',
+    );
+  }
+});
+
+test('★ s3-15 — the display roles carry the WEIGHT the serif is drawn at, not the base\'s bold', () => {
+  // The base sets these bold/semibold for Urbanist. Fraunces at 700 in this shop's voice reads as another
+  // brand; the artboards draw every serif heading at 400. The weight has to move WITH the family or the fix
+  // is half done in a way nobody sees until they compare screenshots.
+  //
+  // ⚠️ AND THIS ONE IS GRADED ON THE SPELLING, against the rule at the top of this file — deliberately, with
+  // a reason. The weight's VALUE (`400`) lives in the base as `--font-weight-regular`; this theme neither
+  // defines nor should define a font-weight primitive, so the chain leaves the file and `resolve` correctly
+  // answers `null` for both sides. There is nothing to compare. What IS checkable here is that the theme
+  // points the role at the base's regular rather than leaving the base's bold — and pointing is the whole act.
+  for (const role of ['--type-display-sm-weight', '--type-headline-lg-weight', '--type-display-lg-weight']) {
+    const written = coffee[role];
+    assert.ok(
+      written !== undefined,
+      `${role} is not declared. Left alone it inherits the base's bold, which is drawn for Urbanist.`,
+    );
+    assert.match(
+      written,
+      /^var\(\s*--font-weight-regular\s*\)$|^400$/,
+      `${role} is "${written}". A serif inherits the base's bold unless the theme says otherwise, and the ` +
+        'artboards draw every serif heading at 400.',
+    );
+  }
+});

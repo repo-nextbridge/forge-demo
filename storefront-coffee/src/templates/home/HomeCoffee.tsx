@@ -55,8 +55,14 @@ const CLAIMS = [
   },
 ] as const;
 
+// ⚠️ THE TRUST STRIP MAKES NO PRICED PROMISE — see the note on `ANNOUNCEMENT` in `CoffeeChrome.tsx` for the
+// measurement. The first seal read "Frete grátis / acima de R$ 149"; the café store's only rule that zeroes a
+// freight is the shipping promotion `DEMO-HIST-01-CAFE`, whose floor is R$ 299, and this file has no way to
+// know that. The 10% below IS true and stays: `Assinante 10% OFF` is active on this store at 1000 bp, and it
+// is the app's own rule rather than a figure typed here. Everything else a seal claims must be like the other
+// three — a fact about how this shop works, which no promotion can turn false.
 const SEALS = [
-  { icon: 'truck', lines: ['Frete grátis', 'acima de R$ 149'] },
+  { icon: 'truck', lines: ['Postamos em', 'até 24 horas'] },
   { icon: 'percent', lines: ['10% OFF em', 'toda assinatura'] },
   { icon: 'refresh', lines: ['Torrado na semana', 'do seu pedido'] },
   { icon: 'shield', lines: ['Não gostou?', 'Trocamos o pacote'] },
