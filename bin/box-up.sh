@@ -734,7 +734,7 @@ done
 # ── 9 · the catalogue, once per tenant ──────────────────────────────────────────────────────────────────────
 say '9 · seed-demo (the catalogue, once per DATASET tenant)'
 # ⛔ `$DATASET_TENANTS`, NEVER `$TENANTS` — the derivation above carries the measurement. A tenant the mounted
-# dataset is not about is NAMED here rather than silently skipped, because "the coffee shop has 21 products"
+# dataset is not about is NAMED here rather than silently skipped, because "the coffee shop has 23 products"
 # and "the coffee shop was forgotten" look identical in a log that says nothing.
 for t in $TENANTS; do
   case " $DATASET_TENANTS " in

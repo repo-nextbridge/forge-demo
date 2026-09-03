@@ -138,6 +138,16 @@ const CREATES = {
   forge: 0,
 };
 
+/** ⛔ AND THE PRODUCTS THAT BELONG TO NO SHOP AT ALL — the STOCK POOL (`seed/catalog.json` →
+ *  `stock_pool`, and `seed/pool.mjs` creates them). They are keyed by no store handle because being on
+ *  sale nowhere is the whole point of them: step 10 builds the stock screen's three alert states by
+ *  zeroing them, which it may only do to something nobody is selling.
+ *
+ *  ⚠️ THEY MUST BE IN THIS SUM. Section 1 counts what each shop PUBLISHES and will never see them; this
+ *  section counts what the TENANT HOLDS and would otherwise read two unexplained products as another
+ *  brand's catalogue leaking in — the exact accusation this section exists to make, made falsely. */
+const CREATES_WITHOUT_A_SHOP = (catalog.stock_pool?.products ?? []).length;
+
 /** key → the module of THIS repository that declares it, for the tenant that owns that module's store.
  *  Derived from the same files the seeds read; a name typed here would agree with a stale catalogue. */
 const OWN_WORDS = [
@@ -285,7 +295,10 @@ say();
 say("THE TENANT'S OWN CATALOGUE — nothing from a brand this tenant is not");
 {
   const held = Number((await internal('products_admin', { limit: '1', page: '1' }))?.total ?? 0);
-  const mineCreated = seen.reduce((sum, handle) => sum + (CREATES[handle] ?? 0), 0);
+  const mineCreated =
+    seen.reduce((sum, handle) => sum + (CREATES[handle] ?? 0), 0) +
+    // The pool rides with the shop whose catalogue file declares it, and on no other tenant's run.
+    (seen.includes(catalog.products_store) ? CREATES_WITHOUT_A_SHOP : 0);
   const unaccounted = seen.filter((handle) => CREATES[handle] === undefined);
   if (carriesDataset) {
     // The dataset's size is not knowable from this repository, so it is reported and never judged — the same

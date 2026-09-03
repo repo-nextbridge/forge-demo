@@ -346,7 +346,11 @@ const SHOE_WORDS = ['amortecimento', 'cano', 'drop_mm', 'pisada', 'solado', 'uso
 
 test('★★★ the verdict SETTLES a coffee tenant that holds only its own', async () => {
   const tenant = plainTenants[0];
-  const held = CATALOG.products.length + TOTEM.products.length;
+  // + the STOCK POOL: products of this tenant that no shop sells, and which the tenant nevertheless HOLDS.
+  // Section 3 of the verifier counts what is held, so leaving them out of this number would assert that a
+  // correct box is wrong.
+  const held =
+    CATALOG.products.length + CATALOG.stock_pool.products.length + TOTEM.products.length;
   const out = await withDoor(
     verifyState(tenant, { products: held, fields: [...COFFEE_WORDS, ...COUNTER_WORDS] }),
     async ({ api }) => (await drive('verify-seed.mjs', ['--tenant', tenant], api)).out,
@@ -359,16 +363,24 @@ test('★★★ the verdict SETTLES a coffee tenant that holds only its own', as
 
 test('★★★ …and turns RED on the 02/09 bench, naming both halves of the crossing', async () => {
   const tenant = plainTenants[0];
-  // ⛔ THE MEASURED NUMBERS, not invented ones: 2 811 products in the coffee tenant (21 curated + the
-  //    dataset's 2 790), and the footwear vocabulary beside the coffee one in the same registry.
+  // ⛔ THE MEASURED NUMBER, not an invented one: 2 811 products in the coffee tenant on the bench of 02/09 —
+  //    the dataset's 2 790 on top of what this repository writes here. Only the 2 790 is frozen; how many
+  //    this repository creates is DERIVED, because that half is a dataset edit away (the stock pool added
+  //    two on 03/09) and a typed number would make a correct box read as a leak of the wrong size.
+  const mine = CATALOG.products.length + CATALOG.stock_pool.products.length + TOTEM.products.length;
   const out = await withDoor(
     verifyState(tenant, {
-      products: 2811,
+      products: 2790 + mine,
       fields: [...COFFEE_WORDS, ...COUNTER_WORDS, ...SHOE_WORDS],
     }),
     async ({ api }) => (await drive('verify-seed.mjs', ['--tenant', tenant], api)).out,
   );
-  assert.match(out, /✗ forgecafe — 2811 product\(s\), and this repository creates 21 here — 2790 came from/);
+  assert.match(
+    out,
+    new RegExp(
+      `✗ forgecafe — ${2790 + mine} product\\(s\\), and this repository creates ${mine} here — 2790 came from`,
+    ),
+  );
   assert.match(out, /✗ the dataset vocabulary — 6 field\(s\) from another brand's catalogue/);
   assert.match(out, /amortecimento/);
   assert.doesNotMatch(out, /✓ the dataset vocabulary/);
