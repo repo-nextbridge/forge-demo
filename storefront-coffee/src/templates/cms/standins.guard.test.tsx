@@ -31,7 +31,7 @@ import { resolvePageTemplate } from './registry';
 function registeredKeys(): string[] {
   const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'registry.ts'), 'utf8');
   const body = src.slice(src.indexOf('const REGISTRY'), src.indexOf('/** Resolve a template_key'));
-  const keys = [...body.matchAll(/^\s*'?([a-z-]+)'?:\s*[A-Z]/gm)].map(([, key]) => key);
+  const keys = [...body.matchAll(/^\s*'?([a-z-]+)'?:\s*[A-Z]/gm)].flatMap((m) => m[1] ?? []);
   if (keys.length < 2) throw new Error('the registry moved — this guard is reading the wrong shape');
   return keys;
 }
