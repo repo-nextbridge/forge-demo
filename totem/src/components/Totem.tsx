@@ -45,6 +45,36 @@ const COUPON_KEYS = [
   ...NAME_KEYS,
 ];
 
+/**
+ * ★★ THE ROW THAT MAKES "JOÃO" POSSIBLE (s5-5, 03/09). The keyboard was A–Z, space and delete, so JOÃO, JOSÉ
+ * and CONCEIÇÃO came out mutilated — and this is the one field a barista reads out loud to a room.
+ *
+ * ⚠️ IT IS ON THE NAME KEYBOARD ONLY, AND THE COUPON'S DELIBERATELY KEEPS A–Z0–9. A coupon code is an
+ * identifier a merchant typed into the admin; offering Ç on it would invite a code that can never match.
+ *
+ * `À` IS ABSENT AND THAT IS A CHOICE, NOT AN OVERSIGHT: in Portuguese the grave accent marks a contraction,
+ * never a given name, and eleven keys is what fits the panel's 960px of usable width without shrinking the
+ * letters a wet finger has to hit.
+ */
+const NAME_ACCENT_KEYS = ['Á', 'Â', 'Ã', 'É', 'Ê', 'Í', 'Ó', 'Ô', 'Õ', 'Ú', 'Ç'];
+
+/**
+ * ★★ HOW LONG BEFORE THE RESET THE SCREEN ASKS (s5-3, 03/09). Measured on the bench: the till went back to
+ * "Toque para começar" between 85s and 90s of stillness on the PAYMENT step — name typed, method chosen — with
+ * no warning of any kind, and the bag was gone on the way back. A customer who looked down for their wallet
+ * lost the whole order at the last tap.
+ *
+ * ⚠️ THE BAG STILL DIES, AND ON PURPOSE. "Preserve the basket instead" was the other half of the finding and
+ * it is refused by the counter's own ruler: the person who walks up next must never inherit the previous
+ * person's order — that is what `resetCounter` is FOR, and its own test says so. So the fix is not to keep the
+ * bag longer, it is to stop taking it away from somebody who is still standing there. The warning is the
+ * chance to say "I am still here"; ANY touch anywhere takes it, because any touch already re-arms the clock.
+ *
+ * It is a slice of `idleSeconds`, never a number of its own: a box configured with a 20-second window must not
+ * warn 20 seconds before a reset that happens at 20.
+ */
+const IDLE_WARNING_SECONDS = 20;
+
 const NAME_MAX = 14;
 const COUPON_MAX = 16;
 
@@ -73,6 +103,10 @@ export function Totem({
   const [toast, setToast] = useState<{ text: string; warn: boolean } | null>(null);
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponInput, setCouponInput] = useState('');
+  /** The refusal that belongs INSIDE the dialog, beside the code that caused it. See `submitCoupon`. */
+  const [couponError, setCouponError] = useState<string | null>(null);
+  /** "Você ainda está aí?" — armed `IDLE_WARNING_SECONDS` before the reset. See the constant. */
+  const [idleWarning, setIdleWarning] = useState(false);
   const [name, setName] = useState('');
   const [method, setMethod] = useState<CounterMethod | null>(null);
   const [busy, setBusy] = useState(false);
@@ -81,6 +115,47 @@ export function Totem({
   const scroller = useRef<HTMLDivElement | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * ★★ THE LATCH `busy` COULD NOT BE (s5-4, 03/09) — AND THE REASON IS THAT `busy` IS STATE.
+   *
+   * Every write already opened with `if (… || busy) return;` and every button already carried
+   * `disabled={busy}`, and two quick taps on "Pagar" still put TWO identical POSTs on the wire, with the
+   * button still `disabled=false` afterwards. Both defences are one render behind the finger: `setBusy(true)`
+   * schedules a re-render, so the second tap of the same tick reads the OLD `busy` and the `disabled`
+   * attribute has not been written to the DOM yet. React batching is not a race the UI can win with state.
+   *
+   * A ref is written SYNCHRONOUSLY, so the second tap of the same tick sees the first one. That is the whole
+   * mechanism, and it is why the guard drives real double taps rather than asserting on `disabled`.
+   *
+   * ⚠️ IT IS NOT THE ONLY DEFENCE AND MUST NOT BE READ AS ONE. `checkout.place_order` is idempotent by the
+   * CART — the kernel returns the same order for a converted cart — so a duplicate that beats this latch does
+   * not become two orders. This is the cheap half, and it is the half the customer sees: the till stops
+   * looking like it ignored them.
+   */
+  const inFlight = useRef(false);
+  /**
+   * ★ THE IDLE CLOCK'S OWN RE-ARM, REACHABLE FROM OUTSIDE THE EFFECT THAT OWNS IT.
+   *
+   * ⚠️ WRITTEN BECAUSE THE GUARD CAUGHT IT: "Estou aqui" first only hid the question, on the reasoning that
+   * every touch re-arms the clock anyway. It does — for a POINTER. The button's own activation is a `click`,
+   * which a keyboard, an assistive device and `HTMLElement.click()` all produce without a `pointerdown`
+   * anywhere, so the question vanished and the till reset on schedule regardless. The one button whose whole
+   * job is to say "I am still here" must not depend on how the finger said it.
+   */
+  const rearmIdle = useRef<() => void>(() => {});
+
+  /** Run one write at a time. The second caller of the same tick is dropped, not queued — see `inFlight`. */
+  const exclusive = useCallback(async (run: () => Promise<void>): Promise<void> => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      await run();
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }, []);
 
   const say = useCallback((text: string, warn = false) => {
     setToast({ text, warn });
@@ -111,6 +186,7 @@ export function Totem({
    */
   useEffect(() => {
     if (attract) return;
+    let warn: ReturnType<typeof setTimeout>;
     let timer: ReturnType<typeof setTimeout>;
     const goHome = async () => {
       const { bag: empty } = await resetCounter();
@@ -119,23 +195,61 @@ export function Totem({
       setDetail(null);
       setCouponOpen(false);
       setCouponInput('');
+      setCouponError(null);
+      setIdleWarning(false);
       setName('');
       setMethod(null);
       setPaid(null);
       setAttract(true);
     };
     const arm = () => {
+      clearTimeout(warn);
       clearTimeout(timer);
+      setIdleWarning(false);
+      // ★ THE WARNING IS A SLICE OF THE SAME WINDOW, NOT AN EXTENSION OF IT. The reset still happens at
+      // `idleSeconds`; what changes is that the last `IDLE_WARNING_SECONDS` of it are spent asking. A window
+      // shorter than the warning gets no warning rather than one that fires at zero.
+      const warnAfter = (idleSeconds - IDLE_WARNING_SECONDS) * 1000;
+      if (warnAfter > 0) warn = setTimeout(() => setIdleWarning(true), warnAfter);
       timer = setTimeout(goHome, idleSeconds * 1000);
     };
     arm();
+    rearmIdle.current = arm;
+    // ⚠️ ANY TOUCH DISMISSES THE QUESTION, and that is the answer to it — `arm` is already bound to every
+    // touch on the panel, so "Estou aqui" needs no handler of its own to work. It has one anyway, because a
+    // button a customer can see and press is what makes the question answerable rather than merely survivable.
     const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'scroll'];
     for (const e of events) window.addEventListener(e, arm, true);
     return () => {
+      clearTimeout(warn);
       clearTimeout(timer);
+      rearmIdle.current = () => {};
       for (const e of events) window.removeEventListener(e, arm, true);
     };
   }, [attract, idleSeconds]);
+
+  /**
+   * ★★ THE BACK GESTURE STAYS INSIDE THE KIOSK (s5-6, 03/09).
+   *
+   * The whole flow is states of one panel on one URL, so the browser's history held exactly one entry for it —
+   * and "back" left the application entirely (measured: `about:blank`). A totem in a chromeless shell has no
+   * back button, but a stray edge swipe, a keyboard somebody plugged in, or a mouse's fourth key all produce
+   * the same event, and the till is then a blank page nobody at the counter can recover.
+   *
+   * One sentinel entry is pushed and pushed again whenever a back consumes it, so the gesture is absorbed.
+   *
+   * ⚠️ IT DELIBERATELY DOES NOT MAP BACK ONTO THE FLOW'S STEPS. `screen` is the one truth about where the
+   * customer is; a history stack mirroring it would be a second one, and the two disagree the moment a step is
+   * added — a "back" that lands on a screen the flow already left is worse than a back that does nothing. The
+   * screens have their own "Voltar" buttons, which are the ones a finger can find.
+   */
+  useEffect(() => {
+    const guard = { forgeTotem: true };
+    window.history.pushState(guard, '');
+    const absorbBack = () => window.history.pushState(guard, '');
+    window.addEventListener('popstate', absorbBack);
+    return () => window.removeEventListener('popstate', absorbBack);
+  }, []);
 
   useEffect(
     () => () => {
@@ -155,6 +269,9 @@ export function Totem({
           `O balcão recebeu muitos pedidos ao mesmo tempo. Tente de novo em ${r.retryAfterSeconds} segundos.`,
           true,
         );
+      // The kernel named this as the CUSTOMER's mistake (see `lib/coupon.ts`), so it gets the kernel's own
+      // sentence and never "chame um atendente".
+      else if (r.kind === 'coupon') say(r.message, true);
       else say('Não foi possível concluir. Chame um atendente.', true);
       return false;
     },
@@ -184,34 +301,35 @@ export function Totem({
   };
 
   async function open(handle: string, kicker: string) {
-    setBusy(true);
-    const d = await openProduct(handle, kicker);
-    setBusy(false);
-    if (!d) {
-      say('Esse item saiu do cardápio agora há pouco.', true);
-      return;
-    }
-    setDetail(d);
-    // Open on the cheapest variant, which is the price the card promised.
-    const cheapest = d.variants.find((v) => v.skuId === d.defaultSkuId);
-    setChosen(cheapest ? cheapest.valueIds.slice() : []);
-    setQty(1);
+    await exclusive(async () => {
+      const d = await openProduct(handle, kicker);
+      if (!d) {
+        say('Esse item saiu do cardápio agora há pouco.', true);
+        return;
+      }
+      setDetail(d);
+      // Open on the cheapest variant, which is the price the card promised.
+      const cheapest = d.variants.find((v) => v.skuId === d.defaultSkuId);
+      setChosen(cheapest ? cheapest.valueIds.slice() : []);
+      setQty(1);
+    });
   }
 
   const currentSku = detail ? skuFor(detail, chosen) : undefined;
 
   async function add() {
     if (!detail || !currentSku) return;
-    setBusy(true);
-    const r = await addItem(currentSku, qty);
-    setBusy(false);
-    if (absorb(r)) {
-      say(`${qty}× ${detail.name} na sacola`);
-      setBump(true);
-      if (bumpTimer.current) clearTimeout(bumpTimer.current);
-      bumpTimer.current = setTimeout(() => setBump(false), 320);
-    }
-    setDetail(null);
+    const sku = currentSku;
+    await exclusive(async () => {
+      const r = await addItem(sku, qty);
+      if (absorb(r)) {
+        say(`${qty}× ${detail.name} na sacola`);
+        setBump(true);
+        if (bumpTimer.current) clearTimeout(bumpTimer.current);
+        bumpTimer.current = setTimeout(() => setBump(false), 320);
+      }
+      setDetail(null);
+    });
   }
 
   /**
@@ -219,56 +337,97 @@ export function Totem({
    * minute for the WHOLE counter (store + IP, and the totem is one address), so a field that re-submitted as
    * the customer typed would take the till down for a minute with nobody doing anything wrong.
    */
+  /**
+   * ★★ A CODE THE CUSTOMER GOT WRONG IS ANSWERED IN THE DIALOG, WITH THE CODE STILL IN IT (s5-2, 03/09).
+   *
+   * This used to close the dialog, wipe the field and raise "Não foi possível concluir. Chame um atendente."
+   * for a coupon that simply does not exist — the system's voice for the customer's typo, and the one recovery
+   * (fix the letter) made impossible by the same gesture. The kernel had said exactly what was wrong all along
+   * (`details.reason: coupon_not_found`); the totem was throwing it away.
+   *
+   * ⚠️ ONLY A REAL SYSTEM FAILURE CLOSES THE DIALOG NOW, and the rule is "can retyping help?". A wrong code,
+   * a code this cart does not qualify for, an exhausted code, even the rate limit — all of those are answered
+   * where the keyboard is, because the next thing the person does is at that keyboard. An unrecognised refusal
+   * is ours, so it keeps the attendant's sentence and closes.
+   */
   async function submitCoupon() {
-    if (!couponInput.trim() || busy) return;
-    setBusy(true);
-    const r = await applyCoupon(couponInput);
-    setBusy(false);
-    setCouponOpen(false);
-    if (r.ok && r.bag.couponCode) say(`Cupom ${r.bag.couponCode} aplicado`);
-    else if (r.ok) say('Esse cupom não vale para este pedido.', true);
-    else absorb(r);
-    if (r.ok) setBag(r.bag);
-    setCouponInput('');
+    if (!couponInput.trim()) return;
+    await exclusive(async () => {
+      const r = await applyCoupon(couponInput);
+      setBag(r.bag);
+      if (r.ok && r.bag.couponCode) {
+        setCouponOpen(false);
+        setCouponInput('');
+        setCouponError(null);
+        say(`Cupom ${r.bag.couponCode} aplicado`);
+        return;
+      }
+      // ★ THE PORT ACCEPTED THE CALL AND THE CART CAME BACK WITHOUT A COUPON. Nothing was refused, so there is
+      // no reason to read: the code exists and this basket does not qualify.
+      if (r.ok) {
+        setCouponError('Esse cupom não vale para este pedido.');
+        return;
+      }
+      if (r.kind === 'coupon') {
+        setCouponError(r.message);
+        return;
+      }
+      if (r.kind === 'rate_limited') {
+        setCouponError(
+          `O balcão recebeu muitos pedidos ao mesmo tempo. Tente de novo em ${r.retryAfterSeconds} segundos.`,
+        );
+        return;
+      }
+      setCouponOpen(false);
+      setCouponInput('');
+      setCouponError(null);
+      absorb(r);
+    });
   }
 
   async function dropCoupon() {
-    if (!bag.couponCode || busy) return;
-    setBusy(true);
-    const r = await removeCoupon(bag.couponCode);
-    setBusy(false);
-    absorb(r);
+    const code = bag.couponCode;
+    if (!code) return;
+    await exclusive(async () => {
+      absorb(await removeCoupon(code));
+    });
   }
 
   const readyToPay = bag.count > 0 && name.trim().length > 0 && method !== null;
 
+  /**
+   * ⚠️ THE ONE TAP THAT MUST NEVER HAPPEN TWICE. `exclusive` is what makes that true synchronously — see
+   * `inFlight` for why `busy` and `disabled` were not enough, and `Totem.pay.test.tsx` for the double tap.
+   */
   async function pay() {
-    if (!readyToPay || !method || busy) return;
-    setBusy(true);
-    const r = await payWith(name, method);
-    setBusy(false);
-    if (!r.ok) {
-      if (r.kind === 'rate_limited')
-        say(
-          `O balcão recebeu muitos pedidos ao mesmo tempo. Tente de novo em ${r.retryAfterSeconds} segundos.`,
-          true,
-        );
-      else say('Não foi possível fechar o pedido. Chame um atendente.', true);
-      return;
-    }
-    setPaid(r);
-    // ★ `settled` IS THE WHOLE SIGNAL for the machine: by the time this returns, the order is already paid.
-    // There is no polling and no `data.status` — see lib/pos.ts.
-    setScreen(r.outcome.kind === 'settled' ? 'done' : 'pix');
+    if (!readyToPay || !method) return;
+    const chosenMethod = method;
+    await exclusive(async () => {
+      const r = await payWith(name, chosenMethod);
+      if (!r.ok) {
+        if (r.kind === 'rate_limited')
+          say(
+            `O balcão recebeu muitos pedidos ao mesmo tempo. Tente de novo em ${r.retryAfterSeconds} segundos.`,
+            true,
+          );
+        else say('Não foi possível fechar o pedido. Chame um atendente.', true);
+        return;
+      }
+      setPaid(r);
+      // ★ `settled` IS THE WHOLE SIGNAL for the machine: by the time this returns, the order is already paid.
+      // There is no polling and no `data.status` — see lib/pos.ts.
+      setScreen(r.outcome.kind === 'settled' ? 'done' : 'pix');
+    });
   }
 
   async function simulate() {
-    if (!paid || paid.outcome.kind !== 'pix_pending' || busy) return;
-    setBusy(true);
-    const r = await simulatePixPayment(paid.outcome.providerRef);
-    setBusy(false);
-    if (r.paid) setScreen('done');
-    else say('O pagamento ainda não foi confirmado.', true);
+    if (!paid || paid.outcome.kind !== 'pix_pending') return;
+    const ref = paid.outcome.providerRef;
+    await exclusive(async () => {
+      const r = await simulatePixPayment(ref);
+      if (r.paid) setScreen('done');
+      else say('O pagamento ainda não foi confirmado.', true);
+    });
   }
 
   // ── the counter is not visible on the public face yet ────────────────────────────────────────────────
@@ -540,7 +699,11 @@ export function Totem({
               <button
                 type="button"
                 className={`${styles.couponButton} ${bag.couponCode ? styles.couponButtonOn : ''}`}
-                onClick={() => (bag.couponCode ? dropCoupon() : (setCouponInput(''), setCouponOpen(true)))}
+                onClick={() =>
+                  bag.couponCode
+                    ? dropCoupon()
+                    : (setCouponInput(''), setCouponError(null), setCouponOpen(true))
+                }
               >
                 <div className={styles.couponMark}>%</div>
                 <div className={styles.couponCopy}>
@@ -605,6 +768,11 @@ export function Totem({
                     </span>
                     <span className={styles.caret} />
                   </div>
+                  {couponError ? (
+                    <div className={styles.dialogError} role="alert">
+                      {couponError}
+                    </div>
+                  ) : null}
                   <div className={styles.keyboard}>
                     {COUPON_KEYS.map((row, i) => (
                       <div key={row.join('')} className={styles.keyRow}>
@@ -613,7 +781,10 @@ export function Totem({
                             key={k}
                             type="button"
                             className={`${styles.key} ${styles.keySmall}`}
-                            onClick={() => setCouponInput((v) => (v + k).slice(0, COUPON_MAX))}
+                            onClick={() => {
+                              setCouponError(null);
+                              setCouponInput((v) => (v + k).slice(0, COUPON_MAX));
+                            }}
                           >
                             {k}
                           </button>
@@ -622,7 +793,10 @@ export function Totem({
                           <button
                             type="button"
                             className={`${styles.key} ${styles.keySmall} ${styles.keyMedium}`}
-                            onClick={() => setCouponInput((v) => v.slice(0, -1))}
+                            onClick={() => {
+                              setCouponError(null);
+                              setCouponInput((v) => v.slice(0, -1));
+                            }}
                           >
                             apagar
                           </button>
@@ -701,6 +875,18 @@ export function Totem({
                     ) : null}
                   </div>
                 ))}
+                <div className={styles.keyRow}>
+                  {NAME_ACCENT_KEYS.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      className={`${styles.key} ${styles.keyAccent}`}
+                      onClick={() => setName((v) => (v + k).slice(0, NAME_MAX))}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
@@ -850,6 +1036,28 @@ export function Totem({
             </div>
           </div>
         )}
+
+        {/* ★ THE QUESTION BEFORE THE RESET (s5-3). Not on `done`: there the order exists, its number is on the
+            glass, and the till going home by itself is the correct end of the transaction — asking a customer
+            who already paid whether they are still there would be the till doubting its own receipt. */}
+        {idleWarning && screen !== 'done' ? (
+          <div className={styles.overlay} style={{ zIndex: 70 }}>
+            <div className={styles.scrim} />
+            <div className={styles.idleDialog} role="alertdialog" aria-live="assertive">
+              <div className={styles.dialogTitle}>Você ainda está aí?</div>
+              <div className={styles.dialogNote}>
+                Em instantes o balcão volta para a tela inicial e o seu pedido é apagado. Toque para continuar.
+              </div>
+              <button
+                type="button"
+                className={styles.dialogPrimary}
+                onClick={() => rearmIdle.current()}
+              >
+                Estou aqui
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {toast ? (
           <div className={`${styles.toast} ${toast.warn ? styles.toastWarn : ''}`}>

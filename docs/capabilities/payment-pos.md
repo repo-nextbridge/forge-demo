@@ -66,9 +66,39 @@ Instalação é **por tenant**, por construção: `extension_installation` tem �
 pagamento não passa por colocação para ser oferecido, ele é resolvido direto da instalação.
 
 Consequência concreta nesta caixa: com o `payment-pos` instalado, ele aparece como provedor **também** no
-checkout da loja de cafés e do outlet. E — medido — como hoje **nenhum** provedor de pagamento está instalado
-no tenant, ele não vira "mais um chip numa lista": vira o **único** provedor de `pix` e `card` de todas as
-lojas, sem linha de escolha na tela, e o `card` dele **liquida na hora, de graça**.
+checkout da loja de cafés e do outlet.
+
+> ⚠️ **A frase que estava aqui envelheceu, e ela sustentava a decisão.** Este parágrafo dizia que "hoje
+> **nenhum** provedor de pagamento está instalado no tenant", logo o `payment-pos` viraria o **único** provedor
+> de `pix`/`card` de todas as lojas. Medido em 02/09 na caixa viva, `read.payment_methods` do tenant
+> `forgecafe` responde com **três** provedores instalados — `payment-reference` (pix `manual` + card),
+> `payment-mercadopago` e `payment-zero`. O `payment-pos` entra portanto como **mais um chip numa lista**, que
+> é o cenário menos grave dos dois. O que continua verdade é o resto: a instalação é por tenant, ele aparece
+> nas outras lojas, e o `card` dele liquida na hora e de graça.
+
+### 2b. Composto ≠ instalado — e é a instalação que falta
+
+⛔ **Medido em 02–03/09: o `payment-pos` está NA IMAGEM e NÃO está INSTALADO no tenant** — são duas perguntas
+diferentes e só a primeira é responsabilidade deste repositório.
+
+* **Composição (nossa, verde):** `docker exec <kernel> cat /app/composition.json` lista `payment-pos` entre os
+  20 apps de `demo-instance`. `composition.json` e `forge.lock` concordam. Nada a fazer.
+* **Instalação (dado da caixa, vermelho):** o admin mostra o app como *"Disponível / Instalar"*, e
+  `GET /v1/read/payment_methods?store=<balcao>` não traz `payment-pos` entre os `providers`.
+
+O efeito é o **segundo bloqueio do totem**, atrás do da cotação: com o carrinho pronto e a retirada escrita,
+`checkout.place_order` recusa
+
+    400 {"code":"validation_failed","message":"the chosen payment app is unavailable",
+         "details":{"reason":"payment_app_unavailable","method":"pix"}}
+
+⚠️ e note **onde** ele recusa: `cart.set_payment_method` com `payment_app: "payment-pos"` responde **200** num
+tenant que não tem o app. A disponibilidade só é conferida no fechamento — então "a tela deixou escolher" não é
+prova de que o app existe.
+
+Nenhum `seed/*.mjs` instala o `payment-pos`: `seed/coffee.mjs` instala `['subscriptions','reviews']` e
+`seed/totem.mjs` não instala nada. Quem instala apps nesta caixa é o recheio, e é lá — ou no `seed/totem.mjs`,
+que é a certidão de nascimento do balcão — que a instalação precisa nascer.
 
 Não há conserto dentro desta onda: um portão de oferta por loja seria mudança de kernel. Está aceito e
 carimbado como propriedade conhecida desta caixa, e carded como trabalho de produto. A mitigação que existe é

@@ -30,20 +30,70 @@ import { totemCommand, totemRead } from './port';
 import { resolveTotemStore } from './store';
 
 /**
- * ★ A DESTINATION IS NEEDED ONLY TO OPEN THE QUOTE, AND FOR THIS COUNTER ITS VALUE IS MEANINGLESS.
+ * ★ A DESTINATION IS NEEDED ONLY TO OPEN THE QUOTE, AND NOTHING THE COUNTER WRITES COMES OUT OF IT.
  *
  * `read.shipping_options` answers `{options: [], reason: 'no_destination'}` for a cart with no postal code,
- * so the pickup method — the only thing this counter offers — cannot be discovered without sending one. And
- * a pickup option does not depend on where the buyer lives. Measured with three deliberately distant CEPs
- * (Porto Alegre 90010-150, Rio Branco 69900-000, the counter's own 05416-011): one option each time, the
- * same "Retirar no balcão".
+ * so the pickup method — the only one this counter serves — cannot be DISCOVERED without sending one. It does
+ * not DEPEND on one. Re-measured against the live box on 2026-09-02, with a line in the cart so the emptiness
+ * could not be the cart's:
  *
- * So this is a KEY, not a claim, and nothing about it reaches the order — the address written to the cart is
- * the pickup point's. `assertPickupOnly` below is what keeps that true: the day this counter also offers
- * delivery, a seed postal code would start silently choosing somebody's shipping price, and the code refuses
- * rather than quote against a number nobody meant.
+ *     ?store=<balcao>&cart_id=…                       → {"options":[],"reason":"no_destination"}
+ *     …&postal_code=01310-100 | 90010-150 | 69900-000 → the same three options, all three times:
+ *         delivery  shm_…PBRQFX  Entrega Expressa   3490
+ *         delivery  shm_…PDM50MB Entrega Padrão      1990
+ *         pickup    shm_…T8PT8T  Retirar no balcão      0  · point "Balcão · Forge Café"
+ *
+ * São Paulo, Porto Alegre and Rio Branco: one pickup option, same method id, same zero. So this is a KEY,
+ * not a claim — and see `assertPickupChosen` below for what keeps it one.
  */
 const QUOTE_SEED_POSTAL_CODE = '01310-100';
+
+/**
+ * The option this counter serves, out of everything the store happens to quote. Exported because it is the
+ * half of the rule a future edit can break — see `assertPickupChosen`.
+ */
+export function counterOption(options: ShippingOption[]): ShippingOption | null {
+  return options.find((o) => o.kind === 'pickup') ?? null;
+}
+
+/**
+ * ⚠️⚠️ THIS WAS `assertPickupOnly`, AND IT REFUSED EVERY ORDER THIS COUNTER EVER TOOK (s5-1, 03/09).
+ *
+ * The old guard threw the moment the quote carried ANY delivery option — "the counter store quotes 2 delivery
+ * option(s)…" — and on the bench that was every single tap of "Pagar", by both methods, with and without a
+ * coupon. Its fear was the right fear: a placeholder postal code must never end up choosing somebody's
+ * freight. What it watched was the wrong thing, and two measurements say why.
+ *
+ *   1. THE STORE CANNOT STOP QUOTING DELIVERY, AND NOBODY CAN MAKE IT. A shipping method in this kernel has
+ *      no per-store scope: the admin lists Entrega Expressa / Entrega Padrão / Retirar no balcão with no store
+ *      column, and a method's own sheet has no store field (measured in the admin, S7-7, 02/09). Methods
+ *      belong to the TENANT — so the counter of a shop that ALSO sells online quotes delivery by
+ *      construction, and there is no setting anywhere that turns it off for one store. The old guard made
+ *      this till's ability to sell depend on a condition its operator has no way to satisfy.
+ *   2. NOTHING PRICED AGAINST THE SEED REACHES THE CART. The counter writes ONE method — the pickup one —
+ *      beside the pickup point's OWN address, and `cart.set_delivery` re-prices from the address it is given,
+ *      never from the quote that was answered. Measured end to end on the live box: a cart quoted with
+ *      01310-100 and written with the counter's own 05416-011 reads back
+ *      `{"id":"shipping","name":"Shipping","amount":0}`.
+ *
+ * So the invariant that protects the customer is not "this store offers nothing but pickup" — a fact about a
+ * tenant's logistics — but "this counter never WRITES anything but a pickup", a fact about this file. That is
+ * what is asserted here, at the last moment before the write.
+ *
+ * ★ AND IT IS NOT DEAD CODE. `counterOption` above is the tempting simplification: a counter "obviously" has
+ * one option, so `options[0]` reads like a cleanup. The day somebody makes it, the seed postal code starts
+ * choosing Entrega Expressa — and this line is what refuses instead of quietly charging R$ 34,90 of freight
+ * to an address nobody typed.
+ */
+export function assertPickupChosen(option: ShippingOption): void {
+  if (option.kind === 'pickup') return;
+  throw new Error(
+    `the counter was about to write "${option.method_name}" (${option.method_id}), which is a ` +
+      `${option.kind ?? 'delivery'} method, not a pickup. The quote it came from was opened with a ` +
+      'placeholder postal code, so its price was computed against a destination nobody typed. See ' +
+      'QUOTE_SEED_POSTAL_CODE and counterOption in counter-order.ts.',
+  );
+}
 
 /** The counter's pickup option and the point behind it, or null when the store offers neither. */
 async function pickupOption(
@@ -52,31 +102,13 @@ async function pickupOption(
   const store = resolveTotemStore();
   const quote = await totemRead().shippingOptions(store.id, cartId, QUOTE_SEED_POSTAL_CODE);
   if (!quote || quote.options.length === 0) return null;
-  assertPickupOnly(quote.options);
-  const option = quote.options.find((o) => o.kind === 'pickup');
+  // ★ DELIVERY OPTIONS IN THIS LIST ARE IGNORED, NOT REFUSED — see `assertPickupChosen`. They are the
+  // tenant's methods, they will be there on any box that also sells online, and none of them is written.
+  const option = counterOption(quote.options);
   const point = option?.pickup_locations?.[0];
   if (!option || !point) return null;
+  assertPickupChosen(option);
   return { option, point };
-}
-
-/**
- * ⚠️ A COUNTER THAT SUDDENLY OFFERS DELIVERY IS A DIFFERENT SHOP, AND THIS IS WHERE IT SAYS SO.
- *
- * The seed postal code above is safe ONLY because every option this store quotes is a pickup. If a delivery
- * method ever appears, the seed stops being irrelevant and starts being a fake destination that a price was
- * computed against — so the screen stops instead of quietly charging somebody freight to an address nobody
- * typed. Exported for the test.
- */
-export function assertPickupOnly(options: ShippingOption[]): void {
-  const delivery = options.filter((o) => o.kind !== 'pickup');
-  if (delivery.length > 0)
-    throw new Error(
-      `the counter store quotes ${delivery.length} delivery option(s) (${delivery
-        .map((o) => o.method_name)
-        .join(', ')}). The totem seeds the quote with a placeholder postal code because a pickup price does ` +
-        'not depend on a destination — that stops being true the moment delivery is on the list. See ' +
-        'QUOTE_SEED_POSTAL_CODE in counter-order.ts.',
-    );
 }
 
 /** The pickup point's own address, in the shape `cart.set_delivery` takes. `uf` → `region`; see the header. */

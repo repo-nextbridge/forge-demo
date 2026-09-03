@@ -15,6 +15,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { endSession, ensureCartId, readCheckout } from '@/lib/cart';
+import { couponRefusal } from '@/lib/coupon';
 import { prepareForPayment } from '@/lib/counter-order';
 import { readMenu } from '@/lib/menu';
 import { PortRateLimited, totemCommand, totemRead } from '@/lib/port';
@@ -40,6 +41,12 @@ export type BagResult =
   | { ok: true; bag: Bag }
   /** The port refused for going too fast. `retryAfterSeconds` is the port's own number, never a guess. */
   | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number; bag: Bag }
+  /**
+   * ★★ THE CUSTOMER'S OWN MISTAKE, TOLD APART FROM OURS (s5-2, 03/09). A coupon that does not exist is not a
+   * broken till, and the screen must not answer it with "chame um atendente" — the person who dropped a letter
+   * needs to fix the letter. `refused` stays the SYSTEM voice; this one is the shopper's.
+   */
+  | { ok: false; kind: 'coupon'; message: string; bag: Bag }
   | { ok: false; kind: 'refused'; message: string; bag: Bag };
 
 /**
@@ -59,6 +66,17 @@ async function withBag(
   write: () => Promise<unknown>,
   /** The action's name and the ids that locate the refusal. IDS ONLY — never a buyer's details. */
   where: { action: string } & Record<string, string | undefined>,
+  /**
+   * ★ WHERE A CALLER GETS TO READ THE REFUSAL BEFORE IT IS FLATTENED (s5-2, 03/09).
+   *
+   * ⚠️ AND IT HAS TO BE HERE RATHER THAN AT THE CALL SITE, which is the trap this parameter exists to close:
+   * the `refused` branch below keeps `error.message` and throws the rest of the error away, and the kernel's
+   * reason lives in `details.reason`, not in the message. The kit's `CommandFailed` message reads
+   * `command cart.apply_coupon failed: validation_failed (this coupon does not exist)` — the word
+   * `coupon_not_found` is nowhere in it. A caller handed the flattened result can only guess, which is how a
+   * customer's typo became "chame um atendente" in the first place.
+   */
+  refine?: (error: unknown) => { kind: 'coupon'; message: string } | null,
 ): Promise<BagResult> {
   const { action, ...context } = where;
   try {
@@ -73,6 +91,8 @@ async function withBag(
         retryAfterSeconds: error.retryAfterSeconds,
         bag: await currentBag(),
       };
+    const refined = refine?.(error) ?? null;
+    if (refined) return { ok: false, ...refined, bag: await currentBag() };
     return {
       ok: false,
       kind: 'refused',
@@ -136,11 +156,11 @@ export async function applyCoupon(code: string): Promise<BagResult> {
   if (!trimmed) return { ok: true, bag: await currentBag() };
   // ⚠️ The code itself is NOT logged: a coupon a customer typed is the one string on this path that is
   // theirs, and a till's log is read over somebody's shoulder.
-  return withBag(() => totemCommand().applyCoupon(store.id, cartId, trimmed), {
-    action: 'applyCoupon',
-    store: store.id,
-    cart: cartId,
-  });
+  return withBag(
+    () => totemCommand().applyCoupon(store.id, cartId, trimmed),
+    { action: 'applyCoupon', store: store.id, cart: cartId },
+    couponRefusal,
+  );
 }
 
 export async function removeCoupon(code: string): Promise<BagResult> {
