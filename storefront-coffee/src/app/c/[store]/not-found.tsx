@@ -6,7 +6,14 @@
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';
 import { NotFoundWayOut } from '@/components/NotFoundWayOut';
+import { NotFoundTitle } from '@/components/NotFoundTitle';
 
 export default function CachedStoreNotFound() {
-  return <NotFoundContent base={HOST_BASE} wayOut={<NotFoundWayOut base={HOST_BASE} />} />;
+  return (
+    <>
+      {/* p2-4 — the tab, which this boundary's `metadata` cannot carry (see NotFoundTitle.tsx). */}
+      <NotFoundTitle />
+      <NotFoundContent base={HOST_BASE} wayOut={<NotFoundWayOut base={HOST_BASE} />} />
+    </>
+  );
 }

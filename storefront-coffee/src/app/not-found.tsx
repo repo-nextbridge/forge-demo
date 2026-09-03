@@ -6,9 +6,17 @@
 
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';
+import { NotFoundTitle } from '@/components/NotFoundTitle';
 
 export default function NotFound() {
   // The store-LESS 404 (unknown host): there is no store, so there is no store context — the links are the
   // platform's own.
-  return <NotFoundContent base={HOST_BASE} brand />;
+  return (
+    <>
+      {/* p2-4 — the tab. An element, not a `metadata` export: see NotFoundTitle.tsx for the two
+          User-Agents that show the resolved title being streamed into a shell that drops it. */}
+      <NotFoundTitle />
+      <NotFoundContent base={HOST_BASE} brand />
+    </>
+  );
 }

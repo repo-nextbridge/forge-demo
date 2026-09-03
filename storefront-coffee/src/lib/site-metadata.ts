@@ -19,3 +19,9 @@ export const rootMetadata: Metadata = {
   title: NEUTRAL_STORE_TITLE,
   description: 'Loja online.',
 };
+
+/** ⛔ p2-4 — what the 404's browser tab says. It is COPY, so it lives here beside the other two, and it is
+ * rendered as an element rather than exported as `metadata`: `not-found.tsx` takes no metadata export, and
+ * the title the root layout DOES resolve for that render is streamed to a shell that never applies it. The
+ * measurement, and the two User-Agents that prove it, are in `components/NotFoundTitle.tsx`. */
+export const NOT_FOUND_TITLE = 'Página não encontrada';
