@@ -408,6 +408,59 @@ test('★ two uncapped promises: the LOWEST floor carries the bar, and a tie is 
   );
 });
 
+// ── ★★ HOW MANY BARS THIS SHOP DRAWS, and it is TWO ─────────────────────────────────────────────────────
+//
+// The owner saw two bars at once and asked whether that was the shop or a glitch (03/09). It is the shop,
+// and this pins it: the count is not a number anybody chose, it falls out of the marking. `seed/vitrine.mjs`
+// carries the chain in prose; this grades the half that lives in this repository — WHICH promotions come out
+// of the pass carrying a bar.
+//
+// The rows below are this shop's real ones, copied from the bench's own tables 2026-09-03 (tenant `forgeco`,
+// store sto_01M1JS1Y5JYCJN7PZEWJ27NP81). The pass sees only what the read hands it — `freightPromotions`
+// narrows to `benefit.kind === 'free_shipping'` — so the gift is out of its reach BY CONSTRUCTION, which is
+// the reason the second bar survives a correction aimed at the first.
+const SHOP_GIFT = {
+  name: 'PROMO-05-GIFT-SHINE-SPONGE',
+  id: 'promo_gift',
+  state: 'active',
+  store_id: 'sto_forge',
+  show_progress: true,
+  benefit: { kind: 'gift', items: [{ sku_id: 'sku_1', qty: 1 }] },
+  conditions: [{ kind: 'min_subtotal', amount: 40_000, base: 'before' }],
+};
+
+test('★★ this shop comes out of the pass with exactly TWO bars — one freight promise and one gift', () => {
+  // The state the dataset's pricing bench leaves behind: the CAPPED freight marked, the uncapped one not.
+  const shop = [withBar(CAPPED), withoutBar(UNCAPPED), SHOP_GIFT];
+  const freights = shop.filter((p) => p.benefit.kind === 'free_shipping'); // what `freightPromotions` reads
+  const { raise, lower } = planProgressBars(freights, 'sto_forge');
+
+  const lowered = new Set(lower.map((p) => p.id));
+  const raised = new Set(raise.map((p) => p.id));
+  const marked = shop
+    .filter((p) => (raised.has(p.id) || p.show_progress === true) && !lowered.has(p.id))
+    .map((p) => p.name);
+
+  assert.deepEqual(
+    marked.sort(),
+    ['DEMO-HIST-01-FORGE', 'PROMO-05-GIFT-SHINE-SPONGE'],
+    'ONE freight bar (the promise the shop keeps) and ONE gift bar — a third would mean a second freight promise contradicting the first',
+  );
+});
+
+test('★ and running it again changes nothing — the second bar is not eroded by repetition', () => {
+  // The pass re-asserts on every run (see `progressBars`), so the shop it produces must be its own fixed
+  // point. A plan that lowered "every bar but one" would look identical on run 1 and delete the gift on run 2.
+  const settled = [withoutBar(CAPPED), withBar(UNCAPPED), SHOP_GIFT];
+  const { raise, lower } = planProgressBars(
+    settled.filter((p) => p.benefit.kind === 'free_shipping'),
+    'sto_forge',
+  );
+  assert.deepEqual(raise, []);
+  assert.deepEqual(lower, []);
+  assert.equal(settled.filter((p) => p.show_progress === true).length, 2);
+});
+
 test('★★ the declared sentence carries a PLACEHOLDER and no number — a typed floor is the defect', () => {
   const declared = vitrine.announcement;
   assert.ok(declared, 'seed/vitrine.json must declare the band');
