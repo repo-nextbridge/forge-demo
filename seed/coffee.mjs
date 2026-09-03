@@ -44,10 +44,19 @@ const catalog = JSON.parse(readFileSync(join(SEED, 'catalog.json'), 'utf8'));
 /** The store this module touches, and the only one. Its handle is the catalogue's own. */
 const STORE_HANDLE = 'cafe';
 
-/** The apps the coffee store's two screens need INSTALLED. Both are on this box's composition list, which
- *  is what puts them in the image; installing is a separate, per-tenant gesture — the operator's two clicks
- *  in the admin, spelled as a command so a clone comes up the same way. */
-const APPS = ['subscriptions', 'reviews'];
+/** The apps this TENANT needs INSTALLED. All are on this box's composition list, which is what puts them in
+ *  the image; installing is a separate, per-tenant gesture — the operator's clicks in the admin, spelled as
+ *  a command so a clone comes up the same way.
+ *
+ * ⚠️ `payment-pos` IS HERE AND IT IS NOT FOR THIS STORE — it is the counter's, and the counter is the other
+ * store of this same tenant. It sits on this list because INSTALLING IS PER TENANT, not per store, and this
+ * is the only file that installs anything for `forgecafe`. Measured on the bench of 02/09: the app was
+ * COMPOSED into the image (it shows up in the kernel's own `composition.json`) and never installed, so
+ * `read.payment_methods` for the counter answered reference/mercadopago/zero and the totem could not
+ * charge — `checkout.place_order` refused with `payment_app_unavailable` AFTER `cart.set_payment_method`
+ * had answered 200. Composed is not installed, and the admin's "Available / Install" was telling the
+ * truth nobody read. */
+const APPS = ['subscriptions', 'reviews', 'payment-pos'];
 
 /** ★ THE CURATION. Five in, one out, and the one that is out is out ON PURPOSE (`seed/catalog.json` calls it
  *  a rotating lot). Written as the handles that ARE subscribable rather than as the one that is not: a

@@ -101,4 +101,27 @@
    *
    * The faces themselves are declared in `fonts.css` beside this file and served from `fonts/`. */
   --font-sans: "Figtree", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  /* --- The dark chrome band (L23) --------------------------------------------------------------------
+   * The artboard (`Home Outlet.dc.html`) paints the header AND the footer `#17181a`, with light type on
+   * top. ⚠️ IT IS A BAND, NOT A DARK MODE, and the difference is load-bearing: the mega-menu panel that
+   * hangs off the nav stays WHITE (`#ffffff` ground, `#2b2d31` type) in the artboard. Darkening it would
+   * be building a dark mode, which is a different product and not what this design asks for — the kit's
+   * `chrome-band.guard` refuses a theme that lets the family reach inside the panel.
+   *
+   * ⚠️ AND THE PAIR IS THE WHOLE POINT. A ground without its ink is half a fix that renders unreadable and
+   * still passes every test, so all ten roles are written here even where two share a value: the roles are
+   * what a future tweak moves, and collapsing them now would hide which one to move.
+   *
+   * Every value below is transcribed from the artboard, not chosen. */
+  --color-chrome-canvas: #17181a;         /* the band, header and footer alike */
+  --color-chrome-canvas-soft: #232529;    /* the sunken ground: the search field */
+  --color-chrome-surface-sunken: #2b2d31; /* the hover ground: the menu button */
+  --color-chrome-ink: #e4e6ea;            /* the mark, the cart, the field's own type */
+  --color-chrome-ink-soft: #e4e6ea;       /* the nav labels */
+  --color-chrome-muted: #e4e6ea;          /* the footer's links and its badge strip */
+  --color-chrome-subtle: #a7abb2;         /* the footer's paragraph */
+  --color-chrome-faint: #8b9098;          /* LOJA / AJUDA labels, the search placeholder */
+  --color-chrome-hairline: #35373c;       /* the field's border, the social marks' */
+  --color-chrome-border-strong: #6b6e74;  /* a social mark's border on hover */
 }
