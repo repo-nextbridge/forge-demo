@@ -84,6 +84,7 @@ export async function seedVitrine(port) {
   await configureApps(port, store, declared);
   await seedPages(port, store, declared);
   await seedPromotions(port, store, dir);
+  await announce(port, store);
   await revalidate(port, store);
 
   log('vitrine — done. Re-running this is a no-op.');
@@ -542,6 +543,161 @@ export function selectPromotions(declared, allow, fail) {
   }
   const wanted = new Set(allow);
   return declared.filter((p) => wanted.has(p.name));
+}
+
+// ── 6b. the announcement band ──────────────────────────────────────────────────────────────────────────
+/**
+ * ★★ THE FIRST LINE OF THE SHOP, AND THE NUMBER IN IT IS READ OFF THE PROMOTION.
+ *
+ * His instruction was one clause: *"no storefront sapato coloca uma frase: Frete grátis para compras acima
+ * de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE FRETE GRÁTIS."* The whole slice is in the second half. A band is
+ * a promise on the first line of every page; if the kernel does not keep it, it is advertising that passes
+ * every green test in the repository, because nothing anywhere compares a sentence to a price.
+ *
+ * ⇒ SO NOTHING HERE IS TYPED AND NOTHING HERE IS POLICED. `seed/vitrine.json` holds the SENTENCE with a
+ * `{floor}` in it; this reads the floor off the promotion that actually zeroes the freight; and a store with
+ * no such promotion GETS NO BAND. That is the honest failure mode: silence, rather than a promise nobody
+ * keeps.
+ *
+ * ⛔ THE GUARD THAT WOULD CHECK THE SENTENCE AGAINST THE PROMOTIONS WAS PROPOSED AND REFUSED (02/09): *"esse
+ * guard não faz muito sentido, essa barra não é um campo livre no app?"* — it is. The band is a free-text
+ * field of the `banners` app, written by a merchant in Compose, and a merchant may write what they like in
+ * their own shop. Validating commercial copy in the kernel is the customisation-in-the-core mistake wearing
+ * a safety vest. Deriving is the answer; watching is not.
+ *
+ * ⚠️ IT RUNS IN THE **WINDOW** PHASE, AND THAT IS LOAD-BEARING: the promotion it reads is created by the
+ * one-shot (`dist/seed-history.js`) that runs BETWEEN the two phases. In the curated phase this store has no
+ * uncapped free shipping yet and the band would correctly, and uselessly, not be placed.
+ */
+async function announce(port, store) {
+  const { command, read, rows, log } = port;
+  const declared = data.announcement;
+  if (!declared) {
+    log('vitrine — seed/vitrine.json declares no announcement band; the header stays as it is');
+    return;
+  }
+
+  const floor = await freeShippingFloorOfStore({ read, rows }, store);
+  if (floor === null) {
+    log(
+      'vitrine — NO BAND PLACED: this store carries no active promotion that actually zeroes the freight\n' +
+        '        (uncapped `free_shipping`, no method restriction, with a `min_subtotal`). A shop that\n' +
+        '        cannot keep the promise does not make it.',
+    );
+    return;
+  }
+
+  const text = declared.free_shipping_text.replace('{floor}', brl(floor));
+  const existing = rows(await read('extension_composition', { store: store.id })).find(
+    (row) =>
+      row.extension_id === 'banners' &&
+      row.component === 'announcement' &&
+      row.target === declared.slot,
+  );
+  if (!existing) {
+    await command('composition.place', {
+      store: store.id,
+      extension_id: 'banners',
+      component: 'announcement',
+      slot: declared.slot,
+      config: { text },
+    });
+    log(`vitrine — ${declared.slot}: placed the announcement band — "${text}"`);
+    return;
+  }
+  if (existing.config?.text === text) {
+    log(`vitrine — ${declared.slot}: the announcement band already says "${text}"`);
+    return;
+  }
+  await command('composition.update_config', {
+    store: store.id,
+    placement_id: existing.placement_id,
+    config: { text },
+  });
+  log(`vitrine — ${declared.slot}: the announcement band now says "${text}"`);
+}
+
+/**
+ * ★ THE FLOOR ABOVE WHICH THE FREIGHT IS REALLY ZERO, in cents, or null.
+ *
+ * ⚠️ THE SELECTION IS ON THE BENEFIT AND NEVER ON A NAME, and this store is exactly why. It carries two
+ * active free-shipping promotions written by two authors: `PROMO-06-FREE-SHIPPING-CAPPED` (floor R$ 300,00,
+ * **covers at most R$ 10,00**) and `DEMO-HIST-01-FORGE` (floor R$ 299,00, **no cap**). Only the second is
+ * free shipping in the sense a shopper means it; a sentence written off the first would be false for any
+ * freight over ten reais. See seed/vitrine.json's `_why_two_freights`.
+ *
+ * Three conditions, and each one is a way the promise can be false:
+ *   · `max_covered_amount` set  → the shopper pays the difference;
+ *   · `shipping_method_ids` non-empty → free on SOME carriers, which the sentence does not say;
+ *   · no `min_subtotal` → there is no "acima de" to print.
+ * The LOWEST qualifying floor wins: it is the cheapest threshold the shop actually honours.
+ *
+ * A tenant-wide promotion (`store_id: null`) counts, because it reaches this store too.
+ */
+export function freeShippingFloor(promotions, storeId) {
+  const floors = (promotions ?? [])
+    .filter(
+      (p) =>
+        p?.state === 'active' &&
+        p?.benefit?.kind === 'free_shipping' &&
+        (p.benefit.max_covered_amount ?? null) === null &&
+        (p.benefit.shipping_method_ids ?? []).length === 0 &&
+        (p.store_id === storeId || p.store_id === null || p.store_id === undefined),
+    )
+    .map((p) => (p.conditions ?? []).find((c) => c?.kind === 'min_subtotal')?.amount)
+    .filter((amount) => Number.isInteger(amount) && amount > 0);
+  return floors.length === 0 ? null : Math.min(...floors);
+}
+
+/** Money is CENTS everywhere in this kernel; a shop window says reais. Centavos are printed only when there
+ *  are any — "R$ 299" is what a person writes, "R$ 299,00" is what a spreadsheet writes. */
+export function brl(cents) {
+  const reais = Math.trunc(cents / 100);
+  const rest = cents % 100;
+  const thousands = String(reais).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return rest === 0 ? `R$ ${thousands}` : `R$ ${thousands},${String(rest).padStart(2, '0')}`;
+}
+
+/**
+ * The tenant's promotions with their CONDITIONS attached.
+ *
+ * ⚠️ TWO READS, BECAUSE THE LIST DOES NOT CARRY THE CONDITIONS. `read.internal.promotions_admin` answers the
+ * benefit, the target and the derived state — everything the operator's list column shows — and NOT
+ * `conditions`, which is where `min_subtotal` lives. `read.internal.promotion_admin` (singular) spreads the
+ * whole row. So the list narrows the candidates by benefit and the detail is asked only of those, which on
+ * this box is one or two rows rather than a fan-out.
+ *
+ * ⚠️ AND IT PAGES BY `offset`, NOT BY `page`: `promotions_admin` takes `limit`/`offset` and IGNORES a `page`
+ * parameter, so the shared `readAll` would ask for the same first page forever. Harmless at eight
+ * promotions, silently duplicating at a hundred and one.
+ */
+async function promotionsWithConditions({ read, rows }, storeId) {
+  const list = [];
+  for (let offset = 0; offset <= 10_000; offset += 100) {
+    const payload = await read('promotions_admin', { limit: 100, offset });
+    const batch = rows(payload);
+    list.push(...batch);
+    if (batch.length < 100) break;
+    const total = Number(payload?.total);
+    if (Number.isFinite(total) && list.length >= total) break;
+  }
+  const candidates = list.filter(
+    (p) =>
+      p?.state === 'active' &&
+      p?.benefit?.kind === 'free_shipping' &&
+      (p.benefit.max_covered_amount ?? null) === null &&
+      (p.benefit.shipping_method_ids ?? []).length === 0,
+  );
+  const detailed = [];
+  for (const item of candidates) {
+    const detail = await read('promotion_admin', { promotion_id: item.id });
+    if (detail) detailed.push({ ...item, ...detail });
+  }
+  return detailed;
+}
+
+async function freeShippingFloorOfStore(port, store) {
+  return freeShippingFloor(await promotionsWithConditions(port, store.id), store.id);
 }
 
 // ── 7. the cache ───────────────────────────────────────────────────────────────────────────────────────

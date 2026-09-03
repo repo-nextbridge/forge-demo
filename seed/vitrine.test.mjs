@@ -17,9 +17,13 @@
 //     that rots in silence is how a shop quietly loses a promotion.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { resolveMediaFile } from './forge.mjs';
-import { planPlacements, sameConfig, selectPromotions } from './vitrine.mjs';
+import { brl, freeShippingFloor, planPlacements, sameConfig, selectPromotions } from './vitrine.mjs';
+
+/** The instance's own declarations, read from the file the seed reads — never retyped here. */
+const vitrine = JSON.parse(readFileSync(new URL('./vitrine.json', import.meta.url), 'utf8'));
 
 const throwingFail = (message) => {
   throw new Error(message);
@@ -212,4 +216,93 @@ test('an allow-list name the dataset no longer carries FAILS, naming it — a li
     () => selectPromotions(bench, ['PROMO-04-SOCKS-BUY3PAY2', 'PROMO-99-GONE'], throwingFail),
     /PROMO-99-GONE/,
   );
+});
+
+// ── ★★ L24 · THE ANNOUNCEMENT BAND, AND THE NUMBER IN IT ────────────────────────────────────────────────
+//
+// His instruction was one clause: "Frete grátis para compras acima de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE
+// FRETE GRÁTIS." The band is a promise on the first line of every page, and nothing in this repository
+// compares a sentence to a price — so a typed number is advertising that stays green forever.
+//
+// ⚠️ THE COINCIDENCE THESE BREAK is that this store has TWO active free-shipping promotions with different
+// rules (floors R$ 300 and R$ 299), and the one a person would notice first is the one that is NOT free
+// shipping in the sense a shopper means it.
+
+const CAPPED = {
+  name: 'PROMO-06-FREE-SHIPPING-CAPPED',
+  state: 'active',
+  store_id: 'sto_forge',
+  benefit: { kind: 'free_shipping', max_covered_amount: 1000, shipping_method_ids: [] },
+  conditions: [{ kind: 'min_subtotal', amount: 30_000, base: 'before' }],
+};
+const UNCAPPED = {
+  name: 'DEMO-HIST-01-FORGE',
+  state: 'active',
+  store_id: 'sto_forge',
+  benefit: { kind: 'free_shipping', max_covered_amount: null, shipping_method_ids: [] },
+  conditions: [{ kind: 'min_subtotal', amount: 29_900, base: 'after' }],
+};
+
+test('★★ the floor is the UNCAPPED promotion’s — R$ 299, never the capped one’s R$ 300', () => {
+  // The capped one covers at most R$ 10,00 of the freight: above that the shopper pays the difference, and
+  // "frete grátis" would be false for any freight over ten reais.
+  assert.equal(freeShippingFloor([CAPPED, UNCAPPED], 'sto_forge'), 29_900);
+  assert.equal(freeShippingFloor([UNCAPPED, CAPPED], 'sto_forge'), 29_900, 'the ORDER of the read decided it');
+});
+
+test('★ a store with only a CAPPED free shipping gets NO band — silence beats a promise nobody keeps', () => {
+  assert.equal(freeShippingFloor([CAPPED], 'sto_forge'), null);
+});
+
+test('★ free shipping restricted to some carriers is not "frete grátis", and the sentence cannot say so', () => {
+  const someCarriers = {
+    ...UNCAPPED,
+    benefit: { kind: 'free_shipping', max_covered_amount: null, shipping_method_ids: ['shm_1'] },
+  };
+  assert.equal(freeShippingFloor([someCarriers], 'sto_forge'), null);
+});
+
+test('a promotion with no min_subtotal has no "acima de" to print', () => {
+  assert.equal(freeShippingFloor([{ ...UNCAPPED, conditions: [] }], 'sto_forge'), null);
+});
+
+test('a paused or draft promotion promises nothing', () => {
+  for (const state of ['draft', 'paused', 'expired', 'scheduled'])
+    assert.equal(freeShippingFloor([{ ...UNCAPPED, state }], 'sto_forge'), null, state);
+});
+
+test('another store’s promotion is not this store’s promise; a TENANT-WIDE one is', () => {
+  assert.equal(freeShippingFloor([{ ...UNCAPPED, store_id: 'sto_outlet' }], 'sto_forge'), null);
+  assert.equal(freeShippingFloor([{ ...UNCAPPED, store_id: null }], 'sto_forge'), 29_900);
+});
+
+test('the lowest qualifying floor wins — it is the cheapest threshold the shop actually honours', () => {
+  const higher = { ...UNCAPPED, conditions: [{ kind: 'min_subtotal', amount: 50_000 }] };
+  assert.equal(freeShippingFloor([higher, UNCAPPED], 'sto_forge'), 29_900);
+});
+
+test('★★ the declared sentence carries a PLACEHOLDER and no number — a typed floor is the defect', () => {
+  const declared = vitrine.announcement;
+  assert.ok(declared, 'seed/vitrine.json must declare the band');
+  assert.match(declared.free_shipping_text, /\{floor\}/, 'the number comes from the promotion, not from here');
+  assert.doesNotMatch(
+    declared.free_shipping_text,
+    /R\$\s*\d/,
+    'a figure typed beside the sentence is a promise with an expiry date nobody wrote down',
+  );
+  assert.equal(declared.slot, 'storefront:header.announcement');
+});
+
+test('the rendered sentence is the declared one with the floor in it', () => {
+  assert.equal(
+    vitrine.announcement.free_shipping_text.replace('{floor}', brl(29_900)),
+    'Frete grátis acima de R$ 299',
+  );
+});
+
+test('money is CENTS, and a shop window prints reais the way a person writes them', () => {
+  assert.equal(brl(29_900), 'R$ 299');
+  assert.equal(brl(30_050), 'R$ 300,50');
+  assert.equal(brl(129_900), 'R$ 1.299');
+  assert.equal(brl(5), 'R$ 0,05');
 });

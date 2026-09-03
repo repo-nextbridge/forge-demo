@@ -303,7 +303,26 @@
   ],
   "announcement": {
     "slot": "storefront:header.announcement",
-    "text": "Outlet oficial · Até 70% OFF · Frete grátis acima de R$ 600"
+    "text": "Aproveita: até 70% OFF",
+    "_why": [
+      "★ HALF OF THIS SENTENCE WAS A LIE, MEASURED 02/09, AND IT WAS THE HALF WITH A NUMBER IN IT.",
+      "",
+      "It used to read «Outlet oficial · Até 70% OFF · Frete grátis acima de R$ 600», and the two halves were",
+      "not equally true:",
+      "  · «Até 70% OFF» ✅ — the catalogue's real discount range is 33–70%, ceiling exactly 70. The test below",
+      "    reads that ceiling OFF THIS SENTENCE and holds every price under it.",
+      "  · «Frete grátis acima de R$ 600» ⛔ — the outlet has ONE active promotion (10% on the first purchase)",
+      "    and NONE of freight. There is no R$ 600 and there never was; the shop was advertising something the",
+      "    kernel could not do, on the first line of every page.",
+      "",
+      "⇒ The freight promise is GONE rather than backed by a new promotion: he asked for «uma de desconto» in",
+      "this shop, not for a second freight rule. The words are his: «Aproveita: até 70% OFF».",
+      "",
+      "★ AND THE COUPLING IS DELIBERATE — DO NOT BREAK IT. `seed/outlet.test.mjs` derives the discount ceiling",
+      "from the `%` in this very sentence, so LOWERING the promise tightens the guard by itself and no price",
+      "can drift above what the page claims. It is the opposite of a hand-written list: the sentence and the",
+      "catalogue cannot disagree without somebody going red."
+    ]
   },
   "_home_why": [
     "★★ 02/09 — THE FOUR BLOCKS OF THE HOME NOW LIVE IN ONE SLOT, AND THAT IS THE TEMPLATE'S DOING.",

@@ -249,6 +249,106 @@ export function storesWithReviews(stores) {
   return stores.filter((s) => reviewDoorFor(s.handle) !== 'none');
 }
 
+/**
+ * ⭐ THE COUPON THE SHOP ADVERTISES — one per store, declared, and the shop window is what asks for it.
+ *
+ * ⛔ s3-1, SEVERITY HIGH, MEASURED ON THE BENCH: the coffee shop's announcement bar, on EVERY page, says
+ * *"10% OFF NA PRIMEIRA COMPRA COM O CUPOM PRIMEIRAXICARA"*, and the tenant's eight promotions are Combo da
+ * manhã, PRIMEIROCAFE, Assinante 10% OFF and five DEMO-HIST-*. **The advertised coupon does not exist.** A
+ * shopper who types it is told "Cupom não encontrado" by the shop that just told them to type it.
+ *
+ * ★ AND THE ONE THAT DOES EXIST CANNOT STAND IN FOR IT (s7-5, read off the admin's own screen): PRIMEIROCAFE
+ * is scoped to the COUNTER — *"Forge Café · Balcão — Só nessa loja"* — deliberately, by the totem slice,
+ * which uses it to PROVE that a promotion can be scoped to one store. Re-pointing it at the e-commerce would
+ * delete that proof to fix a sentence, and it would take the counter's own coupon away.
+ *
+ * ⇒ SO THE DATA IS MADE TRUE RATHER THAN THE SENTENCE MADE SMALLER, and the reason is ownership, not taste:
+ * the sentence lives in `storefront-coffee/src/components/coffee/CoffeeChrome.tsx` as a constant of the
+ * FORK — the shop's own chrome, which this repository's coffee slice owns and this one does not. What a seed
+ * can honestly do about a promise a shop makes is make the shop able to keep it.
+ *
+ * ⚠️ `stackable: true`, like the counter's coupon and like the subscriber discount beside it. Exclusive, it
+ * would tie with "Assinante 10% OFF" (both 10%) and one of the two would silently win — a subscriber typing
+ * the code would see the total not move, which is EXACTLY the symptom s3-2 reports for the other coupon.
+ * Stacking is also what the sentence promises: the first purchase is a discount ON TOP of what you already
+ * get, not instead of it.
+ *
+ * ⚠️ AND THE `first_purchase` CONDITION IS THE SENTENCE'S OWN WORDS. A coupon that says "na primeira compra"
+ * and fires on the fifth is the same class of lie in the other direction, and the kernel spells it exactly
+ * (`conditionSchema`, `kind: 'first_purchase'`) so nothing here has to approximate it.
+ */
+export const STORE_COUPONS = {
+  cafe: {
+    name: 'Primeira xícara 10%',
+    label: 'PRIMEIRAXICARA · 10% OFF na primeira compra',
+    code: 'PRIMEIRAXICARA',
+    percent_bp: 1_000,
+  },
+};
+
+/** The coupon a store advertises, or null. Absent is an ordinary answer here — most shops advertise none —
+ *  which is why this does NOT throw the way `reviewDoorFor` does. */
+export function couponFor(handle) {
+  return STORE_COUPONS[handle] ?? null;
+}
+
+/**
+ * ⭐ THE PROMOTIONS THE PLATFORM'S OWN DEMO DATA NAMES AFTER ITSELF (s7-11).
+ *
+ * The dated past of this box is written by the `demo-data` app INSIDE the kernel, and it names its
+ * promotions `DEMO-HIST-01-FORGE`, `DEMO-HIST-D2`… — build vocabulary, correct where it lives (that name is
+ * the executor's own idempotence key: `select id from promotion where name = $1`). The admin's list shows
+ * the NAME as the title of the row, so a demo's promotion screen reads like a database dump.
+ *
+ * ★ AND THE PLAUSIBLE NAME IS NOT INVENTED HERE — IT IS ALREADY IN THE ROW. The same curation writes a
+ * `label`: *"Frete grátis acima de R$ 299"*, *"10% na primeira compra"*, *"Cupom de aniversário (rascunho)"*
+ * — the shopper's own words for what the promotion does, kept beside the internal name precisely because
+ * they are different jobs. So this DERIVES, and types nothing: a promotion renamed here says what its
+ * curation already said it does, and it stays right the day the curation changes.
+ *
+ * ⚠️ THIS IS DEMO CONTENT AND NOT A PRODUCT FIX. The kernel is pinned by image and its demo-data app is the
+ * PRODUCT's; what this instance does is rename ITS OWN rows, through the port, exactly as an operator would.
+ * Nothing here reaches upstream, which is the whole point — the box is a fictional shop, and what its
+ * promotion list is called is the shop's business.
+ *
+ * ⚠️ AND IT CONVERGES, WHICH IS NOT OBVIOUS: renaming breaks the executor's `where name = $1` skip, so a
+ * second one-shot would recreate `DEMO-HIST-01-FORGE` beside the renamed row. It does not, because that
+ * executor gives up long before it gets there — `seed-history` counts orders older than half its window and
+ * SKIPS the entire run when it finds any (apps/api/src/seed-history.ts), so on a box that already has a past
+ * no promotion is ever created a second time. On a wiped box everything is rebuilt and renamed again.
+ *
+ * ⛔ A COLLISION IS REFUSED, NEVER RESOLVED. Three other seeds in this repository use the promotion NAME as
+ * their idempotence key (`seed/vitrine.mjs`, `seed/totem.mjs`, `seed/coffee.mjs`), so renaming a row onto a
+ * name that already exists would make one of them skip a promotion it never created. The rename is dropped
+ * and named instead.
+ */
+export const INTERNAL_PROMOTION_NAME = /^DEMO-HIST[-_]/;
+
+export function planPromotionRenames(items) {
+  const rows = Array.isArray(items) ? items : [];
+  const internal = rows.filter((p) => INTERNAL_PROMOTION_NAME.test(String(p?.name ?? '')));
+  const takenByOthers = new Set(
+    rows.filter((p) => !internal.includes(p)).map((p) => String(p?.name ?? '')),
+  );
+  const rename = [];
+  const blocked = [];
+  for (const promotion of internal) {
+    const to = String(promotion.label ?? '').trim();
+    // No label, or a label that IS the internal name: there is nothing to derive from, and inventing one
+    // here is the typing this whole function exists to avoid.
+    if (!to || to === promotion.name) {
+      blocked.push({ name: promotion.name, why: 'it carries no shopper-facing label to derive a name from' });
+      continue;
+    }
+    if (takenByOthers.has(to) || rename.some((r) => r.to === to)) {
+      blocked.push({ name: promotion.name, why: `"${to}" is already the name of another promotion` });
+      continue;
+    }
+    rename.push({ id: promotion.id, from: promotion.name, to });
+  }
+  return { rename, blocked };
+}
+
 // ── THE DRIVER ───────────────────────────────────────────────────────────────────────────────────────────
 //
 // Everything above is a pure decision; this is the part that talks. It receives the port `bin/seed.mjs`
@@ -339,6 +439,8 @@ export async function seedCommerce({ expect, command, read, log, fail, post }) {
     );
 
   try {
+    await nameInternalPromotions({ command, read, log });
+    await seedAdvertisedCoupons({ stores, command, read, log });
     await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
     await awaitQueueDrained({ read, log });
@@ -490,6 +592,90 @@ async function seedReviews({ stores, command, read, log, post, action }) {
 }
 
 /**
+ * EVERY promotion of this tenant, paged.
+ *
+ * ⚠️ `promotions_admin` PAGES BY `offset`, NOT BY `page` — the shared `readAll` in `seed/paginate.mjs` sends
+ * `page`, which this read ignores, so it would hand back the SAME first page for every request. Today that
+ * is invisible (eight promotions fit in one page and the walk ends on a short page); with more than a
+ * hundred it would accumulate duplicates. This walk speaks the read's own vocabulary instead.
+ */
+async function allPromotions(read, { pageSize = 100 } = {}) {
+  const all = [];
+  for (let offset = 0; offset <= 10_000; offset += pageSize) {
+    const payload = await read('internal/promotions_admin', { limit: pageSize, offset });
+    const batch = Array.isArray(payload) ? payload : (payload?.items ?? []);
+    all.push(...batch);
+    if (batch.length < pageSize) return all;
+    const total = Number(payload?.total);
+    if (Number.isFinite(total) && all.length >= total) return all;
+  }
+  throw new Error('promotions — read.internal.promotions_admin never ran out of pages; refusing to guess.');
+}
+
+/** The rename pass. See `planPromotionRenames` for what it derives from and why it converges. */
+async function nameInternalPromotions({ command, read, log }) {
+  const { rename, blocked } = planPromotionRenames(await allPromotions(read));
+  for (const row of rename)
+    await command('promotion.update', { promotion_id: row.id, name: row.to });
+  for (const row of blocked)
+    log(`promotions — "${row.name}" keeps its internal name: ${row.why}`);
+  log(
+    rename.length === 0
+      ? 'promotions — no build-vocabulary name left on a promotion screen'
+      : `promotions — ${rename.length} promotion(s) renamed to their own label: ` +
+          rename.map((r) => `${r.from} → "${r.to}"`).join(' · '),
+  );
+}
+
+/**
+ * The coupon each shop's own shop window advertises (see `STORE_COUPONS`).
+ *
+ * IDEMPOTENT BY NAME, the key every other seed in this repository uses, and the lookup is tenant-wide
+ * because `promotions_admin` is: two stores may not carry the same promotion name.
+ *
+ * ⚠️ THE CODE IS A SECOND COMMAND and the promotion is inert without it — a coupon promotion nobody can type
+ * is exactly the state s3-1 reported, arrived at from the other side. It is tolerated as already-taken so a
+ * run that died between the two commands converges; a code owned by ANOTHER promotion is a refusal, because
+ * a code is unique tenant-wide and this seed does not steal one.
+ */
+async function seedAdvertisedCoupons({ stores, command, read, log }) {
+  const existing = new Map((await allPromotions(read)).map((p) => [p.name, p]));
+  for (const store of stores) {
+    const coupon = couponFor(store.handle);
+    if (!coupon) continue;
+    if (existing.has(coupon.name)) {
+      log(`promotions — "${coupon.name}" already there (${existing.get(coupon.name).id})`);
+      continue;
+    }
+    const codeOwner = [...existing.values()].find((p) => (p.codes ?? []).includes(coupon.code));
+    if (codeOwner) {
+      log(
+        `promotions — the code ${coupon.code} already belongs to "${codeOwner.name}" (${codeOwner.id}); ` +
+          `${store.handle} keeps advertising it and this seed writes nothing. A code is unique tenant-wide.`,
+      );
+      continue;
+    }
+    const out = await command('promotion.create', {
+      name: coupon.name,
+      label: coupon.label,
+      store_id: store.id,
+      benefit: { kind: 'percentage', percent_bp: coupon.percent_bp, scope: 'each_item' },
+      target: { kind: 'all' },
+      conditions: [{ kind: 'first_purchase' }],
+      status: 'active',
+      // A coupon is TYPED: `trigger` says the shopper has to present it, so it never fires on its own.
+      trigger: 'coupon',
+      stackable: true,
+    });
+    await command('promotion.code.add', { promotion_id: out.promotion_id, code: coupon.code });
+    log(
+      `promotions — "${coupon.name}" created for ${store.handle} with code ${coupon.code}, ` +
+        `${coupon.percent_bp / 100}% off the first purchase`,
+    );
+  }
+}
+
+/**
  * ONE live order per selling store — and one only.
  *
  * ⭐ ITS JOB IS NOT "HAVE ORDERS". The demo's past comes from the history plan replayed inside the kernel,
@@ -501,10 +687,50 @@ async function seedReviews({ stores, command, read, log, post, action }) {
  * ORACLE-class face capped at ten a minute per store+IP, and a seed is one address. Four stores is four
  * calls; a retry loop here would spend somebody's ceiling.
  */
-/** The one buyer the live proof order is placed as, per store — STABLE, so a second run recognises it.
- *  `hi+<tag>@forgecommerce.pro` is the wave's address shape: a real mailbox, so nothing bounces. */
+/**
+ * ⭐ WHO THE LIVE PROOF ORDER IS PLACED AS — a person, per store, and it used to be "PRE SEED" (s7-11).
+ *
+ * The address is the KEY: it is what a second run recognises so it leaves the order alone instead of placing
+ * another. The NAME is what a human sees, and that is the half that was wrong. Measured in the admin's order
+ * list on 2026-09-02: two rows whose customer is literally `PRE SEED`, beside three hundred rows of
+ * plausible Brazilian names from the history — in a demo that reads as a bug in the import, not as a shop.
+ *
+ * ⚠️ THE SHAPE OF THE ADDRESS IS NOT A CHOICE. It has to be a mailbox that EXISTS, because the buyer's order
+ * mail is re-armed at the end of this pass and a bounce is somebody's postmaster problem; `hi@forgecommerce.pro`
+ * is the one this box owns, and plus-addressing is how one mailbox becomes four distinct buyers. So the tag
+ * is the person's own name rather than `<handle>-liveproof`: same mechanism, and the order sheet no longer
+ * shows the seed's internal vocabulary to whoever is being shown the shop.
+ *
+ * ⛔ AND THERE IS NO DEFAULT, exactly like `REVIEW_DOORS`. A store nobody decided about would take whichever
+ * name the fallback happened to hold, in every shop at once — which is how four stores end up sharing one
+ * "customer" and the dedupe key stops distinguishing them.
+ *
+ * ⚠️ CHANGING A TAG CHANGES THE KEY. On a box that already carries a proof order under the old address, the
+ * next run does not recognise it and places a SECOND one. That is the one-off price of this rename and it is
+ * paid on a box that is rebuilt from zero; it is not a reason to keep the old name on a demo screen.
+ */
+export const LIVE_PROOF_BUYERS = {
+  forge: { name: 'Camila Berutti', tag: 'camila.berutti' },
+  outlet: { name: 'Paulo Sarmento', tag: 'paulo.sarmento' },
+  cafe: { name: 'Helena Vasconcelos', tag: 'helena.vasconcelos' },
+  balcao: { name: 'Rui Nakamura', tag: 'rui.nakamura' },
+};
+
+export function liveProofBuyerOf(handle) {
+  const buyer = LIVE_PROOF_BUYERS[handle];
+  if (!buyer)
+    throw new Error(
+      `no live-proof buyer decided for the store "${handle}". The proof order's ADDRESS is the key a second ` +
+        'run recognises and its NAME is what the admin shows a person, so there is deliberately no default: ' +
+        'a fallback would put one "customer" in every shop and stop the key distinguishing them. Add the ' +
+        'store to LIVE_PROOF_BUYERS, with a name that reads like a person.',
+    );
+  return { ...buyer, email: `hi+${buyer.tag}@forgecommerce.pro` };
+}
+
+/** The address only — the key the idempotence check compares. */
 function liveProofBuyer(store) {
-  return `hi+${store.handle}-liveproof@forgecommerce.pro`;
+  return liveProofBuyerOf(store.handle).email;
 }
 
 async function placeLiveOrders({ stores, command, read, log }) {
@@ -556,9 +782,10 @@ async function placeOneLiveOrder({ store, command, read, log }) {
   // ⚠️ THE BUYER'S ADDRESS IS REQUIRED EVEN FOR PICKUP — measured in the totem wave: a cart with the pickup
   // method, a point and a buyer still answered `missing: [shipping_address]`. So the address is always sent,
   // and it is the PICKUP POINT'S OWN, read back from the kernel, never invented.
+  const buyer = liveProofBuyerOf(store.handle);
   await command(
     'cart.set_buyer',
-    { cart_id, email: liveProofBuyer(store), name: 'PRE SEED', guest: true },
+    { cart_id, email: buyer.email, name: buyer.name, guest: true },
     { store: store.id },
   );
 
@@ -841,37 +1068,115 @@ async function moderateSeededReviews({ read, log, action }) {
 const ROW_METADATA_KEYS = ['id', 'created_at', 'updated_at'];
 
 /**
- * ⭐ THE WALL, AND WHY IT IS TWELVE VOICES AND NOT SIX (A47).
+ * ⭐ THE WALL — AND IT IS WRITTEN PER PRODUCT, NOT DRAWN FROM ONE POOL (A47, then s3-14/s7-11).
  *
- * The first version wrote ONE review per product — `voices[i % voices.length]`, one pass over the store's
- * catalogue — so the coffee shop was born with six reviews in the whole tenant, one per coffee. Measured,
- * and it is what the Renan saw: *"os reviews também estão bem pobrinhos, tem um por café e às vezes nenhum,
- * ideal pelo menos uns 6 por produto"*.
+ * The first version wrote ONE review per product, and the fix for that was a POOL of twelve voices rotated
+ * by a hash of the handle. That solved the count and created a worse problem, measured on the bench by the
+ * QA sweep: with twelve sentences spread over six coffees every sentence lands on three or four products, so
+ * *"Tomo puro, sem leite…"* (Priscila N.) sat beside itself in the home's review mosaic. A wall that repeats
+ * itself is the single loudest tell that a shop is seeded — worse than having no wall at all, because it
+ * says the shop has customers AND that they are invented.
  *
- * ★ AND THE RATINGS VARY ON PURPOSE. A wall where every row is five stars reads as a wall somebody wrote,
- * which is the exact tell a seed exists to avoid. Twelve voices spanning 2★ to 5★ average 4.2 — a shop
- * people like, not a shop nobody criticises.
+ * The same arithmetic did it to the moderation queue: one HELD voice, six products, six identical pending
+ * rows from one "Tiago N." — the operator's first screen in the demo, six times the same sentence.
  *
- * ⚠️ ONE VOICE IS `hold: true` AND IS NEVER MODERATED. The moderation queue has to have something in it for
- * a human to look at, and a queue that empties itself on the first run is a screen that is empty every time
- * anybody opens it. `moderateSeededReviews` skips these rows deliberately, which is also what makes this
- * CONVERGE: a held row is pending after run one and pending after run five, and no run decides it.
+ * ⇒ EACH COFFEE HAS ITS OWN VOICES, and they talk about THAT coffee: the Serra's floral, the Noturno's
+ * behaviour under milk, the Descafeinado at ten at night, the Edição's numbered lot. A pool cannot do that
+ * however wide it is — a generic sentence is reusable precisely because it says nothing about the product.
+ *
+ * ★ WHAT IS PRESERVED FROM THE POOL VERSION, deliberately, because it was right:
+ *   · 6..10 reviews per product (the Renan: *"ideal pelo menos uns 6 por produto"*) — 52 rows over the six
+ *     coffees, 8.7 each, which is what the bench measured and what he approved;
+ *   · ratings that VARY, averaging 4.2 — a shop people like, not a shop nobody criticises;
+ *   · exactly ONE held row per product, never moderated, so the queue is inhabited whenever anybody opens
+ *     it and the seed still CONVERGES (a held row is pending after run one and after run five);
+ *   · the wall derived from the HANDLE and never from the product's position in the catalogue read.
+ *
+ * ⚠️ AND THE HELD SIX ARE NOW SIX DIFFERENT PEOPLE SAYING SIX DIFFERENT THINGS. That is the whole of the
+ * s7-11 finding: the queue is a screen an operator is shown in a demo, and six copies of one sentence read
+ * as a broken import rather than as a morning's work.
  */
-export const REVIEW_VOICES = [
-  { author: 'Marina R.', rating: 5, body: 'Chegou rápido, moagem certinha e o cheiro ao abrir o pacote é outro nível. Já assinei.' },
-  { author: 'Joana P.', rating: 4, body: 'Muito bom no dia a dia. Tirei uma estrela só pelo prazo de entrega.' },
-  { author: 'Rafael M.', rating: 5, body: 'Faço na prensa e na V60 e nos dois fica ótimo. Doçura sem precisar de açúcar.' },
-  { author: 'Camila S.', rating: 4, body: 'Torra fresca, data recente na embalagem. Rende bem mais do que o que eu comprava no mercado.' },
-  { author: 'Diego A.', rating: 3, body: 'Cumpre o que promete, mas para o meu gosto podia ser um pouco mais encorpado.' },
-  { author: 'Beatriz L.', rating: 5, body: 'Comprei para presente e acabei ficando com um pacote. A embalagem com válvula faz diferença.' },
-  { author: 'Henrique T.', rating: 4, body: 'Boa acidez, nada agressiva. No espresso pede um clique a mais de moagem fina.' },
-  { author: 'Larissa F.', rating: 5, body: 'Terceiro pedido. Nunca veio errado e sempre chega dentro do prazo.' },
-  { author: 'Otávio B.', rating: 2, body: 'O café é bom, mas o meu veio moído no ponto errado e não deu para trocar a tempo.' },
-  { author: 'Priscila N.', rating: 5, body: 'Tomo puro, sem leite, e é o único que eu consigo beber assim sem enjoar.' },
-  { author: 'Gustavo A.', rating: 4, body: 'Custo-benefício honesto. Pedi 1kg e durou o mês inteiro em casa com duas pessoas.' },
-  // ⚠️ THE HELD ONE. Never approved, never rejected — it is what keeps the moderation queue inhabited.
-  { author: 'Tiago N.', rating: 3, body: 'Gostei do café, mas achei a embalagem difícil de fechar de novo depois de aberta.', hold: true },
-];
+export const COFFEE_REVIEWS = {
+  // ── O blend da casa — chocolate ao leite, caramelo, nozes; a única com 250g e 1kg em três moagens ──────
+  'forge-alvorada': [
+    { author: 'Marina Ribas', rating: 5, body: 'Chegou rápido e a moagem para filtro veio certinha. O cheiro ao abrir o pacote já entrega o caramelo.' },
+    { author: 'Rodrigo Vilela', rating: 5, body: 'É o café que eu deixo na cozinha do escritório. Ninguém reclama e o pacote de 1kg dura duas semanas.' },
+    { author: 'Joana Pontes', rating: 4, body: 'Bom no dia a dia, doce sem precisar de açúcar. Tirei uma estrela porque queria uma opção de 500g.' },
+    { author: 'Eduardo Naves', rating: 5, body: 'Faço na prensa francesa e fica redondo, sem amargor nenhum. Virou o padrão lá de casa.' },
+    { author: 'Tatiane Bicalho', rating: 4, body: 'Comprei em grãos e moo na hora. Chocolate ao leite é exatamente o que se sente.' },
+    { author: 'Wagner Leitão', rating: 3, body: 'Cumpre o que promete, mas para o meu gosto podia ter um pouco mais de acidez.' },
+    { author: 'Cláudia Marinho', rating: 5, body: 'Terceiro pedido do 1kg. Sempre com data de torra recente, nunca me veio um lote velho.' },
+    { author: 'Sérgio Dantas', rating: 4, body: 'No espresso pede um clique a mais de fino, mas no coado acerta de primeira.' },
+    { author: 'Ana Lúcia Ferraz', rating: 3, body: 'Café gostoso, só achei que o pacote de 1kg podia ter um fecho melhor.', hold: true },
+  ],
+
+  // ── Microlote lavado da Serra do Caparaó, torra clara, 86 SCA — o café que exige método ────────────────
+  'forge-serra-do-caparao': [
+    { author: 'Bruno Sales', rating: 5, body: 'O floral aparece mesmo quando a xícara esfria. Não esperava isso de um lavado nessa faixa de preço.' },
+    { author: 'Renata Quirino', rating: 5, body: 'Fiz na V60 e a maçã verde ficou nítida do começo ao fim. Um dos melhores microlotes que já pedi aqui.' },
+    { author: 'Fernanda Aguiar', rating: 5, body: 'Torra clara de verdade, sem aquele gosto de torrado que estraga microlote bom.' },
+    { author: 'Paulo César Bento', rating: 4, body: 'Muito bom, mas exige atenção: se você errar a temperatura da água ele fecha e some.' },
+    { author: 'Letícia Bastos', rating: 4, body: 'Delicado e limpo. Só não é o café que eu tomaria com leite — perde tudo o que ele tem de bom.' },
+    { author: 'Vinícius Rocha', rating: 5, body: '86 pontos honestos. Comprei duas vezes e as duas vieram iguais, o que em microlote é raro.' },
+    { author: 'Marcos Aurélio Pena', rating: 3, body: 'Bom, mas para o preço eu esperava um pouco mais de doçura no final da xícara.' },
+    { author: 'Priscila Nogueira', rating: 4, body: 'Tomo puro e sem açúcar, e com esse eu consigo passar a manhã inteira sem enjoar.' },
+    { author: 'Heloísa Prado', rating: 3, body: 'Chegou no prazo e o café é ótimo, mas o pacote veio amassado dentro da caixa.', hold: true },
+  ],
+
+  // ── Denominação de origem, natural, chocolate 70% e cana — o café de despensa, 250g e 1kg ──────────────
+  'forge-cerrado-mineiro': [
+    { author: 'Anderson Melo', rating: 4, body: 'O fundo de cana é real e fica na boca. Combina com qualquer coisa, como diz a descrição.' },
+    { author: 'Silvia Andrade', rating: 5, body: 'Peguei o 1kg moído para filtro e rendeu o mês inteiro em casa, com duas pessoas tomando todo dia.' },
+    { author: 'Caio Bertoldo', rating: 4, body: 'Natural bem feito, sem aquele fermentado exagerado. A avelã aparece limpa na xícara.' },
+    { author: 'Juliana Tavares', rating: 5, body: 'Meu marido não bebia café sem açúcar e passou a beber esse. Já é motivo suficiente.' },
+    { author: 'Otávio Barreto', rating: 4, body: 'Custo-benefício honesto no 1kg. No 250g eu ainda prefiro o blend da casa.' },
+    { author: 'Neusa Ribeiro', rating: 3, body: 'Gostei, mas achei o corpo mais leve do que eu esperava de um natural do Cerrado.' },
+    { author: 'Diego Amorim', rating: 5, body: 'Uso na moka italiana e não fica adstringente. Poucos cafés dessa faixa aguentam a moka.' },
+    { author: 'Roberta Lins', rating: 5, body: 'Comprei pela denominação de origem e fiquei pela avelã. Já coloquei na assinatura.' },
+    { author: 'Fábio Menezes', rating: 3, body: 'Café bom, mas a etiqueta de moagem veio trocada com a do outro pacote do pedido.', hold: true },
+  ],
+
+  // ── Torra escura para leite e espresso curto — cacau, melaço, especiarias ──────────────────────────────
+  'forge-noturno': [
+    { author: 'Thiago Correia', rating: 5, body: 'É o único que não some no leite. Faço cappuccino em casa e finalmente dá para sentir o café.' },
+    { author: 'Amanda Feitosa', rating: 4, body: 'No espresso curto sai com crema bonita. Para coado achei pesado demais, mas não é para isso.' },
+    { author: 'Rogério Pinto', rating: 5, body: 'Comprei para a máquina do bar e virou padrão da casa. Amargor limpo, sem gosto de queimado.' },
+    { author: 'Michele Duarte', rating: 4, body: 'As especiarias aparecem no fim. Meu filho levou o pacote embora no primeiro fim de semana.' },
+    { author: 'Gilberto Nunes', rating: 5, body: 'Torra escura sem gosto de cinza é difícil de achar por aqui. Esse acerta a mão.' },
+    { author: 'Karina Sobral', rating: 2, body: 'Para o meu gosto ficou amargo demais mesmo com leite. Voltei para o blend da casa.' },
+    { author: 'Alexandre Reis', rating: 5, body: 'Melaço mesmo, não é força de expressão. Faço na moka com um dedo de leite e vira sobremesa.' },
+    { author: 'Denise Vasques', rating: 4, body: 'Ótimo com leite, mas se você gosta de café claro e ácido não peça esse.' },
+    { author: 'Ivan Guimarães', rating: 4, body: 'Muito bom. Só queria ver a data de torra na página antes de comprar, e não só no pacote.', hold: true },
+  ],
+
+  // ── Swiss Water, torra média, biscoito e chocolate — o café das nove da noite ──────────────────────────
+  'forge-descafeinado': [
+    { author: 'Cristina Aires', rating: 4, body: 'Descafeinado que continua sendo café. Tomo às dez da noite e durmo do mesmo jeito.' },
+    { author: 'Leandro Bispo', rating: 5, body: 'Sem gosto químico nenhum. O Swiss Water faz diferença e dá para perceber na primeira xícara.' },
+    { author: 'Verônica Sampaio', rating: 4, body: 'Minha mãe não pode cafeína e voltou a tomar café por causa desse. Biscoito é a nota exata.' },
+    { author: 'Marcelo Tinoco', rating: 5, body: 'Comprei achando que seria fraco e é encorpado. Pedi de novo na semana seguinte.' },
+    { author: 'Sônia Bragança', rating: 3, body: 'Bom, mas ainda prefiro o comum. Fica um pouco mais seco no final da xícara.' },
+    { author: 'Hugo Peixoto', rating: 4, body: 'Grávida em casa, esse resolveu o problema do cheiro de café de manhã sem cortar o ritual.' },
+    { author: 'Elaine Motta', rating: 5, body: 'Uso na prensa e não perde corpo. Servi para visita e ninguém percebeu que era descafeinado.' },
+    { author: 'Nelson Cardoso', rating: 3, body: 'Gostei, mas a embalagem do descafeinado devia ser mais fácil de distinguir da do comum.', hold: true },
+  ],
+
+  // ── Dona Cida, Sítio Boa Vista, honey, 88 SCA, lote numerado e só em grãos ─────────────────────────────
+  'forge-edicao-do-produtor': [
+    { author: 'Isabela Fontes', rating: 5, body: 'Jasmim de verdade no aroma. Guardei a etiqueta do lote numerado, é bonita demais para jogar fora.' },
+    { author: 'Ricardo Salgado', rating: 5, body: 'Honey bem seco, doçura de rapadura sem enjoar. Vale o preço uma vez por mês, sem culpa.' },
+    { author: 'Patrícia Lemos', rating: 4, body: 'Excelente, mas só vem em grãos — quem não tem moedor em casa fica de fora dessa.' },
+    { author: 'Gustavo Aranha', rating: 5, body: 'Fiz em Chemex para quatro pessoas e as quatro perguntaram o nome do café. Os 88 pontos se sentem.' },
+    { author: 'Simone Vidal', rating: 5, body: 'Comprei pela história da Dona Cida e voltei pelo pêssego. As duas coisas se sustentam.' },
+    { author: 'Frederico Alencar', rating: 4, body: 'Muito bom, mas some rápido: 250g de um café assim dura uma semana e olhe lá.' },
+    { author: 'Larissa Fontoura', rating: 3, body: 'Ótimo café, porém acabou antes de eu conseguir repetir o pedido. Avisem quando o lote voltar.' },
+    { author: 'Márcio Teixeira', rating: 4, body: 'Café excepcional. Só faltou a página dizer quantos pacotes ainda existem do lote.', hold: true },
+  ],
+};
+
+/** Every voice this seed writes, in one flat list — DERIVED from the walls above, so a coffee added to the
+ *  table cannot be forgotten by the two sets below. */
+export const REVIEW_VOICES = Object.values(COFFEE_REVIEWS).flat();
 
 /** The names the seed writes under. They are how it recognises its OWN rows on a second run and in the
  *  moderation queue — a seed must never decide a review a person wrote.
@@ -881,7 +1186,8 @@ export const REVIEW_VOICES = [
  *  them again on the next run, and moderate none of them. */
 export const SEEDED_AUTHORS = new Set(REVIEW_VOICES.map((v) => v.author));
 
-/** The rows this seed writes and then deliberately leaves in the queue. */
+/** The rows this seed writes and then deliberately leaves in the queue — now ONE PER COFFEE, six different
+ *  people saying six different things (s7-11). */
 export const HELD_AUTHORS = new Set(REVIEW_VOICES.filter((v) => v.hold).map((v) => v.author));
 
 /**
@@ -891,7 +1197,7 @@ export const HELD_AUTHORS = new Set(REVIEW_VOICES.filter((v) => v.hold).map((v) 
  * are a coffee shop's. A second store put on this door with no voices of its own would silently get a wall
  * praising the moagem of a pair of shoes, so this throws instead.
  */
-const VOICES_BY_STORE = { cafe: REVIEW_VOICES };
+const VOICES_BY_STORE = { cafe: COFFEE_REVIEWS };
 
 export function voicesFor(handle) {
   const voices = VOICES_BY_STORE[handle];
@@ -905,24 +1211,30 @@ export function voicesFor(handle) {
 }
 
 /**
- * ★★ HOW MANY REVIEWS ONE PRODUCT GETS, AND WHICH — pure, deterministic, and derived from the HANDLE.
+ * ★★ WHICH REVIEWS ONE PRODUCT GETS — its own, by HANDLE, and there is deliberately no default.
  *
- * ⚠️ NOT FROM THE PRODUCT'S POSITION IN THE READ, which is what the first version used (`voices[i % n]`).
- * The catalogue read's order is the projection's, and a seed whose data depends on it writes a different
- * shop every time a product is added. From the handle, the six coffees get the same wall on every box.
+ * ⚠️ NOT FROM THE PRODUCT'S POSITION IN THE READ, which an early version used (`voices[i % n]`): the
+ * catalogue read's order is the projection's, and a seed whose data depends on it writes a different shop
+ * every time a product is added.
  *
- * The count is 6..10 — the Renan asked for *"pelo menos uns 6 por produto"* — and the ROTATION is offset by
- * the same hash, so two coffees do not open with the same sentence. The held voice is always included: one
- * pending row per product is what puts something on the moderation screen without emptying the wall.
+ * ⚠️ AND NOT FROM A HASH OVER A SHARED POOL EITHER, which is what replaced it. A hash spreads twelve
+ * sentences over six products and every sentence lands on three of them; the home's review mosaic then shows
+ * the same words twice, side by side. Deriving deterministically is necessary and it is not sufficient — the
+ * sentences themselves have to be different, and a sentence that fits four coffees is a sentence that says
+ * nothing about any of them.
+ *
+ * ⛔ A PRODUCT THIS TABLE DOES NOT NAME IS A REFUSAL. The alternative is a PDP with an empty wall in a shop
+ * whose every other page has one, discovered by whoever is being shown the demo. Adding a coffee is adding
+ * its voices — the seed says so, by name, instead of shipping the shop half-populated.
  */
-export function reviewPlanFor(handle, voices = REVIEW_VOICES) {
-  let hash = 0;
-  for (let i = 0; i < handle.length; i += 1) hash = (hash * 31 + handle.charCodeAt(i)) >>> 0;
-  const open = voices.filter((v) => !v.hold);
-  const held = voices.filter((v) => v.hold);
-  const count = Math.min(open.length, 5 + (hash % 5)); // 5..9 open, plus the held one → 6..10
-  const offset = hash % open.length;
-  const picked = Array.from({ length: count }, (_, i) => open[(offset + i) % open.length]);
-  return [...picked, ...held];
+export function reviewPlanFor(handle, voices = COFFEE_REVIEWS) {
+  const plan = voices[handle];
+  if (!plan)
+    throw new Error(
+      `the product "${handle}" has no reviews written for it. Each coffee carries its OWN voices ` +
+        '(COFFEE_REVIEWS in seed/commerce.mjs) — a shared pool is what put the same sentence on four ' +
+        'products and gave the seed away. There is deliberately no default and no rotation: write this ' +
+        "product's own eight or nine, one of them `hold: true` so the moderation queue keeps a row.",
+    );
+  return plan;
 }
-

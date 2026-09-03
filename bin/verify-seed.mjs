@@ -222,6 +222,22 @@ if (counters.length === 0) {
     else bad(`${handle}`, `${freight.length} free-shipping promotion(s): ${freight.map((p) => p.name).join(', ')}`);
   }
 
+  // ★ s7-11 · BUILD VOCABULARY AS THE TITLE OF A ROW IN THE OPERATOR'S PROMOTION LIST. The kernel's demo-data
+  // app names its promotions `DEMO-HIST-01-FORGE`, `DEMO-HIST-D2`… — correct where it lives, and a database
+  // dump on a demo screen. The commerce pass renames each of them to its own curated `label`; this is that
+  // rename asked of the box.
+  {
+    const internalNames = promotions.filter((p) => /^DEMO-HIST[-_]/.test(String(p.name ?? '')));
+    if (internalNames.length === 0)
+      ok('the promotion list', `${promotions.length} promotion(s), no build vocabulary on the screen`);
+    else
+      bad(
+        'the promotion list',
+        `${internalNames.length} promotion(s) still titled with an internal name: ` +
+          `${internalNames.map((p) => p.name).join(', ')} — the commerce pass renames them to their label`,
+      );
+  }
+
   // The counter's own half must exist, or the negative above is true for the wrong reason (nothing was
   // seeded at all). A negative with no positive beside it is not a measurement.
   const pickupMethods = methods.filter((m) => m.kind === 'pickup');
@@ -425,6 +441,23 @@ if (!seen.includes('cafe')) {
       bad(want.handle, problems.join(' · '));
     }
   }
+
+  // ★★ s3-14 / s7-11 · THE SAME SENTENCE ON TWO PRODUCTS, MEASURED IN THE BOX RATHER THAN IN THE SEED.
+  //
+  // `seed/commerce.test.mjs` already refuses a repeated (author, text) pair in the DECLARATION. This asks the
+  // shop, which is a different question and the one that matters: rows written by an earlier version of the
+  // seed are still there, and the home's review mosaic reads THEM. Measured 02/09 on the bench: "Tomo puro,
+  // sem leite…" (Priscila N.) appeared on four coffees at once, two of them side by side on the home.
+  const pairs = new Map();
+  const echoes = [];
+  for (const r of reviews) {
+    const pair = `${r.author} :: ${r.body}`;
+    const first = pairs.get(pair);
+    if (first === undefined) pairs.set(pair, r.product_id);
+    else if (first !== r.product_id) echoes.push(`"${r.author}" on 2+ products`);
+  }
+  if (echoes.length === 0) ok('the review wall', `${reviews.length} row(s), no sentence on two products`);
+  else bad('the review wall', `${[...new Set(echoes)].length} voice(s) recycled across products — the home puts them side by side: ${[...new Set(echoes)].join(', ')}`);
 
   // The moderation queue has to have something on it, and the wall has to have something in it. Both, or the
   // demo shows one screen at the cost of the other.

@@ -22,7 +22,13 @@ import {
   assertCredentialTenant,
   assertSeedableChannel,
   channelPlan,
+  COFFEE_REVIEWS,
+  couponFor,
   HELD_AUTHORS,
+  LIVE_PROOF_BUYERS,
+  liveProofBuyerOf,
+  planPromotionRenames,
+  STORE_COUPONS,
   REVIEW_DOORS,
   REVIEW_VOICES,
   reviewPlanFor,
@@ -43,6 +49,10 @@ const STORES = [
   { handle: 'cafe', id: 'sto_cafe' },
   { handle: 'balcao', id: 'sto_balcao' },
 ];
+
+/** The coffee shop's catalogue, DERIVED from the walls rather than typed beside them — a handle listed in
+ *  one place and forgotten in the other is a product whose wall nobody checks. */
+const COFFEE_HANDLES = Object.keys(COFFEE_REVIEWS);
 
 // ── ⛔ THE ONE THE WAVE ASKED FOR BY NAME ────────────────────────────────────────────────────────────────
 test('the seed REFUSES to touch an auth.* channel, by construction', () => {
@@ -366,7 +376,7 @@ test('★ the pass waits for the notification queue to hold still BEFORE re-armi
 // name the real values so nobody re-derives them from a guess.
 
 test('★★ every product gets at least SIX reviews, and never more than the voices allow', () => {
-  for (const handle of ['forge-alvorada', 'forge-serra-do-caparao', 'forge-cerrado-mineiro', 'forge-noturno', 'forge-descafeinado', 'forge-edicao-do-produtor']) {
+  for (const handle of COFFEE_HANDLES) {
     const plan = reviewPlanFor(handle);
     assert.ok(plan.length >= 6, `${handle} plans only ${plan.length}`);
     assert.ok(plan.length <= 10, `${handle} plans ${plan.length}`);
@@ -397,11 +407,22 @@ test('★★ the plan is derived from the HANDLE, never from the read order', ()
 test('★★ every product carries exactly ONE held row, so the moderation queue is never empty', () => {
   // A queue that empties itself on the first run is a screen that is empty every time anybody opens it —
   // and re-filling it on each run is what stops the seed converging.
-  for (const handle of ['forge-alvorada', 'forge-edicao-do-produtor']) {
+  for (const handle of COFFEE_HANDLES) {
     const held = reviewPlanFor(handle).filter((v) => HELD_AUTHORS.has(v.author));
     assert.equal(held.length, 1, `${handle} plans ${held.length} held row(s)`);
   }
-  assert.equal(HELD_AUTHORS.size, 1, 'more than one held voice would put the whole wall in the queue');
+  assert.equal(HELD_AUTHORS.size, COFFEE_HANDLES.length, 'one held row per coffee, and no more');
+});
+
+// ── ★★ s7-11 · THE QUEUE IS THE OPERATOR'S FIRST SCREEN, AND IT SHOWED THE SAME SENTENCE SIX TIMES ──────
+//
+// Measured on the bench (2026-09-02): the six pending rows were the SAME text ("Gostei do café, mas achei a
+// embalagem difícil de fechar…") from the SAME author ("Tiago N.") on six different products, because there
+// was one held voice in a shared pool. In a demo that reads as a broken import, not as a morning's work.
+test('★★ the six held rows are six different people saying six different things', () => {
+  const held = COFFEE_HANDLES.map((h) => reviewPlanFor(h).find((v) => v.hold));
+  assert.equal(new Set(held.map((v) => v.author)).size, held.length, 'the queue repeats an author');
+  assert.equal(new Set(held.map((v) => v.body)).size, held.length, 'the queue repeats a sentence');
 });
 
 test('⛔ THE CONTROL — the held author is NOT in the moderation candidates', () => {
@@ -409,11 +430,11 @@ test('⛔ THE CONTROL — the held author is NOT in the moderation candidates', 
   // vocabulary itself, because a rule written against `published` would silently select nothing.
   const rows = [
     { author: [...HELD_AUTHORS][0], status: 'pending' },
-    { author: 'Marina R.', status: 'pending' },
+    { author: 'Marina Ribas', status: 'pending' },
     { author: 'Uma Pessoa', status: 'pending' }, // not ours — a seed must never decide a human's review
   ];
   const candidates = rows.filter((r) => SEEDED_AUTHORS.has(r.author) && r.status === 'pending' && !HELD_AUTHORS.has(r.author));
-  assert.deepEqual(candidates.map((r) => r.author), ['Marina R.']);
+  assert.deepEqual(candidates.map((r) => r.author), ['Marina Ribas']);
 });
 
 test('★ SEEDED_AUTHORS is DERIVED from the voices — a name added in one place cannot be forgotten in the other', () => {
@@ -427,4 +448,157 @@ test('⛔ a store on the open-review door with no voices of its own is a DEATH, 
   // Same doctrine as REVIEW_DOORS: a coffee wall on a shoe shop is data that looks right and is absurd.
   assert.doesNotThrow(() => voicesFor('cafe'));
   assert.throws(() => voicesFor('outlet'), /no voices of its own/);
+});
+
+// ── ★★ s3-14 · THE GUARD ON THE RESULT: NO SENTENCE IS EVER ON TWO PRODUCTS ─────────────────────────────
+//
+// Measured on the bench (2026-09-02): "Tomo puro, sem leite…" (Priscila N.), "Muito bom no dia a dia…"
+// (Joana P.) and "Chegou rápido, moagem certinha…" (Marina R.) were IDENTICAL on Edição do Produtor,
+// Descafeinado, Noturno and Cerrado — and the home's review mosaic put two of them side by side, which is
+// what gave the seed away to anybody reading the page.
+//
+// ⚠️ THE GUARD IS ON THE RESULT, NOT ON THE INTENTION. It does not check that the walls are declared per
+// product (a shared pool declared six times over would pass that); it walks every product's actual plan and
+// refuses a (author, body) pair that appears under two handles. Whatever mechanism produces the walls, the
+// thing a shopper can see is what is asserted.
+test('★★ no (author, text) pair is ever written to two products', () => {
+  const seen = new Map();
+  const repeated = [];
+  for (const handle of COFFEE_HANDLES) {
+    for (const voice of reviewPlanFor(handle)) {
+      const pair = `${voice.author} :: ${voice.body}`;
+      const first = seen.get(pair);
+      if (first) repeated.push(`"${voice.author}" on ${first} and ${handle}`);
+      else seen.set(pair, handle);
+    }
+  }
+  assert.deepEqual(
+    repeated,
+    [],
+    'the same person says the same thing about two coffees — that is the tell that gives a seeded shop ' +
+      `away, and the home puts them side by side:\n  ${repeated.join('\n  ')}`,
+  );
+});
+
+test('★ and no SENTENCE is reused either, whoever signs it', () => {
+  // Stricter than the pair on purpose: two names under one sentence is the same repetition to a reader, and
+  // it is what a "wider pool with more authors" would produce.
+  const bodies = COFFEE_HANDLES.flatMap((h) => reviewPlanFor(h).map((v) => v.body));
+  assert.equal(new Set(bodies).size, bodies.length, 'a sentence appears on more than one coffee');
+});
+
+test('★ every wall talks about ITS coffee — the count and the spread are per product', () => {
+  for (const handle of COFFEE_HANDLES) {
+    const plan = reviewPlanFor(handle);
+    const ratings = plan.map((v) => v.rating);
+    assert.ok(new Set(ratings).size >= 3, `${handle}: only ${new Set(ratings).size} distinct rating(s)`);
+    assert.ok(Math.min(...ratings) <= 3, `${handle}: nothing below 4 stars — nobody believes that wall`);
+    const average = ratings.reduce((n, r) => n + r, 0) / ratings.length;
+    assert.ok(average > 3.8 && average < 4.6, `${handle}: average ${average.toFixed(2)}`);
+  }
+});
+
+test('⛔ a product the table does not name is a REFUSAL, never an empty wall', () => {
+  // Same doctrine as REVIEW_DOORS and VOICES_BY_STORE: a coffee added without its own voices would get a PDP
+  // with an empty review section in a shop where every other page has one.
+  assert.throws(() => reviewPlanFor('forge-cafe-novo'), /has no reviews written for it/);
+  assert.throws(() => reviewPlanFor('forge-cafe-novo'), /deliberately no default/);
+});
+
+// ── ⛔ s3-1 · THE SHOP ADVERTISED A COUPON THAT DID NOT EXIST ────────────────────────────────────────────
+//
+// The coffee shop's announcement bar says PRIMEIRAXICARA on every page; the tenant had eight promotions and
+// none of them was it. The one that does exist, PRIMEIROCAFE, is scoped to the COUNTER on purpose — the
+// totem slice uses it to prove per-store scoping — so it cannot stand in.
+test('★ the coupon the coffee shop advertises EXISTS in the seed, with the code the page prints', () => {
+  const coupon = couponFor('cafe');
+  assert.ok(coupon, 'the coffee shop advertises a coupon and the seed must create it');
+  assert.equal(coupon.code, 'PRIMEIRAXICARA');
+  assert.equal(coupon.percent_bp, 1_000, 'the bar says 10% OFF');
+  assert.match(coupon.code, /^[A-Za-z0-9._-]+$/, 'promotion.code.add refuses anything else');
+});
+
+test('★ it does NOT reuse the counter’s code — that promotion is scoped to the Balcão, deliberately', () => {
+  for (const coupon of Object.values(STORE_COUPONS))
+    assert.notEqual(coupon.code, 'PRIMEIROCAFE', 'the counter’s coupon proves per-store scoping; leave it');
+});
+
+test('a store that advertises nothing gets nothing — absent is an ordinary answer here, not a death', () => {
+  // Unlike REVIEW_DOORS: most shops advertise no coupon, so a missing entry cannot mean "somebody forgot".
+  assert.equal(couponFor('outlet'), null);
+  assert.doesNotThrow(() => couponFor('loja-nova'));
+});
+
+// ── ⛔ s7-11 · BUILD VOCABULARY ON A DEMO SCREEN ─────────────────────────────────────────────────────────
+test('★★ a DEMO-HIST-* promotion is renamed to its own LABEL — derived, never typed', () => {
+  const { rename } = planPromotionRenames([
+    { id: 'p1', name: 'DEMO-HIST-01-FORGE', label: 'Frete grátis acima de R$ 299' },
+    { id: 'p2', name: 'DEMO-HIST-D2', label: 'Cupom de aniversário (rascunho)' },
+  ]);
+  assert.deepEqual(rename, [
+    { id: 'p1', from: 'DEMO-HIST-01-FORGE', to: 'Frete grátis acima de R$ 299' },
+    { id: 'p2', from: 'DEMO-HIST-D2', to: 'Cupom de aniversário (rascunho)' },
+  ]);
+});
+
+test('a promotion a human named is LEFT ALONE — this pass owns the platform’s rows, not the shop’s', () => {
+  const { rename, blocked } = planPromotionRenames([
+    { id: 'p1', name: 'Assinante 10% OFF', label: 'Assinante 10% OFF' },
+    { id: 'p2', name: 'Combo da manhã', label: 'Café + pão de queijo' },
+  ]);
+  assert.deepEqual(rename, []);
+  assert.deepEqual(blocked, []);
+});
+
+test('⛔ a rename onto a name another promotion already holds is REFUSED and NAMED', () => {
+  // Three seeds in this repo use the promotion NAME as their idempotence key. A collision would make one of
+  // them skip a promotion it never created.
+  const { rename, blocked } = planPromotionRenames([
+    { id: 'p1', name: 'DEMO-HIST-02-CAFE', label: 'Assinante 10% OFF' },
+    { id: 'p2', name: 'Assinante 10% OFF', label: 'Assinante 10% OFF' },
+  ]);
+  assert.deepEqual(rename, []);
+  assert.equal(blocked.length, 1);
+  assert.match(blocked[0].why, /already the name of another promotion/);
+});
+
+test('and two internal rows carrying the SAME label cannot both take it', () => {
+  const { rename, blocked } = planPromotionRenames([
+    { id: 'p1', name: 'DEMO-HIST-01-FORGE', label: 'Frete grátis acima de R$ 299' },
+    { id: 'p2', name: 'DEMO-HIST-01-OUTLET', label: 'Frete grátis acima de R$ 299' },
+  ]);
+  assert.equal(rename.length, 1);
+  assert.equal(blocked.length, 1);
+});
+
+test('a row with no label to derive from keeps its name and SAYS so — inventing one is the typing', () => {
+  const { rename, blocked } = planPromotionRenames([{ id: 'p1', name: 'DEMO-HIST-99', label: '' }]);
+  assert.deepEqual(rename, []);
+  assert.match(blocked[0].why, /no shopper-facing label/);
+});
+
+// ── ⛔ s7-11 · "PRE SEED" IN THE CUSTOMER COLUMN ─────────────────────────────────────────────────────────
+test('★ the live proof order is placed as a PERSON, in every store', () => {
+  for (const store of STORES) {
+    const buyer = liveProofBuyerOf(store.handle);
+    assert.match(buyer.name, /^[A-ZÁÂÃÉÊÍÓÔÕÚÇ][^\s]* [^\s]/u, `${store.handle}: "${buyer.name}" is not a name`);
+    assert.doesNotMatch(buyer.name, /seed|proof|test|demo/i, `${store.handle}: build vocabulary on a screen`);
+    assert.doesNotMatch(buyer.email, /liveproof|preseed/i);
+  }
+});
+
+test('★ the address stays a mailbox that EXISTS — the buyer’s order mail is re-armed after this', () => {
+  for (const store of STORES)
+    assert.match(liveProofBuyerOf(store.handle).email, /^hi\+[a-z.]+@forgecommerce\.pro$/);
+});
+
+test('★ every store gets its OWN address — the address is the key a second run recognises', () => {
+  const addresses = STORES.map((s) => liveProofBuyerOf(s.handle).email);
+  assert.equal(new Set(addresses).size, addresses.length, 'two stores share one proof order');
+  assert.equal(new Set(STORES.map((s) => liveProofBuyerOf(s.handle).name)).size, STORES.length);
+});
+
+test('⛔ a store nobody decided a buyer for is a REFUSAL, never a shared default', () => {
+  assert.throws(() => liveProofBuyerOf('loja-nova'), /no live-proof buyer decided/);
+  assert.equal(Object.keys(LIVE_PROOF_BUYERS).length, STORES.length);
 });
