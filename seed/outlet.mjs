@@ -16,11 +16,12 @@
 //   · the products, PUBLISHED into the outlet store, CATEGORISED and given their stock;
 //   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
 //     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
-//   · the three collections the three shelves are sourced from;
-//   · the six Compose placements that ARE the home: the announcement band, and — all five in the SINGLE
+//   · the three collections the shelves and the banners are sourced from (`acabando` outlives the shelf that
+//     used to show it: it is still a list a shopper reaches at `/collection/acabando`);
+//   · the four Compose placements that ARE the home: the announcement band, and — all three in the SINGLE
 //     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
-//     banner mosaic, the "Quase de graça" shelf, the "Acabando!" shelf, the «Outlet Kids» banner and the
-//     "Outlet Kids" shelf that gives that banner a body (s2-8).
+//     banner mosaic, the "Quase de graça" shelf and the "Outlet Kids" shelf, which carries the «Outlet Kids»
+//     campaign art as the promo picture of its own first grid cell (pk5).
 //
 // ⚠️ CONFINED TO THE OUTLET STORE — with one measured asterisk. Everything store-scoped below names
 // `data.store` and nothing else. Two steps are not store-scoped because the kernel models them per TENANT
@@ -265,7 +266,9 @@ async function uploadMedia(port) {
   const { command, readAll, log } = port;
   const wanted = [
     ...data.mosaic.media.map((m) => m.file),
-    ...data.kidsBanner.media.map((m) => m.file),
+    // A shelf's promo picture is media too, and it is referenced by ASSET ID exactly like a mosaic tile —
+    // `banner_asset` is `type: 'id'` in the shelves manifest. So it uploads here, with the banners.
+    ...data.shelves.flatMap((shelf) => (shelf.banner ? [shelf.banner] : [])),
     ...data.products.flatMap((p) => p.photos),
   ];
 
@@ -596,18 +599,22 @@ async function seedCollections({ command, read, log }, products) {
 // is the reference vitrine with five rows of configuration in it, and not one line of front-end code.
 //
 // ★★ 02/09 — WHY THEY ARE ALL IN ONE SLOT NOW. He asked for «Compre por categoria» FIRST, then the mosaic,
-// the two shelves and the kids banner, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
+// the two shelves and the kids art, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
 // reference home (theme chrome over core reads, not slots), and between them the template declares exactly
 // ONE slot — `home.below_categories`. So the order he asked for is not a choice of slots, it is `position`
-// 0..4 inside that one (03/09: the "Outlet Kids" shelf appended at 4, after the banner he named last —
-// nothing he named moved). `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
+// 0..2 inside that one (03/09: the "Outlet Kids" shelf appended after the banner he named last; pk5 then took
+// «Acabando!» off the home and folded the kids ART into that shelf's own first cell, which is where it had
+// been before 02/09 and where the `forge` store's «Botas que acabaram de chegar» has always kept its own).
+// `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
 // empty ON PURPOSE, and so is the PLP. See `outlet.json`'s `_home_why`.
 //
 // ⚠️ AND THAT IS WHY THIS FUNCTION GOVERNS RATHER THAN APPENDS — the change is not cosmetic, so read it.
 //
 // The old rule was "is there a placement of this app+component in this slot? then configure it, else place
-// it". With TWO `banners/banner` blocks in one slot that question stops identifying anything: it matches the
-// mosaic and the kids banner equally, so one of them would overwrite the other forever.
+// it". With TWO `banners/banner` blocks in one slot that question stops identifying anything: it matched the
+// mosaic and the kids banner equally, so one of them would have overwritten the other forever. (pk5 left ONE
+// banner block on this page — but the pairing stays positional: the day a second one is placed, a rule that
+// had quietly started depending on there being only one would be wrong with nothing red to say so.)
 //
 // Worse, appending is now WRONG in a way nothing would report. Every box that ran the previous version has
 // the mosaic in `home.hero`, "Quase de graça" in `home.banner_strip` and "Acabando!" in `home.below_shelf`.
@@ -685,7 +692,7 @@ async function compose({ command, read, rows, log }, store, assets) {
     log(`compose ${band.slot} — configured ${band.what}`);
   }
 
-  // ── the home: five blocks, one slot, ordered by position ──────────────────────────────────────────
+  // ── the home: three blocks, one slot, ordered by position ─────────────────────────────────────────
   const mediaConfig = (items) =>
     items.map((m) => ({
       asset_id: assets.get(m.file).id,
@@ -718,17 +725,19 @@ async function compose({ command, read, rows, log }, store, assets) {
         source: 'collection',
         source_collection: shelf.collection,
         item_count: shelf.item_count,
+        // ★ THE PROMO PICTURE IS A CELL OF THE SHELF, and this is the whole difference between the row that
+        // works and the row that fell. The block spans it over TWO of its five desktop columns and puts the
+        // `item_count` product cards beside it, so `banner + 3` is one full row; a `banners/banner` block
+        // with the same picture owns a LINE and leaves whatever its `width` percentage does not cover white.
+        // ⚠️ NO `width`/`height` HERE, and none is declared: the cell's width is the grid's and its height is
+        // the product cards' (`min-height: 100%` + `object-fit: cover`). Passing either would be a refusal —
+        // the config is validated STRICTLY against the block's schema, which declares neither.
+        // ⚠️ `banner_alt` is NOT sent for the same reason (and would reach no page anyway — see outlet.json).
+        ...(shelf.banner ? { banner_asset: assets.get(shelf.banner).id } : {}),
+        ...(shelf.banner_link ? { banner_link: shelf.banner_link } : {}),
       },
       what: `the "${shelf.title}" shelf`,
     })),
-    {
-      extension_id: 'banners',
-      component: 'banner',
-      slot: data.kidsBanner.slot,
-      position: data.kidsBanner.position,
-      config: { style: data.kidsBanner.style, media: mediaConfig(data.kidsBanner.media) },
-      what: 'the «Outlet Kids» banner',
-    },
   ];
 
   const plan = planHome(placements, wanted, { apps: GOVERNED_APPS, slot: GOVERNED_SLOT });
@@ -791,7 +800,10 @@ async function compose({ command, read, rows, log }, store, assets) {
  * position and a config validated STRICTLY against the block's schema — there is nowhere to write "this is
  * the mosaic". Matching on the config would mean a block that a human edited in Compose is not recognised
  * and gets duplicated, which is the worse failure. So: the first `banners/banner` on this home is the mosaic
- * and the second is the kids banner, in the read's own order (it sorts by target, then position).
+ * and the second, if a second is ever placed, is whatever came after it — in the read's own order (it sorts
+ * by target, then position). It is also what makes a SHRINKING declaration safe: with fewer blocks wanted
+ * than held, the pool's leftovers are the surplus, so removing «Acabando!» and the kids banner block does not
+ * delete the rows the remaining blocks can host.
  *
  * @param placements {Array} the store's resolved composition (read `extension_composition`)
  * @param wanted {Array} the blocks this file declares, each with extension_id/component/slot/position

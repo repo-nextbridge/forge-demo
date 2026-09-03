@@ -320,9 +320,15 @@ test('the artboard\'s two shelves still render the same items: the eight come FI
 // four brands we fixed" and no "the 16 kids products we added" anywhere below: delete a product and the guard
 // names the promise that went hollow.
 
-/** The blocks this file puts on the home, as one list — the two banners and the shelves, in the single slot
- *  the reference template offers between «Compre por categoria» and «Marcas que amamos». */
-const homeBlocks = [data.mosaic, ...data.shelves, data.kidsBanner];
+/** The blocks this file puts on the home, as one list — the mosaic and the shelves, in the single slot the
+ *  reference template offers between «Compre por categoria» and «Marcas que amamos». */
+const homeBlocks = [data.mosaic, ...data.shelves];
+
+/** THE SHELVES THAT CARRY A PROMO PICTURE, and the subject of every «kids banner» rule below since pk5. The
+ *  art moved out of a `banners/banner` block of its own and into the shelf's own first grid cell, so the
+ *  promise it makes is now a FIELD of a shelf (`banner`/`banner_link`/`banner_alt`) rather than a media
+ *  item. Derived, never named: swap which shelf carries a picture and the guards follow it. */
+const bannerShelves = data.shelves.filter((shelf) => shelf.banner);
 
 /** `/collection/<handle>` → `<handle>`; anything else → undefined. The only link shape a shelf can also mean. */
 const collectionOf = (link) => /^\/collection\/([a-z0-9-]+)$/.exec(link ?? '')?.[1];
@@ -332,15 +338,36 @@ const collectionOf = (link) => /^\/collection\/([a-z0-9-]+)$/.exec(link ?? '')?.
 const pinnedTo = (handle) => data.products.filter((p) => p.shelf === handle);
 
 test('★ s2-2 — the «Outlet Kids» banner leads at a collection this file actually creates', () => {
-  const links = data.kidsBanner.media.map((m) => m.link);
+  assert.ok(bannerShelves.length > 0, 'no shelf on this home carries a promo picture — every rule below lost its subject');
   const known = new Set(data.collections.map((c) => c.handle));
-  const broken = links.filter((link) => !known.has(collectionOf(link)));
+  const broken = bannerShelves.map((s) => s.banner_link).filter((link) => !known.has(collectionOf(link)));
   assert.deepEqual(broken, [], `the kids banner points where no collection is created: ${broken.join(', ')}`);
 });
 
+test('★ pk5 — the picture and the shelf it rides on open the SAME list', () => {
+  // ⚠️ THE FAILURE THIS SHAPE MAKES POSSIBLE, and it is invisible: the banner cell and the «Ver todos →» of
+  // the row it sits in are two links two centimetres apart. A `banner_link` pointing anywhere but the
+  // shelf's own source is a shopper told two different things by one row, at HTTP 200 both times.
+  const split = bannerShelves
+    .filter((shelf) => collectionOf(shelf.banner_link) !== shelf.collection)
+    .map((shelf) => `"${shelf.title}": the picture opens ${shelf.banner_link}, «Ver todos» opens /collection/${shelf.collection}`);
+  assert.deepEqual(split, [], split.join('\n  '));
+});
+
+test('★ pk5 — the art a shelf promises is a file this repository actually holds', () => {
+  // `seed/outlet.mjs` uploads it by name from `seed/outlet-media/banners/`; a typo is a birth that stops
+  // half-fed, and it stops in the WINDOW phase, after the catalogue is already published.
+  for (const shelf of bannerShelves) {
+    assert.ok(
+      existsSync(join(SEED, 'outlet-media', 'banners', shelf.banner)),
+      `"${shelf.title}" names ${shelf.banner}, which is not in seed/outlet-media/banners/`,
+    );
+  }
+});
+
 test('★ s2-2 — every product behind the kids banner IS a children\'s product', () => {
-  for (const media of data.kidsBanner.media) {
-    const handle = collectionOf(media.link);
+  for (const shelf of bannerShelves) {
+    const handle = collectionOf(shelf.banner_link);
     const members = pinnedTo(handle);
     assert.ok(members.length > 0, `${handle} is an EMPTY collection — the banner promises a list nobody filled`);
     const adults = members
@@ -358,7 +385,7 @@ test('★ s2-2 — and the whole Infantil assortment IS that collection: the men
   // The header's «Infantil» entry is `/search?cf.genero=Infantil` — a facet over the catalogue, not over the
   // collection. If the two ever name different sets, one of the two doors shows a shop the other one denies.
   const behindTheBanner = new Set(
-    data.kidsBanner.media.flatMap((m) => pinnedTo(collectionOf(m.link))).map((p) => p.handle),
+    bannerShelves.flatMap((shelf) => pinnedTo(collectionOf(shelf.banner_link))).map((p) => p.handle),
   );
   const behindTheMenu = data.products.filter((p) => p.metadata?.genero === 'Infantil').map((p) => p.handle);
   const orphans = behindTheMenu.filter((h) => !behindTheBanner.has(h));
@@ -385,12 +412,12 @@ test('★ s2-2 — the FIGURE the art prints is a price a shopper can pay', () =
   // a `de` the shop does not strike through is the same lie one field over.
   const reais = (s) => Math.round(Number(s.replace(/\./g, '').replace(',', '.')) * 100);
   let checked = 0;
-  for (const media of data.kidsBanner.media) {
-    const pair = /de\s+R\$\s*([\d.,]+)\s+por\s+R\$\s*([\d.,]+)/i.exec(media.alt ?? '');
+  for (const shelf of bannerShelves) {
+    const pair = /de\s+R\$\s*([\d.,]+)\s+por\s+R\$\s*([\d.,]+)/i.exec(shelf.banner_alt ?? '');
     if (!pair) continue;
     checked += 1;
     const [de, por] = [reais(pair[1]), reais(pair[2])];
-    const members = pinnedTo(collectionOf(media.link));
+    const members = pinnedTo(collectionOf(shelf.banner_link));
     const honoured = members.filter((p) => p.amount === por && p.compare_at_amount === de);
     assert.ok(
       honoured.length > 0,
@@ -401,7 +428,7 @@ test('★ s2-2 — the FIGURE the art prints is a price a shopper can pay', () =
           .join(', ')}`,
     );
   }
-  assert.ok(checked > 0, 'no banner tile transcribes a de/por pair any more — the guard lost its subject');
+  assert.ok(checked > 0, 'no shelf banner transcribes a de/por pair any more — the guard lost its subject');
 });
 
 test('★ s2-4 — the shop stocks EVERY label its home promotes', () => {
@@ -426,25 +453,77 @@ test('s2-4 — every product says which label it wears, and the mirror is well f
   );
 });
 
-test('★ s2-8 — the kids banner is not alone in its row: a block one position down leads to the same list', () => {
-  // The banners app flows a mosaic row by the tiles' `width` %, so a lone 33% tile leaves two thirds of the
-  // line empty and reads as a missing slot. The row cannot be filled with art this house does not own (see
-  // the banner's `_why`), so the company is the block BELOW it — and the guard is that it is company and not
-  // a coincidence: it must be in the same slot, at the next position, sourcing the collection the banner
-  // itself points at.
-  const wantedFrom = new Set(data.kidsBanner.media.map((m) => collectionOf(m.link)).filter(Boolean));
-  const company = homeBlocks.filter(
-    (b) => b !== data.kidsBanner && b.slot === data.kidsBanner.slot && b.position === data.kidsBanner.position + 1,
-  );
-  assert.ok(
-    company.length > 0,
-    `nothing sits at ${data.kidsBanner.slot}#${data.kidsBanner.position + 1}: the kids banner is an orphan tile again`,
-  );
-  const strays = company.filter((b) => !wantedFrom.has(b.collection)).map((b) => `${b.title} → ${b.collection}`);
+test('★ pk5 — the «Outlet Kids» art is a SHELF\'s picture, never a lone tile on a line of its own', () => {
+  // ⚠️ THE REGRESSION THIS SLICE EXISTS TO CLOSE, stated as the thing that must not come back. s2-8 read the
+  // gap beside the art as "no second card to put there" and left the piece in a `banners/banner` block at
+  // `width: 33` — one tile owning a whole line, 67% of it white. He looked at the shop and called it what it
+  // is: «está caindo». The picture belongs to a SHELF, where the layout gives it two of five columns and
+  // three product cards fill the rest.
+  //
+  // So the guard is on the DECLARATION, not on a pixel: no block of the `banners` app may carry the kids art.
+  const art = new Set(bannerShelves.map((shelf) => shelf.banner));
+  assert.ok(art.size > 0, 'no shelf carries a picture — the kids art has no home at all');
+  const strays = [data.mosaic, ...(data.kidsBanner ? [data.kidsBanner] : [])]
+    .flatMap((block) => (block.media ?? []).map((m) => m.file))
+    .filter((file) => art.has(file));
   assert.deepEqual(
     strays,
     [],
-    `the block under the kids banner sends the shopper somewhere else than the banner does: ${strays.join(', ')}`,
+    `a shelf\'s picture is ALSO declared as a banner tile: ${strays.join(', ')}. A banner block owns a LINE ` +
+      'and a shelf banner owns a CELL — the same art in both is the row falling again.',
+  );
+  assert.equal(
+    data.kidsBanner,
+    undefined,
+    'the standalone `kidsBanner` block is back. Its art is the «Outlet Kids» shelf\'s `banner` now.',
+  );
+});
+
+// ── pk5 — A SHELF'S ROW ARITHMETIC, AND THE GABARITO IT IS COPIED FROM ─────────────────────────────────
+//
+// He looked at the «Outlet Kids» row and corrected the previous diagnosis: *"está caindo na verdade, será
+// que está no lugar errado? É melhor cortar um pouco do que cair. E esse tipo de shelf que tem banner na
+// verdade é banner + 3 e tem 4 produtos de kids... Mas estranho que essa shelf já existia na loja normal
+// de sapatos. O tamanho era só seguir o mesmo de lá."*
+//
+// ★ THE GABARITO IS A PAGE, NOT A TASTE. «Botas que acabaram de chegar» in the `forge` store is one
+// `shelves/shelf` carrying its own `banner_asset` plus `item_count: 3` (the mounted dataset's
+// `storefront.json`), and on the bench of 2026-09-03 it renders as ONE row with nothing blank in it.
+//
+// ★★ AND THE ARITHMETIC IS THE PRODUCT'S, READ OFF ITS OWN STYLESHEET rather than guessed. The shelf block
+// draws a desktop grid of FIVE equal columns and a promo banner is a CELL of that grid spanning TWO of them
+// (`extensions/shelves/block.module.css`: `.grid { grid-template-columns: repeat(5, 1fr) }` and
+// `.grid > .bannerCell { grid-column: span 2 }`); every configured product renders beside it and the extras
+// wrap into the rows below. So a shelf occupies `(banner ? 2 : 0) + item_count` columns, and its LAST ROW is
+// full exactly when that total divides by five. banner + 3 = 5 ✓. No banner + 5 = 5 ✓. No banner + 4 = one
+// blank column, which is the hole the QA photographed.
+//
+// ⚠️ THIS DOES NOT GUARD THE BANNER BLOCK'S OWN ROW, and it must not be read as if it did: a
+// `banners/banner` block owns a whole LINE and flows its tiles by a `width` PERCENTAGE, which is a different
+// vocabulary with a different failure. The kids art stopped being one of those — see the shelf's `_why`.
+
+/** The shelf grid's desktop column count (`extensions/shelves/block.module.css`, `.grid`). */
+const GRID_COLUMNS = 5;
+/** The columns a promo banner cell spans in that grid (`.grid > .bannerCell`). */
+const BANNER_SPAN = 2;
+/** The grid cells a declared shelf occupies: its products, plus two if it carries a promo banner. Takes both
+ *  spellings — this file declares `item_count` on the shelf, the reference dataset nests it under `config`. */
+const cellsOf = (shelf) => (shelf.banner ? BANNER_SPAN : 0) + (shelf.item_count ?? shelf.config?.item_count);
+
+test('★ pk5 — every shelf on this home FILLS its last row: banner + 3, or products by the five', () => {
+  const short = data.shelves
+    .filter((shelf) => cellsOf(shelf) % GRID_COLUMNS !== 0)
+    .map(
+      (shelf) =>
+        `"${shelf.title}": ${shelf.banner ? `banner(${BANNER_SPAN}) + ` : ''}${shelf.item_count} product(s) ` +
+        `= ${cellsOf(shelf)} cell(s), leaving ${GRID_COLUMNS - (cellsOf(shelf) % GRID_COLUMNS)} of ` +
+        `${GRID_COLUMNS} columns blank in its last row`,
+    );
+  assert.deepEqual(
+    short,
+    [],
+    `a shelf on the outlet's home ends its last row short — the gabarito is «Botas que acabaram de ` +
+      `chegar», banner + 3 in one full row:\n  ${short.join('\n  ')}`,
   );
 });
 
@@ -459,44 +538,53 @@ test('the home\'s blocks hold distinct positions in their slot — two blocks on
   }
 });
 
-// ── the kids tile is sized for the ART, not for a round number (s2-8's other half) ──────────────────────
+// ── AND THE OTHER VOCABULARY: A BANNER BLOCK OWNS A LINE, AND A LINE HAS TO BE FULL ────────────────────
 //
-// The frame is `overflow:hidden` + `object-fit:cover`: a `height` that does not match the cell's real width
-// at the art's own proportion CROPS. The QA's shot is the evidence — at `width: 33` / `height: 400` the tile
-// rendered 384x400 where the art wants 384x317, so `cover` scaled it up and sliced the sides: the O of
-// OUTLET and half the «GRANDES MARCAS» badge are missing from the page.
+// The rule above is the SHELF's grid. A `banners/banner` block flows its tiles by a `width` PERCENTAGE and
+// wraps into a fresh row when a line fills (`extensions/banners/banners.module.css`, `.mosaicRow` /
+// `.mosaicCell`): the cell basis is gap-aware, so a row whose percentages sum to 100 fills the line exactly,
+// with no trailing slack — and a row that sums to less than 100 leaves the remainder WHITE. That is precisely
+// what the lone 33% kids tile did, and the mosaic above it is one wrong number away from the same thing.
 //
-// ★ THE PROPORTION IS READ OFF THE FILE ON DISK, never typed — swap the art and the guard follows it. The
-// column is the one MEASURED on the QA's own 1366x900 screenshot (`shots/s2-home-full.png`: the banner spans
-// x 87→471 and the brands grid ends at 1278, so the content column is ~1191px and a 33% cell is ~384px).
+// ⚠️ AND THERE IS NO `height` GUARD ANY MORE, deliberately. Until pk5 this file checked that the kids tile's
+// declared `height` matched its art's proportion at the cell it rendered in, so `cover` would not crop. The
+// picture is a shelf cell now: it declares NO height, because the cell's height is the product cards' and the
+// art covers it. Cropping is the accepted outcome and not a defect — his ruling, in his words: «é melhor
+// cortar um pouco do que cair». A guard forbidding the crop would now be a guard against the instruction.
 
-/** A PNG's pixel size, straight out of the IHDR chunk — 8 bytes of signature, then length+type, then w/h. */
-function pngSize(path) {
-  const bytes = readFileSync(path);
-  assert.equal(bytes.readUInt32BE(0), 0x89504e47, `${path} is not a PNG`);
-  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
-}
+/** A banner block's tiles, wrapped into lines the way `.mosaicRow` wraps them: a tile that would take the
+ *  running total past 100% starts a fresh line. Absent `width` means the block's own default of 100. */
+const linesOf = (block) => {
+  const lines = [];
+  let line = [];
+  let filled = 0;
+  for (const tile of block.media ?? []) {
+    const width = tile.width ?? 100;
+    if (filled + width > 100) {
+      lines.push({ tiles: line, filled });
+      line = [];
+      filled = 0;
+    }
+    line.push(tile);
+    filled += width;
+  }
+  if (line.length > 0) lines.push({ tiles: line, filled });
+  return lines;
+};
 
-/** The demo's reference viewport is 1366 wide (the Renan's screen, and the QA's) — measured content column. */
-const COLUMN_PX = 1191;
-/** The flex gap between mosaic cells (`--space-md`), subtracted gap-aware by the block's own CSS. */
-const GAP_PX = 16;
-
-test('★ s2-8 — the kids tile\'s height is the art\'s own at the cell it renders in, so nothing is sliced', () => {
-  const off = [];
-  for (const media of data.kidsBanner.media) {
-    const art = pngSize(join(SEED, 'outlet-media', 'banners', media.file));
-    const cell = (media.width / 100) * COLUMN_PX - GAP_PX * (1 - media.width / 100);
-    const wanted = Math.round(cell / (art.width / art.height));
-    const drift = Math.abs(media.height - wanted) / wanted;
-    if (drift > 0.05) {
-      off.push(
-        `${media.file}: ${art.width}x${art.height} in a ${Math.round(cell)}px cell wants height ${wanted}, ` +
-          `declared ${media.height} (${Math.round(drift * 100)}% off — cover will crop by that much)`,
+test('★ pk5 — every LINE of a banner block on this home is full: a short row is white space, not a design', () => {
+  const short = [];
+  for (const block of homeBlocks.filter((b) => b.media)) {
+    for (const [index, line] of linesOf(block).entries()) {
+      if (line.filled === 100) continue;
+      short.push(
+        `${block.slot}#${block.position} line ${index + 1}: ${line.tiles.length} tile(s) summing to ` +
+          `${line.filled}% — ${100 - line.filled}% of that line renders blank ` +
+          `(${line.tiles.map((t) => t.file).join(', ')})`,
       );
     }
   }
-  assert.deepEqual(off, [], `the kids banner crops its own art:\n  ${off.join('\n  ')}`);
+  assert.deepEqual(short, [], `a banner line on the outlet's home is short:\n  ${short.join('\n  ')}`);
 });
 
 // ── THE MIRROR ITSELF, WHEN A FORGE CHECKOUT IS AT HAND ────────────────────────────────────────────────
@@ -517,8 +605,10 @@ test('★ s2-8 — the kids tile\'s height is the art\'s own at the cell it rend
 // 03/09, twice over ("tem coisa que é do produto forge, tem coisa que é só do repo da demo"). This guard says
 // when the two copies part company; the fix on the day they do is to re-mirror here, or to card it there.
 
-/** A Forge checkout, if this machine has one — the same probe `bin/composition.guard.mjs` uses. */
-function forgeCheckout() {
+/** A Forge checkout holding `marker`, if this machine has one — the same probe `bin/composition.guard.mjs`
+ *  uses. The marker is passed in because two different files are read from over there and a checkout that
+ *  has one and not the other must not be reported as the other's source. */
+function forgeCheckout(marker = BRANDS_GRID) {
   const REPO_ROOT = join(SEED, '..');
   for (const base of [
     process.env.FORGE_MONOREPO,
@@ -527,7 +617,7 @@ function forgeCheckout() {
     join(REPO_ROOT, '..', '..', 'forge'),
     join(REPO_ROOT, '..', '..', '..', 'forge'),
   ]) {
-    if (base && existsSync(join(base, BRANDS_GRID))) return base;
+    if (base && existsSync(join(base, marker))) return base;
   }
   return null;
 }
@@ -556,4 +646,55 @@ test('★ s2-4 — `featured_brands` still MIRRORS the vitrine\'s own list', (t)
     'the vitrine promotes a different set of brands than this file mirrors. Re-mirror it here (and stock ' +
       'whatever is new), or the home ships tiles into an empty /b/<slug> again — s2-4, verbatim.',
   );
+});
+
+// ── pk5 — THE GABARITO, READ FROM THE SHOP THAT ALREADY DOES IT RIGHT ──────────────────────────────────
+//
+// His whole instruction for this row was "copy the one that works": *"essa shelf já existia na loja normal
+// de sapatos. O tamanho era só seguir o mesmo de lá."* The one that works is «Botas que acabaram de chegar»
+// in the `forge` store, and it is not a taste anybody typed here — it is declared by the MOUNTED DATASET
+// (`instances/demo/dataset/storefront.json`), which is the platform's own example data, in the monorepo.
+//
+// So this reads it and holds the outlet's kids shelf to the same shape. Same standing risk as the
+// `featured_brands` mirror above, and the same honest answer: it only ever READS, and it skips when this
+// machine has no checkout.
+
+/** Where the reference dataset declares the `forge` store's window. */
+const DATASET_WINDOW = join('instances', 'demo', 'dataset', 'storefront.json');
+
+test('★ pk5 — the kids shelf is shaped like the shelf-with-a-banner that ALREADY WORKS', (t) => {
+  const forge = forgeCheckout(DATASET_WINDOW);
+  if (!forge) {
+    t.skip(`no Forge checkout on this machine (set FORGE_MONOREPO=<path>) — cannot read ${DATASET_WINDOW}`);
+    return;
+  }
+  const window = JSON.parse(readFileSync(join(forge, DATASET_WINDOW), 'utf8'));
+  const gabaritos = (window.shelves ?? []).filter((shelf) => shelf.banner);
+  assert.ok(
+    gabaritos.length > 0,
+    `no shelf in ${DATASET_WINDOW} carries a banner any more — the shape this row was copied from is gone, ` +
+      'and somebody has to look at what replaced it before this guard is deleted.',
+  );
+
+  // The dataset's own arithmetic, run through the SAME function the outlet's shelves are graded by. If the
+  // reference shelf ever stops filling its row, this fails on the gabarito rather than on us — which is the
+  // right place for it to fail.
+  for (const shelf of gabaritos) {
+    assert.equal(
+      cellsOf(shelf) % GRID_COLUMNS,
+      0,
+      `the gabarito "${shelf.config?.title ?? '?'}" no longer fills its own row (${cellsOf(shelf)} cells)`,
+    );
+  }
+
+  // And the outlet's copy answers the same: a picture, a link, and the product count that leaves the row full.
+  const counts = new Set(gabaritos.map((shelf) => shelf.config.item_count));
+  for (const shelf of bannerShelves) {
+    assert.ok(
+      counts.has(shelf.item_count),
+      `"${shelf.title}" shows ${shelf.item_count} product(s) beside its picture; the gabarito shows ` +
+        `${[...counts].join('/')}. banner + 3 is one full row of five — see the row-arithmetic guard above.`,
+    );
+    assert.ok(shelf.banner_link, `"${shelf.title}" carries a picture and no \`banner_link\`: the art is inert`);
+  }
 });
