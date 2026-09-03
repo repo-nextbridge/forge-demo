@@ -29,7 +29,10 @@ apps/                  the apps THIS box wrote: `demo-gate` (§4) and `payment-p
 extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
                        composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
-seed/                  the birth data: the stores, the coffee and counter catalogues, the photos.
+seed/                  the birth data: the stores, the coffee and counter catalogues, the photos — and the
+                       STOCK POOL (`catalog.json` → `stock_pool`), products this brand owns that no store
+                       sells. They look like an oversight and are the opposite: step 10 builds the stock
+                       screen's three alert states by ZEROING them, and refuses a pool under 13.
 docs/                  the capability pages: what this box can DO that it could not before, one page each.
 bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)

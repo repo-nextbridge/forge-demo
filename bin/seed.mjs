@@ -41,6 +41,10 @@ import { planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs
 import { createMinted, unresolved } from '../seed/minted.mjs';
 import { planStock } from '../seed/stock.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
+// ⛔ THE STOCK POOL — products this brand OWNS and no store SELLS, which is what the demo's 180-day past is
+// built from. Imported here rather than folded into `products()` above because that function's next act is
+// `publish()`, and publishing one of these is exactly the mistake the pool exists to avoid.
+import { seedStockPool } from '../seed/pool.mjs';
 // A13 — who really names a tenant's bootstrap store. Imported for ONE reason: so the failure below says the
 // truth instead of repeating a claim from an array that box.json declares superseded.
 import { bootstrapStoreOf, topologyDisagreement } from '../seed/topology.mjs';
@@ -1263,6 +1267,16 @@ if (here(catalog.products_store)) {
   await products();
   await publish();
   await stock();
+  // AFTER `publish()`, deliberately: the pool must never be in the list that one walks.
+  await seedStockPool({
+    command,
+    read,
+    readAll,
+    upload: (file) => upload(file, { dir: 'photos' }),
+    log,
+    fail,
+    minted,
+  });
 } else {
   log(`catalogue — the "${catalog.products_store}" store is not on this tenant; its six coffees are not mine to create`);
 }

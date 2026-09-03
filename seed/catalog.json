@@ -617,5 +617,72 @@
     ],
   "_products_store_why": "WHICH STORE SELLS THEM. `catalog.product.create` makes a product of the TENANT; being on sale in a store is a second, separate act (`catalog.product.publish`) — and D1 did the first and not the second, so the six coffees existed and no shop showed them. Measured: `read.products?store=<cafe>` answered 0 with all six created. A product is not a listing.",
   "default_on_hand": 40,
-  "_stock_why": "STOCK, and D1 left it at zero. `catalog.sku.create` prices a SKU; it does not stock it, and a shop whose every SKU is at 0 refuses `cart.add_line` with `insufficient_stock · available: 0` — measured. So each SKU is stocked at this number unless it declares its own `on_hand` (the Edição do Produtor declares 14, because its scarcity is part of the demo). 40 is a demo's number: enough that nobody hits a wall, small enough that the 'Acabando!' shelf still means something."
+  "_stock_why": "STOCK, and D1 left it at zero. `catalog.sku.create` prices a SKU; it does not stock it, and a shop whose every SKU is at 0 refuses `cart.add_line` with `insufficient_stock · available: 0` — measured. So each SKU is stocked at this number unless it declares its own `on_hand` (the Edição do Produtor declares 14, because its scarcity is part of the demo). 40 is a demo's number: enough that nobody hits a wall, small enough that the 'Acabando!' shelf still means something.",
+  "_stock_pool_why": [
+    "⛔⛔ THE STOCK POOL — PRODUCTS OF THIS TENANT THAT NO STORE SELLS, AND THAT IS THE POINT. Do not",
+    "'fix' them by publishing them: publishing one is what breaks the thing they exist for.",
+    "",
+    "WHO ASKS FOR THEM. The 180-day past of this box is written by the `demo-data` app inside the kernel, and",
+    "its plan drives products into the three states the admin's stock screen shows — `out` (every stocked SKU",
+    "at zero), `partial` (SOME at zero, not all) and `low` (1..5). It takes them from a POOL it defines as the",
+    "products NONE of the selling SKUs belong to (`apps/api/src/seed-history.ts:475`), because the generator",
+    "ZEROES their stock: doing that to something a shop sells would put an out-of-stock item on the shelf and",
+    "make the same run order goods it had just taken away. The three states need 3 + 4 + 6 = 13 products",
+    "(`extensions/demo-data/history/plan.ts:488-490`), and at least 4 of them must be MULTI-SKU, because",
+    "`partial` is only expressible on a product with siblings. Fewer than 13 is a REFUSAL, by name:",
+    "",
+    "    history plan: the stock pool has 11 product(s) and the three alert states need 13. Widen it (it must",
+    "    also stay disjoint from what the stores sell).",
+    "",
+    "⚠️ AND THAT IS WHAT BLOCKED THIS BRAND'S PAST ENTIRELY — no past, no dashboard, no order queue, no",
+    "revenue series, on the tenant the demo opens on.",
+    "",
+    "★★ WHY THIS KEY EXISTS AT ALL, WHICH MATTERS MORE THAN THE TWO PRODUCTS IN IT. Measured on the bench of",
+    "2026-09-03: this tenant holds 21 products and EVERY ONE of them is published by the counter, so on paper",
+    "the pool is empty. It was not — it held 11 — and the reason is an ACCIDENT OF SAMPLING: the history",
+    "reads only the first 40 sellable SKUs per store, ordered by id (`CATALOG_PER_STORE`,",
+    "`apps/api/src/seed-history.ts:141`), and the counter has 63. The 11 were simply the overflow, the",
+    "products whose SKUs sort past the 40th. A pool that is the leftover of a LIMIT disappears the day the",
+    "catalogue shrinks, the day a price changes an id, the day somebody re-orders this file — and the past",
+    "would start failing again with nothing anywhere saying why. So the pool is DECLARED here, with its",
+    "reason beside it, and `seed/pool.test.mjs` measures it with the kernel's own rule.",
+    "",
+    "⚠️ WHAT IS STILL AN ACCIDENT, AND IS REPORTED RATHER THAN HIDDEN: two declared products bring the pool",
+    "to exactly 13, so the generator uses ALL of it — the 11 overflow products included. Eleven items the",
+    "counter really does sell will therefore come out of the seed at low/partial/zero stock (`caneca-",
+    "esmaltada` is the one that goes fully to zero). Making the pool truly disjoint from both assortments",
+    "needs 13 products no store sells, i.e. eleven more than are here. That is the owner's call — it is",
+    "eleven more photographs — and until it is made, this is a demo whose counter shows some sold-out lines.",
+    "",
+    "THE SHOP'S OWN STORY FOR THEM: two classics the bar knows how to make and is not offering this season.",
+    "A catalogue is larger than a menu, which is exactly the fact the stock screen exists to manage.",
+    "",
+    "⚠️ ONE PHOTOGRAPH EACH, AND NO STAND-IN. These two arrived from the merchant with their real picture",
+    "(2026-09-03), so unlike the six coffees they declare no `photos` list and no story frames: a product no",
+    "shopper can reach has no page to tell a story on. `seed/placeholder-media/` is therefore not consulted",
+    "for them, and `bin/make-placeholders.mjs` does not grow three frames per pool product.",
+    "",
+    "⚠️ SINGLE SKU EACH, ON PURPOSE. `partial` needs 4 multi-SKU products and the pool already carries 10, so",
+    "there is slack; inventing a size axis for a drink that is not on any menu would be data pretending to be",
+    "a decision."
+  ],
+  "stock_pool": {
+    "default_on_hand": 40,
+    "products": [
+      {
+        "handle": "americano",
+        "title": "Americano",
+        "photo": "americano.png",
+        "description": "Espresso alongado com água quente. Mesma dose, xícara maior, corpo mais leve — o café de quem fica.",
+        "amount": 900
+      },
+      {
+        "handle": "macchiato",
+        "title": "Macchiato",
+        "photo": "macchiato.png",
+        "description": "Espresso marcado com uma colher de espuma. Entre o curto e o cappuccino, e mais perto do curto.",
+        "amount": 1000
+      }
+    ]
+  }
 }
