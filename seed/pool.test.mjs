@@ -13,7 +13,7 @@
 // ── WHAT THIS FILE MEASURES, AND WHY IT IS NOT A TAUTOLOGY ──────────────────────────────────────────────
 //
 // `stockPoolOf` is a re-implementation of the kernel's own selection (`resolveCatalogs`,
-// `apps/api/src/seed-history.ts:450`) over the dataset — the 40-SKU-per-store sample included, because the
+// `apps/api/src/seed-history.ts:446`) over the dataset — the 40-SKU-per-store sample included, because the
 // sample is the whole reason the pool was ever accidental. It is not "what the dataset declares as a pool";
 // it is "what the generator will actually be handed", which is a different number and was the surprise.
 //
@@ -157,7 +157,7 @@ test('★ every pool product names a photograph that is really on disk — no st
 });
 
 test('★ a pool product is priced and sellable-shaped — the pool query only takes ACTIVE skus', () => {
-  // `where s.status = 'active'` (apps/api/src/seed-history.ts:481). A product created as a draft, or with
+  // `where s.status = 'active'` (apps/api/src/seed-history.ts:479). A product created as a draft, or with
   // no sku, is not in the pool at all — it is simply invisible, which is the failure mode with no message.
   for (const product of poolProducts()) {
     assert.equal(Number.isInteger(product.amount), true, `${product.handle} has no integer price in cents`);

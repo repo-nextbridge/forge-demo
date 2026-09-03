@@ -111,7 +111,7 @@ const SUBSCRIBED_LINE = { kind: 'custom_field', field: 'sub_plan', operator: 'ex
  * to keep it. Same reasoning, and the same words, as the coupon in `seed/commerce.mjs`.
  *
  * ⚠️ THE FREIGHT PROMOTION NAMES NO DELIVERY METHOD (`shipping_method_ids` absent = every method, which is
- * the contract's own default: `packages/contracts/src/promotion.ts:81`). The kernel offers the narrower
+ * the contract's own default: `packages/contracts/src/promotion.ts:82`). The kernel offers the narrower
  * shape and warns that free freight on the express modality is how a merchant bleeds margin — but the
  * sentence this promotion exists to keep carries NO qualifier, and a promotion that silently excluded
  * "Entrega Expressa" would be the same lie in the other direction. If the shop ever wants to qualify it, the

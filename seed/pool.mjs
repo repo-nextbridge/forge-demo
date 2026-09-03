@@ -34,7 +34,7 @@ const totem = JSON.parse(readFileSync(join(SEED, 'totem.json'), 'utf8'));
 /** How many sellable SKUs of a store the history samples, ordered by id. `apps/api/src/seed-history.ts:141`. */
 export const CATALOG_PER_STORE = 40;
 
-/** `out` 3 + `partial` 4 + `low` 6. `extensions/demo-data/history/plan.ts:488-490`. */
+/** `out` 3 + `partial` 4 + `low` 6. `extensions/demo-data/history/plan.ts:489-491`. */
 export const POOL_PRODUCTS_NEEDED = 13;
 
 /** Only a product with siblings can have SOME sku at zero and not all. Same file, `STOCK_PARTIAL_PRODUCTS`. */
@@ -73,7 +73,7 @@ export function tenantCatalogue() {
 }
 
 /**
- * ★★ THE POOL, DERIVED WITH THE KERNEL'S OWN RULE — `resolveCatalogs`, `apps/api/src/seed-history.ts:450`.
+ * ★★ THE POOL, DERIVED WITH THE KERNEL'S OWN RULE — `resolveCatalogs`, `apps/api/src/seed-history.ts:446`.
  *
  * For each store: its sellable SKUs, in id order, capped at `CATALOG_PER_STORE`. The pool is every product
  * NONE of those SKUs belongs to — excluded BY PRODUCT and not by SKU, which is what makes `partial`

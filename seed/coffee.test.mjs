@@ -360,7 +360,7 @@ test('⛔ D14 — THE CONTROL: the fork PRINTS "Frete grátis", so the dataset m
 });
 
 test('★ D14 — the freight promotion names NO delivery method, because the sentence carries no qualifier', () => {
-  // `shipping_method_ids` absent = every method (packages/contracts/src/promotion.ts:81, the contract's own
+  // `shipping_method_ids` absent = every method (packages/contracts/src/promotion.ts:82, the contract's own
   // default). The kernel offers the narrower shape; the shop's sentence is what decides not to use it.
   const freight = COFFEE_PROMOTIONS.find((p) => p.benefit.kind === 'free_shipping');
   assert.equal(freight.benefit.shipping_method_ids, undefined);
