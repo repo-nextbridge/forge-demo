@@ -16,11 +16,12 @@
 //   · the products, PUBLISHED into the outlet store, CATEGORISED and given their stock;
 //   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
 //     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
-//   · the three collections the three shelves are sourced from;
-//   · the six Compose placements that ARE the home: the announcement band, and — all five in the SINGLE
+//   · the three collections the shelves and the banners are sourced from (`acabando` outlives the shelf that
+//     used to show it: it is still a list a shopper reaches at `/collection/acabando`);
+//   · the five Compose placements that ARE the home: the announcement band, and — all four in the SINGLE
 //     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
-//     banner mosaic, the "Quase de graça" shelf, the "Acabando!" shelf, the «Outlet Kids» banner and the
-//     "Outlet Kids" shelf that gives that banner a body (s2-8).
+//     banner mosaic, the "Quase de graça" shelf, the «Outlet Kids» banner and the "Outlet Kids" shelf that
+//     gives that banner a body (s2-8).
 //
 // ⚠️ CONFINED TO THE OUTLET STORE — with one measured asterisk. Everything store-scoped below names
 // `data.store` and nothing else. Two steps are not store-scoped because the kernel models them per TENANT
@@ -599,8 +600,8 @@ async function seedCollections({ command, read, log }, products) {
 // the two shelves and the kids banner, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
 // reference home (theme chrome over core reads, not slots), and between them the template declares exactly
 // ONE slot — `home.below_categories`. So the order he asked for is not a choice of slots, it is `position`
-// 0..4 inside that one (03/09: the "Outlet Kids" shelf appended at 4, after the banner he named last —
-// nothing he named moved). `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
+// 0..3 inside that one (03/09: the "Outlet Kids" shelf appended after the banner he named last, and pk5 then
+// took «Acabando!» off the home). `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
 // empty ON PURPOSE, and so is the PLP. See `outlet.json`'s `_home_why`.
 //
 // ⚠️ AND THAT IS WHY THIS FUNCTION GOVERNS RATHER THAN APPENDS — the change is not cosmetic, so read it.
@@ -685,7 +686,7 @@ async function compose({ command, read, rows, log }, store, assets) {
     log(`compose ${band.slot} — configured ${band.what}`);
   }
 
-  // ── the home: five blocks, one slot, ordered by position ──────────────────────────────────────────
+  // ── the home: four blocks, one slot, ordered by position ──────────────────────────────────────────
   const mediaConfig = (items) =>
     items.map((m) => ({
       asset_id: assets.get(m.file).id,

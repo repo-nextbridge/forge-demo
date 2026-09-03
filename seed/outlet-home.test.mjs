@@ -161,22 +161,26 @@ test('the ops come out in ASCENDING position, whatever order they were declared 
   );
 });
 
-// ── 03/09 — THE FIFTH BLOCK, AND THE UPGRADE PATH IT CREATES (s2-8) ────────────────────────────────────
+// ── 03/09 (pk5) — THE HOME LOSES «ACABANDO!» AND THE SHELVES SHIFT UNDER THE PAIRING ────────────────────
 //
-// The «Outlet Kids» banner sat alone in its row with two thirds of white beside it, and the row cannot be
-// filled with art this house does not own (see `outlet.json`'s `kidsBanner._why`). So the banner gains a
-// BODY instead: an "Outlet Kids" shelf at `position` 4, sourcing the collection the banner points at.
+// s2-8 gave the «Outlet Kids» banner a body: an "Outlet Kids" shelf, appended at position 4, sourcing the
+// collection the banner points at. pk5 then removed «Acabando!» from the home on his own instruction — the
+// collection stays, the ROW goes — so the declaration is FOUR blocks again: mosaic, «Quase de graça», the
+// kids banner, the kids shelf.
 //
-// ★ THAT CREATES A THIRD WORLD STATE, and it is the one every bench is in right now: a page already showing
-// the four blocks of 02/09, in the right slot, in the right order, which must gain ONE block and lose none.
-// It is the state the pairing is most likely to get wrong, because `shelves/shelf` now has THREE wanted
-// against TWO held — and pairing is by ORDER within the group, so the newcomer must be the one left over,
-// never the one that steals «Quase de graça»'s instance.
+// ★ AND THAT IS THE WORLD STATE THIS FILE EXISTS FOR. Two benches are running right now: one on the 02/09
+// page (four blocks, «Acabando!» among them) and one on the 03/09 page (five). Both must converge on the
+// same four, and because the pairing is BY ORDER within an app+component group, «Acabando!»'s instance is not
+// deleted — it is REUSED, by the shelf that now sits where it sat. What gets removed is the LAST shelf of the
+// pool, not the one whose title matches. That is a property worth a test precisely because it reads wrong:
+// the audit trail of the row that used to say «Acabando!» becomes the audit trail of «Outlet Kids».
 
-/** What `outlet.json` declares SINCE 03/09 — the four above plus the kids shelf. */
-const WANTED_5 = [
-  ...WANTED,
-  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 4, what: 'kids-shelf' },
+/** What `outlet.json` declares SINCE pk5 — the 02/09 four with «Acabando!» replaced by the kids shelf. */
+const WANTED_NOW = [
+  { extension_id: 'banners', component: 'banner', slot: SLOT, position: 0, what: 'mosaic' },
+  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 1, what: 'quase' },
+  { extension_id: 'banners', component: 'banner', slot: SLOT, position: 2, what: 'kids' },
+  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 3, what: 'kids-shelf' },
 ];
 
 /** The page a box that ran the 02/09 seed is showing right now. */
@@ -188,67 +192,93 @@ const pageOf0209 = () => [
   row('hp_kids', 'banners', 'banner', SLOT, 3),
 ];
 
-test('★★ the 02/09 page gains the kids SHELF and loses nothing — the two it has keep their instances', () => {
-  const plan = planHome(pageOf0209(), WANTED_5, GOVERNED);
+/** The page a box that ran the 03/09 seed is showing — the same four plus the kids shelf at 4. */
+const pageOf0309 = () => [...pageOf0209(), row('hp_kids_shelf', 'shelves', 'shelf', SLOT, 4)];
+
+test('★★ the 02/09 page keeps both its shelf instances — «Acabando!»\'s hosts the kids shelf', () => {
+  const plan = planHome(pageOf0209(), WANTED_NOW, GOVERNED);
   assert.deepEqual(named(plan), [
     ['mosaic', 'hp_mosaic'],
     ['quase', 'hp_quase'],
-    ['acabando', 'hp_acabando'],
     ['kids', 'hp_kids'],
-    ['kids-shelf', null], // the only new one
+    ['kids-shelf', 'hp_acabando'],
   ]);
   assert.deepEqual(plan.remove, []);
 });
 
-test('★ and the run after THAT one changes nothing again', () => {
-  const settled = [...pageOf0209(), row('hp_kids_shelf', 'shelves', 'shelf', SLOT, 4)];
-  const plan = planHome(settled, WANTED_5, GOVERNED);
+test('★★ the 03/09 page loses ONE shelf, and it is the surplus of the pool — not the one titled «Acabando!»', () => {
+  // ⚠️ THE COUNTER-INTUITIVE HALF. Three shelf instances are held and two are wanted, so the plan pairs the
+  // first two in read order and removes the third. `hp_acabando` survives as the kids shelf's host and
+  // `hp_kids_shelf` — placed yesterday — is the row that goes. Any pairing that matched on the config would
+  // do the opposite and be just as green.
+  const plan = planHome(pageOf0309(), WANTED_NOW, GOVERNED);
   assert.deepEqual(named(plan), [
     ['mosaic', 'hp_mosaic'],
     ['quase', 'hp_quase'],
-    ['acabando', 'hp_acabando'],
     ['kids', 'hp_kids'],
-    ['kids-shelf', 'hp_kids_shelf'],
+    ['kids-shelf', 'hp_acabando'],
+  ]);
+  assert.deepEqual(
+    plan.remove.map((r) => r.row.placement_id),
+    ['hp_kids_shelf'],
+  );
+});
+
+test('★ and the run after THAT one changes nothing', () => {
+  const settled = [
+    row('hp_band', 'banners', 'announcement', 'storefront:header.announcement', 0, { text: 'x' }),
+    row('hp_mosaic', 'banners', 'banner', SLOT, 0),
+    row('hp_quase', 'shelves', 'shelf', SLOT, 1),
+    row('hp_kids', 'banners', 'banner', SLOT, 2),
+    row('hp_acabando', 'shelves', 'shelf', SLOT, 3),
+  ];
+  const plan = planHome(settled, WANTED_NOW, GOVERNED);
+  assert.deepEqual(named(plan), [
+    ['mosaic', 'hp_mosaic'],
+    ['quase', 'hp_quase'],
+    ['kids', 'hp_kids'],
+    ['kids-shelf', 'hp_acabando'],
   ]);
   assert.deepEqual(plan.remove, []);
 });
 
-test('★ the PLP default is STILL surplus with three shelves wanted — it is not the third one\'s host', () => {
-  // ⚠️ THE TRAP THE THIRD SHELF OPENS. `extension.install` leaves an empty `shelves/shelf` in
-  // `list.below_shelf`, and it IS in the governed set. With only two shelves wanted it was surplus and
-  // removed; with three, a pairing that ordered the pool badly would hand the PLP instance to the kids shelf
-  // and MOVE it onto the home — leaving the PLP clean by accident and the home built out of the wrong row.
-  // The read sorts by target then position, so `home.*` comes before `list.*` and the leftover is the PLP's.
+test('★ the PLP default is STILL surplus with two shelves wanted — it is not the kids shelf\'s host', () => {
+  // ⚠️ THE TRAP. `extension.install` leaves an empty `shelves/shelf` in `list.below_shelf`, and it IS in the
+  // governed set. A pairing that ordered the pool badly would hand the PLP instance to the kids shelf and
+  // MOVE it onto the home — leaving the PLP clean by accident and the home built out of the wrong row. The
+  // read sorts by target then position, so `home.*` comes before `list.*` and the leftover is the PLP's.
   const withPlpDefault = [...pageOf0209(), row('hp_plp', 'shelves', 'shelf', 'storefront:list.below_shelf', 0)];
-  const plan = planHome(withPlpDefault, WANTED_5, GOVERNED);
+  const plan = planHome(withPlpDefault, WANTED_NOW, GOVERNED);
   assert.deepEqual(named(plan), [
     ['mosaic', 'hp_mosaic'],
     ['quase', 'hp_quase'],
-    ['acabando', 'hp_acabando'],
     ['kids', 'hp_kids'],
-    ['kids-shelf', 'hp_plp'],
+    ['kids-shelf', 'hp_acabando'],
   ]);
-  assert.deepEqual(plan.remove, []);
+  assert.deepEqual(
+    plan.remove.map((r) => r.row.placement_id),
+    ['hp_plp'],
+  );
 });
 
 test('★★ THE DECLARED SHAPE IS THE ONE THE PLAN IS FED — the fixtures above are not a second source', () => {
-  // The five fixtures in this file are hand-written on purpose: they describe world STATES, and a state
-  // derived from the file under test proves nothing. What must NOT drift is the OTHER half — what
-  // `outlet.json` declares. So this one reads it and checks the shape the fixtures assume: one slot, five
-  // blocks, positions 0..4, two `banners/banner` and three `shelves/shelf`.
+  // The fixtures in this file are hand-written on purpose: they describe world STATES, and a state derived
+  // from the file under test proves nothing. What must NOT drift is the OTHER half — what `outlet.json`
+  // declares. So this one reads it and checks the shape the fixtures assume: one slot, four blocks,
+  // positions 0..3, two `banners/banner` and two `shelves/shelf`.
   const declared = [
     { app: 'banners', component: 'banner', slot: data.mosaic.slot, position: data.mosaic.position },
     ...data.shelves.map((s) => ({ app: 'shelves', component: 'shelf', slot: s.slot, position: s.position })),
     { app: 'banners', component: 'banner', slot: data.kidsBanner.slot, position: data.kidsBanner.position },
   ];
-  assert.equal(declared.length, WANTED_5.length, 'outlet.json no longer declares the number of blocks these fixtures model');
+  assert.equal(declared.length, WANTED_NOW.length, 'outlet.json no longer declares the number of blocks these fixtures model');
   assert.deepEqual(new Set(declared.map((b) => b.slot)), new Set([SLOT]), 'a block left the single slot');
   assert.deepEqual(
     declared.map((b) => b.position).sort((a, b) => a - b),
-    [0, 1, 2, 3, 4],
-    'the positions are no longer 0..4 — the shifting `place`/`move` semantics assume a dense run',
+    [0, 1, 2, 3],
+    'the positions are no longer 0..3 — the shifting `place`/`move` semantics assume a dense run',
   );
   const count = (app) => declared.filter((b) => b.app === app).length;
   assert.equal(count('banners'), 2, 'the number of banner blocks changed — the positional pairing is what tells them apart');
-  assert.equal(count('shelves'), 3, 'the number of shelf blocks changed — see the PLP-default test above');
+  assert.equal(count('shelves'), 2, 'the number of shelf blocks changed — see the PLP-default test above');
 });
