@@ -22,6 +22,22 @@
     "turned on. Same reason the currency is declared even though it is already the default: the place a switch",
     "is declared should be the place a reader would look for it.",
     "",
+    "\u2605\u2605 `dataset` \u2014 WHOSE CATALOGUE THE MOUNTED EXAMPLE DATA IS, AND IT IS THE FIELD THIS FILE EXISTS",
+    "TO CARRY. A box mounts ONE example dataset (`FORGE_SEED_DATASET_DIR`), and a dataset is a BRAND's: this",
+    "one is the footwear catalogue. `dist/seed-demo.js` fills the tenant it is POINTED AT \u2014 correctly, from",
+    "whatever dataset is mounted \u2014 so pointing it at a second tenant fills a coffee shop with shoes. Measured",
+    "on the bench of 02/09: `forgecafe` held 2 811 products (21 curated + the dataset's 2 790), 44 490 SKUs,",
+    "351 footwear brands and the dataset's eleven footwear custom fields. The kernel did nothing wrong \u2014 the",
+    "same handles carry DIFFERENT ids in the two schemas, so those were two correctly-scoped writes, not a",
+    "leak. The defect was `bin/box-up.sh` running step 9 `for t in $TENANTS`. This field is what it reads now.",
+    "",
+    "\u2605 AND THE TENANT THAT DOES NOT CARRY IT NEEDS THE OTHER HALF OF THAT ONE-SHOT. `seed-demo.js` fuses two",
+    "jobs: fill the store from the dataset, and PROVISION the tenant (its apps, its delivery, its checkout",
+    "flags). Only the first is the dataset's. So a `dataset: false` tenant declares `apps` and `delivery`",
+    "here, `bin/seed-box.mjs` applies them at step 6, and the tenant stands without borrowing another brand's",
+    "catalogue. \u26a0\ufe0f A `dataset: true` tenant must NOT declare them \u2014 the one-shot is their owner, and two",
+    "owners for one gesture is how this repository has already grown a duplicate.",
+    "",
     "WHAT IS NOT HERE, and deliberately: the FIRST store of each tenant. `provision-ref` creates it at",
     "bootstrap (`FORGE_REF_STORE_HANDLE`), before any credential exists to drive the port with — so listing it",
     "here would be a second author for a row that already has one. It is named below only so a reader can see",
@@ -33,6 +49,8 @@
       "id": "forgeco",
       "why": "T1, the footwear brand. The tenant this bench was born with, kept under its own name so nothing that already refers to it has to move.",
       "admin_host": "localhost:8201",
+      "dataset": true,
+      "_dataset_why": "The mounted example data IS this brand's catalogue \u2014 2 790 footwear products, 351 footwear brands, and the footwear facet vocabulary in its `custom-fields.json`. So step 9 of `bin/box-up.sh` runs here, and everything it brings (the catalogue, the storefront apps, the delivery methods, the checkout flags) has one owner: the one-shot.",
       "settings": {
         "tenant_name": "Forge",
         "default_locale": "pt-BR",
@@ -59,6 +77,87 @@
       "id": "forgecafe",
       "why": "T2, the coffee business. A SECOND TENANT, which this bench never had — and the thing that makes it possible is not a second admin container: `read.admin.by_host` resolves the tenant from the request's host:port and `platform.admin_host.set` writes that map, so one admin serves both.",
       "admin_host": "localhost:8202",
+        "dataset": false,
+        "_dataset_why": "A coffee business is not the brand the mounted example data describes. Its catalogue is the CURATED one this repository writes — 6 coffees + the counter's 15 — and nothing else belongs in it. Step 9 therefore does not run here; `apps` and `delivery` below are the half of that one-shot this tenant really did need.",
+        "apps": [
+          "banners",
+          "shelves",
+          "recommendations",
+          "payment-reference",
+          "payment-mercadopago",
+          "admin-dashboard"
+        ],
+        "_apps_why": [
+          "THE APPS STEP 9 USED TO INSTALL HERE AS A SIDE EFFECT OF FILLING A CATALOGUE THIS TENANT SHOULD NEVER",
+          "HAVE HAD. Measured on the bench of 02/09 (`forge_control.extension_installation`): these six landed in",
+          "`forgecafe` at 00:59:41, inside `seedCuratedStorefront` — the second half of the dataset one-shot.",
+          "`reviews` and `subscriptions` are NOT here and must not be: `seed/coffee.mjs` installs those, and one",
+          "gesture may only have one owner.",
+          "",
+          "⚠️ `payment-reference` and `payment-mercadopago` are why a coffee cart can be paid at all — a store with",
+          "no payment app reaches the payment step with no method, which is a dead end that reads as a broken",
+          "checkout. `admin-dashboard` is what puts the three widgets on this tenant's admin home."
+        ],
+        "delivery": {
+          "zone": {
+            "name": "Brasil",
+            "postal_code_from": "01000-000",
+            "postal_code_to": "99999-999"
+          },
+          "methods": [
+            {
+              "name": "Entrega Padrão",
+              "dimensional_divisor": 6000,
+              "max_weight_grams": 30000,
+              "rates": [
+                {
+                  "weight_bracket_max_grams": 1000,
+                  "price": 1990,
+                  "delivery_min_days": 4,
+                  "delivery_max_days": 8
+                },
+                {
+                  "weight_bracket_max_grams": 30000,
+                  "price": 3990,
+                  "delivery_min_days": 5,
+                  "delivery_max_days": 10
+                }
+              ]
+            },
+            {
+              "name": "Entrega Expressa",
+              "dimensional_divisor": 6000,
+              "max_weight_grams": 30000,
+              "rates": [
+                {
+                  "weight_bracket_max_grams": 1000,
+                  "price": 3490,
+                  "delivery_min_days": 1,
+                  "delivery_max_days": 3
+                },
+                {
+                  "weight_bracket_max_grams": 30000,
+                  "price": 6990,
+                  "delivery_min_days": 2,
+                  "delivery_max_days": 4
+                }
+              ]
+            }
+          ]
+        },
+        "_delivery_why": [
+          "A COFFEE SHOP THAT DELIVERS NEEDS ITS OWN FREIGHT, and until now it borrowed the footwear seeder's. Same",
+          "two methods and the same figures `demo-data`'s `populate` writes — deliberately, so nothing a human has",
+          "already tested changes shape — but declared HERE, by the box, for the tenant that owns them.",
+          "",
+          "⛔ IT IS ALSO A PRECONDITION OF STEP 10, NOT A GARNISH. `seed-history` refuses a tenant with more than one",
+          "active delivery method, and box-up silences all but the one named by $FORGE_HISTORY_KEEP_METHOD",
+          "(\"Entrega Padrão\") — a tenant with NO delivery method fails that step by name. So this is applied at",
+          "step 6, before the curated seed, the past and the window: exactly where `bin/seed-box.mjs` runs.",
+          "",
+          "⚠️ TENANT-WIDE, no `store_id` — the same limitation `seed/totem.json` writes up for the counter's pickup:",
+          "these commands have no store axis, so the counter's checkout sees these two as well."
+        ],
       "settings": {
         "tenant_name": "Forge Café",
         "default_locale": "pt-BR",
@@ -72,6 +171,8 @@
           "name": "Forge Café",
           "theme_key": "coffee-store",
           "bootstrap": true,
+          "masked_checkout_enabled": true,
+          "_masked_checkout_why": "A RECOGNISED BUYER SKIPS RE-TYPING WHAT THE SHOP ALREADY KNOWS. Born OFF (the column's default), and until now it was flipped ON by `configureStore` inside the dataset one-shot — the same step 9 this tenant no longer runs. Declared here so the coffee shop keeps the checkout a human already tested. The counter does not declare it: a totem has no returning session to recognise.",
           "why": "The coffee e-commerce, on its forked storefront. Born in T2 rather than moved into it: data does not travel sideways between tenants, so on a virgin box this is simply where it is created."
         },
         {

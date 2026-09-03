@@ -524,6 +524,84 @@
     }
   ],
   "products_store": "cafe",
+    "_custom_fields_why": [
+      "★★ THE COFFEE SHOP'S VOCABULARY, AND IT LIVES BESIDE THE COFFEES BECAUSE A CUSTOM FIELD IS PER TENANT.",
+      "",
+      "⛔ WHERE IT USED TO LIVE AND WHAT THAT COST, measured on the bench of 02/09. This list was a `FIELDS`",
+      "const inside `bin/seed.mjs`, declared by a `customFields()` that ran for EVERY tenant the script was",
+      "pointed at — and box-up points it at both. So the footwear tenant's product form offered TORRA, FAZENDA,",
+      "PRODUTOR, PONTUAÇÃO SCA, NOTAS SENSORIAIS, VARIEDADE, PROCESSO, REGIÃO and ALTITUDE: every shoe in the",
+      "shop offered a roast. Proven by the registry itself, not inferred — all nine sit in",
+      "`forgeco.custom_field_definition` with `source = 'merchant'`, which is this script's signature.",
+      "",
+      "★ THE MIRROR IS THE SAME SHAPE WITH A DIFFERENT OWNER, and knowing which is which is the point: the",
+      "eleven footwear fields (AMORTECIMENTO, CANO, DROP MM, …) carry `source = 'app:demo-data'` — the DATASET's",
+      "`custom-fields.json`, materialised by `extension.install`. They reached the coffee tenant because step 9",
+      "of box-up installed that app there, not because anything declared them here. That half is fixed by",
+      "`dataset` in seed/box.json; this half is fixed by moving these nine next to the products that use them.",
+      "",
+      "⚠️ IT IS DECLARED BEFORE ANY PRODUCT WRITES ONE. `catalog.product.create` accepts an UNDECLARED metadata",
+      "key happily and then hides it from every faceting and PDP feature that reads declarations — silent, and",
+      "exactly the kind of thing found three slices later. `seed/outlet.mjs` carries the opposite lesson at",
+      "length: the footwear vocabulary is the DATASET's and this repository stopped declaring it. Same rule,",
+      "other direction."
+    ],
+    "custom_fields": [
+      {
+        "key": "regiao",
+        "label": "Região",
+        "type": "text",
+        "facetable": true
+      },
+      {
+        "key": "produtor",
+        "label": "Produtor",
+        "type": "text",
+        "facetable": false
+      },
+      {
+        "key": "fazenda",
+        "label": "Fazenda",
+        "type": "text",
+        "facetable": false
+      },
+      {
+        "key": "altitude",
+        "label": "Altitude",
+        "type": "text",
+        "facetable": false
+      },
+      {
+        "key": "variedade",
+        "label": "Variedade",
+        "type": "text",
+        "facetable": true
+      },
+      {
+        "key": "processo",
+        "label": "Processo",
+        "type": "text",
+        "facetable": true
+      },
+      {
+        "key": "torra",
+        "label": "Torra",
+        "type": "text",
+        "facetable": true
+      },
+      {
+        "key": "notas",
+        "label": "Notas sensoriais",
+        "type": "text",
+        "facetable": false
+      },
+      {
+        "key": "sca",
+        "label": "Pontuação SCA",
+        "type": "text",
+        "facetable": false
+      }
+    ],
   "_products_store_why": "WHICH STORE SELLS THEM. `catalog.product.create` makes a product of the TENANT; being on sale in a store is a second, separate act (`catalog.product.publish`) — and D1 did the first and not the second, so the six coffees existed and no shop showed them. Measured: `read.products?store=<cafe>` answered 0 with all six created. A product is not a listing.",
   "default_on_hand": 40,
   "_stock_why": "STOCK, and D1 left it at zero. `catalog.sku.create` prices a SKU; it does not stock it, and a shop whose every SKU is at 0 refuses `cart.add_line` with `insufficient_stock · available: 0` — measured. So each SKU is stocked at this number unless it declares its own `on_hand` (the Edição do Produtor declares 14, because its scarcity is part of the demo). 40 is a demo's number: enough that nobody hits a wall, small enough that the 'Acabando!' shelf still means something."

@@ -18,10 +18,12 @@
 #   3. provision-ref  × TENANT   tenant + its FIRST store + FIRST operator + login driver + admin-host claim
 #   4. admin-platform-token      the ONE box credential that lets one admin container serve both tenants
 #   5. kernel + edge + fronts    now that a tenant exists for them to serve (INCLUDING the coffee fork)
-#   6. seed-box.mjs   × TENANT   the remaining stores, the settings every screen inherits
+#   6. seed-box.mjs   × TENANT   the remaining stores, the settings every screen inherits, and — for a
+#                                tenant the dataset is not about — its apps, its freight, its checkout flag
 #   7. totem                     LAST of the six images: it needs the counter store id step 6 resolved
 #   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
-#   9. seed-demo      × TENANT   the MASSIVE catalogue — the one-shot that fills, run once per tenant
+#   9. seed-demo      × DATASET  the MASSIVE catalogue — run ONLY for the tenant the mounted dataset is
+#                                about. A dataset belongs to a brand; see $DATASET_TENANTS below.
 #  10. seed-history  × TENANT   the PAST — 180 days of it, and it runs INSIDE the mail silence, never after
 #  11. seed.mjs       × TENANT   the WINDOW (--phase window): promotions, blocks, cache bust, and the RE-ARM
 #
@@ -36,7 +38,10 @@
 # missing exactly the two screens this demo exists to show, and it comes up GREEN, which is why they are
 # named in this list rather than left to `docker compose up`.
 #
-# ⚠️ 3, 6 AND 7 ARE EACH RUN TWICE, ONCE PER TENANT, AND THAT IS THE SHAPE RATHER THAN A WORKAROUND.
+# ⚠️ 3, 6, 8, 10 AND 11 ARE EACH RUN ONCE PER TENANT, AND THAT IS THE SHAPE RATHER THAN A WORKAROUND.
+# ⛔ 9 IS THE ONE THAT IS NOT, and the difference is the whole of the 02/09 defect: those five apply what the
+# BOX declares about a tenant, so every tenant has an answer for them. Step 9 applies what a DATASET declares,
+# and a dataset is one brand's catalogue — so it has an answer for exactly the tenant it is about.
 # `provision-ref` and `seed-demo` both read `referenceOptionsFromEnv()` — ONE tenant, ONE store, from the
 # environment — and a credential belongs to ONE tenant, which the write face enforces with a 403. So "seed two
 # tenants" is two runs with two environments and two tokens, in the same way and in the same place. Widening
@@ -155,6 +160,22 @@ command -v jq >/dev/null || die 'jq is required.'
 BOX="$HERE/seed/box.json"
 [ -f "$BOX" ] || die "no seed/box.json — this script has no topology to build."
 TENANTS="$(jq -r '.tenants[].id' "$BOX")"
+# ── ★★ WHOSE CATALOGUE THE MOUNTED DATASET IS — and this one line is a whole class of defect ────────────────
+#
+# ⛔ MEASURED ON THE BENCH OF 02/09. Step 9 used to run `for t in $TENANTS`, and step 9 is `dist/seed-demo.js`:
+# it fills the tenant it is POINTED AT from whatever dataset the box mounts. This box mounts ONE, the FOOTWEAR
+# catalogue. So the coffee tenant was handed 2 790 footwear products, 44 427 SKUs, 351 footwear brands, 33
+# footwear categories and eleven footwear custom fields (AMORTECIMENTO, CANO, DROP MM, PISADA, SOLADO, …) on
+# top of its own 21 — and the admin's stock alert, category tree and brand filter became a shoe shop's.
+#
+# ★ THE KERNEL WAS INNOCENT, and that is what decided the repair belongs HERE. The same handles carry
+# DIFFERENT product ids in the two schemas (`adidas-golf-braided-stretch-belt` is prod_01M1FRFC9D… in forgeco
+# at 00:32:03 and prod_01M1FS95MQ… in forgecafe at 00:46:08): two independent, correctly-scoped writes, not
+# one crossing a boundary. The entrypoint filled exactly the tenant this loop named. The loop was the defect.
+DATASET_TENANTS="$(jq -r '.tenants[]|select(.dataset == true)|.id' "$BOX")"
+[ -n "$DATASET_TENANTS" ] || die "seed/box.json declares no tenant with \`dataset: true\`, so nothing owns the
+     example catalogue this box mounts. Step 9 would fill nobody and the sports shop would be born empty.
+     Mark the tenant the dataset is ABOUT — see the file's own \`_readme\`."
 
 secret_name_for() { # <tenant> <kind: seed|driver>
   # T1 keeps the unsuffixed names the box was born with, so nothing that already refers to them has to move.
@@ -588,7 +609,7 @@ done
 note "edge ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/health → 200"
 
 # ── 6 · the terrain, once per tenant ────────────────────────────────────────────────────────────────────────
-say '6 · seed-box (stores + settings, once per tenant)'
+say '6 · seed-box (stores + settings, plus apps and freight for a non-dataset tenant, once per tenant)'
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-seed-token → FORGE_SEED_TOKEN
   eval "tokval=\${$tokvar:-}"
@@ -665,8 +686,18 @@ for t in $TENANTS; do
 done
 
 # ── 9 · the catalogue, once per tenant ──────────────────────────────────────────────────────────────────────
-say '9 · seed-demo (the catalogue, once per tenant)'
+say '9 · seed-demo (the catalogue, once per DATASET tenant)'
+# ⛔ `$DATASET_TENANTS`, NEVER `$TENANTS` — the derivation above carries the measurement. A tenant the mounted
+# dataset is not about is NAMED here rather than silently skipped, because "the coffee shop has 21 products"
+# and "the coffee shop was forgotten" look identical in a log that says nothing.
 for t in $TENANTS; do
+  case " $DATASET_TENANTS " in
+    *" $t "*) ;;
+    *) note "\"$t\" does not carry this box's example dataset (seed/box.json: dataset != true) — the massive
+     catalogue is NOT its own and is not filled here. What it needed from this step it already has: its apps,
+     its freight and its checkout flag were applied at step 6 from seed/box.json."
+       continue ;;
+  esac
   handle="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.handle' "$BOX")"
   # FORGE_SEED_DEMO=1 is the entrypoint's own opt-in: the in-process runner bypasses the type-to-confirm, so it
   # demands an explicit one. POPULATE-only; the destructive `wipe` is not on this path.
@@ -948,6 +979,36 @@ for t in $TENANTS; do
     || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
 done
 
+# ── 12 · ★★★ THE VERDICT — the box is graded on what it HOLDS, not on what it was told to build ────────────
+#
+# ⛔ WHY A BIRTH THAT FINISHES IS NOT A BIRTH THAT WORKED, and this step is the answer measured on 02/09. Every
+# step above returned success and the box came up with the FOOTWEAR catalogue inside the COFFEE tenant: 2 811
+# products where 21 belonged, 44 490 SKUs, 351 brands nobody sells, and the shoe vocabulary in the form of
+# every café. Nothing was red, because nothing was asking.
+#
+# ★ AND IT ASKS THE BOX, NOT THIS FILE. A check that re-read `seed/box.json` here would be the input grading
+# the input: green through any road back to the same state — a one-shot run by hand, a second dataset, an app
+# installed by mistake. `bin/verify-seed.mjs` goes through the DOOR, per tenant, with that tenant's own
+# credential, and every expectation in it is derived from the seed declarations rather than typed.
+#
+# ⚠️ IT RUNS AFTER THE WINDOW, AND IT DOES NOT STOP THE SCRIPT WHERE IT FAILS. The box is fully standing by
+# now, so there is nothing to protect by dying early — and the addresses below are what an operator needs even
+# (especially) when a tenant did not settle. So the verdict is collected here, the bench is printed, and the
+# script exits non-zero at the very end naming the tenants that came out wrong.
+say '12 · the verdict (verify-seed, once per tenant)'
+UNSETTLED=''
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the verdict."
+  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/verify-seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t settled"
+  else
+    UNSETTLED="$UNSETTLED $t"
+    note "⛔ $t did NOT settle — the ✗ lines above say which check, and each one names what to look at."
+  fi
+done
+
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
@@ -958,3 +1019,10 @@ note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
 note ''
 note 'off the laptop: set FORGE_TAILNET_HOST (and FORGE_TAILNET_IP) in .env, then `bash bin/box-up.sh --tailnet`.'
 printf '\n' >&2
+
+# ⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE. A birth that leaves a tenant holding another brand's catalogue
+# has to be RED, or the next person reads "the bench" above and believes it.
+if [ -n "$UNSETTLED" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Everything above is standing; what it HOLDS is not\n         what this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$UNSETTLED" >&2
+  exit 1
+fi

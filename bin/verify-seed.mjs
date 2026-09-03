@@ -121,6 +121,29 @@ async function allOf(name, params = {}) {
 const catalog = read('catalog.json');
 const totem = read('totem.json');
 const outlet = read('outlet.json');
+// ★ WHOSE CATALOGUE THE MOUNTED DATASET IS — the field `bin/box-up.sh` reads to decide who step 9 runs for.
+// This file reads the SAME declaration so it grades the box against what the box was told to build.
+const box = read('box.json');
+const boxTenant = box.tenants.find((t) => t.id === tenant);
+const carriesDataset = boxTenant?.dataset === true;
+
+/** handle → how many products this REPOSITORY CREATES in that shop. Not the same question as `EXPECTED`
+ *  above, which counts what a shop PUBLISHES: `balcao` re-publishes six coffees it does not create, and
+ *  `outlet`/`forge` create nothing at all — every product they sell is the dataset's, written by the
+ *  one-shot. A tenant's whole catalogue is the sum of this, and nothing else may be in it. */
+const CREATES = {
+  cafe: catalog.products.length,
+  balcao: totem.products.length,
+  outlet: 0,
+  forge: 0,
+};
+
+/** key → the module of THIS repository that declares it, for the tenant that owns that module's store.
+ *  Derived from the same files the seeds read; a name typed here would agree with a stale catalogue. */
+const OWN_WORDS = [
+  { store: catalog.products_store, source: 'seed/catalog.json', keys: (catalog.custom_fields ?? []).map((f) => f.key) },
+  { store: 'balcao', source: 'seed/totem.json', keys: (totem.custom_fields ?? []).map((f) => f.key) },
+];
 
 /** handle → how many products the seed declares that shop sells. `forge` is the dataset's and its size is
  *  not knowable from this repository — reported as a count, never judged. */
@@ -222,6 +245,108 @@ if (counters.length === 0) {
   } else {
     bad('delivery', `none, but ${delivers.join(', ')} deliver(s) — those shops cannot quote freight`);
   }
+}
+say();
+
+// ── 2b. ★★★ WHOSE CATALOGUE AND WHOSE WORDS — the crossing nobody could see from the shop window ─────────
+//
+// ⛔ THE DEFECT THIS SECTION EXISTS FOR, AND IT WAS INVISIBLE TO EVERY CHECK ABOVE. On the bench of 02/09 the
+// COFFEE tenant held 2 811 products and 44 490 SKUs: its own 21 plus the footwear dataset's 2 790, because
+// step 9 of `bin/box-up.sh` ran `for t in $TENANTS` and `dist/seed-demo.js` fills the tenant it is pointed at.
+// The mirror was true too — the footwear tenant's product form offered TORRA, FAZENDA and PONTUAÇÃO SCA,
+// because `bin/seed.mjs` declared the coffee vocabulary on whatever tenant it was pointed at.
+//
+// ⚠️⚠️ AND SECTION 1 WOULD NEVER HAVE CAUGHT IT, WHICH IS THE LESSON WORTH MORE THAN THE CHECK. Those 2 790
+// products were UNPUBLISHED in both coffee stores — the vitrine was spotless — and section 1 counts what the
+// PUBLIC face publishes. The dirt was in the tenant's DATA and on the merchant's screens, and only a read
+// that answers for the whole tenant can see it. `products_admin` is that read: no store, drafts included.
+//
+// ★ IT GRADES THE RESULT, NEVER THE DECLARATIONS. Asking "does box.json still say dataset: false?" would be
+// asking the input whether the input is right, and it would stay green through any edit that reintroduced the
+// crossing by another road — a hand-run one-shot, a second dataset, an app installed by mistake. What is
+// asked here is what the tenant actually HOLDS, through the door, and the numbers come from the declarations
+// rather than from this file.
+say("THE TENANT'S OWN CATALOGUE — nothing from a brand this tenant is not");
+{
+  const held = Number((await internal('products_admin', { limit: '1', page: '1' }))?.total ?? 0);
+  const mineCreated = seen.reduce((sum, handle) => sum + (CREATES[handle] ?? 0), 0);
+  const unaccounted = seen.filter((handle) => CREATES[handle] === undefined);
+  if (carriesDataset) {
+    // The dataset's size is not knowable from this repository, so it is reported and never judged — the same
+    // rule section 1 applies to the `forge` shop. What IS judged is that it is not empty.
+    if (held > mineCreated) {
+      ok(`${tenant}`, `${held} product(s) — this tenant carries the box's dataset, so its size is the dataset's`);
+    } else {
+      bad(`${tenant}`, `${held} product(s), but this tenant carries the dataset — the one-shot has not filled it`);
+    }
+  } else if (unaccounted.length > 0) {
+    // A shop this file has no CREATES entry for makes the sum a guess, and a guess dressed as an expectation
+    // is the failure this whole verifier was written against.
+    bad(
+      `${tenant}`,
+      `${held} product(s), and [${unaccounted.join(', ')}] is a shop this file cannot size — add it to CREATES`,
+    );
+  } else if (held === mineCreated) {
+    ok(`${tenant}`, `${held} product(s), exactly what this repository creates here — no other brand's catalogue`);
+  } else {
+    bad(
+      `${tenant}`,
+      `${held} product(s), and this repository creates ${mineCreated} here — ${held - mineCreated} came from ` +
+        "somewhere else. `dataset` is not true for this tenant in seed/box.json, so step 9 of bin/box-up.sh " +
+        'must not have filled it; check who did (the massive one-shot run by hand is the usual answer).',
+    );
+  }
+}
+say();
+
+say('THE VOCABULARY — a custom field definition is PER TENANT, so each declares only its own');
+{
+  const defs = rows(await internal('custom_field_definitions', { owner_entity: 'product' }));
+  const mineDeclared = new Map();
+  for (const group of OWN_WORDS) {
+    if (!seen.includes(group.store)) continue;
+    for (const key of group.keys) mineDeclared.set(key, group.source);
+  }
+
+  // ★ THE DATASET'S WORDS ARE IDENTIFIED BY `source`, NOT BY A LIST OF NAMES. `extension.install` materializes
+  //   them as `app:demo-data`, so the registry itself says who asked — and a dataset that gains a tenth field
+  //   tomorrow is covered without anyone editing this file.
+  const fromDataset = defs.filter((d) => String(d.source ?? '').startsWith('app:demo-data'));
+  if (carriesDataset) {
+    if (fromDataset.length > 0) ok('the dataset vocabulary', `${fromDataset.length} field(s) — this tenant carries the dataset`);
+    else bad('the dataset vocabulary', 'not one field — the demo-data install has not run on the tenant that owns the catalogue');
+  } else if (fromDataset.length === 0) {
+    ok('the dataset vocabulary', "absent — and this tenant is not the dataset's brand");
+  } else {
+    bad(
+      'the dataset vocabulary',
+      `${fromDataset.length} field(s) from another brand's catalogue: ${fromDataset.map((d) => d.key).join(', ')}. ` +
+        'They arrive with the `demo-data` INSTALL, which step 9 of bin/box-up.sh does — and box.json says this ' +
+        'tenant does not carry the dataset. `custom_field.archive` removes them; the box being reborn is cheaper.',
+    );
+  }
+
+  // Everything a MERCHANT declared has to be a word one of this tenant's own shops uses. `source` is the
+  // discriminator again: an app's fields are the app's business and are not graded here.
+  const merchant = defs.filter((d) => String(d.source ?? 'merchant') === 'merchant');
+  const strangers = merchant.filter((d) => !mineDeclared.has(d.key));
+  if (strangers.length === 0) {
+    ok('this tenant\'s own words', `${merchant.length} field(s), every one declared by a shop that is here`);
+  } else {
+    bad(
+      'this tenant\'s own words',
+      `${strangers.map((d) => d.key).join(', ')} — no shop on this tenant uses these. A seed that declares a ` +
+        'vocabulary on whatever tenant it is pointed at is how a shoe came to offer a roast; the declaration ' +
+        'belongs beside the products that fill it, behind the same gate they are.',
+    );
+  }
+
+  // ★ AND THE POSITIVE HALF, because "nothing crossed over" is also true of a tenant that got nothing at all.
+  const present = new Set(defs.map((d) => d.key));
+  const missing = [...mineDeclared].filter(([key]) => !present.has(key));
+  if (mineDeclared.size === 0) say('  · no shop on this tenant declares a product vocabulary — nothing to assert');
+  else if (missing.length === 0) ok('declared × landed', `all ${mineDeclared.size} of this tenant's own field(s) are in the registry`);
+  else bad('declared × landed', `${missing.map(([k, src]) => `${k} (${src})`).join(', ')} declared and NOT in the registry`);
 }
 say();
 
