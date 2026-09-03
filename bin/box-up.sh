@@ -360,8 +360,31 @@ PYEOF
   # ⚠️ THIS ONE IS NOT COSMETIC. The kernel's local media driver mints every product-image URL from
   # `FORGE_PUBLIC_ORIGIN`, so a box reached over the tailnet with `http://localhost:8200` here serves a
   # catalogue of images a phone cannot fetch — and nothing logs an error, which is how it cost an evening.
+  #
+  # ⚠️ AND THE SCHEME IS PART OF IT, which cost a second evening on 2026-09-02. A tailnet reached through
+  # `tailscale serve` answers TLS on 443, so every page a phone opens is `https://` — and an origin of
+  # `http://<host>:8200` makes the kernel mint image URLs on another scheme AND another port. That is MIXED
+  # CONTENT: the browser drops each request with no network error, no console line a casual look finds and
+  # nothing in any log. Measured on the bench: the shelf banners, the category icons, the minicart and the
+  # whole checkout went blank on the phone while the images that went through the vitrine's door were fine.
+  #
+  # So the scheme is PROBED rather than configured. A box behind a TLS edge answers `/health` on 443; one
+  # served plainly does not, and falls back to the port it really listens on. Deriving beats asking: a second
+  # variable would be a second thing to get wrong, and it would be wrong exactly on the box nobody re-reads.
+  probe_origin() { # <host> — echo the origin a browser will actually use
+    if curl -fsS -o /dev/null --max-time 6 "https://$1/health" 2>/dev/null; then
+      echo "https://$1"
+    else
+      echo "http://$1:${FORGE_HTTP_PORT:-8200}"
+    fi
+  }
+
   if [ "$MODE" = tailnet ]; then
-    origin="http://$FORGE_TAILNET_HOST:${FORGE_HTTP_PORT:-8200}"
+    origin="$(probe_origin "$FORGE_TAILNET_HOST")"
+    case "$origin" in
+      https://*) note "TLS edge answers on 443 — the origin is $origin (images follow the page's scheme)" ;;
+      *)         note "no TLS edge on 443 — the origin stays on ${FORGE_HTTP_PORT:-8200}" ;;
+    esac
     gate_admin="http://$FORGE_TAILNET_HOST:${FORGE_ADMIN_HTTP_PORT:-8201}"
     sib_host="$FORGE_TAILNET_HOST"
   else
@@ -576,6 +599,29 @@ fi
 # goes up"; born pointing at `localhost:8201` / `:8202` the switcher works on this laptop AND it is provably
 # there — an env that is only ever correct on a machine nobody has yet is an env nobody notices is broken.
 # `--tailnet` rewrites the same two entries against the tailnet name.
+# ── 3c-bis · THE PURGE SECRET, MINTED RATHER THAN REMEMBERED ────────────────────────────────────────────────
+#
+# ⚠️ WHAT AN EMPTY ONE COSTS, MEASURED ON THE BENCH OF 2026-09-02. `FORGE_REVALIDATE_SECRET` was the empty
+# string in the kernel, the admin and the vitrine while `FORGE_STOREFRONT_URL` named a vitrine, so the kernel
+# logged `storefront cache invalidation OFF` at boot and every purge was silently refused. The effect reached
+# the operator as a defect with a different shape: unpublishing a product left it selling for the whole TTL,
+# and the QA probe that found it polled for 157 s inside a 300 s window and concluded the unpublish event was
+# broken. It was not. Nothing was broken; nothing was configured.
+#
+# ★ AND THE SAME COMMENT EXISTS UPSTREAM, dated: `storefront-purge.ts` records the secret "measured empty on
+# Staging for a full day, with every bust silently refused". A hole that is written down and not closed is a
+# hole that gets rediscovered by whoever is unlucky, so this box stops depending on somebody remembering.
+#
+# Minted here, not asked for: the value is meaningless to a human (it only has to match between the kernel
+# that purges and the front that accepts), it never leaves this machine, and `.env` is gitignored. A box that
+# already carries one keeps it — rotating it would only invalidate nothing.
+if ! grep -q '^FORGE_REVALIDATE_SECRET=.\+' "$HERE/.env" 2>/dev/null; then
+  put_env FORGE_REVALIDATE_SECRET "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  note 'purge secret minted (the kernel can now bust the vitrine instead of waiting out the TTL)'
+else
+  note 'purge secret already present'
+fi
+
 say '3d · the admin sibling switcher'
 if siblings="$(admin_siblings_json)" && [ -n "$siblings" ] && [ "$siblings" != '[]' ]; then
   put_env FORGE_ADMIN_SIBLINGS "'$siblings'"
