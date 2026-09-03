@@ -175,6 +175,57 @@ export function Totem({
   }, []);
 
   /**
+   * ★★★ THE ONE STATE IN WHICH STILLNESS IS NOT ABSENCE (p5-1, 03/09) — the live pix's own window, in
+   * seconds, or `null` on every other screen.
+   *
+   * ── THE DEFECT, MEASURED. Pix chosen, "Pagar" tapped, ORDER #5 PLACED IN THE KERNEL, QR on the glass — and
+   * at 90 seconds of stillness the till went home. The order stayed behind, "Aguardando", and the admin has no
+   * way to close it (p7-3). The rodada-1 fix (`IDLE_WARNING_SECONDS`, s5-3 above) did not touch this case: it
+   * made the reset polite, and a polite reset is still a reset.
+   *
+   * ── WHY THE FIX IS ABOUT STATE AND NOT ABOUT TIME. The inactivity clock measures ONE thing — "did the person
+   * walk away?" — and its only evidence is stillness on the glass. That inference is sound on the menu, the
+   * bag, the name and the method, where the next move is a finger. It is FALSE on exactly one screen: the QR,
+   * where the next move is in the customer's banking app and stillness is precisely what PAYING looks like.
+   * So there is no window long enough to fix this; the premise of the clock is what is wrong there.
+   *
+   * ── AND THE ASYMMETRY THAT SAYS WHICH WAY TO ERR. Before `place_order`, forgetting is free: the bag belongs
+   * to somebody who left. After it, three measured facts make forgetting expensive.
+   *   1. THE ORDER IS ALREADY IN THE KERNEL, and nothing this screen does removes it — `resetCounter` deletes
+   *      a cart POINTER (see lib/cart.ts), and by this moment the cart is spent. So the reset never "cancels"
+   *      anything; it only stops the totem from being able to finish.
+   *   2. THE SCREEN HOLDS THE ONLY COPY OF THE CAPABILITY TO SETTLE IT. `providerRef` and `copy_paste` live in
+   *      this component's state and nowhere else — never a URL, never a cookie (lib/pos.ts). The reset throws
+   *      them away, and with them the "toque no QR" path.
+   *   3. THE CUSTOMER LOSES THE ONE THING THEY CAME FOR. `orderNumber` is on this screen and on no other; a
+   *      pix paid at second 91 is a paid order whose number its buyer never saw.
+   *
+   * ── SO THE INACTIVITY CLOCK STOPS, AND THE PAYMENT'S OWN CLOCK RUNS INSTEAD. `expires_in` is published by
+   * `payment-pos` and was already read and thrown away (`PosOutcome.expiresInSeconds`, grepped: no reader
+   * before this line). It is the honest clock for this screen because it measures the PAYMENT, not the
+   * customer's attention: once the pix has expired the QR is worthless, so going home discards nothing that
+   * still worked, and the till is not parked forever waiting on somebody who left.
+   *
+   * ★ AND IT IS THE KERNEL'S OWN WINDOW, NOT A NUMBER THE APP INVENTED FOR THE SCREEN. `payment-pos` sends
+   * `PIX_EXPIRES_IN_SECONDS = 900` (apps/payment-pos/provider.ts) and declares the SAME 900 as its
+   * `reservationWindowSeconds.pix` (apps/payment-pos/manifest.ts) — the time the kernel holds stock for an
+   * unsettled intent. So the moment this timer fires is the moment the reservation behind the QR is gone. The
+   * till frees itself exactly when, and never before, there is nothing left to free.
+   *
+   * ⚠️ MEASURED END TO END on the live counter, 03/09: order #6 placed, QR up, 110 SECONDS of absolute
+   * stillness — the QR never left the glass, no question was asked, and the payment still completed from that
+   * same screen. The positive control matters as much: the identical page, the identical observation, with
+   * NOTHING placed, still asked at 70s and still went home at 90s.
+   *
+   * ⚠️ A WINDOW THAT IS NOT A POSITIVE NUMBER ARMS NOTHING AT ALL. `readOutcome` defaults to 900 only when
+   * `expires_in` is absent; a literal `0` would arrive as a number and become an instant wipe of a QR that was
+   * just drawn. A parked till is recoverable by a finger ("Trocar forma de pagamento"); a payment taken off
+   * the glass is not.
+   */
+  const pixWindowSeconds =
+    screen === 'pix' && paid?.outcome.kind === 'pix_pending' ? paid.outcome.expiresInSeconds : null;
+
+  /**
    * ★★ THE RESET BETWEEN CUSTOMERS — the whole reason a kiosk is different from a phone.
    *
    * Any touch anywhere restarts the clock. When it runs out the screen goes back to "Toque para começar" AND
@@ -183,6 +234,8 @@ export function Totem({
    *
    * ⚠️ THE ATTRACT SCREEN ITSELF DOES NOT ARM THE TIMER. A totem nobody is using would otherwise reset
    * itself every 90 seconds forever, posting a write to the kernel each time.
+   *
+   * ⚠️ AND NEITHER DOES A PIX WAITING TO BE PAID — see `pixWindowSeconds` for the measurement.
    */
   useEffect(() => {
     if (attract) return;
@@ -202,6 +255,15 @@ export function Totem({
       setPaid(null);
       setAttract(true);
     };
+    // ★★★ PAYMENT IN FLIGHT: the inactivity clock is not armed at all, and neither is its question. What runs
+    // in its place is the pix's own window — see `pixWindowSeconds` above for why one replaces the other.
+    if (pixWindowSeconds !== null) {
+      setIdleWarning(false);
+      if (pixWindowSeconds <= 0) return;
+      const expired = setTimeout(goHome, pixWindowSeconds * 1000);
+      return () => clearTimeout(expired);
+    }
+
     const arm = () => {
       clearTimeout(warn);
       clearTimeout(timer);
@@ -226,7 +288,7 @@ export function Totem({
       rearmIdle.current = () => {};
       for (const e of events) window.removeEventListener(e, arm, true);
     };
-  }, [attract, idleSeconds]);
+  }, [attract, idleSeconds, pixWindowSeconds]);
 
   /**
    * ★★ THE BACK GESTURE STAYS INSIDE THE KIOSK (s5-6, 03/09).

@@ -849,7 +849,12 @@ Open **http://localhost:8102** (the bench) — you should land on "Toque para co
    typed, and the items are the ones that were chosen.
 8. **Now walk away and count.** After `FORGE_TOTEM_IDLE_SECONDS` the screen returns to "Toque para começar"
    **and the bag is empty** — the cart pointer is destroyed on the server, so the next customer starts clean.
-   That is the whole difference between a till and a web page, and it is worth testing on purpose.
+   That is the whole difference between a till and a web page, and it is worth testing on purpose. Twenty
+   seconds before the end it asks "Você ainda está aí?", and any touch buys the whole window again.
+   ⚠️ **Walk away from the PIX QR instead and it must NOT reset**, and that is the other half of the same
+   test: by then the order exists in the kernel, and the QR on the glass is the only copy of what can settle
+   it. The inactivity clock stops there and the pix's own 15-minute window runs in its place — because
+   standing still while paying in the bank app is not the same fact as walking away.
 9. **Turn on "reduce motion"** in the operating system and reload. Every animation stops. A public screen is
    the one place a person cannot walk away from motion they did not ask for.
 

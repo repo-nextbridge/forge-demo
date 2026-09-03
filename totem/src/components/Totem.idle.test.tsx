@@ -13,6 +13,8 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resetCounter = vi.fn().mockResolvedValue({ bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discountLabel: null, discountTitle: null, totalLabel: 'R$ 0,00', couponCode: null } });
+const payWith = vi.fn();
+const simulatePixPayment = vi.fn();
 
 vi.mock('@/app/actions', () => ({
   resetCounter,
@@ -20,10 +22,10 @@ vi.mock('@/app/actions', () => ({
   applyCoupon: vi.fn(),
   changeQty: vi.fn(),
   openProduct: vi.fn(),
-  payWith: vi.fn(),
+  payWith: (...a: unknown[]) => payWith(...a),
   removeCoupon: vi.fn(),
   removeItem: vi.fn(),
-  simulatePixPayment: vi.fn(),
+  simulatePixPayment: (...a: unknown[]) => simulatePixPayment(...a),
 }));
 
 const { Totem } = await import('./Totem');
@@ -73,6 +75,8 @@ function startOrder() {
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   resetCounter.mockClear();
+  payWith.mockReset();
+  simulatePixPayment.mockReset();
 });
 afterEach(() => vi.useRealTimers());
 
@@ -220,6 +224,124 @@ describe('the counter asks before it resets', () => {
     expect(screen.queryByText('Você ainda está aí?')).toBeNull();
     await act(async () => {
       vi.advanceTimersByTime(1_000);
+    });
+    expect(resetCounter).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── p5-1 ────────────────────────────────────────────────────────────────────────────────────────────────
+//
+// ⛔ THE CLOCK USED TO TAKE THE QR CODE OFF THE GLASS WHILE THE CUSTOMER WAS PAYING IT. Measured on the bench
+// of 03/09 (sonda p5, achado p5-1): pix chosen, "Pagar" tapped, ORDER #5 CREATED IN THE KERNEL, QR on screen —
+// and at 90 seconds of stillness the till went home. The order stayed behind, "Aguardando", with nobody able
+// to close it. The rodada-1 warning ("Você ainda está aí?") did not touch this: it made the reset polite, and
+// a polite reset is still a reset.
+//
+// ★ THE ASYMMETRY THAT IS THE WHOLE RULE. Before the order, forgetting is free — the bag belongs to somebody
+// who walked away. After it, the bag is an ORDER, and the screen is holding the only copy of the reference
+// that can settle it (`providerRef` is screen memory; see lib/pos.ts). Forgetting then does not free the till,
+// it writes a debt into the kernel.
+//
+// ⚠️ SO THESE CASES ASSERT ON THE RESULT, NOT ON A DIALOG. `resetCounter` is the server action that destroys
+// the pointer; a fix that only hid the question, or only delayed it, leaves these red.
+const pixPending = (expiresInSeconds: number) => ({
+  ok: true as const,
+  outcome: {
+    kind: 'pix_pending' as const,
+    copyPaste: '00020126580014BR.GOV.BCB.PIX',
+    providerRef: 'pospix_abc',
+    expiresInSeconds,
+  },
+  orderNumber: 5,
+  buyerName: 'R',
+  bag: bagWithSomething,
+});
+
+function tap(label: string | RegExp) {
+  const el = screen.getByText(label).closest('button');
+  if (!el) throw new Error(`no button behind ${String(label)}`);
+  act(() => {
+    el.click();
+  });
+}
+
+/** Attract → menu → bag → name → Pix → Pagar. Leaves the screen on the QR, with the order already placed. */
+async function walkToTheQr(idleSeconds = 90) {
+  render(<Totem initialMenu={menu} initialBag={bagWithSomething} idleSeconds={idleSeconds} />);
+  tap('Toque para começar');
+  tap('Revisar pedido');
+  tap('Ir para o pagamento');
+  await act(async () => {});
+  tap('Q');
+  tap('Pix');
+  await act(async () => {
+    screen.getByText(/^Pagar/).closest('button')?.click();
+  });
+  // The QR really is the screen we are measuring, and the order number really is on it.
+  expect(screen.getByText('Escaneie o QR Code para pagar')).toBeTruthy();
+  expect(screen.getByText('5')).toBeTruthy();
+}
+
+describe('an order that already exists in the kernel is not thrown away by the idle clock', () => {
+  it('⛔ five idle windows of stillness and the QR is still there — the till never went home', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(5 * 90_000);
+    });
+    expect(resetCounter).not.toHaveBeenCalled();
+    expect(screen.getByText('Escaneie o QR Code para pagar')).toBeTruthy();
+    expect(screen.getByText('5')).toBeTruthy();
+    expect(screen.queryByText('Toque para começar')).toBeNull();
+  });
+
+  it('⚠️ and nothing is ASKED either — a dialog over the QR is the same defect wearing a question mark', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(89_000);
+    });
+    expect(screen.queryByText('Você ainda está aí?')).toBeNull();
+  });
+
+  it('★ the ordinary clock is back the moment the pix is paid — the receipt still goes home by itself', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    simulatePixPayment.mockResolvedValue({ paid: true });
+    await walkToTheQr();
+    await act(async () => {
+      screen.getByText('toque no QR Code para simular o pagamento').closest('button')?.click();
+    });
+    expect(screen.getByText('Pagamento confirmado')).toBeTruthy();
+    await act(async () => {
+      vi.advanceTimersByTime(90_001);
+    });
+    expect(resetCounter).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Toque para começar')).toBeTruthy();
+  });
+
+  it('⚠️ a pix that outlived its OWN window does free the till — the counter is not parked forever', async () => {
+    payWith.mockResolvedValue(pixPending(200));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(199_000);
+    });
+    expect(resetCounter).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(2_000);
+    });
+    expect(resetCounter).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Toque para começar')).toBeTruthy();
+  });
+
+  it('and the window it honours is the PAYMENT’s number, not the idle one and not a constant', async () => {
+    payWith.mockResolvedValue(pixPending(30));
+    await walkToTheQr(90);
+    await act(async () => {
+      vi.advanceTimersByTime(29_000);
+    });
+    expect(resetCounter).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(2_000);
     });
     expect(resetCounter).toHaveBeenCalledTimes(1);
   });
