@@ -149,8 +149,18 @@ list against the new hostname, claims each tenant's admin door **through the por
 two platform commands `provision-ref` drives — never a second write path), and recreates the services that
 read all of it at boot. Idempotent and reversible; it touches no store, product or order.
 
-⛔ **It does not run `tailscale`.** Getting the machine onto the network is your gesture; this only wires the
-box to the fact that it is. It assumes the same published ports already answer there.
+⛔ **It does not CONFIGURE `tailscale`.** Getting the machine onto the network is your gesture; this only
+wires the box to the fact that it is.
+
+⚠️ **The port it claims is the one `tailscale serve` publishes, not the one this box listens on.** They are
+different numbers whenever `serve` is doing the publishing — it terminates TLS on ports of its own — so the
+promotion reads `tailscale serve status --json` and derives every address from it. Assuming the internal port
+was the published one is what made the admin unreachable from anywhere but the laptop, and it failed
+**silently in both directions**: over `http://<tailnet>:8201` the admin's session cookie is `Secure`, a
+browser stores no `Secure` cookie over plain http outside `localhost`, so the login "works" and the next
+click bounces back to `/login`; over `https://<tailnet>:8443` — the address `serve` really answers on — the
+admin directory held no claim, so the login refused with `unknown_admin_host`. Publish nothing (or run this
+where `tailscale` cannot be read) and it falls back to the direct ports, which is what it always did.
 
 ### Step 10 has two halves, the second in a `finally` — and it must run inside the silence
 
