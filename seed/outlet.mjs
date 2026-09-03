@@ -7,7 +7,7 @@
 //
 // EVERYTHING THIS SLICE PROMISED IS IN HERE, AND NONE OF IT IS CODE THE PRODUCT SHIPS:
 //   · the apps the composition needs, INSTALLED (`banners`, `shelves`);
-//   · the custom fields the eight products' technical sheets are written in, DECLARED before any of them
+//   · the custom fields the products' technical sheets are written in, DECLARED before any of them
 //     is written — an undeclared key is accepted in silence and then invisible to every reader (the same
 //     order, and the same reason, as the coffee catalogue's);
 //   · the 33 CATEGORIES the vanilla's hand-curated header menu links to, created if nobody made them yet
@@ -16,10 +16,11 @@
 //   · the products, PUBLISHED into the outlet store, CATEGORISED and given their stock;
 //   · and, in the WINDOW phase rather than this one, the `compare_at_amount` of every SKU — the "de" the
 //     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
-//   · the two collections the two shelves are sourced from;
-//   · the five Compose placements that ARE the home: the announcement band, and — all four in the SINGLE
+//   · the three collections the three shelves are sourced from;
+//   · the six Compose placements that ARE the home: the announcement band, and — all five in the SINGLE
 //     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
-//     banner mosaic, the "Quase de graça" shelf, the "Acabando!" shelf and the «Outlet Kids» banner.
+//     banner mosaic, the "Quase de graça" shelf, the "Acabando!" shelf, the «Outlet Kids» banner and the
+//     "Outlet Kids" shelf that gives that banner a body (s2-8).
 //
 // ⚠️ CONFINED TO THE OUTLET STORE — with one measured asterisk. Everything store-scoped below names
 // `data.store` and nothing else. Two steps are not store-scoped because the kernel models them per TENANT
@@ -347,7 +348,7 @@ const subdirOf = (filename) => (filename.startsWith('banner-') ? 'banners' : 'pr
 // answers the whole TENANT (see the ★ note), so a product `seed/forge.mjs` created from the dataset is
 // "already there" while being published in the `forge` store and NOWHERE ELSE. Every product this file
 // names IS a dataset product — that is deliberate, it is what gives them a real photograph and a real size
-// grid — so the two seeds meet on all 32 handles, and which one runs first is an ordering this file must
+// grid — so the two seeds meet on every handle below, and which one runs first is an ordering this file must
 // not depend on. Hence: an existing product is still PUBLISHED and CATEGORISED here. Both commands are
 // idempotent at the kernel (`product_store` inserts `on conflict do nothing`; `product_category` upserts by
 // the pair), so the second run of either seed is a no-op and neither can leave the shop half-built.
@@ -544,7 +545,7 @@ export async function priceOutlet({ read, readAll, rows, command, log, fail }) {
 }
 
 // ── 5. the collections ──────────────────────────────────────────────────────────────────────────────
-// The two shelves are sourced from COLLECTIONS rather than from a curated handle list, and the reason is
+// The shelves are sourced from COLLECTIONS rather than from a curated handle list, and the reason is
 // one link: a shelf over a collection carries "Ver todos →" to `/collection/<handle>`, which the artboard
 // draws on both section headers, and a manual shelf has no single listing to point at.
 //
@@ -573,7 +574,7 @@ async function seedCollections({ command, read, log }, products) {
     // which is what makes the artboard's order a fact of this file rather than of the first run.
     //
     // ★ AND THE ARTBOARD'S EIGHT STAY ON THE HOME BECAUSE THEY COME FIRST IN THE FILE. A40 added 24 more
-    // products to the two collections (its rule: the deepest cuts are `quase-de-graca`, the rest
+    // products to the artboard's two collections (its rule: the deepest cuts are `quase-de-graca`, the rest
     // `acabando`), which fills the two `/collection/<handle>` pages the shelf headers link to. The HOME is
     // untouched by that: each shelf renders `item_count` items — 5 and 3, the artboard's — from the top of
     // the pin order, and the newcomers are appended after position 4 and 2 because `data.products` lists
@@ -591,14 +592,15 @@ async function seedCollections({ command, read, log }, products) {
 }
 
 // ── 6. the home ─────────────────────────────────────────────────────────────────────────────────────
-// FOUR BLOCKS IN ONE SLOT ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home
-// is the reference vitrine with four rows of configuration in it, and not one line of front-end code.
+// THE BLOCKS OF ONE SLOT ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home
+// is the reference vitrine with five rows of configuration in it, and not one line of front-end code.
 //
 // ★★ 02/09 — WHY THEY ARE ALL IN ONE SLOT NOW. He asked for «Compre por categoria» FIRST, then the mosaic,
 // the two shelves and the kids banner, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
 // reference home (theme chrome over core reads, not slots), and between them the template declares exactly
 // ONE slot — `home.below_categories`. So the order he asked for is not a choice of slots, it is `position`
-// 0..3 inside that one. `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
+// 0..4 inside that one (03/09: the "Outlet Kids" shelf appended at 4, after the banner he named last —
+// nothing he named moved). `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
 // empty ON PURPOSE, and so is the PLP. See `outlet.json`'s `_home_why`.
 //
 // ⚠️ AND THAT IS WHY THIS FUNCTION GOVERNS RATHER THAN APPENDS — the change is not cosmetic, so read it.
@@ -667,7 +669,7 @@ async function compose({ command, read, rows, log }, store, assets) {
     log(`compose ${band.slot} — configured ${band.what}`);
   }
 
-  // ── the home: four blocks, one slot, ordered by position ──────────────────────────────────────────
+  // ── the home: five blocks, one slot, ordered by position ──────────────────────────────────────────
   const mediaConfig = (items) =>
     items.map((m) => ({
       asset_id: assets.get(m.file).id,
