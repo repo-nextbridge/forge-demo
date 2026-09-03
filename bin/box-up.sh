@@ -249,12 +249,102 @@ PYEOF
 #
 # $1 = an optional host to use INSTEAD of each tenant's `admin_host` HOSTNAME, keeping that entry's PORT —
 #      which is how the tailnet promotion re-points the same two doors without a second copy of this logic.
-admin_siblings_json() { # [host]
-  local host="${1:-}"
-  jq -c --arg host "$host" '[ .tenants[]
+# $2 = an optional JSON object `{tenant_id: absolute-url}` that WINS over $1 for the tenants it names. The
+#      tailnet promotion fills it, because over there neither half of the box.json address survives: the door
+#      a browser really opens is on another PORT (`tailscale serve` publishes its own) and another SCHEME
+#      (TLS terminates there). Keeping $1 for everything it does not name means a third tenant added to
+#      seed/box.json still arrives with no second edit.
+admin_siblings_json() { # [host] [overrides-json]
+  local host="${1:-}" overrides="${2:-}"
+  [ -n "$overrides" ] || overrides='{}'
+  jq -c --arg host "$host" --argjson ov "$overrides" '[ .tenants[]
       | { name: (.settings.tenant_name // .id)
-        , url: ("http://" + (if $host == "" then .admin_host
-                             else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) } ]' "$BOX"
+        , url: ( $ov[.id]
+                 // ("http://" + (if $host == "" then .admin_host
+                                  else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]' "$BOX"
+}
+
+# ── ★★ WHAT THE TAILNET ACTUALLY PUBLISHES — READ, NEVER ASSUMED (pk6·D2) ───────────────────────────────────
+#
+# ⛔ THE DEFECT, MEASURED ON THE BENCH OF 03/09. The promotion below used to take each door's INTERNAL port
+# and glue this machine's tailnet name in front of it — `http://<tailnet>:8201` for the first tenant's admin,
+# `http://<tailnet>:8202` for the second. Neither address is the one a browser uses, and BOTH failed silently:
+#
+#   http://<tailnet>:8201/apps   → the login page. The admin's session cookie is minted `Secure` (the image
+#                                  runs NODE_ENV=production), and a browser REFUSES to store a `Secure`
+#                                  cookie over plain http on anything but `localhost`. So the login succeeds,
+#                                  the jar keeps nothing, and the next request bounces:
+#                                  `[admin-auth] no session cookie on /apps … Jar: forge_gate_lang`.
+#                                  It reads as "it logged me out by itself".
+#   https://<tailnet>:8443/…     → the address `tailscale serve` really answers on, and the directory had no
+#                                  claim for it. Measured: `read.admin.by_host?host=<tailnet>:8443` → 404,
+#                                  `<tailnet>:8201` → 200. Login refuses with `unknown_admin_host`.
+#
+# ★ SO THE PORT HAS TO COME FROM WHAT IS PUBLISHED, NOT FROM WHAT THIS BOX LISTENS ON. `tailscale serve`
+# terminates TLS on ports of its own choosing and forwards plain http to `127.0.0.1:<internal>`; that mapping
+# is the only thing tying an address a browser can type back to a service of this box, and it is READABLE.
+# Deriving beats asking — the same reason the scheme below is probed rather than configured.
+#
+# ⚠️ READING IS NOT CONFIGURING, and A15's hard line survives intact: this still never runs `tailscale serve`,
+# `tailscale up` or anything else that CHANGES that machine's network. Getting on the tailnet stays the
+# operator's gesture; knowing what the gesture produced is this box's job.
+#
+# ⚠️ AND IT DEGRADES TO EXACTLY THE OLD BEHAVIOUR. No `tailscale` on the box, no permission to ask it, or a
+# machine reached by plain tailnet IP with no `serve` at all: the table comes back EMPTY and every caller
+# falls back to the internal port over http — which is what `--tailnet` has always written.
+#
+# Emits one line per published door, for the host asked about: "<local-port> <scheme> <public-port>".
+tailnet_published_ports() { # <tailnet-host>
+  command -v tailscale >/dev/null 2>&1 || return 0
+  # ⚠️ THE DOCUMENT TRAVELS AS AN ARGUMENT, NOT DOWN A PIPE, and that is not a style choice: `python3 - …`
+  # takes its PROGRAM from stdin, so the `<<'PYEOF'` below already owns it. Piped in, the JSON is silently
+  # thrown away and this function returns EMPTY — which every caller reads as "nothing is published" and
+  # falls back to the internal port. Measured: the first version of this did exactly that, and the guard's
+  # published-door test failed with the internal-port claims it exists to forbid.
+  local doc
+  doc="$(tailscale serve status --json 2>/dev/null)" || return 0
+  [ -n "$doc" ] || return 0
+  python3 - "$1" "$doc" <<'PYEOF'
+import json, sys
+host = sys.argv[1].strip().lower()
+try:
+    doc = json.loads(sys.argv[2])
+except Exception:
+    raise SystemExit(0)           # no serve config at all prints `{}` on some versions and nothing on others
+tcp = doc.get('TCP') or {}
+for authority, site in (doc.get('Web') or {}).items():
+    name, _, public = authority.rpartition(':')
+    if name.strip().lower() != host or not public.isdigit():
+        continue
+    # Only the ROOT handler: a door published under a path prefix is not an origin, and this box has no
+    # service that would survive being mounted under one (the admin is a Next app with no `basePath` —
+    # caddy/Caddyfile.local carries that measurement).
+    proxy = ((site.get('Handlers') or {}).get('/') or {}).get('Proxy') or ''
+    local = proxy.rpartition(':')[2].split('/')[0]
+    if not local.isdigit():
+        continue
+    print(local, 'https' if (tcp.get(public) or {}).get('HTTPS') else 'http', public)
+PYEOF
+}
+
+# One field of that table, or empty when nothing publishes this box's port. <field>: 1 = scheme, 2 = public port.
+serve_field() { # <table> <local-port> <field>
+  printf '%s\n' "$1" | awk -v l="$2" -v f="$3" '$1 == l { print (f == 1 ? $2 : $3); exit }'
+}
+
+# The `host:port` a browser sends as `Host` — which is the key `read.admin.by_host` and `FORGE_STORE_HOSTS`
+# both resolve on. The default port of the scheme is OMITTED, because a browser omits it.
+authority_for() { # <host> <published-scheme> <published-port> <fallback-port>
+  case "$2:$3" in
+    https:443|http:80) printf '%s' "$1" ;;
+    ?*:?*)             printf '%s:%s' "$1" "$3" ;;
+    *)                 printf '%s:%s' "$1" "$4" ;;
+  esac
+}
+
+# …and the same address as an absolute origin.
+origin_for() { # <host> <published-scheme> <published-port> <fallback-port>
+  printf '%s://%s' "${2:-http}" "$(authority_for "$1" "$2" "$3" "$4")"
 }
 
 # ── 0 · the environment ─────────────────────────────────────────────────────────────────────────────────────
@@ -292,11 +382,18 @@ set +a
 # `bash bin/box-up.sh` put the box back on `localhost` and the tailnet answered 404 again. The arrangement was
 # real work and nothing in the repository remembered it. Now it does.
 #
-# WHAT IT IS NOT, AND THIS IS THE HARD LINE. It does not run `tailscale`, it does not configure `tailscale
-# serve`, and it never reads Tailscale's state. It assumes the machine is ALREADY reachable on the tailnet at
-# the same published ports (`FORGE_HTTP_PORT`, `FORGE_ADMIN_HTTP_PORT`, `FORGE_ADMIN2_HTTP_PORT`), which is
-# what `tailscale serve` or a plain tailnet IP already gives, and it wires the BOX to that fact. Getting on
-# the network is the operator's gesture; knowing about it is this box's job.
+# WHAT IT IS NOT, AND THIS IS THE HARD LINE. It does not CONFIGURE `tailscale serve`, it does not run
+# `tailscale up`, and it changes no state of that machine's network. It assumes the machine is ALREADY
+# reachable on the tailnet and wires the BOX to that fact. Getting on the network is the operator's gesture;
+# knowing about it is this box's job.
+#
+# ⚠️ AND KNOWING ABOUT IT MEANS ASKING (pk6·D2, and this line USED to say the opposite). The first version
+# assumed the published ports were this box's own — `FORGE_HTTP_PORT`, `FORGE_ADMIN_HTTP_PORT`,
+# `FORGE_ADMIN2_HTTP_PORT` — and that assumption is false wherever `tailscale serve` is what does the
+# publishing: it terminates TLS on ports IT chooses (443, 8443, 8444 on this bench) and forwards to the
+# box's. So the promotion now READS `tailscale serve status --json` and derives every address from it. That
+# is still not configuring anything — see `tailnet_published_ports` for the measurement that forced it, and
+# `bin/box-config.guard.mjs` for the check that keeps the read read-only.
 #
 #   bash bin/box-up.sh --tailnet      point this box at the tailnet
 #   bash bin/box-up.sh --localhost    put it back
@@ -325,6 +422,17 @@ if [ "$MODE" != birth ]; then
   net_hosts="$FORGE_TAILNET_HOST"
   [ -n "${FORGE_TAILNET_IP:-}" ] && net_hosts="$net_hosts $FORGE_TAILNET_IP"
 
+  # ── WHAT THIS MACHINE PUBLISHES, READ ONCE ──────────────────────────────────────────────────────────────
+  # BOTH directions need it, and `--localhost` for the sharper reason: releasing a door means naming it, and
+  # after this change the name of a tenant's tailnet door is the PUBLISHED port. A reverse that could not
+  # read the table would leave exactly the claim it exists to remove.
+  serve_table="$(tailnet_published_ports "$FORGE_TAILNET_HOST")"
+  if [ -n "$serve_table" ]; then
+    note "read from tailscale serve: $(printf '%s\n' "$serve_table" | wc -l) published door(s) on this machine — this box's addresses derive from them"
+  else
+    note '⚠️ tailscale publishes nothing for this host (or is not readable here) — falling back to the direct ports'
+  fi
+
   # ── the host → store map ────────────────────────────────────────────────────────────────────────────────
   # ★ THE STORE ID IS READ BACK FROM THE MAP THAT IS ALREADY THERE, not resolved again. `provision-ref`
   # returns it at birth and nothing but a rebirth changes it; asking the port for it here would need a
@@ -346,12 +454,27 @@ PYEOF
 )"
   [ -n "$root_store" ] || die 'FORGE_STORE_HOSTS holds no store id — this box has not been born yet. Run `bash bin/box-up.sh` first.'
 
+  hport="${FORGE_HTTP_PORT:-8200}"
+  store_scheme="$(serve_field "$serve_table" "$hport" 1)"
+  store_port="$(serve_field "$serve_table" "$hport" 2)"
+
   hosts="localhost 127.0.0.1 $(hostname 2>/dev/null)"
   [ "$MODE" = tailnet ] && hosts="$hosts $net_hosts"
   map=''
   for h in $hosts; do
     [ -n "$h" ] || continue
-    map="$map\"$h\":\"$root_store\",\"$h:${FORGE_HTTP_PORT:-8200}\":\"$root_store\","
+    map="$map\"$h\":\"$root_store\",\"$h:$hport\":\"$root_store\","
+    # ★ AND THE SPELLING `tailscale serve` PUBLISHES, when it differs. The vitrine's published door is 443 on
+    # this bench, and a browser sends the bare host for 443 — already a key above. It is added anyway because
+    # the operator chooses those ports, and a vitrine published on `:8446` would otherwise resolve to no
+    # store and 404 with nothing saying why. Extra keys cost nothing: every one of them really reaches here.
+    if [ "$MODE" = tailnet ]; then
+      case " $net_hosts " in
+        *" $h "*)
+          pub="$(authority_for "$h" "$store_scheme" "$store_port" "$hport")"
+          case "$pub" in "$h"|"$h:$hport") ;; *) map="$map\"$pub\":\"$root_store\"," ;; esac ;;
+      esac
+    fi
   done
   put_env FORGE_STORE_HOSTS "'{${map%,}}'"
   note "host → store map rebuilt · $(echo "$hosts" | wc -w) hostname(s)"
@@ -371,6 +494,10 @@ PYEOF
   # So the scheme is PROBED rather than configured. A box behind a TLS edge answers `/health` on 443; one
   # served plainly does not, and falls back to the port it really listens on. Deriving beats asking: a second
   # variable would be a second thing to get wrong, and it would be wrong exactly on the box nobody re-reads.
+  #
+  # ★ THE PROBE IS NOW THE FALLBACK, NOT THE ANSWER (pk6·D2). `tailscale serve` states the scheme AND the
+  # port, so when it answers there is nothing left to guess; the probe only runs when the table is empty. It
+  # is kept because it is the one thing that still works on a box behind some OTHER TLS edge.
   probe_origin() { # <host> — echo the origin a browser will actually use
     if curl -fsS -o /dev/null --max-time 6 "https://$1/health" 2>/dev/null; then
       echo "https://$1"
@@ -379,41 +506,117 @@ PYEOF
     fi
   }
 
+  # ── ★ THE ADMIN DOORS, ONE LINE PER TENANT, DERIVED ONCE ────────────────────────────────────────────────
+  # "<tenant> <internal-port> <published-scheme|-> <published-port|->". The dashes keep the field positions
+  # when nothing is published, so `read` below never has to guess which column it is looking at.
+  admin_doors=''
+  for t in $TENANTS; do
+    lport="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host // empty' "$BOX" | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p')"
+    [ -n "$lport" ] || { note "⚠️ $t has no port in its admin_host — skipping its door"; continue; }
+    admin_doors="$admin_doors$t $lport $(serve_field "$serve_table" "$lport" 1 | grep . || echo -) $(serve_field "$serve_table" "$lport" 2 | grep . || echo -)
+"
+  done
+
   if [ "$MODE" = tailnet ]; then
-    origin="$(probe_origin "$FORGE_TAILNET_HOST")"
-    case "$origin" in
-      https://*) note "TLS edge answers on 443 — the origin is $origin (images follow the page's scheme)" ;;
-      *)         note "no TLS edge on 443 — the origin stays on ${FORGE_HTTP_PORT:-8200}" ;;
-    esac
-    gate_admin="http://$FORGE_TAILNET_HOST:${FORGE_ADMIN_HTTP_PORT:-8201}"
+    if [ -n "$store_port" ]; then
+      origin="$(origin_for "$FORGE_TAILNET_HOST" "$store_scheme" "$store_port" "$hport")"
+      note "the vitrine is published as $origin (images follow the page's scheme)"
+    else
+      origin="$(probe_origin "$FORGE_TAILNET_HOST")"
+      note "nothing publishes :$hport — probed instead, and the origin is $origin"
+    fi
+    # ★ THE GATE'S LINK TO THE ADMIN IS THE FIRST TENANT'S DOOR, spelled the way a browser opens it.
+    gate_admin=''
+    sib_overrides='{}'
+    while read -r t lport sch prt; do
+      [ -n "${t:-}" ] || continue
+      [ "$sch" = '-' ] && sch=''
+      [ "$prt" = '-' ] && prt=''
+      door="$(origin_for "$FORGE_TAILNET_HOST" "$sch" "$prt" "$lport")"
+      sib_overrides="$(printf '%s' "$sib_overrides" | jq -c --arg t "$t" --arg u "$door" '. + {($t): $u}')"
+      [ -n "$gate_admin" ] || gate_admin="$door"
+    done <<EOF
+$admin_doors
+EOF
     sib_host="$FORGE_TAILNET_HOST"
   else
     origin="http://localhost:${FORGE_HTTP_PORT:-8200}"
     gate_admin=''
     sib_host=''
+    sib_overrides='{}'
   fi
   put_env FORGE_PUBLIC_ORIGIN "$origin"
   put_env FORGE_GATE_ADMIN_URL "$gate_admin"
-  put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host")'"
+  put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host" "$sib_overrides")'"
   note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
 
   # ── the admin front doors, claimed THROUGH THE PORT ─────────────────────────────────────────────────────
   # `read.admin.by_host` keys on `host:port`, so each tenant's admin needs its own claim for each spelling of
   # the machine. `admin-host.js` drives the two platform commands `provision-ref` drives — it is not a second
   # write path, and it prints identifiers only.
+  #
+  # ⚠️ THE PORT CLAIMED IS THE PUBLISHED ONE, AND THE SUPERSEDED SPELLING IS RELEASED IN THE SAME PASS. Both
+  # halves matter and the second is the less obvious: a box promoted by the OLD script holds `<tailnet>:8201`,
+  # an address that opens the login page and then cannot keep the session — the silent failure this slice
+  # exists for. A stale front door is worse than no front door, so `--tailnet` removes every spelling it is
+  # not claiming, and `--localhost` removes them all.
   claimed=0
-  for t in $TENANTS; do
-    aport="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host' "$BOX" | sed -n 's/.*\(:[0-9]*\)$/\1/p')"
-    [ -n "$aport" ] || { note "⚠️ $t has no port in its admin_host — skipping its claim"; continue; }
+  released=0
+  # ⚠️ THE COUNT MEANS SOMETHING ONLY IF IT COUNTS REMOVALS. `admin-host.js remove` on a hostname nobody
+  # claimed is not an error — it prints `<host>\tabsent` and exits 0 — so counting the EXIT STATUS would
+  # report "4 released" on a virgin box that had nothing to release, which is the shape of a green that
+  # proves nothing. The verb on stdout is the real answer.
+  release_door() { # <host:port> — true only when a claim was actually there
+    case "$(dc run --rm kernel node dist/admin-host.js remove "$1" 2>/dev/null | tr -d '\r' | tail -1)" in
+      *removed) return 0 ;;
+      *) return 1 ;;
+    esac
+  }
+  while read -r t lport sch prt; do
+    [ -n "${t:-}" ] || continue
+    [ "$sch" = '-' ] && sch=''
+    [ "$prt" = '-' ] && prt=''
     for h in $net_hosts; do
+      keep="$(authority_for "$h" "$sch" "$prt" "$lport")"
+      doors="$keep"
+      [ "$keep" = "$h:$lport" ] || doors="$doors $h:$lport"
       if [ "$MODE" = tailnet ]; then
-        dc run --rm kernel node dist/admin-host.js set "$h$aport" "$t" >/dev/null 2>&1 && claimed=$((claimed + 1))
+        dc run --rm kernel node dist/admin-host.js set "$keep" "$t" >/dev/null 2>&1 && claimed=$((claimed + 1))
+        for a in $doors; do
+          [ "$a" = "$keep" ] && continue
+          release_door "$a" && released=$((released + 1))
+        done
       else
-        dc run --rm kernel node dist/admin-host.js remove "$h$aport" >/dev/null 2>&1 && claimed=$((claimed + 1))
+        for a in $doors; do
+          release_door "$a" && released=$((released + 1))
+        done
       fi
     done
-  done
-  note "admin directory · $claimed claim(s) $([ "$MODE" = tailnet ] && echo set || echo released)"
+  done <<EOF
+$admin_doors
+EOF
+  note "admin directory · $claimed claim(s) set · $released released"
+
+  # ── ★ THE DOORS, PRINTED — because the port an operator has to type CHANGED ──────────────────────────────
+  # The promotion already prints `$origin` a few lines down, so this adds no class of value to a scrollback
+  # that the block below does not. What it adds is the one fact nobody can derive by looking: after this
+  # change the admin is NOT on `:${FORGE_ADMIN_HTTP_PORT:-8201}` over the tailnet, it is wherever `tailscale
+  # serve` publishes it — and an operator who types yesterday's address gets a login page that refuses.
+  if [ "$MODE" = tailnet ]; then
+    say 'the doors, as a browser opens them'
+    note "vitrine   $origin"
+    while read -r t lport sch prt; do
+      [ -n "${t:-}" ] || continue
+      [ "$sch" = '-' ] && sch=''
+      [ "$prt" = '-' ] && prt=''
+      note "admin     $(origin_for "$FORGE_TAILNET_HOST" "$sch" "$prt" "$lport")   ($t)"
+    done <<EOF
+$admin_doors
+EOF
+    tsch="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 1)"
+    tprt="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 2)"
+    note "totem     $(origin_for "$FORGE_TAILNET_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
+  fi
 
   # ── the containers that read all of the above at BOOT ───────────────────────────────────────────────────
   # Every variable touched here is read once, at process start. Without the recreate the files are right and
