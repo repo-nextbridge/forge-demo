@@ -23,6 +23,7 @@
   "exports": {
     "./block/entry": "./block/entry.tsx",
     "./i18n": "./i18n.ts",
+    "./icon": "./icon.ts",
     "./manifest": "./manifest.ts",
     "./wiring": "./wiring.ts"
   },

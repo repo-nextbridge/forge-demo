@@ -741,6 +741,39 @@ async function freeShippingFloorOfStore(port, store) {
  */
 
 /**
+ * ── HOW MANY BARS A SHOPPER SEES ────────────────────────────────────────────────────────────────────────
+ *
+ * The question, asked 03/09: *"se todas estao marcadas pra ser barrinha deveria aparecer todas, nao e? Mas
+ * eu ja cheguei a ver 2 barrinhas vivas, nao sei o que aconteceu."*
+ *
+ * ★ YES — ALL OF THEM, ONE BAR PER MARKED PROMOTION THE CART IS STILL SHORT OF. Nothing anywhere caps the
+ * number, and the two live bars were the shop working. The chain, read end to end:
+ *
+ *   1. THE MERCHANT MARKS. `show_progress` on the promotion is the only knob — there is no second flag, no
+ *      per-store setting and no theme option. Whoever sets it decides.
+ *   2. THE ENGINE FILTERS AND ORDERS (`packages/core/src/promo/price-cart.ts`, `near_misses`): one entry per
+ *      evaluation that is REJECTED, carries a `gap`, and is marked — minus a free-shipping promise that does
+ *      not cover the delivery in play — sorted SMALLEST GAP FIRST. No limit is applied.
+ *   3. THE FRONT DRAWS EVERY ONE (`packages/storefront-kit/src/components/promo/ThresholdProgress.tsx`). It
+ *      drops a gap of zero or less and states the rest in its own comment: "it does not TRUNCATE. How many
+ *      bars a shopper sees is the merchant's decision".
+ *
+ * ⇒ SO THE COUNT IS THE CART'S, NEVER THE SHOP'S, AND IT FALLS AS THE CART GROWS: a promotion the cart has
+ *   EARNED is applied rather than rejected, so it leaves the list. MEASURED on this bench 2026-09-03 through
+ *   the anonymous cart face, one line of a R$ 39,90 slipper in the shoe shop:
+ *
+ *     R$  39,90 -> 2 bars  ("Frete gratis acima de R$ 299", faltam R$ 259,10 · "Brinde: Florsheim Shine
+ *                           Sponge", faltam R$ 360,10 — nearest first, exactly as the contract promises)
+ *     R$ 319,20 -> 1 bar   (the freight is earned and drops out; the gift is still R$ 80,80 away)
+ *     R$ 438,90 -> 0 bars  (both earned — the gift arrives as a `gift_lines` entry instead)
+ *
+ * ★ TWO LIVE BARS ARE THIS SHOP'S NORMAL STATE, not a glitch: it marks exactly two promotions and they are
+ *   two DIFFERENT promises — a freight threshold and a gift threshold. That is why the pass below narrows to
+ *   FREIGHT and lowers nothing else: a second freight bar would contradict the first, a gift bar contradicts
+ *   nothing. What p1-3 fixed was never the COUNT — it was WHICH of the two freight promises carried the bar.
+ */
+
+/**
  * The bars this store should be drawing, against the ones it is.
  *
  * Pure: the promotions in, two lists out — `raise` (must show progress and does not) and `lower` (shows

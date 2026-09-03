@@ -250,3 +250,71 @@ test('★ the monorepo mirror is this list, in this order', { skip }, () => {
       `  jq --slurpfile mine <(jq '{apps}' composition.json) '.apps = $mine[0].apps' $FORGE/${MIRROR}`,
   );
 });
+
+// ── the bytes an instance app promises the admin ────────────────────────────────────────────────────────
+/**
+ * The asset path a manifest DECLARES, read from its source.
+ *
+ * ⚠️ BY TEXT, AND EVERY ALTERNATIVE IS WORSE HERE. A manifest is TypeScript importing `@forgecommerce/contracts`,
+ * which in this repository is a gitignored symlink `bin/pack-apps.sh` writes from a monorepo checkout — so
+ * importing one would make this rule skip on the machine that has no checkout, which is the machine most
+ * likely to be wrong. The field is a string literal in a file this repository owns.
+ *
+ * It refuses to guess: no `icon:` line at all → `null` (an app may legitimately ship none), a line that does
+ * not parse → a failure, never a silent skip.
+ */
+function declaredIcon(dir) {
+  const source = readFileSync(join(dir, 'manifest.ts'), 'utf8');
+  const named = /^\s*icon:\s*'([^']+)'\s*,/m.exec(source);
+  if (named) return named[1];
+  assert.ok(
+    !/^\s*icon:/m.test(source),
+    `${dir}/manifest.ts has an \`icon:\` this guard cannot read — write it as a single-quoted literal, or this rule goes green while saying nothing`,
+  );
+  return null;
+}
+
+/** The base64 an `icon.ts` module exports, or null when the module is not of that shape. */
+function exportedIconBase64(file) {
+  const found = /export const icon\s*=\s*'([^']*)'/.exec(readFileSync(file, 'utf8'));
+  return found ? found[1] : null;
+}
+
+test('★★ an instance app that DECLARES an icon also EXPORTS it — the composition solders the export, not the path', () => {
+  // ⛔ THE REGRESSION THIS EXISTS FOR, MEASURED ON THE BENCH 2026-09-03: `GET /v1/extensions/demo-gate/icon`
+  // → 404 (`banners`, a composed platform app, → 200 image/png, 5111 bytes). `demo-gate` declared
+  // `icon: 'icon.png'` and shipped the file, and neither of those is what a COMPOSED app is read by:
+  // `packages/codegen/src/composition.ts` solders an icon into the image only when the package EXPORTS
+  // `./icon`, and it never imports the app to notice the manifest disagrees. So the app went from MOUNTED
+  // (an artifact directory, where the declared PATH is the icon) to COMPOSED (a bundled module, where the
+  // EXPORT is), and lost its icon with nothing turning red — the admin's Apps area fell back to the name
+  // initial, which is exactly what an app with no icon looks like.
+  //
+  // The rule is on the RESULT and it is the bytes: the module must decode to the file the manifest names, so
+  // an icon that is redrawn and not re-encoded is red too.
+  for (const app of COMPOSITION.instanceApps ?? []) {
+    const dir = join(ROOT, app.source);
+    const declared = declaredIcon(dir);
+    if (!declared) continue;
+
+    const asset = join(dir, declared);
+    assert.ok(existsSync(asset), `${app.package} declares icon "${declared}", which is not a file in ${app.source}`);
+
+    const subpath = read(join(dir, 'package.json')).exports?.['./icon'];
+    assert.ok(
+      subpath,
+      `${app.package} declares an icon and does NOT export "./icon". A composed app's icon travels as a bundled module: add \`"./icon": "./icon.ts"\` to its exports and an \`icon.ts\` carrying the base64 of ${declared}. Without it the image builds, the app installs, and every visit to /apps 404s on its icon.`,
+    );
+
+    const base64 = exportedIconBase64(join(dir, subpath.replace(/^\.\//, '')));
+    assert.ok(
+      base64,
+      `${app.package} exports "./icon" at ${subpath}, which does not export a string constant named \`icon\` — that is the shape \`pngIconRegistry\` decodes.`,
+    );
+    assert.deepEqual(
+      Buffer.from(base64, 'base64'),
+      readFileSync(asset),
+      `${app.package}: the bytes ${subpath} exports are not the bytes of ${declared}. The module is what the kernel serves; the file is what everything else reads.`,
+    );
+  }
+});
