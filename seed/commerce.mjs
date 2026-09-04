@@ -733,6 +733,28 @@ function liveProofBuyer(store) {
   return liveProofBuyerOf(store.handle).email;
 }
 
+/**
+ * ★★ A22 — THE PROOF ORDER IS PLACED THE WAY THE STORE ALLOWS, and getting this wrong would have killed the
+ * seed rather than degraded it.
+ *
+ * MEASURED, 2026-09-04. `checkout.place_order` refuses a PURE GUEST cart when the store's
+ * `guest_checkout_enabled` is false — `forbidden · guest_disabled`, at packages/core/src/commands/checkout.ts,
+ * before any completeness check. This function used to send `guest: true` unconditionally, so the moment A22
+ * turned guests off in the Outlet and the Café the whole run would have died on the kernel being RIGHT.
+ *
+ * ★ THE FIX IS NOT A TRY/CATCH, IT IS AN INTENT. `guest: false` means "close this order with an account",
+ * which is exactly what a shop that forbids guests is asking for, and it is what the KERNEL's own history
+ * seeder has always sent (apps/api/src/demo-scenario.ts) — the account is created at close from the buyer's
+ * address. So a shop that permits guests gets a guest proof order and a shop that does not gets an account
+ * one, and the funnel each store exercises is the funnel that store actually offers.
+ *
+ * ⚠️ ABSENT ⇒ GUEST. `read.internal.stores` publishes the column, so `undefined` here means the read did not
+ * answer (an older kernel), and the pre-A22 behaviour is the honest fallback: it is what every store did.
+ */
+export function liveProofGuestIntent(store) {
+  return store?.guest_checkout_enabled !== false;
+}
+
 async function placeLiveOrders({ stores, command, read, log }) {
   const placed = [];
   for (const store of sellingStores(stores)) {
@@ -783,9 +805,11 @@ async function placeOneLiveOrder({ store, command, read, log }) {
   // method, a point and a buyer still answered `missing: [shipping_address]`. So the address is always sent,
   // and it is the PICKUP POINT'S OWN, read back from the kernel, never invented.
   const buyer = liveProofBuyerOf(store.handle);
+  // A22 — the INTENT comes off the store's own flag; see `liveProofGuestIntent` for the refusal it avoids.
+  const guest = liveProofGuestIntent(store);
   await command(
     'cart.set_buyer',
-    { cart_id, email: buyer.email, name: buyer.name, guest: true },
+    { cart_id, email: buyer.email, name: buyer.name, guest },
     { store: store.id },
   );
 
@@ -842,7 +866,7 @@ async function placeOneLiveOrder({ store, command, read, log }) {
   const confirmation = await read('order_confirmation', { store: store.id, order_id });
   log(
     `commerce — ${store.handle} #${confirmation?.number} ${confirmation?.status} ` +
-      `(${method} via ${app}, ${point ? 'pickup' : 'delivery'})`,
+      `(${method} via ${app}, ${point ? 'pickup' : 'delivery'}, ${guest ? 'guest' : 'account at close'})`,
   );
   return confirmation;
 }

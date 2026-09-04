@@ -61,6 +61,15 @@ import { seedStockPool } from '../seed/pool.mjs';
 // truth instead of repeating a claim from an array that box.json declares superseded.
 import { bootstrapStoreOf, topologyDisagreement } from '../seed/topology.mjs';
 import { seedOutlet } from '../seed/outlet.mjs';
+// A10 (the DEMO half) — the `chrome` app: installed, PLACED and FILLED IN, per store. Its own module beside
+// its data, like every other store-shaped slice here. It runs after the counter's store exists because it
+// names stores by handle.
+import { seedChrome } from '../seed/chrome.mjs';
+// A22 — the shoe brand's logistics REGISTRIES (carriers, pickup points) and its customer CLUSTERS with the
+// promotions that condition on them. Two subjects, two modules, both driven through the port. The audience
+// half runs in the WINDOW phase and its header carries the measurement of why.
+import { seedAudience } from '../seed/audience.mjs';
+import { seedLogistics } from '../seed/logistics.mjs';
 // The COUNTER (T2·S2) — the store the totem serves. A module of its own beside its data, like the two above,
 // and it runs AFTER seedCoffee for a reason the kernel enforces: six of the twenty-one things it puts on sale
 // are the coffee shop's OWN products, published into a second store rather than created a second time.
@@ -1358,6 +1367,19 @@ if (here('cafe')) {
 } else {
   log('totem — the counter is not on this tenant, skipped');
 }
+// A10 — THE `chrome` APP, FOR EVERY STORE OF THIS TENANT. Not guarded by a handle: it dresses whatever this
+// tenant has, and `seed/chrome.json` is what decides which stores get what (the counter is declared `null`
+// there, with the measurement). LAST of the store-shaped steps, because `seedTotem` above is what creates the
+// counter's store and a handle that does not exist yet cannot be dressed.
+await seedChrome({
+  command,
+  read,
+  readAll,
+  rows,
+  log,
+  fail,
+  uploadAsset: (file) => upload(file, { library: true }),
+});
 // The FORGE store — the sports shop. Last, and it is the only one whose content does not live in this repo:
 // it comes from the dataset directory FORGE_SEED_DATASET_DIR points at. Unset → one line and a no-op.
 // Its uploads are NOT library assets: 2790 products' photographs are catalogue, not curated inventory.
@@ -1456,6 +1478,18 @@ if (here('forge')) {
   });
 } else {
   log('vitrine — the sports store is not on this tenant, skipped');
+}
+// A22 — THE SHOE BRAND'S LOGISTICS REGISTRIES AND ITS CUSTOMER CLUSTERS.
+//
+// ⚠️ THE ORDER IS NOT COSMETIC AND THE PHASE IS NOT EITHER. A cluster's membership is materialized when the
+// cluster is CREATED, over the customers that exist at that instant — and this tenant's customers arrive with
+// the massive one-shot (step 9) and the 180-day past (step 10), both of which happen between the two phases.
+// Created in `curated`, all four clusters would be born empty, look correct and stay that way.
+if (here('forge')) {
+  await seedLogistics({ command, readAll, log, fail });
+  await seedAudience({ command, read, readAll, rows, log, fail });
+} else {
+  log('logistics + audience — the shoe brand is not on this tenant, skipped');
 }
 // ── THE COMMERCE PASS — reviews, one live order per selling store, and the buyer's mail back on ──────────
 //

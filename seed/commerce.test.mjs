@@ -27,6 +27,7 @@ import {
   HELD_AUTHORS,
   LIVE_PROOF_BUYERS,
   liveProofBuyerOf,
+  liveProofGuestIntent,
   planPromotionRenames,
   STORE_COUPONS,
   REVIEW_DOORS,
@@ -601,4 +602,34 @@ test('★ every store gets its OWN address — the address is the key a second r
 test('⛔ a store nobody decided a buyer for is a REFUSAL, never a shared default', () => {
   assert.throws(() => liveProofBuyerOf('loja-nova'), /no live-proof buyer decided/);
   assert.equal(Object.keys(LIVE_PROOF_BUYERS).length, STORES.length);
+});
+
+// ── ★★ A22 · THE PROOF ORDER IS PLACED THE WAY THE STORE ALLOWS ────────────────────────────────────────
+//
+// ⛔ THE FAILURE THIS AVOIDS IS NOT A DEGRADED DEMO, IT IS A DEAD SEED. `checkout.place_order` refuses a PURE
+// GUEST cart with `forbidden · guest_disabled` when the store's `guest_checkout_enabled` is false
+// (packages/core/src/commands/checkout.ts) — before any completeness check, and `command()` in bin/seed.mjs
+// does not tolerate that code. This function used to send `guest: true` unconditionally, so the moment A22
+// turned guests off in the Outlet and the Café the whole birth would have died on the kernel being RIGHT.
+
+test('★★★ a store that FORBIDS guests gets an account-at-close proof order, not a refusal', () => {
+  assert.equal(liveProofGuestIntent({ handle: 'outlet', guest_checkout_enabled: false }), false);
+});
+
+test('★ a store that permits guests keeps the guest funnel — the door each shop actually offers', () => {
+  assert.equal(liveProofGuestIntent({ handle: 'forge', guest_checkout_enabled: true }), true);
+});
+
+test('⚠️ ABSENT ⇒ GUEST — an older read that does not publish the column must not silence the funnel', () => {
+  // `read.internal.stores` does publish it (`StoreSummary`), so `undefined` here means the read answered
+  // something else. The honest fallback is the behaviour every store had before this item.
+  assert.equal(liveProofGuestIntent({ handle: 'forge' }), true);
+  assert.equal(liveProofGuestIntent(undefined), true);
+});
+
+test('★★ the intent is read off the STORE and never off the handle', () => {
+  // A per-handle table would be a second declaration of the posture `seed/box.json` already states, and the
+  // two would disagree the first time somebody changed one — with the symptom being a seed that dies.
+  assert.equal(liveProofGuestIntent({ handle: 'forge', guest_checkout_enabled: false }), false);
+  assert.equal(liveProofGuestIntent({ handle: 'balcao', guest_checkout_enabled: true }), true);
 });

@@ -17,7 +17,7 @@
 // Mirror drift is a human's job; everything downstream of the mirror is guarded here.
 
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -697,4 +697,42 @@ test('★ pk5 — the kids shelf is shaped like the shelf-with-a-banner that ALR
     );
     assert.ok(shelf.banner_link, `"${shelf.title}" carries a picture and no \`banner_link\`: the art is inert`);
   }
+});
+
+// ── ★★ A6 · A BANNER'S NAME MUST NOT LIE ABOUT ITS SIZE ────────────────────────────────────────────────
+//
+// ⚠️ THIS IS A DEFECT THIS REPOSITORY HAS ALREADY HAD, TWICE, and `outlet.json`'s mosaic `_why` names both:
+// «'Banner Outlet 1 - Bota Adventure 1228x600.png' is really 1232x608, and 'Banner Outlet Infantil
+// 462x373.png' is really 912x752». Neither broke anything — the frames CROP — which is exactly why it is
+// worth a guard: nothing fails, and the next person reading a layout measures against a number that is
+// false. The names in THIS repository are the measured ones, and this is what keeps them measured.
+
+test('★★ A6 — every banner file name states the size the file actually has', () => {
+  const dir = join(SEED, 'outlet-media', 'banners');
+  const files = readdirSync(dir).filter((f) => /-(\d+)x(\d+)\.png$/.test(f));
+  assert.ok(files.length > 0, 'no banner carries its dimensions in its name — the convention is gone');
+  for (const file of files) {
+    const [, w, h] = /-(\d+)x(\d+)\.png$/.exec(file);
+    const head = readFileSync(join(dir, file)).subarray(0, 33);
+    assert.equal(head.subarray(1, 4).toString('latin1'), 'PNG', `${file} is not a PNG`);
+    assert.deepEqual(
+      { width: head.readUInt32BE(16), height: head.readUInt32BE(20) },
+      { width: Number(w), height: Number(h) },
+      `${file} says one size and measures another — the name is what the next person derives a layout from`,
+    );
+  }
+});
+
+test('★ A6 — the kids art is the 04/09 re-cut, and its ratio is the shelf CELL’s', () => {
+  // The picture is the «Outlet Kids» shelf's first grid cell: two of five columns, as tall as the product
+  // cards beside it, `object-fit: cover`. The delivered art is 912x736 (≈1.24:1) — landscape and close to
+  // the box, so the crop is small. The 912x752 it replaces was the SAME art at a ratio nobody had chosen.
+  const shelf = bannerShelves.find((s) => s.collection === 'outlet-kids');
+  assert.ok(shelf, 'the «Outlet Kids» shelf is gone');
+  assert.equal(shelf.banner, 'banner-outlet-kids-912x736.png');
+  assert.ok(
+    !existsSync(join(SEED, 'outlet-media', 'banners', 'banner-outlet-kids-912x752.png')),
+    'the superseded 912x752 file is still in the repository — two versions of one piece of art is how the ' +
+      'wrong one gets uploaded next time',
+  );
 });
