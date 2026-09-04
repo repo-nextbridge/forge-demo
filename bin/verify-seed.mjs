@@ -466,6 +466,24 @@ if (!seen.includes('cafe')) {
   // the box whether the declaration landed, which is the failure class this whole file exists for.
   {
     const held = await allOf('promotions_admin');
+    // ★★ THE LIST PUBLISHES `state`, NOT `status`, AND IT DOES NOT PUBLISH `store_id` AT ALL — and asking for
+    // the names it does not have is how this check accused correct data on 03/09. It reported both perks as
+    // "status is undefined — a draft perk charges what the page says it will not" and "scoped to the whole
+    // tenant" while the database held them `active` and confined to the coffee shop. A verifier that cries
+    // wolf is worse than the defect it hunts: it teaches whoever reads the birth log to skip the ✗ lines.
+    //
+    //   · `state` is the CONTRACT's name (`PromotionListItem`) and it is the stored status crossed with the
+    //     clock, which is the honest thing to grade: a perk that is `active` but scheduled for next month
+    //     does not charge anything today either.
+    //   · `store_id` is not on the frozen row on purpose. `read.promotion_stores` answers it for N promotions
+    //     in one call — the read that exists precisely because the shape could not grow.
+    const scopes = new Map(
+      rows(
+        await internal('promotion_stores', {
+          promotion_ids: held.map((p) => p.id).join(','),
+        }),
+      ).map((r) => [r.promotion_id, r.store_id ?? null]),
+    );
     for (const spec of COFFEE_PROMOTIONS) {
       const got = held.find((p) => p.name === spec.name);
       if (!got) {
@@ -475,8 +493,11 @@ if (!seen.includes('cafe')) {
       const problems = [];
       if ((got.benefit?.kind ?? null) !== spec.benefit.kind)
         problems.push(`benefit is ${got.benefit?.kind ?? '(none)'}, declared ${spec.benefit.kind}`);
-      if (got.status !== 'active') problems.push(`status is ${got.status} — a draft perk charges what the page says it will not`);
-      if (got.store_id !== store.id) problems.push(`scoped to ${got.store_id ?? 'the whole tenant'}, not to the coffee shop`);
+      if (got.state !== 'active')
+        problems.push(`state is ${got.state} — a perk that is not active charges what the page says it will not`);
+      const scopedTo = scopes.get(got.id) ?? null;
+      if (scopedTo !== store.id)
+        problems.push(`scoped to ${scopedTo ?? 'the whole tenant'}, not to the coffee shop`);
       if (got.target?.field !== 'sub_plan') problems.push(`targets ${JSON.stringify(got.target)} — not the subscribed line`);
       if (problems.length === 0) ok(`the perk "${spec.name}"`, `${got.benefit.kind}, active, on sub_plan lines`);
       else bad(`the perk "${spec.name}"`, problems.join(' · '));
