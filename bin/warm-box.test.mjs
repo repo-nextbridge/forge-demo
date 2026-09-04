@@ -45,7 +45,7 @@ const CAFE_STORES = [
  *   'unauth'     the secret does not match
  *   'running'    a run that never finishes, for the deadline
  */
-async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, p95 = 120 } = {}) {
+async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, p95 = 120, directory = {} } = {}) {
   const asked = { posts: [], gets: 0 };
   let run = null;
   const server = createServer((req, res) => {
@@ -54,6 +54,13 @@ async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, 
       res.writeHead(code, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body));
     };
+    if (url.pathname === '/v1/read/store.by_host') {
+      // The real capability tries the exact host WITH its port first and falls back to the bare host
+      // (`requestHostKeys`), which is what lets a fixture name `127.0.0.1` for a server on a random port.
+      const asked = url.searchParams.get('host') ?? '';
+      const id = directory[asked] ?? directory[asked.replace(/:\d+$/, '')];
+      return id ? json(200, { store_id: id }) : json(404, { error: { kind: 'not_found', message: 'not found' } });
+    }
     if (url.pathname === '/v1/read/internal/stores') {
       if (storesStatus !== 200) return json(storesStatus, { error: { kind: 'forbidden' } });
       return json(200, stores);
@@ -310,6 +317,48 @@ test('★★★ …and when a ceiling IS declared, a p95 over it turns the birth
     assert.equal(status, 1, `a p95 of 4000 ms passed a ceiling of 800 ms:\n${stdout}`);
     assert.match(stdout, /800/, stdout);
     assert.match(stdout, /4000/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+
+// ── ★★ WHICH ADDRESS SPACE WAS WARMED, WHICH IS NOT THE SAME QUESTION AS WHETHER IT WARMED ───────────────
+//
+// The warmer decides a store's URLs by asking the PORT — `read.store.by_host` — whether the origin's own
+// host resolves to it: yes → clean URLs (`/tenis`), no → path-scoped (`/s/<id>/tenis`). Those are two
+// different sets of route-cache entries, so a run that warms the second while shoppers arrive on the first
+// warms pages nobody opens and reports them as this shop's.
+//
+// ⛔ MEASURED ON THE LIVE BENCH, 04/09: `read.store.by_host` answers 404 for EVERY hostname this box uses —
+// `localhost`, `localhost:8200`, `127.0.0.1:8200` and the tailnet name. The kernel's `store_directory` is
+// empty here because this box resolves hosts through the FORGE_STORE_HOSTS override
+// (`packages/storefront-kit/src/resolve-store.ts` checks it first, by design, and the warmer's
+// `storeForOrigin` cannot see it). So the step SAYS which space it warmed rather than implying the other.
+
+test('★★★ when no store claims the origin in the kernel directory, the run says which URLs it warmed', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  try {
+    const { stdout, status } = await runStep({ box });
+    // Not red: the run really did warm what it was able to warm, and the operator cannot close this gap.
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /\/s\/<id>|path-scoped/i, `the run does not say which address space it warmed:\n${stdout}`);
+    assert.match(stdout, /store\.by_host/, `the run does not name the read that decided it:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ …and when a store DOES claim the origin, that is said too — the note closes itself', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /sto_CAFE[\s\S]{0,200}(root|clean)/i, `the run does not say the origin resolves to a store:\n${stdout}`);
+    assert.ok(
+      !/path-scoped/i.test(stdout),
+      `the run still warns about path-scoped URLs on a box whose directory answers:\n${stdout}`,
+    );
   } finally {
     box.close();
   }

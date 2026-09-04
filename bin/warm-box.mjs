@@ -172,6 +172,50 @@ if (toWarm.length === 0) {
   process.exit(failures === 0 ? 0 : 1);
 }
 
+// ── ★★ 2b · WHICH ADDRESS SPACE THIS RUN WILL WARM, ASKED BEFORE IT WARMS ANYTHING ──────────────────────
+//
+// One rule decides a store's URLs and the PORT answers it: does the origin's own host resolve to this store?
+// Yes → the store is warmed with clean URLs (`/tenis`); no → path-scoped (`/s/<id>/tenis`). Those are two
+// different sets of route-cache entries, so warming the second while shoppers arrive on the first fills
+// pages nobody opens — and reports them as this shop's, which is worse than not warming.
+//
+// ⛔ MEASURED ON THIS BOX, 04/09. `read.store.by_host` answers 404 for EVERY hostname the bench uses —
+// `localhost`, `localhost:8200`, `127.0.0.1:8200` and the tailnet name. The kernel's `store_directory` is
+// empty because this box resolves hosts through the `FORGE_STORE_HOSTS` OVERRIDE, which
+// `packages/storefront-kit/src/resolve-store.ts` checks first by design and which the warmer's
+// `storeForOrigin` (`apps/storefront/src/lib/warm/targets.ts`) cannot see: it asks the port and nothing else.
+//
+// ⚠️ THIS IS NOT MADE RED, AND THE REASON IS STATED. The run genuinely warms what it is able to warm, and the
+// gap is in the product's seam rather than in this box's configuration — an operator here cannot close it, and
+// a red nobody can act on is a red people learn to skip. It IS said, in the words of the read that decided it,
+// and the day a store claims the origin in the directory this line turns into the other one by itself.
+const originAuthority = (() => {
+  try {
+    const u = new URL(api);
+    return u.port ? `${u.hostname}:${u.port}` : u.hostname;
+  } catch {
+    return '';
+  }
+})();
+let rootStore = null;
+try {
+  const res = await fetch(`${api}/v1/read/store.by_host?host=${encodeURIComponent(originAuthority)}`);
+  if (res.ok) rootStore = (await res.json())?.store_id ?? null;
+} catch {
+  rootStore = null;
+}
+if (rootStore && toWarm.some((s) => s.id === rootStore)) {
+  noted('the addresses', `read.store.by_host says ${originAuthority} → ${rootStore}, so that store is warmed at the ROOT (clean URLs) and the others under /s/<id>`);
+} else {
+  noted(
+    'the addresses',
+    `read.store.by_host claims no store for ${originAuthority}, so EVERY store below is warmed path-scoped ` +
+      '(/s/<id>/…). If a shopper reaches one of them at the root of this origin — which is what the ' +
+      'FORGE_STORE_HOSTS override does on this box — those pages are a DIFFERENT set of route-cache entries ' +
+      'and this run did not warm them. The warmer asks the port and the override never reaches it.',
+  );
+}
+
 // ── 3 · the run ──────────────────────────────────────────────────────────────────────────────────────────
 const params = new URLSearchParams();
 for (const s of toWarm) params.append('store', s.id);

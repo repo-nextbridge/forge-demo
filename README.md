@@ -176,6 +176,19 @@ admin already uses to invalidate). One call warms three containers, because the 
 the totem is a whole-host app with no store in its URLs, so there is no vitrine page to warm. A store simply
 missing from a warm report reads exactly like a store that failed.
 
+⚠️ **The run SAYS which URLs it warmed, and on this box that is not the shopper's.** One rule decides a
+store's addresses and the **port** answers it: does the origin's own host resolve to this store? Yes → clean
+URLs (`/tenis`); no → path-scoped (`/s/<id>/tenis`). **Measured 04/09:
+`read.store.by_host` answers 404 for every hostname this bench uses** (`localhost`, `localhost:8200`,
+`127.0.0.1:8200`, the tailnet name) — the kernel's `store_directory` is empty here because this box resolves
+hosts through the **`FORGE_STORE_HOSTS` override**, which `packages/storefront-kit/src/resolve-store.ts`
+checks first by design and which the warmer's `storeForOrigin`
+(`apps/storefront/src/lib/warm/targets.ts`) cannot see. So every store is warmed **path-scoped**, and the
+pages a visitor reaches at the root of this origin are a different set of route-cache entries that the run
+did not fill. Step 14 states this in the words of the read that decided it; it is **not** made red, because
+the seam is the product's and nobody operating this box can close it. The day a store claims the origin in
+the directory, the line turns into the other one by itself.
+
 ⚠️ **`warm.threshold_ms` is `null` and that is deliberate.** A latency ceiling nobody measured is an invented
 promise, so the run asserts that the pages **warmed** and says out loud that it asserts nothing about **how
 fast**. Put a measured number in `seed/box.json` → `warm.threshold_ms` and every birth from then on grades it.
