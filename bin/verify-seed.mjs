@@ -26,6 +26,15 @@
 // point" is easy to see; "the counter got NO freight and NO free-shipping promotion" is the half that would
 // go unnoticed for a month, and it is the Renan's own rule — *"não faz sentido nascer dado de promoção de
 // frete grátis para o totem"*.
+//
+// ── ★★ AND IT MAY NOT ASK WHAT THE READ DOES NOT ANSWER (see `field`, below) ─────────────────────────────
+// Every name this file takes off a live response goes through an assertion that THE KEY CAME BACK. A name
+// that did not is this file's own defect: it prints `⚑`, it is counted apart from the ✗ lines, and it exits
+// 2 rather than 1. It cannot become a verdict about the box, and that is structural rather than careful —
+// `field` throws and every check runs inside `checking`. On 03/09 two comparisons asked the frozen promotion
+// list for `status` and `store_id`, which it does not publish; one accused correct data in red and the other
+// waved a real defect through in green. `bin/verify-seed.test.mjs` runs a SABOTAGED copy of this file against
+// a correct box and requires it to accuse itself.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -62,6 +71,99 @@ const ok = (label, detail) => say(`  ✓ ${label}${detail ? ` — ${detail}` : '
 const bad = (label, detail) => {
   failures += 1;
   say(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`);
+};
+
+// ── ★★ ABSENCE IS NOT A VALUE ────────────────────────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT THIS EXISTS FOR, measured on the birth of 03/09. This file accused CORRECT data and dropped
+// `box-up` to 1:
+//
+//     ✗ o benefício "Assinante 10% OFF" — status is undefined — a draft perk charges what the page says it
+//       will not · scoped to the whole tenant, not to the coffee shop
+//
+// The database held both perks `active` and confined to the coffee shop. Nothing was wrong with the box. The
+// frozen list publishes `state`, not `status`, and it does not publish `store_id` AT ALL — so both names read
+// back `undefined`, and `undefined !== 'active'` is TRUE. A question with NO ANSWER came out as the loudest
+// possible accusation, which is the worst translation of "I do not know" there is.
+//
+// ⚠️ FIXING THOSE TWO LINES DOES NOT FIX THE SPECIES. This file asks live responses for names by hand dozens
+// of times, and nothing stopped any of them from asking for a name that is not there.
+//
+// ⇒ So every name is read through `field()`, which ASSERTS THE KEY CAME BACK before anything compares it. A
+//   key that did not come back is THIS FILE's defect and never the box's: its own sentence, its own counter,
+//   its own exit code. And because `field` THROWS while every check runs inside `checking()`, there is no
+//   path at all from a missing key to a ✗ — the property is structural, not a convention someone remembers.
+//
+// ⚠️ IT ASSERTS AGAINST THE LIVE ANSWER, NOT AGAINST A MIRROR OF THE KERNEL'S TYPES. This repository does not
+// compile against `/contracts` and must never grow a hand-copied echo of it: a copy would agree with a stale
+// contract exactly the way a typed-in expectation agrees with a stale catalogue — the failure this whole file
+// was written against. The question asked here is the only one a reader can honestly ask: did the key come
+// back, in this answer, from this box?
+class WrongQuestion extends Error {
+  constructor(read, key, row) {
+    super(`read.${read} does not publish \`${key}\``);
+    this.read = read;
+    this.key = key;
+    this.row = row;
+  }
+}
+let wrongQuestions = 0;
+const askedWrong = (e) => {
+  wrongQuestions += 1;
+  const published =
+    e.row && typeof e.row === 'object' ? Object.keys(e.row).join(', ') : `${e.row === null ? 'null' : typeof e.row}`;
+  say(`  ⚑ WRONG QUESTION — read.${e.read} does not publish \`${e.key}\`. The question is wrong, not the data.`);
+  say(`      what came back instead: ${published || '(an object with no keys at all)'}`);
+};
+
+/**
+ * One name, off one row of one live read.
+ *
+ * @param row  the row as the box answered it — never a shape this file invented
+ * @param key  the name being asked for
+ * @param read the read that answered, so a wrong question can name the door it knocked on
+ */
+const field = (row, key, read) => {
+  if (row === null || typeof row !== 'object' || !Object.hasOwn(row, key)) {
+    throw new WrongQuestion(read, key, row);
+  }
+  return row[key];
+};
+/** The accessor of ONE read, so a call site reads `promo(p, 'state')` and cannot forget which door it is at. */
+const of = (read) => (row, key) => field(row, key, read);
+
+/**
+ * Run one check. A wrong question aborts THIS check — never the run, and never into a ✗.
+ *
+ * ⚠️ The granularity is the check, not the file: a name this file cannot ask must not take the other twenty
+ * measurements down with it, and it must not be swallowed either. What it costs is the rest of that one
+ * block, which the ⚑ line explains.
+ */
+const checking = async (fn) => {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof WrongQuestion) return askedWrong(e);
+    throw e;
+  }
+};
+
+/** A name the WHOLE RUN stands on (the store list, and the ids every later read is scoped by). A wrong
+ *  question here is not one check going quiet — it is nothing having been measured, so it ends the run. */
+const foundation = (fn) => {
+  try {
+    return fn();
+  } catch (e) {
+    if (!(e instanceof WrongQuestion)) throw e;
+    askedWrong(e);
+    say();
+    say(
+      'VERDICT: nothing was measured. The question above is this verifier\'s own, and every number that would ' +
+        'have followed it is derived from a name that did not come back.',
+    );
+    process.stdout.write(`${out.join('\n')}\n`);
+    process.exit(2);
+  }
 };
 
 if (!api) fail('no API base. Pass --api http://… (or set FORGE_PUBLIC_ORIGIN).');
@@ -120,6 +222,34 @@ async function allOf(name, params = {}) {
   fail(`read.${name} never ran out of pages — refusing to guess what it holds.`);
 }
 
+const promo$ = of('promotions_admin');
+const scope$ = of('promotion_stores');
+
+/**
+ * WHICH STORE EACH PROMOTION IS CONFINED TO — `null` meaning EVERY store of this tenant.
+ *
+ * ★★ IT IS A SEPARATE READ ON PURPOSE, AND THAT IS THE WHOLE LESSON OF 03/09. `PromotionListItem` — the
+ * frozen row of `read.promotions_admin` — carries no `store_id` and was never going to: the shape could not
+ * grow, so `read.promotion_stores` was written to answer the scope of a WHOLE PAGE in one call. Two places
+ * in this file asked the LIST for that name instead. One of them turned `undefined` into "scoped to the
+ * whole tenant" and accused correct data; the other turned it into a filter that matched nothing and waved
+ * a real defect through. Neither could have happened if the name had had to exist first.
+ *
+ * ⚠️ CHUNKED AT THE READ'S OWN CEILING (`LIST_LIMITS.promotion_stores.maxIds` = 100). A tenant with more
+ * than a hundred promotions — which the dataset's brand has — would otherwise be refused with `too_big`,
+ * and `internal()` turns that into a fatal "nothing was measured" for the whole run.
+ */
+async function scopesOf(promotions) {
+  const ids = promotions.map((p) => promo$(p, 'id'));
+  const map = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const asked = ids.slice(i, i + 100);
+    const answered = rows(await internal('promotion_stores', { promotion_ids: asked.join(',') }));
+    for (const row of answered) map.set(scope$(row, 'promotion_id'), scope$(row, 'store_id'));
+  }
+  return map;
+}
+
 // ── the expectations, derived ───────────────────────────────────────────────────────────────────────────
 const catalog = read('catalog.json');
 const totem = read('totem.json');
@@ -176,9 +306,11 @@ const ARCHETYPE = {
 const COUNTERS = ['balcao'];
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────
+const store$ = of('stores');
 const stores = rows(await internal('stores'));
+// `catalog.stores` is THIS repository's own declaration, read off disk — not an answer, so not a question.
 const mine = catalog.stores.filter((s) => (s.tenant ?? tenant) === tenant).map((s) => s.handle);
-const seen = stores.map((s) => s.handle);
+const seen = foundation(() => stores.map((s) => store$(s, 'handle')));
 if (seen.length > 0 && !seen.some((h) => mine.includes(h))) {
   fail(
     `WRONG CREDENTIAL. --tenant ${tenant} owns [${mine.join(', ')}], but this token can only see\n` +
@@ -193,26 +325,37 @@ say();
 
 // ── 1. the shops ────────────────────────────────────────────────────────────────────────────────────────
 say('THE SHOPS — published products, against what the seed declares');
-const byHandle = new Map(stores.map((s) => [s.handle, s]));
+const products$ = of('products');
+const byHandle = new Map(foundation(() => stores.map((s) => [store$(s, 'handle'), s])));
+const storeIdOf = (handle) => foundation(() => store$(byHandle.get(handle), 'id'));
 for (const handle of seen) {
-  const archetype = ARCHETYPE[handle] ?? '(not one of the four)';
-  const store = byHandle.get(handle);
-  const page = await publicRead('products', { store: store.id, projection: 'feed', limit: '1', page: '1' });
-  if (page === null) {
-    // The public face resolves store→tenant through a projection the relay fills; a brand-new store 404s
-    // there for a moment. That is "not ready", never "empty".
-    bad(`${handle} (${archetype})`, 'the public face does not resolve this store yet — the box is not ready');
-    continue;
-  }
-  const total = Number(page.total ?? 0);
-  const want = EXPECTED[handle];
-  if (want === undefined) {
-    say(`  · ${handle} (${archetype}) — ${total} published (this shop's size is the dataset's; not judged)`);
-    if (total === 0) bad(`${handle}`, 'nothing published — the one-shot has not filled it');
-    continue;
-  }
-  if (total === want) ok(`${handle} (${archetype})`, `${total} published, exactly what the seed declares`);
-  else bad(`${handle} (${archetype})`, `${total} published, INCOMPLETE — the seed declares ${want}`);
+  await checking(async () => {
+    const archetype = ARCHETYPE[handle] ?? '(not one of the four)';
+    const page = await publicRead('products', {
+      store: storeIdOf(handle),
+      projection: 'feed',
+      limit: '1',
+      page: '1',
+    });
+    if (page === null) {
+      // The public face resolves store→tenant through a projection the relay fills; a brand-new store 404s
+      // there for a moment. That is "not ready", never "empty".
+      bad(`${handle} (${archetype})`, 'the public face does not resolve this store yet — the box is not ready');
+      return;
+    }
+    // ⚠️ `total` READ THROUGH THE ASSERTION, and this is exactly where the old `?? 0` was dangerous: an
+    // envelope without it would have been reported as a shop with nothing in it — INCOMPLETE, in red, about
+    // a shop that is full.
+    const total = Number(products$(page, 'total'));
+    const want = EXPECTED[handle];
+    if (want === undefined) {
+      say(`  · ${handle} (${archetype}) — ${total} published (this shop's size is the dataset's; not judged)`);
+      if (total === 0) bad(`${handle}`, 'nothing published — the one-shot has not filled it');
+      return;
+    }
+    if (total === want) ok(`${handle} (${archetype})`, `${total} published, exactly what the seed declares`);
+    else bad(`${handle} (${archetype})`, `${total} published, INCOMPLETE — the seed declares ${want}`);
+  });
 }
 say();
 
@@ -226,54 +369,84 @@ if (counters.length === 0) {
   const methods = rows(await internal('shipping_methods_admin'));
   const points = rows(await internal('pickup_locations'));
 
+  // ⛔ THE FALSE GREEN, AND IT IS THE SAME WRONG QUESTION AS THE FALSE RED — silent instead of loud.
+  //
+  // This filter used to read `p.store_id === store.id` off a `promotions_admin` row. That list does not
+  // publish `store_id` (see `scopesOf`), so the left-hand side was `undefined` for EVERY promotion, the
+  // filter matched NOTHING, and the counter was declared free of free-shipping promotions without a single
+  // row ever having been looked at. The perk check three sections down accused correct data with the same
+  // absent name; this one waved a real one through. Neither was measuring anything.
+  //
+  // ★ AND THE SCOPE THAT REACHES THE COUNTER IS TWO CASES, NOT ONE. `store_id: null` is not "no scope" — it
+  // is EVERY store of the tenant, the counter included, exactly like the tenant-wide delivery methods
+  // `seed/box.json` writes up. A check that only looked for promotions confined to the counter would call a
+  // tenant-wide free-shipping campaign clean.
+  const scopes = await scopesOf(promotions);
   for (const handle of counters) {
-    const store = byHandle.get(handle);
-    const freight = promotions.filter(
-      (p) => p.store_id === store.id && (p.benefit?.kind ?? p.class) === 'free_shipping',
-    );
-    if (freight.length === 0) ok(`${handle}`, 'NO free-shipping promotion — the counter hands goods over');
-    else bad(`${handle}`, `${freight.length} free-shipping promotion(s): ${freight.map((p) => p.name).join(', ')}`);
+    await checking(async () => {
+      const id = storeIdOf(handle);
+      const freight = promotions.filter(
+        (p) =>
+          promo$(p, 'benefit')?.kind === 'free_shipping' &&
+          [id, null].includes(scopes.get(promo$(p, 'id'))),
+      );
+      if (freight.length === 0) ok(`${handle}`, 'NO free-shipping promotion — the counter hands goods over');
+      else
+        bad(
+          `${handle}`,
+          `${freight.length} free-shipping promotion(s): ${freight.map((p) => promo$(p, 'name')).join(', ')}`,
+        );
+    });
   }
 
   // ★ s7-11 · BUILD VOCABULARY AS THE TITLE OF A ROW IN THE OPERATOR'S PROMOTION LIST. The kernel's demo-data
   // app names its promotions `DEMO-HIST-01-FORGE`, `DEMO-HIST-D2`… — correct where it lives, and a database
   // dump on a demo screen. The commerce pass renames each of them to its own curated `label`; this is that
   // rename asked of the box.
-  {
-    const internalNames = promotions.filter((p) => /^DEMO-HIST[-_]/.test(String(p.name ?? '')));
+  await checking(() => {
+    const internalNames = promotions.filter((p) => /^DEMO-HIST[-_]/.test(String(promo$(p, 'name'))));
     if (internalNames.length === 0)
       ok('the promotion list', `${promotions.length} promotion(s), no build vocabulary on the screen`);
     else
       bad(
         'the promotion list',
         `${internalNames.length} promotion(s) still titled with an internal name: ` +
-          `${internalNames.map((p) => p.name).join(', ')} — the commerce pass renames them to their label`,
+          `${internalNames.map((p) => promo$(p, 'name')).join(', ')} — the commerce pass renames them to their label`,
       );
-  }
+  });
 
   // The counter's own half must exist, or the negative above is true for the wrong reason (nothing was
   // seeded at all). A negative with no positive beside it is not a measurement.
-  const pickupMethods = methods.filter((m) => m.kind === 'pickup');
-  if (pickupMethods.length >= 1) ok('pickup method', `${pickupMethods.map((m) => m.name).join(', ')} (kind: pickup)`);
-  else bad('pickup method', 'none — the counter cannot hand anything over');
-  if (points.length >= 1) ok('pickup point', points.map((p) => p.name).join(', '));
-  else bad('pickup point', 'none — place_order would have nowhere to send the buyer');
+  const method$ = of('shipping_methods_admin');
+  const point$ = of('pickup_locations');
+  await checking(() => {
+    const pickupMethods = methods.filter((m) => method$(m, 'kind') === 'pickup');
+    if (pickupMethods.length >= 1)
+      ok('pickup method', `${pickupMethods.map((m) => method$(m, 'name')).join(', ')} (kind: pickup)`);
+    else bad('pickup method', 'none — the counter cannot hand anything over');
+  });
+  await checking(() => {
+    if (points.length >= 1) ok('pickup point', points.map((p) => point$(p, 'name')).join(', '));
+    else bad('pickup point', 'none — place_order would have nowhere to send the buyer');
+  });
 
-  const delivery = methods.filter((m) => m.kind !== 'pickup');
-  const delivers = seen.filter((h) => ARCHETYPE[h] && ARCHETYPE[h] !== 'counter');
-  // ⚠️ THE FOUR CASES, AND THE DRY RUN CAUGHT ME COLLAPSING TWO OF THEM. "No delivery method" is only good
-  // news when no shop here delivers; on a tenant that HAS a delivering shop it is a missing half, and the
-  // first version of this printed the reassuring sentence for both. A verifier that says "none — and no shop
-  // here delivers" over a coffee e-commerce is worse than silence.
-  if (delivers.length === 0 && delivery.length > 0) {
-    bad('delivery', `${delivery.length} delivery method(s) on a tenant whose only shop is a counter`);
-  } else if (delivers.length === 0) {
-    ok('delivery', 'none — and no shop here delivers');
-  } else if (delivery.length > 0) {
-    ok('delivery', `${delivery.length} method(s) — legitimate: ${delivers.join(', ')} deliver(s)`);
-  } else {
-    bad('delivery', `none, but ${delivers.join(', ')} deliver(s) — those shops cannot quote freight`);
-  }
+  await checking(() => {
+    const delivery = methods.filter((m) => method$(m, 'kind') !== 'pickup');
+    const delivers = seen.filter((h) => ARCHETYPE[h] && ARCHETYPE[h] !== 'counter');
+    // ⚠️ THE FOUR CASES, AND THE DRY RUN CAUGHT ME COLLAPSING TWO OF THEM. "No delivery method" is only good
+    // news when no shop here delivers; on a tenant that HAS a delivering shop it is a missing half, and the
+    // first version of this printed the reassuring sentence for both. A verifier that says "none — and no
+    // shop here delivers" over a coffee e-commerce is worse than silence.
+    if (delivers.length === 0 && delivery.length > 0) {
+      bad('delivery', `${delivery.length} delivery method(s) on a tenant whose only shop is a counter`);
+    } else if (delivers.length === 0) {
+      ok('delivery', 'none — and no shop here delivers');
+    } else if (delivery.length > 0) {
+      ok('delivery', `${delivery.length} method(s) — legitimate: ${delivers.join(', ')} deliver(s)`);
+    } else {
+      bad('delivery', `none, but ${delivers.join(', ')} deliver(s) — those shops cannot quote freight`);
+    }
+  });
 }
 say();
 
@@ -295,9 +468,13 @@ say();
 // crossing by another road — a hand-run one-shot, a second dataset, an app installed by mistake. What is
 // asked here is what the tenant actually HOLDS, through the door, and the numbers come from the declarations
 // rather than from this file.
+const catalogue$ = of('products_admin');
 say("THE TENANT'S OWN CATALOGUE — nothing from a brand this tenant is not");
-{
-  const held = Number((await internal('products_admin', { limit: '1', page: '1' }))?.total ?? 0);
+await checking(async () => {
+  // ⚠️ `total` THROUGH THE ASSERTION. The old `?? 0` would have reported an envelope without it as a tenant
+  // holding nothing — and on the tenant that carries the dataset that reads as "the one-shot has not filled
+  // it", which is a birth-blocking accusation derived from a name that never came back.
+  const held = Number(catalogue$(await internal('products_admin', { limit: '1', page: '1' }), 'total'));
   const mineCreated =
     seen.reduce((sum, handle) => sum + (CREATES[handle] ?? 0), 0) +
     // The pool rides with the shop whose catalogue file declares it, and on no other tenant's run.
@@ -328,11 +505,12 @@ say("THE TENANT'S OWN CATALOGUE — nothing from a brand this tenant is not");
         'must not have filled it; check who did (the massive one-shot run by hand is the usual answer).',
     );
   }
-}
+});
 say();
 
+const cf$ = of('custom_field_definitions');
 say('THE VOCABULARY — a custom field definition is PER TENANT, so each declares only its own');
-{
+await checking(async () => {
   const defs = rows(await internal('custom_field_definitions', { owner_entity: 'product' }));
   const mineDeclared = new Map();
   for (const group of OWN_WORDS) {
@@ -343,7 +521,7 @@ say('THE VOCABULARY — a custom field definition is PER TENANT, so each declare
   // ★ THE DATASET'S WORDS ARE IDENTIFIED BY `source`, NOT BY A LIST OF NAMES. `extension.install` materializes
   //   them as `app:demo-data`, so the registry itself says who asked — and a dataset that gains a tenth field
   //   tomorrow is covered without anyone editing this file.
-  const fromDataset = defs.filter((d) => String(d.source ?? '').startsWith('app:demo-data'));
+  const fromDataset = defs.filter((d) => String(cf$(d, 'source')).startsWith('app:demo-data'));
   if (carriesDataset) {
     if (fromDataset.length > 0) ok('the dataset vocabulary', `${fromDataset.length} field(s) — this tenant carries the dataset`);
     else bad('the dataset vocabulary', 'not one field — the demo-data install has not run on the tenant that owns the catalogue');
@@ -352,7 +530,7 @@ say('THE VOCABULARY — a custom field definition is PER TENANT, so each declare
   } else {
     bad(
       'the dataset vocabulary',
-      `${fromDataset.length} field(s) from another brand's catalogue: ${fromDataset.map((d) => d.key).join(', ')}. ` +
+      `${fromDataset.length} field(s) from another brand's catalogue: ${fromDataset.map((d) => cf$(d, 'key')).join(', ')}. ` +
         'They arrive with the `demo-data` INSTALL, which step 9 of bin/box-up.sh does — and box.json says this ' +
         'tenant does not carry the dataset. `custom_field.archive` removes them; the box being reborn is cheaper.',
     );
@@ -360,26 +538,26 @@ say('THE VOCABULARY — a custom field definition is PER TENANT, so each declare
 
   // Everything a MERCHANT declared has to be a word one of this tenant's own shops uses. `source` is the
   // discriminator again: an app's fields are the app's business and are not graded here.
-  const merchant = defs.filter((d) => String(d.source ?? 'merchant') === 'merchant');
-  const strangers = merchant.filter((d) => !mineDeclared.has(d.key));
+  const merchant = defs.filter((d) => String(cf$(d, 'source')) === 'merchant');
+  const strangers = merchant.filter((d) => !mineDeclared.has(cf$(d, 'key')));
   if (strangers.length === 0) {
     ok('this tenant\'s own words', `${merchant.length} field(s), every one declared by a shop that is here`);
   } else {
     bad(
       'this tenant\'s own words',
-      `${strangers.map((d) => d.key).join(', ')} — no shop on this tenant uses these. A seed that declares a ` +
+      `${strangers.map((d) => cf$(d, 'key')).join(', ')} — no shop on this tenant uses these. A seed that declares a ` +
         'vocabulary on whatever tenant it is pointed at is how a shoe came to offer a roast; the declaration ' +
         'belongs beside the products that fill it, behind the same gate they are.',
     );
   }
 
   // ★ AND THE POSITIVE HALF, because "nothing crossed over" is also true of a tenant that got nothing at all.
-  const present = new Set(defs.map((d) => d.key));
+  const present = new Set(defs.map((d) => cf$(d, 'key')));
   const missing = [...mineDeclared].filter(([key]) => !present.has(key));
   if (mineDeclared.size === 0) say('  · no shop on this tenant declares a product vocabulary — nothing to assert');
   else if (missing.length === 0) ok('declared × landed', `all ${mineDeclared.size} of this tenant's own field(s) are in the registry`);
   else bad('declared × landed', `${missing.map(([k, src]) => `${k} (${src})`).join(', ')} declared and NOT in the registry`);
-}
+});
 say();
 
 // ── 3. ★★ THE FOUR STOCK CUTS ───────────────────────────────────────────────────────────────────────────
@@ -387,21 +565,26 @@ say('THE STOCK SCREEN — the four cuts of PACK-2·A, each with a line in it');
 if (!seen.includes('outlet')) {
   say('  · the clearance shop is not on this tenant — nothing to assert here');
 } else {
-  const cuts = ['in_stock', 'low', 'partial', 'out'];
-  const counts = {};
-  for (const cut of cuts) {
-    const page = await internal('stock_levels', { availability: cut, limit: '1', page: '1' });
-    counts[cut] = Number(page?.total ?? 0);
-  }
-  const empty = cuts.filter((c) => counts[c] === 0);
-  const line = cuts.map((c) => `${c}=${counts[c]}`).join(' · ');
-  if (empty.length === 0) {
-    ok('the four cuts', `${line} — every one of them opens with something in it`);
-  } else {
-    // This is the card that was in `Done` and that nobody could look at: a flat stock figure leaves three
-    // of the four filters empty on a seeded bench.
-    bad('the four cuts', `${line} — EMPTY: ${empty.join(', ')}. A flat stock figure is what does this.`);
-  }
+  await checking(async () => {
+    const stock$ = of('stock_levels');
+    const cuts = ['in_stock', 'low', 'partial', 'out'];
+    const counts = {};
+    for (const cut of cuts) {
+      // ⚠️ AND THIS ONE WOULD HAVE BEEN THE CRUELLEST `?? 0`: an envelope with no `total` reads as four EMPTY
+      // cuts, which is word for word the accusation this section was written to make about a real defect.
+      const page = await internal('stock_levels', { availability: cut, limit: '1', page: '1' });
+      counts[cut] = Number(stock$(page, 'total'));
+    }
+    const empty = cuts.filter((c) => counts[c] === 0);
+    const line = cuts.map((c) => `${c}=${counts[c]}`).join(' · ');
+    if (empty.length === 0) {
+      ok('the four cuts', `${line} — every one of them opens with something in it`);
+    } else {
+      // This is the card that was in `Done` and that nobody could look at: a flat stock figure leaves three
+      // of the four filters empty on a seeded bench.
+      bad('the four cuts', `${line} — EMPTY: ${empty.join(', ')}. A flat stock figure is what does this.`);
+    }
+  });
 }
 say();
 
@@ -416,25 +599,44 @@ say('THE COFFEE — what seed/catalog.json declares, against what the shop serve
 if (!seen.includes('cafe')) {
   say('  · the coffee shop is not on this tenant — nothing to assert here');
 } else {
-  const store = byHandle.get('cafe');
-  const page = await publicRead('products', { store: store.id, limit: '100', page: '1' });
-  const served = new Map((page?.items ?? []).map((p) => [p.handle, p]));
+  const review$ = of('extension_records');
+  const cafeId = storeIdOf('cafe');
+  const page = await publicRead('products', { store: cafeId, limit: '100', page: '1' });
+  const served = foundation(
+    () => new Map(rows(page).map((p) => [products$(p, 'handle'), p])),
+  );
   const reviews = await allOf('extension_records', { extension: 'reviews', model: 'review' });
-  const byProduct = new Map();
-  for (const r of reviews) byProduct.set(r.product_id, (byProduct.get(r.product_id) ?? 0) + 1);
+  const byProduct = foundation(() => {
+    const counted = new Map();
+    for (const r of reviews) {
+      const id = review$(r, 'product_id');
+      counted.set(id, (counted.get(id) ?? 0) + 1);
+    }
+    return counted;
+  });
 
   for (const want of expectedCoffees()) {
+   await checking(() => {
     const got = served.get(want.handle);
     if (!got) {
       bad(want.handle, 'the shop does not serve it at all');
-      continue;
+      return;
     }
-    const bag = got.metadata && typeof got.metadata === 'object' ? got.metadata : {};
+    // ⚠️ THE BAG'S CONTENTS ARE DATA; THE BAG ITSELF IS A NAME. `metadata` has to have COME BACK — a document
+    // served without it would otherwise read as a coffee that lost all nine of its custom fields — but a key
+    // MISSING FROM INSIDE it is precisely the defect this line hunts, and stays a ✗.
+    const raw = products$(got, 'metadata');
+    const bag = raw && typeof raw === 'object' ? raw : {};
     const lost = Object.keys(want.metadata).filter((k) => bag[k] !== want.metadata[k]);
-    const photos = (got.media ?? []).filter((m) => m.kind === undefined || m.kind === 'image').length;
-    const sections = (got.content_sections ?? []).length;
-    const marked = (got.skus ?? []).filter((k) => k?.metadata?.sub_enabled === true).length;
-    const wall = byProduct.get(got.product_id) ?? 0;
+    // ⚠️ `m.kind === undefined ||` USED TO BE HERE, guessing that a picture with no kind was an image. The
+    // reference publishes `kind` on every media row (measured: 24 of 24 on the bench, every one `image`), so
+    // the tolerance was not compatibility — it was a media row of an unknown sort silently counted as a
+    // photograph, in a check whose whole job is to count photographs.
+    const photos = products$(got, 'media').filter((m) => products$(m, 'kind') === 'image').length;
+    const sections = products$(got, 'content_sections').length;
+    // The BAG is a name; `sub_enabled` inside it is the seed's mark, and its absence is the defect below.
+    const marked = products$(got, 'skus').filter((k) => products$(k, 'metadata')?.sub_enabled === true).length;
+    const wall = byProduct.get(products$(got, 'product_id')) ?? 0;
 
     const problems = [];
     if (lost.length > 0) problems.push(`${lost.length} custom field(s) missing or wrong: ${lost.join(', ')}`);
@@ -456,6 +658,7 @@ if (!seen.includes('cafe')) {
     } else {
       bad(want.handle, problems.join(' · '));
     }
+   });
   }
 
   // ── ★★ WHAT A SUBSCRIBER GETS (D14) — the PERKS, graded on the box and not on the declaration ─────────
@@ -476,31 +679,35 @@ if (!seen.includes('cafe')) {
     //     clock, which is the honest thing to grade: a perk that is `active` but scheduled for next month
     //     does not charge anything today either.
     //   · `store_id` is not on the frozen row on purpose. `read.promotion_stores` answers it for N promotions
-    //     in one call — the read that exists precisely because the shape could not grow.
-    const scopes = new Map(
-      rows(
-        await internal('promotion_stores', {
-          promotion_ids: held.map((p) => p.id).join(','),
-        }),
-      ).map((r) => [r.promotion_id, r.store_id ?? null]),
-    );
+    //     in one call — the read that exists precisely because the shape could not grow (`scopesOf`).
+    //
+    // ⇒ Neither name is trusted to a comment any more: `promo$` asserts the key came back, so the day the
+    //   contract renames one of them this file says THAT, instead of accusing the box of a draft perk.
+    const scopes = await scopesOf(held);
     for (const spec of COFFEE_PROMOTIONS) {
-      const got = held.find((p) => p.name === spec.name);
+     await checking(() => {
+      const got = held.find((p) => promo$(p, 'name') === spec.name);
       if (!got) {
         bad(`the perk "${spec.name}"`, 'not in this tenant at all — the coffee phase did not create it');
-        continue;
+        return;
       }
       const problems = [];
-      if ((got.benefit?.kind ?? null) !== spec.benefit.kind)
-        problems.push(`benefit is ${got.benefit?.kind ?? '(none)'}, declared ${spec.benefit.kind}`);
-      if (got.state !== 'active')
-        problems.push(`state is ${got.state} — a perk that is not active charges what the page says it will not`);
-      const scopedTo = scopes.get(got.id) ?? null;
-      if (scopedTo !== store.id)
+      const benefit = promo$(got, 'benefit');
+      if ((benefit?.kind ?? null) !== spec.benefit.kind)
+        problems.push(`benefit is ${benefit?.kind ?? '(none)'}, declared ${spec.benefit.kind}`);
+      const state = promo$(got, 'state');
+      if (state !== 'active')
+        problems.push(`state is ${state} — a perk that is not active charges what the page says it will not`);
+      const scopedTo = scopes.get(promo$(got, 'id')) ?? null;
+      if (scopedTo !== cafeId)
         problems.push(`scoped to ${scopedTo ?? 'the whole tenant'}, not to the coffee shop`);
-      if (got.target?.field !== 'sub_plan') problems.push(`targets ${JSON.stringify(got.target)} — not the subscribed line`);
-      if (problems.length === 0) ok(`the perk "${spec.name}"`, `${got.benefit.kind}, active, on sub_plan lines`);
+      // `target` is a UNION, so `field` belonging to another variant is a fact about the DATA, not a missing
+      // key — which is why the whole target is printed rather than the absence named.
+      const target = promo$(got, 'target');
+      if (target?.field !== 'sub_plan') problems.push(`targets ${JSON.stringify(target)} — not the subscribed line`);
+      if (problems.length === 0) ok(`the perk "${spec.name}"`, `${benefit.kind}, active, on sub_plan lines`);
       else bad(`the perk "${spec.name}"`, problems.join(' · '));
+     });
     }
   }
 
@@ -509,9 +716,11 @@ if (!seen.includes('cafe')) {
   // The one thing about them that can silently go wrong is the one that empties the demo's whole past:
   // being published. `seed-history` takes its three alert states from products nothing sells, and a pool
   // product on a shelf leaves the pool — after which the past refuses by a number nobody connects to this.
-  {
+  await checking(async () => {
+    // `product_id ?? p.id` USED TO BE HERE, and `id` is a name no product document carries — a silent second
+    // guess at the first one, which would have mapped every handle to `undefined` had the first ever moved.
     const catalogue = new Map(
-      (await allOf('products_admin')).map((p) => [p.handle, p.product_id ?? p.id]),
+      (await allOf('products_admin')).map((p) => [catalogue$(p, 'handle'), catalogue$(p, 'product_id')]),
     );
     for (const declared of poolProducts()) {
       const id = catalogue.get(declared.handle);
@@ -519,12 +728,13 @@ if (!seen.includes('cafe')) {
         bad(`the pool's ${declared.handle}`, 'not in the catalogue — seed/pool.mjs did not create it');
         continue;
       }
+      // `read.product_stores` answers a BARE ARRAY of store ids — there is no row here to ask a name of.
       const shops = rows(await internal('product_stores', { product_id: id }));
       const where = (Array.isArray(shops) ? shops : []).length;
       if (where === 0) ok(`the pool's ${declared.handle}`, 'in the catalogue, on sale NOWHERE — which is the point');
       else bad(`the pool's ${declared.handle}`, `published to ${where} store(s) — it has left the stock pool`);
     }
-  }
+  });
 
   // ★★ s3-14 / s7-11 · THE SAME SENTENCE ON TWO PRODUCTS, MEASURED IN THE BOX RATHER THAN IN THE SEED.
   //
@@ -532,45 +742,68 @@ if (!seen.includes('cafe')) {
   // shop, which is a different question and the one that matters: rows written by an earlier version of the
   // seed are still there, and the home's review mosaic reads THEM. Measured 02/09 on the bench: "Tomo puro,
   // sem leite…" (Priscila N.) appeared on four coffees at once, two of them side by side on the home.
-  const pairs = new Map();
-  const echoes = [];
-  for (const r of reviews) {
-    const pair = `${r.author} :: ${r.body}`;
-    const first = pairs.get(pair);
-    if (first === undefined) pairs.set(pair, r.product_id);
-    else if (first !== r.product_id) echoes.push(`"${r.author}" on 2+ products`);
-  }
-  if (echoes.length === 0) ok('the review wall', `${reviews.length} row(s), no sentence on two products`);
-  else bad('the review wall', `${[...new Set(echoes)].length} voice(s) recycled across products — the home puts them side by side: ${[...new Set(echoes)].join(', ')}`);
+  await checking(() => {
+    const pairs = new Map();
+    const echoes = [];
+    for (const r of reviews) {
+      const pair = `${review$(r, 'author')} :: ${review$(r, 'body')}`;
+      const first = pairs.get(pair);
+      if (first === undefined) pairs.set(pair, review$(r, 'product_id'));
+      else if (first !== review$(r, 'product_id')) echoes.push(`"${review$(r, 'author')}" on 2+ products`);
+    }
+    if (echoes.length === 0) ok('the review wall', `${reviews.length} row(s), no sentence on two products`);
+    else bad('the review wall', `${[...new Set(echoes)].length} voice(s) recycled across products — the home puts them side by side: ${[...new Set(echoes)].join(', ')}`);
+  });
 
   // The moderation queue has to have something on it, and the wall has to have something in it. Both, or the
   // demo shows one screen at the cost of the other.
-  const byStatus = reviews.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {});
-  const line = Object.entries(byStatus).map(([k, v]) => `${k}=${v}`).join(' · ') || 'none';
-  if ((byStatus.approved ?? 0) > 0 && (byStatus.pending ?? 0) > 0 && (byStatus.rejected ?? 0) > 0) {
-    ok('the review mix', `${line} — the wall has rows, the queue has rows, and moderation was exercised`);
-  } else {
-    bad('the review mix', `${line} — approved, pending AND rejected are all needed (the vocabulary is approved|pending|rejected, never "published")`);
-  }
+  await checking(() => {
+    const byStatus = reviews.reduce(
+      (acc, r) => ({ ...acc, [review$(r, 'status')]: (acc[review$(r, 'status')] ?? 0) + 1 }),
+      {},
+    );
+    const line = Object.entries(byStatus).map(([k, v]) => `${k}=${v}`).join(' · ') || 'none';
+    if ((byStatus.approved ?? 0) > 0 && (byStatus.pending ?? 0) > 0 && (byStatus.rejected ?? 0) > 0) {
+      ok('the review mix', `${line} — the wall has rows, the queue has rows, and moderation was exercised`);
+    } else {
+      bad('the review mix', `${line} — approved, pending AND rejected are all needed (the vocabulary is approved|pending|rejected, never "published")`);
+    }
+  });
 }
 say();
 // ── 4. the placeholders ─────────────────────────────────────────────────────────────────────────────────
 say('THE PLACEHOLDER ART — findable in one gesture');
-const assets = await allOf('assets', { q: 'placeholder-' });
-if (assets.length === 0) {
-  bad('placeholders', 'none in the Asset Library — the seed has not uploaded them');
-} else {
+await checking(async () => {
+  const asset$ = of('assets');
+  const assets = await allOf('assets', { q: 'placeholder-' });
+  if (assets.length === 0) {
+    bad('placeholders', 'none in the Asset Library — the seed has not uploaded them');
+    return;
+  }
   ok('placeholders', `${assets.length} in the Asset Library`);
   say(`      admin → Biblioteca de Assets → buscar "placeholder-"`);
-  for (const a of assets.slice(0, 12)) say(`      · ${a.filename ?? a.provider_key}`);
-}
+  // `filename` is NULLABLE and the fallback is the design of the read (its own search covers both columns) —
+  // so `??` is reading a null VALUE here, which is a different act from reading a name that never came.
+  for (const a of assets.slice(0, 12)) say(`      · ${asset$(a, 'filename') ?? asset$(a, 'provider_key')}`);
+});
 
 // ── the verdict ─────────────────────────────────────────────────────────────────────────────────────────
 say();
-if (failures === 0) {
+// ⚑ COMES FIRST, AND IT IS NOT A COUNT OF FAILURES. A question this file could not ask says nothing about the
+// box; reporting it beside the ✗ lines would put the reader back where 03/09 left them — reading an
+// accusation and hunting a defect that does not exist. It gets its own sentence and its own exit code.
+if (wrongQuestions > 0) {
+  say(
+    `VERDICT: ${wrongQuestions} question(s) above are THIS VERIFIER's own — a read was asked for a name it ` +
+      'does not publish, so those checks measured nothing. Nothing there is a claim about the box; fix the ' +
+      `⚑ lines and run it again.${failures > 0 ? ` (${failures} separate ✗ check(s) did not settle.)` : ''}`,
+  );
+} else if (failures === 0) {
   say(`VERDICT: settled. Everything this run checked on ${tenant} is what the seed declares.`);
 } else {
   say(`VERDICT: ${failures} check(s) NOT settled on ${tenant}. Read the ✗ lines above.`);
 }
 process.stdout.write(`${out.join('\n')}\n`);
-process.exit(failures === 0 ? 0 : 1);
+// 0 settled · 1 the box did not · 2 the QUESTION did not. `bin/box-up.sh` treats every non-zero as unsettled,
+// which is right — but a reader of the code, or a future caller, can tell whose defect it was.
+process.exit(wrongQuestions > 0 ? 2 : failures === 0 ? 0 : 1);

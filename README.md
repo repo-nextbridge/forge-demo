@@ -513,6 +513,19 @@ tenant is not the one asked for, a store the public face cannot resolve yet, a s
 declared — each is a non-zero exit and a named line, never a number that reads like a result. Exit 0 means
 everything it checked is settled.
 
+⚠️ **A `⚑` line is THIS SCRIPT's defect, not the box's — do not go hunting.** On the birth of 03/09 the
+verifier reported both subscriber perks as `status is undefined — a draft perk charges what the page says it
+will not · scoped to the whole tenant`, and dropped `box-up` to 1. The database held them `active` and
+confined to the coffee shop: the frozen promotion list publishes `state`, not `status`, and it does not
+publish `store_id` at all, so both names read back `undefined` — and `undefined !== 'active'` is TRUE. A
+question with no answer came out as the loudest possible accusation.
+
+So every name is now read through an assertion that **the key came back**, and a name that did not is printed
+apart, in its own sentence, naming the read and listing what the read *does* publish. The exit codes say whose
+defect it is: **0** settled · **1** the box did not · **2** the QUESTION did not, so those checks measured
+nothing. `bin/box-up.sh` treats 1 and 2 alike (both are "did not settle", which is right), but a `⚑` in the
+birth log means fix the verifier — there is nothing to look for in the box.
+
 ### The placeholder art
 
 A window slot with no picture renders wrong, and the wrongness does not show up in a seed log. So
