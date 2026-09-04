@@ -1014,10 +1014,23 @@ fi
 # other fronts is what left the first build of this box with four of the instance's six images.
 say '7 · the totem (needs the counter store id that step 6 just resolved)'
 set -a; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
+# ★★ 04/09 — THIS STEP RECORDS WHAT HAPPENED, because the bench block below used to print the totem's
+# address unconditionally. A birth where the totem never started still ended with `totem http://…:8203` in
+# the summary and exit 0, with the ⚠️ four hundred lines above where nobody scrolls. It is the same shape as
+# the promotion that announced two admin doors having claimed one: the summary derived from what was ASKED
+# FOR (the port variable) instead of from what was DONE.
+TOTEM_UP=''
+TOTEM_WHY=''
 if [ -n "${FORGE_TOTEM_STORE_ID:-}" ] && [ "${FORGE_TOTEM_STORE_ID}" != 'sto_PENDING_SEED' ]; then
-  dc up -d totem >/dev/null 2>&1 && note "totem up · store ${FORGE_TOTEM_STORE_ID}" \
-    || note '⚠️ the totem did not start — `docker compose logs totem`'
+  if dc up -d totem >/dev/null 2>&1; then
+    TOTEM_UP=1
+    note "totem up · store ${FORGE_TOTEM_STORE_ID}"
+  else
+    TOTEM_WHY='it did not start — `docker compose logs totem`'
+    note "⚠️ the totem did not start — \`docker compose logs totem\`"
+  fi
 else
+  TOTEM_WHY='step 6 resolved no counter store id'
   note '⚠️ no counter store id — skipping the totem (step 6 should have resolved it)'
 fi
 
@@ -1383,14 +1396,29 @@ note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
   note "admin     http://$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host' "$BOX")   → $t"
 done
-note "café      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/s/<cafe store id>   (the forked vitrine)"
-note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
+# ★ The café's id is RESOLVED by now (step 3c sets `CAFE_STORE`), so print it instead of a placeholder that
+# nobody can paste.
+if [ -n "${CAFE_STORE:-}" ]; then
+  note "café      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/s/${CAFE_STORE}   (the forked vitrine)"
+else
+  note "café      ⚠️ no store id resolved for the forked vitrine"
+fi
+if [ -n "${TOTEM_UP:-}" ]; then
+  note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
+else
+  note "totem     ⚠️ NOT RUNNING — ${TOTEM_WHY:-unknown}"
+  UNSETTLED_EXTRA='the totem'
+fi
 note ''
 note 'off the laptop: set FORGE_TAILNET_HOST (and FORGE_TAILNET_IP) in .env, then `bash bin/box-up.sh --tailnet`.'
 printf '\n' >&2
 
 # ⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE. A birth that leaves a tenant holding another brand's catalogue
 # has to be RED, or the next person reads "the bench" above and believes it.
+if [ -n "${UNSETTLED_EXTRA:-}" ] && [ -z "$UNSETTLED" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND %s IS NOT. The summary above says so where the address would be;\n         this line is here because an exit code is what a script downstream reads.\n\n' "$UNSETTLED_EXTRA" >&2
+  exit 1
+fi
 if [ -n "$UNSETTLED" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Everything above is standing; what it HOLDS is not\n         what this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$UNSETTLED" >&2
   exit 1
