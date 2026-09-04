@@ -92,6 +92,45 @@ bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
 
+### ⚠️ The host's Node — checked first, and it will refuse you
+
+Half of the birth runs **on your machine**, not in a container: `seed-box.mjs`, `seed.mjs`,
+`verify-seed.mjs` and `dataset-provenance.mjs` are host processes. So the `node` your shell resolves is a real
+input of the install, exactly like `.env` is — and every script here that starts one refuses to begin on a
+node older than the Forge kernel supports, naming **the version it found, the path it came from and the
+floor**, before it reads a file, starts a container or writes a secret.
+
+**This is a refusal and not a warning because the old node WORKED.** On the bench that produced it, two nodes
+were installed and the interactive `PATH` resolved to the smaller one; every birth of 2026-09-03 ran under the
+floor and finished green. *It ran* is not *it is supported*, and nothing on the box could tell them apart.
+
+```
+[node] refusing to start: the node on this PATH is older than the Forge kernel supports.
+       found     v22.22.3
+       from      /home/you/.local/bin/node
+       required  node major >= …  (/path/to/forge.lock: node.minMajor)
+```
+
+⚠️ **A cron or a systemd unit has no node at all.** `env -i` with a minimal `PATH` finds neither `node` nor
+`pnpm`; only the nvm directory holds the compatible pair. The scheduled reset of this box runs in exactly that
+environment, so give the unit that directory before it runs any of this.
+
+**The number is not this repository's.** It travels in `forge.lock`, the file this box pins the product with,
+as `node.minMajor` — the floor already resolved to a whole major, because everything that acts on it is a shell
+— next to `node.engines`, the range it was resolved from. `bin/require-node.sh` **reads** it and states nothing
+of its own; `bin/build-local.sh`, the one script here that is handed the monorepo, **stamps** it, through the
+product's own derivation (`infra/cicd/node-floor.sh`). Raising the floor is a release, not an edit here.
+
+⚠️ **A lock that states no floor is still a valid pin.** The field was added to an artifact that had already
+left the product's hands, and the lifecycle is forward-only, so a lock stamped by an older release simply does
+not answer the question. This box then says so and refuses nothing on account of it — it has no floor to check
+and will not invent one. Re-stamp the pin to get the check back.
+
+`bin/node-floor.guard.mjs` proves all of it by RUNNING the check: the same fake `node` against two locks with
+different floors, in both directions; a lock with no floor letting an ancient node through while saying so; a
+floor the lock states but a shell cannot grade being refused rather than rounded; and no tracked file here
+declaring a floor of its own.
+
 ### What `bin/box-up.sh` does, in order
 
 It is one command to TYPE, not one step. Seven, and each needs what the one before it produced — this is the

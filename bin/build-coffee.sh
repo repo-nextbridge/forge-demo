@@ -34,6 +34,12 @@ set -euo pipefail
 
 forge="${1:?usage: build-coffee.sh <path to the forge monorepo checkout>}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# The host's node, before anything is fetched, written or built. The `npm run build` below is a host node process, and the bytes it produces are the ones that ship
+# inside the image.
+# shellcheck source=bin/require-node.sh
+. "$here/bin/require-node.sh"
+require_node || exit 1
 app="$here/storefront-coffee"
 # The tag compose.override.yml pins this service to. One name, two files, and a grep finds both.
 image="forge-demo-storefront-coffee:local"

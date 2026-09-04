@@ -158,6 +158,18 @@ say() { printf '\n\033[1m── %s\033[0m\n' "$*" >&2; }
 note() { printf '   %s\n' "$*" >&2; }
 die() { printf '\n[box-up] %s\n' "$*" >&2; exit 1; }
 
+# ── ⚠️ 0a · THE HOST'S NODE, AND IT IS THE FIRST THING THIS SCRIPT DOES ─────────────────────────────────────
+# Steps 6, 8, 11 and 12 are node processes on THIS machine (see `host_node` above), so the operator's node is
+# an input of the install. F13 of the install rehearsal: this bench has two of them and the interactive PATH
+# resolves to v22.22.3, under the floor the product declared — every birth of 2026-09-03 ran there and
+# finished green, which is precisely why a refusal and not a warning. It is placed ABOVE the `jq` check
+# because a birth that is going to be refused must be refused before it reads a file, starts a container or
+# writes a secret. `bin/require-node.sh` READS the number out of `forge.lock` — the floor is a property of
+# the release this box pins, not of this repository; `bin/node-floor.guard.mjs` proves this line is first.
+# shellcheck source=bin/require-node.sh
+. "$HERE/bin/require-node.sh"
+require_node || exit 1
+
 command -v jq >/dev/null || die 'jq is required.'
 [ -f "$HERE/.env" ] || die 'no .env — copy .env.example to .env first.'
 

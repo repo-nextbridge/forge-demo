@@ -34,6 +34,12 @@ version="${2:-}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$here/forge.lock"
 
+# The host's node, before anything is fetched, written or built — `docker build` drives npm and node inside
+# the images, but this script's own preflight and the lock it writes run out here.
+# shellcheck source=bin/require-node.sh
+. "$here/bin/require-node.sh"
+require_node || exit 1
+
 command -v jq >/dev/null || {
   echo '[build-local] `jq` is required to write the lock as valid JSON.' >&2
   exit 1
@@ -42,6 +48,36 @@ command -v jq >/dev/null || {
   echo "[build-local] '$forge' does not look like the Forge monorepo (no infra/)." >&2
   exit 1
 }
+
+# ── ★★ THE NODE FLOOR, DERIVED FROM THE PRODUCT AND STAMPED INTO THE PIN ─────────────────────────────────
+#
+# Half of this box's birth runs on the HOST — the seeders are node processes on the operator's machine — so
+# the node that machine has is an input of the install, and something has to state which one. It used to be
+# TYPED here, in this repository, because the number lived in the monorepo's root package.json and in no
+# artifact this box receives. One number in two repositories is two truths that age apart in silence.
+#
+# This is the only script here that is handed the monorepo, so it is the only one that can put the release's
+# own floor into the pin — and that is now what it does, through the product's single derivation
+# (`infra/cicd/node-floor.sh`, the same one `infra/cicd/write-forge-lock.sh` stamps a promoted lock with).
+# Nothing here re-reads `engines.node`: a second `sed` over that string would be the drift all over again,
+# one file further down. `bin/require-node.sh` then reads `node.minMajor` out of the lock this writes.
+node_floor_sh="$forge/infra/cicd/node-floor.sh"
+[ -f "$node_floor_sh" ] || {
+  echo "[build-local] '$forge' has no infra/cicd/node-floor.sh." >&2
+  echo "              That file IS the product's answer to 'which node does this release need on the host?'," >&2
+  echo "              and the lock this script writes carries the answer to every box that pins it. A" >&2
+  echo "              checkout that predates it cannot state its own floor, and this repository must not" >&2
+  echo "              invent one on its behalf — that is the second truth this whole mechanism removed." >&2
+  echo "              Point this at a checkout that has it, or promote one." >&2
+  exit 1
+}
+# shellcheck source=/dev/null
+. "$node_floor_sh"
+# `set -e` is what makes a floor the product cannot state stop the build: the derivation refuses (loudly, on
+# its own stderr) rather than guessing, and a lock with a WRONG floor is worse than a lock with none.
+node_range="$(forge_node_engines "$forge/package.json")"
+node_major="$(forge_node_min_major "$node_range")"
+echo "[build-local] host node floor: $node_range (major $node_major) — from $forge/package.json" >&2
 
 # THE LIST THE IMAGES ARE BAKED FROM. It is `composition.json` in THIS repo — and the build reads the COPY of
 # it that lives in the monorepo, because `apply-composition.ts` runs inside the build context and can only
@@ -219,6 +255,8 @@ admin_ref="$(build admin forge-demo-admin infra/admin.Dockerfile)"
 
 jq -n \
   --arg version "$version" \
+  --arg nodeEngines "$node_range" \
+  --argjson nodeMinMajor "$node_major" \
   --arg id "$composition_id" \
   --argjson apps "$(jq '[(.instanceApps // [] | .[].id), (.apps[].id)]' "$here/composition.json")" \
   --arg kernel "$kernel_ref" \
@@ -232,6 +270,7 @@ jq -n \
   --arg host "$(hostname)" \
   '{
     forgeVersion: $version,
+    node: { minMajor: $nodeMinMajor, engines: $nodeEngines },
     provenance: {
       origin: $origin,
       built_from: $built_from,

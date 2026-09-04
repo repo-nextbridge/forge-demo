@@ -1,5 +1,9 @@
 {
   "forgeVersion": "v0.3.0-pre.02033f6ec",
+  "node": {
+    "minMajor": 24,
+    "engines": ">=24"
+  },
   "provenance": {
     "origin": "local build",
     "built_from": "pk8/p1-midia@02033f6ec",
