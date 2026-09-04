@@ -183,6 +183,13 @@ test('★★ the guard is CAPABLE of red — the same loop over a box.json that 
 
 // ── 2. THE HALF OF THE ONE-SHOT THAT WAS NEVER THE DATASET'S ────────────────────────────────────────────────
 
+/** ★ WHAT A STORE'S CHECKOUT COLUMNS SAY BEFORE ANYBODY CONFIGURES THEM — the migration's own defaults,
+ *  measured on the bench of 2026-09-04 against a store no seeder had touched (`outlet`: masked=f, guest=t).
+ *  ONE constant, used both to STUB the read and to decide whether a declaration needed a write at all: two
+ *  copies of this pair is how the stub says one thing and the expectation another, and the test then proves
+ *  its own arithmetic instead of the seeder's behaviour. */
+const CHECKOUT_COLUMN_DEFAULTS = { masked_checkout_enabled: false, guest_checkout_enabled: true };
+
 test('★★★ a non-dataset tenant is provisioned by the BOX — apps, freight and the checkout flag leave the door', async () => {
   const tenant = plainTenants[0];
   const spec = BOX.tenants.find((t) => t.id === tenant);
@@ -190,14 +197,15 @@ test('★★★ a non-dataset tenant is provisioned by the BOX — apps, freight
     {
       tenant,
       // Its stores already exist (step 3 + an earlier run), so this measures the provisioning and not the
-      // store creation. `masked_checkout_enabled: false` is the column's real default — the flag has to be
-      // WRITTEN, and a stub that pretended it was already on would hide exactly what is being asserted.
+      // store creation. THE TWO FLAGS ARE STUBBED AT THE COLUMN'S REAL DEFAULTS — masked OFF, guest ON
+      // (measured on the bench of 04/09, where a store nobody had configured came out exactly so) — because a
+      // stub that pretended a flag was already at its declared value would hide the very write being asserted.
       reads: {
         stores: spec.stores.map((s) => ({
           id: `str_${s.handle}`,
           handle: s.handle,
           theme_key: s.theme_key ?? 'vanilla',
-          masked_checkout_enabled: false,
+          ...CHECKOUT_COLUMN_DEFAULTS,
         })),
       },
     },
@@ -239,11 +247,37 @@ test('★★★ a non-dataset tenant is provisioned by the BOX — apps, freight
       'tenant has none. Renaming it here moves that failure to a step that will not explain it.',
   );
 
-  const flag = sent.find(
-    (c) => c.name === 'tenant.store.update' && c.input.masked_checkout_enabled !== undefined,
+  // ★★ A22 — THE POSTURE, AND IT IS DERIVED FROM THE DECLARATION RATHER THAN RECITED. The checkout flags were
+  // written inside the dataset one-shot; a tenant that does not run it needs the box to state them, and WHICH
+  // value each store wants is `seed/box.json`'s business, not this file's. Reciting them here is the second
+  // list that rots — the same defect `STOREFRONT_COMPOSED_IDS` was invented for one repository away.
+  const declaredPostures = spec.stores.filter((s) =>
+    ['guest_checkout_enabled', 'masked_checkout_enabled'].some((f) => s[f] !== undefined),
   );
-  assert.ok(flag, 'the checkout flag was set inside the dataset one-shot; the box has to state it now');
-  assert.equal(flag.input.id, 'str_cafe');
+  assert.ok(
+    declaredPostures.length > 0,
+    'seed/box.json states no checkout posture for any store of this tenant. The flags are born at the ' +
+      'column defaults (masked off, guest on) and nothing else writes them here, so a tenant with no ' +
+      'declaration is a tenant whose checkout answers by accident.',
+  );
+  for (const store of declaredPostures) {
+    const wrote = sent.filter(
+      (c) => c.name === 'tenant.store.update' && c.input.id === `str_${store.handle}`,
+    );
+    for (const flag of ['guest_checkout_enabled', 'masked_checkout_enabled']) {
+      if (store[flag] === undefined) continue;
+      // ⚠️ IDEMPOTENT BY VALUE: a flag already at the declared value is deliberately NOT written, so the
+      // assertion is «the store ends up saying this», never «a command was sent». The stub above is what
+      // makes the two distinguishable — it states the defaults, so every DIVERGENCE has to leave the door.
+      const already = CHECKOUT_COLUMN_DEFAULTS[flag] === store[flag];
+      const sentIt = wrote.some((c) => c.input[flag] === store[flag]);
+      assert.ok(
+        already || sentIt,
+        `store "${store.handle}" declares ${flag} = ${store[flag]} and no command carried it. The ` +
+          'declaration would be a sentence in a file and the shop would answer something else.',
+      );
+    }
+  }
 });
 
 test('★★★ a DATASET tenant is left alone — its apps and freight have exactly one owner', async () => {

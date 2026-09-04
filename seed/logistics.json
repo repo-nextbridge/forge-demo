@@ -1,0 +1,146 @@
+{
+  "_readme": [
+    "A22 — THE SHOE BRAND'S LOGISTICS REGISTRIES: who carries the parcels, and where a buyer can fetch one.",
+    "",
+    "★ WHY THIS FILE EXISTS AT ALL. The admin has carried `/logistics/carriers` and `/logistics/pickup-points`",
+    "since the L3/L4 waves, and on this box both screens were EMPTY — measured 2026-09-04 against the running",
+    "kernel: `carrier` 0 rows and `pickup_location` 0 rows in the shoe tenant. An empty screen teaches nothing",
+    "about a capability; worse, it reads as a capability that does not work. Same argument that made the",
+    "`chrome` app be born configured rather than merely installed.",
+    "",
+    "⚠️ BOTH REGISTRIES ARE TENANT-WIDE, NOT PER STORE — measured against the commands themselves:",
+    "`shipping.carrier.create` takes {name, tracking_url_template} and `pickup_location.create` takes an",
+    "address, and NEITHER takes a `store_id`. So everything here belongs to the brand, and both the Forge",
+    "storefront and the Outlet see it. `seed/totem.json` writes up the same limitation for the counter's own",
+    "point, one tenant away.",
+    "",
+    "⛔ WHAT IS DELIBERATELY NOT HERE, AND IT IS THE HALF THAT WOULD HAVE CHANGED THE SHOP: no",
+    "`shipping.method.create` of kind `pickup`. A point is only REACHABLE from a checkout when a pickup METHOD",
+    "with a rate covering the destination exists, so what this file produces is a populated admin registry and",
+    "not a new checkout option. That is exactly what A22 asked for, and adding the method would have done two",
+    "things nobody asked for: put a «Retirar na loja» option into the Forge and Outlet funnels, and FLIP the",
+    "live proof order in both shops from delivery to pickup (`seed/commerce.mjs` prefers a usable pickup option",
+    "over a delivery one, by intention, and says so).",
+    "📌 The card `SEED-PICKUP-SO-METADE` is the other half of the same subject — «a história semeada produz",
+    "encomenda ESPERANDO no balcão e nunca uma RETIRADA». Reaching these points from a checkout and seeding a",
+    "collected order belong together, in that card, not scattered across two slices.",
+    "",
+    "★ THE TRACKING TEMPLATES ARE CHECKED BY THE KERNEL, not by taste: `{code}` has to appear EXACTLY ONCE",
+    "(`assertTrackingTemplate`, packages/core/src/commands/shipping.ts), because a template with none produces",
+    "a link to the carrier's home page for every parcel in the store — which looks like it works."
+  ],
+  "carriers": [
+    {
+      "name": "Correios",
+      "tracking_url_template": "https://rastreamento.correios.com.br/app/index.php?objeto={code}",
+      "why": "The one every Brazilian shop has. It is first in the list because a demo is read top-down and the first row should be the row a visitor recognises."
+    },
+    {
+      "name": "Jadlog",
+      "tracking_url_template": "https://www.jadlog.com.br/tracking?cte={code}",
+      "why": "The private courier a mid-sized brand actually contracts beside the Correios — which is the point of the registry having more than one row: `shipment.carrier` was free text until L3, and the same company was spelled three ways."
+    },
+    {
+      "name": "Loggi",
+      "tracking_url_template": "https://www.loggi.com/rastreador/{code}",
+      "why": "Last-mile in the capitals. Third row, so the screen shows a LIST rather than a pair, and so a merchant reading it sees that the registry is theirs to grow."
+    },
+    {
+      "name": "Retirada na loja",
+      "tracking_url_template": null,
+      "why": "★ THE ROW THAT PROVES THE TEMPLATE IS OPTIONAL. `tracking_url_template` is nullable on both create and update, with the meaning «this carrier publishes no tracking page» — and a parcel the buyer fetches has nothing to track. Without a row like this the screen would suggest that a carrier without a link is a carrier badly registered."
+    }
+  ],
+  "pickup_points": [
+    {
+      "name": "Forge Loja Oscar Freire",
+      "addr_line1": "Rua Oscar Freire, 909",
+      "addr_line2": "Loja 2",
+      "district": "Jardins",
+      "city": "São Paulo",
+      "uf": "SP",
+      "postal_code": "01426-001",
+      "instructions": "Retire no caixa da loja com um documento com foto. Pedidos ficam disponíveis por 7 dias.",
+      "hours": {
+        "mon": { "open": "10:00", "close": "20:00" },
+        "tue": { "open": "10:00", "close": "20:00" },
+        "wed": { "open": "10:00", "close": "20:00" },
+        "thu": { "open": "10:00", "close": "20:00" },
+        "fri": { "open": "10:00", "close": "20:00" },
+        "sat": { "open": "10:00", "close": "18:00" },
+        "sun": null
+      }
+    },
+    {
+      "name": "Forge Shopping Morumbi",
+      "addr_line1": "Avenida Roque Petroni Júnior, 1089",
+      "addr_line2": "Piso Térreo, Loja 118",
+      "district": "Jardim das Acácias",
+      "city": "São Paulo",
+      "uf": "SP",
+      "postal_code": "04707-900",
+      "instructions": "Balcão de retirada ao lado da entrada do estacionamento G2.",
+      "hours": {
+        "mon": { "open": "10:00", "close": "22:00" },
+        "tue": { "open": "10:00", "close": "22:00" },
+        "wed": { "open": "10:00", "close": "22:00" },
+        "thu": { "open": "10:00", "close": "22:00" },
+        "fri": { "open": "10:00", "close": "22:00" },
+        "sat": { "open": "10:00", "close": "22:00" },
+        "sun": { "open": "14:00", "close": "20:00" }
+      }
+    },
+    {
+      "name": "Forge Outlet Ipanema",
+      "addr_line1": "Rua Visconde de Pirajá, 550",
+      "district": "Ipanema",
+      "city": "Rio de Janeiro",
+      "uf": "RJ",
+      "postal_code": "22410-002",
+      "instructions": "Retirada no primeiro andar. Traga o número do pedido.",
+      "hours": {
+        "mon": { "open": "09:00", "close": "19:00" },
+        "tue": { "open": "09:00", "close": "19:00" },
+        "wed": { "open": "09:00", "close": "19:00" },
+        "thu": { "open": "09:00", "close": "19:00" },
+        "fri": { "open": "09:00", "close": "19:00" },
+        "sat": { "open": "09:00", "close": "14:00" },
+        "sun": null
+      }
+    },
+    {
+      "name": "Forge Centro de Distribuição Extrema",
+      "addr_line1": "Rodovia Fernão Dias, km 947",
+      "addr_line2": "Galpão 4",
+      "district": "Ponte Nova",
+      "city": "Extrema",
+      "uf": "MG",
+      "postal_code": "37640-000",
+      "instructions": "Retirada apenas com agendamento prévio, de segunda a sexta.",
+      "hours": {
+        "mon": { "open": "08:00", "close": "17:00" },
+        "tue": { "open": "08:00", "close": "17:00" },
+        "wed": { "open": "08:00", "close": "17:00" },
+        "thu": { "open": "08:00", "close": "17:00" },
+        "fri": { "open": "08:00", "close": "17:00" },
+        "sat": null,
+        "sun": null
+      }
+    }
+  ],
+  "_hours_why": [
+    "THE WEEK IS THE KERNEL'S OWN VOCABULARY AND IT IS STRICT. `pickupHoursSchema` is `.strict()` over",
+    "`mon..sun` (packages/core/src/shipping/pickup.ts): a file that wrote `seg` would be REFUSED rather than",
+    "stored as a shop closed every day, which is the failure the strictness exists to prevent.",
+    "A `null` day is closed; an omitted day is closed too — the two spellings mean the same thing, and every",
+    "point here writes all seven so the file reads as a week rather than as a set of exceptions.",
+    "",
+    "⚠️ AN OVERNIGHT SHIFT IS REFUSED BY THE KERNEL (`open < close`), so none is written. That is the",
+    "kernel's deliberate cut, not a gap in this file.",
+    "",
+    "⛔ NO COORDINATES. `lat`/`lng` are optional and they are DATA a merchant pastes from a map service;",
+    "inventing plausible ones for four addresses would be inventing facts about real streets. A point with",
+    "none is fully usable — it simply never sorts by proximity, which is what the storefront degrades to",
+    "anyway when the shopper declines geolocation."
+  ]
+}

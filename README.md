@@ -693,6 +693,20 @@ targets — the crutch hid the dependency. Removing it did not create one.
 counter's menu, the outlet's assortment, and the curated promotions (the counter's coupon, the morning combo, the
 subscriber discount). It is the identity of this demo.
 
+Since 2026-09-04 it also dresses and populates three things that used to come up empty, and each lives beside
+its own declaration:
+
+| what | declared in | when |
+|---|---|---|
+| the `chrome` app — **installed, placed and filled in**, per store | `seed/chrome.json` | curated phase |
+| carriers + pickup points (the two `/logistics` screens) | `seed/logistics.json` | window phase |
+| customer clusters + the promotions that condition on them | `seed/audience.json` | window phase |
+
+⚠️ **The last two wait for the WINDOW on purpose.** A cluster's membership is materialized when the cluster is
+CREATED, over the customers that exist at that instant — and this tenant's buyers arrive with the massive
+one-shot (step 9) and the 180-day past (step 10). Created in the curated phase, every cluster would be born
+empty, look correct, and stay that way.
+
 **The dataset and `demo-data`'s `populate` own the MASSIVE half** — what a generator produced: the 2 790
 products and which shop sells what. That runs as a one-shot INSIDE the box:
 
@@ -759,6 +773,14 @@ written **inside the image** (`home.hero · cafe · 1504x560`), at the size meas
 serves that slot. They are deterministic (same slot, same bytes, so a re-run uploads nothing) and they are
 obviously not final.
 
+★ **The coffees' story frames are no longer among them (04/09).** All eighteen real photographs landed in
+`seed/photos/` under the names the dataset already declared, so `resolvePhoto` stops choosing a stand-in and
+the eighteen `placeholder-*-historia-*` files were retired. What is left is the nine WINDOW slots (hero,
+mobile hero and below-categories, per shop). ⚠️ The generator still knows how to make a story stand-in, and
+it will plan one again the day a seventh coffee is declared — that is what the placeholder suite asserts;
+`seed/media.test.mjs` asserts the opposite direction, that no declared photograph resolves to a stand-in
+today.
+
 **To curate them:** they are all named `placeholder-…`, so the whole set is one search for `placeholder-` in
 the admin's Asset Library, or `read.internal.assets` filtered by the same prefix. Replace them one at a time.
 The generator never draws over art that already exists, and it makes none for the counter — a totem is four
@@ -798,6 +820,13 @@ could not fake. It runs after the coffee step and says so if they are not there.
 `shipping.method.create` nor `pickup_location.create` takes a `store_id`, so "Retirar no balcão" appears in
 the other stores' checkouts too. On this box that is additive — the tenant had no shipping configuration at
 all before it — and it is the same shop; it is written here so nobody discovers it from a checkout screen.
+
+⚠️ **The SHOE brand's four pickup points (04/09, `seed/logistics.json`) are a different case, and the
+difference is exactly one command.** They exist so `/logistics/pickup-points` is a populated screen, and this
+box deliberately creates **no `pickup`-kind shipping method** in that tenant — so they are registry rows an
+operator can see and a shopper cannot reach. Adding the method would put a «Retirar na loja» option into the
+Forge and Outlet funnels and would flip both live proof orders from delivery to pickup. The other half of that
+subject is the card `SEED-PICKUP-SO-METADE`.
 
 Installing the app is one call on the same credential:
 

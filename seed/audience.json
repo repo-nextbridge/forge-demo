@@ -1,0 +1,106 @@
+{
+  "_readme": [
+    "A22 — THE SHOE BRAND'S CUSTOMER CLUSTERS, AND THE PROMOTIONS THAT CONDITION ON THEM.",
+    "",
+    "★ WHY THE TWO ARE ONE FILE. A cluster with no promotion is a list nobody prices from, and the admin has",
+    "carried `/customers/clusters` since the CUST-CLUSTER wave with NOTHING in it — measured 2026-09-04 against",
+    "the running kernel: `customer_cluster` 0 rows in both tenants. What makes a cluster a CAPABILITY rather",
+    "than a saved search is that a price can depend on it, so the demo has to show the pair. The kernel says the",
+    "same thing in its own words: «a promotion conditions on the cluster — this is how customer data reaches",
+    "price without a custom field ever feeding a kernel calculation».",
+    "",
+    "★★ WHERE THE RULES COME FROM. Every `attribute` below is one the CLUSTER vocabulary declares",
+    "(packages/core/src/cluster/definition.ts): `order_count`, `total_spent`, `first_order_at`, `last_order_at`,",
+    "`has_account`, `origin_store`, `city`, `region`, `created_at`, plus `cf.<key>`. An attribute this file",
+    "invented would be refused by `validateRule` with a message naming it — loudly, which is right, but the",
+    "list is not a guess and nobody should have to discover it from a failure.",
+    "",
+    "⚠️ `total_spent` IS COMPUTED FROM THE LEDGER, IN CENTS — captured minus refunded over `order_transaction`,",
+    "not a denormalised column. And `order_count`/`first_order_at`/`last_order_at` read the APPEND-ONLY",
+    "TIMELINE (`order_event`), never `sales_order.status`: a customer whose order was DELIVERED has still",
+    "bought, and a cluster built on `status = 'paid'` would silently forget them.",
+    "",
+    "⚠️ ONE RULE HERE DEPENDS ON THE CLOCK AND SAYS SO. `more_than_days_ago` is a RELATIVE operator: nothing",
+    "about a customer changes on the day they cross ninety days, so the group is rebuilt by the daily tick",
+    "rather than by an event. It is included ON PURPOSE — «inactive for 90 days» is the question a merchant",
+    "actually asks about people, and a demo whose four clusters were all event-driven would hide the half of the",
+    "mechanism that needs a schedule.",
+    "",
+    "⛔ AND A CLUSTER NEVER REACHES A SHOPPER. It is INTERNAL by construction — no handle, no public URL, and",
+    "the name is kept off every public face. «Clientes VIP» is a thing the merchant knows, never a badge.",
+    "Anonymous matches nothing and errors on nothing, which is what makes the anonymous storefront structurally",
+    "unable to promise a personal discount."
+  ],
+  "clusters": [
+    {
+      "name": "Clientes VIP",
+      "description": "Quem já gastou mais de R$ 1.000,00 na marca, somando o que foi capturado menos o que foi estornado.",
+      "match": "all",
+      "rule": [{ "attribute": "total_spent", "operator": "gt", "value": 100000 }],
+      "why": "THE ONE A MERCHANT ASKS FOR FIRST, and the one that proves the ledger is what answers. R$ 1.000,00 is the floor because the 180-day history the box seeds puts a plausible handful of buyers above it and leaves the majority below — a cluster holding everybody teaches nothing, and one holding nobody looks broken."
+    },
+    {
+      "name": "Compradores recorrentes",
+      "description": "Três compras pagas ou mais. Conta a linha do tempo do pedido, então uma compra entregue continua contando.",
+      "match": "all",
+      "rule": [{ "attribute": "order_count", "operator": "gt", "value": 2 }],
+      "why": "A SECOND AXIS ON THE SAME PEOPLE — frequency instead of money — so the screen shows that clusters overlap and that overlapping is fine. `gt 2` and not `eq 3`: a cluster is a floor, and the operator list has no `gte` (the vocabulary's `number` operators are eq/gt/lt/between)."
+    },
+    {
+      "name": "Clientes de São Paulo",
+      "description": "Endereço padrão em SP. Serve para frete promocional e para retirada em loja na capital.",
+      "match": "all",
+      "rule": [{ "attribute": "region", "operator": "is_one_of", "value": ["SP"] }],
+      "why": "GEOGRAPHY, WHICH IS THE ONE THAT PAIRS WITH THE PICKUP POINTS THIS SAME SLICE CREATES (seed/logistics.json: three of the four are in SP). `region` is a `select`, so its only operator is `is_one_of` and the value is an ARRAY — a bare string would be refused."
+    },
+    {
+      "name": "Sem comprar há 90 dias",
+      "description": "Última compra paga há mais de 90 dias. Grupo de reativação.",
+      "match": "all",
+      "rule": [{ "attribute": "last_order_at", "operator": "more_than_days_ago", "value": 90 }],
+      "why": "★ THE ONE THAT DEPENDS ON THE CLOCK, and it is here to make that visible. `more_than_days_ago` is one of the two RELATIVE operators, so this group is rebuilt by the daily tick and not by anything the customer does. A demo made only of event-driven clusters would show half the mechanism. ⚠️ Somebody who NEVER bought is not in it: `last_order_at` is NULL for them and the vocabulary deliberately does not let NULL match «inactive for 90 days»."
+    }
+  ],
+  "promotions": [
+    {
+      "name": "DEMO-CLUSTER-VIP-10",
+      "label": "Clientes VIP · 10% OFF",
+      "store": "forge",
+      "cluster": "Clientes VIP",
+      "benefit": { "kind": "percentage", "percent_bp": 1000, "scope": "each_item" },
+      "why": "THE PAIR THAT MAKES THE CLUSTER A CAPABILITY. Scoped to the `forge` store by `store_id`: `promotion.create` takes a NULLABLE store and null is TENANT-WIDE, which here would price the Outlet too — and the Outlet has its own answer below."
+    },
+    {
+      "name": "DEMO-CLUSTER-SP-FRETE",
+      "label": "Frete grátis para São Paulo",
+      "store": "outlet",
+      "cluster": "Clientes de São Paulo",
+      "benefit": { "kind": "free_shipping" },
+      "why": "A DIFFERENT BENEFIT ON A DIFFERENT STORE, so the screen does not read as one promotion copied twice. Free shipping conditioned on WHERE the buyer is, which is the shape a real outlet uses — and the reason the cluster's rule reads the DEFAULT ADDRESS rather than the order's."
+    },
+    {
+      "name": "DEMO-CLUSTER-VOLTA-15",
+      "label": "VOLTA15 · 15% para quem não compra há 90 dias",
+      "code": "VOLTA15",
+      "store": "outlet",
+      "cluster": "Sem comprar há 90 dias",
+      "benefit": { "kind": "percentage", "percent_bp": 1500, "scope": "each_item" },
+      "why": "★ A COUPON, NOT AN AUTOMATIC — reactivation is a message you SEND, and the code is what a shopper carries back. ⚠️ The code is a SECOND command (`promotion.code.add`) and the promotion is inert without it, exactly as the counter's coupon documents. ⚠️ AND THE CODE ALONE IS NOT THE GATE: the cluster condition still has to hold, so VOLTA15 typed by a shopper who bought last week is ACCEPTED by `cart.apply_coupon` and discounts nothing — the same asymmetry `seed/totem.json` measured for store scoping."
+    }
+  ],
+  "_promotions_why": [
+    "ALL THREE ARE `stackable: true` AND BORN `active`.",
+    "",
+    "★ STACKABLE, because these are the only promotions on this box that depend on WHO the buyer is, and an",
+    "exclusive one would DISPLACE the merchandising promotions the vitrine already carries: the engine orders",
+    "comparable exclusive benefits by magnitude, so a VIP would silently lose the buy-3-pay-2 they can see on",
+    "the shelf. A discount that removes another discount is the worst thing to demonstrate to a merchant.",
+    "",
+    "★ ACTIVE, like every other promotion this repository writes and unlike the command's own default: a draft",
+    "promotion is a shop that prints a price on the product page and charges another one at the till.",
+    "",
+    "⛔ NO `target`, so it is `{kind:'all'}` — the whole cart. The QUESTION these promotions exist to answer is",
+    "«does the buyer belong to this group?», and narrowing the target to a category as well would mean a demo",
+    "where nothing fires and nobody can tell which of the two halves was the reason."
+  ]
+}

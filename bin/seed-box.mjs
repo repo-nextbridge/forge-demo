@@ -26,6 +26,10 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// A22 — the checkout POSTURE: which of the two `store` columns this box states, and the one declaration that
+// would be overwritten in silence. In a module of its own because this file seeds on import, so nothing can
+// import it to check its reasoning — the same argument `seed/media.mjs` makes about its own pair.
+import { CHECKOUT_FLAGS, bootstrapFlagConflicts, checkoutFlagPatch } from '../seed/posture.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -118,18 +122,13 @@ async function stores() {
       // IDEMPOTENT BY VALUE. A second run must converge, and re-writing a theme that already matches spends a
       // command and an audit row to change nothing.
       //
-      // ★ `masked_checkout_enabled` JOINS THE THEME HERE, and for the same reason it is declared at all: the
-      // column is born OFF and the value used to be flipped ON by `configureStore` inside the dataset
-      // one-shot. A tenant that no longer runs that one-shot needs the box to state it, and re-asserting it
-      // every birth is the point — a re-provision resets the store to the defaults.
-      const patch = {};
+      // ★ THE CHECKOUT POSTURE JOINS THE THEME HERE, and for the same reason it is declared at all: the two
+      // columns are born at their own defaults (masked OFF, guest ON) and used to be flipped by
+      // `configureStore` inside the dataset one-shot. A tenant that no longer runs that one-shot needs the box
+      // to state them, and re-asserting them every birth is the point — a re-provision resets the store to the
+      // defaults. WHICH stores may be stated here is `bootstrapFlagConflicts`' subject; see `assertOneOwner`.
+      const patch = checkoutFlagPatch(store, found);
       if (store.theme_key && found.theme_key !== store.theme_key) patch.theme_key = store.theme_key;
-      if (
-        store.masked_checkout_enabled !== undefined &&
-        found.masked_checkout_enabled !== store.masked_checkout_enabled
-      ) {
-        patch.masked_checkout_enabled = store.masked_checkout_enabled;
-      }
       if (Object.keys(patch).length > 0) {
         await command('tenant.store.update', { id: found.id, ...patch });
         log(
@@ -159,16 +158,19 @@ async function stores() {
     });
     const id = out.store_id ?? out.id;
     log(`store ${store.handle} — created (${id ?? '?'})`);
-    // ⚠️ THE FLAG IS A SECOND COMMAND AND NOT A FIELD OF THE FIRST. `tenant.store.create` takes name, handle,
+    // ⚠️ THE FLAGS ARE A SECOND COMMAND AND NOT FIELDS OF THE FIRST. `tenant.store.create` takes name, handle,
     // host and theme_key — nothing else (packages/core/src/commands/store.ts, `storeInput`); the checkout
-    // flags live only on `tenant.store.update`. Sending it on create is how a declaration goes quietly
+    // flags live only on `tenant.store.update`. Sending them on create is how a declaration goes quietly
     // nowhere, which is the failure mode this whole slice is about.
-    if (store.masked_checkout_enabled !== undefined && id) {
-      await command('tenant.store.update', {
-        id,
-        masked_checkout_enabled: store.masked_checkout_enabled,
-      });
-      log(`store ${store.handle} — masked_checkout_enabled → ${store.masked_checkout_enabled}`);
+    const born = {};
+    for (const flag of CHECKOUT_FLAGS) if (store[flag] !== undefined) born[flag] = store[flag];
+    if (Object.keys(born).length > 0 && id) {
+      await command('tenant.store.update', { id, ...born });
+      log(
+        `store ${store.handle} — ${Object.entries(born)
+          .map(([k, v]) => `${k} → ${v}`)
+          .join(', ')}`,
+      );
     }
   }
 }
@@ -304,13 +306,33 @@ async function delivery() {
 function assertOneOwner() {
   if (spec.dataset !== true) return;
   const declared = ['apps', 'delivery'].filter((k) => spec[k] !== undefined);
-  if (declared.length === 0) return;
+  if (declared.length > 0) {
+    fail(
+      `seed/box.json declares ${declared.join(' + ')} for "${tenant}", which also declares \`dataset: true\`.\n` +
+        '  A dataset tenant is provisioned by `dist/seed-demo.js` (step 9 of bin/box-up.sh) — apps, delivery\n' +
+        '  and its BOOTSTRAP store\'s checkout flags all come from there. Declaring them here too gives one\n' +
+        '  gesture two owners, and the visible cost is a SECOND "Entrega Padrão": `populate` is idempotent by\n' +
+        '  its own ledger and does not see a method this script created. Step 10 then refuses the tenant for\n' +
+        '  having two.',
+    );
+  }
+  // ★★ A22 — THE THIRD GESTURE, AND IT IS ONLY HALF THE ONE-SHOT'S. `configureStore`
+  // (apps/api/src/seed-storefront.ts) re-asserts `masked_checkout_enabled: true` AND `guest_checkout_enabled:
+  // true` on every run — but on ONE store, `ctx.storeId`, which is the tenant's bootstrap store. Measured on
+  // the bench of 04/09: `forge` came out masked=t/guest=t and its sibling `outlet` masked=f/guest=t, i.e. the
+  // column defaults. So the SIBLING is genuinely unowned and this box may state its posture; the BOOTSTRAP
+  // store is not, and a declaration here would be silently overwritten at step 9 — the worst shape of all,
+  // because the file would say one thing and the box would show another with no failure anywhere.
+  const bootstrap = bootstrapFlagConflicts(spec);
+  if (bootstrap.length === 0) return;
   fail(
-    `seed/box.json declares ${declared.join(' + ')} for "${tenant}", which also declares \`dataset: true\`.\n` +
-      '  A dataset tenant is provisioned by `dist/seed-demo.js` (step 9 of bin/box-up.sh) — apps, delivery\n' +
-      '  and checkout flags all come from there. Declaring them here too gives one gesture two owners, and\n' +
-      '  the visible cost is a SECOND "Entrega Padrão": `populate` is idempotent by its own ledger and does\n' +
-      '  not see a method this script created. Step 10 then refuses the tenant for having two.',
+    `seed/box.json declares checkout flags on the BOOTSTRAP store(s) ${bootstrap
+      .map((s) => `"${s.handle}"`)
+      .join(', ')} of "${tenant}", which also declares \`dataset: true\`.\n` +
+      '  Step 9 (`dist/seed-demo.js` → `configureStore`) re-asserts masked + guest on exactly that store,\n' +
+      '  AFTER this script runs, so what is written here would be overwritten in silence. Declare the\n' +
+      '  posture of the SIBLING stores here (step 9 never touches them) and leave the bootstrap store to\n' +
+      '  the one-shot — or change the one-shot, which is the product repository.',
   );
 }
 

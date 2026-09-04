@@ -144,8 +144,28 @@ test('⛔ the caption FITS INSIDE the picture — the first version ran off both
 });
 
 test('every story stand-in the dataset needs is on disk — the generator was run and its output committed', () => {
+  // ⚠️⚠️ SINCE A18 (04/09) THIS TEST ASSERTS OVER AN EMPTY SET, AND SAYING SO IS THE POINT. The merchant
+  // delivered all eighteen story photographs, so `planStoryPlaceholders` — which is DERIVED from what
+  // `seed/photos/` holds — plans nothing and the loop below runs zero times. That is the correct behaviour
+  // (nothing is needed, nothing is missing) and it is also a guard reporting on a vacuum: it would stay green
+  // if the whole mechanism rotted.
+  //
+  // ⇒ THE LIVE ASSERTION MOVED TO THE OTHER SIDE, in `seed/media.test.mjs`: «every photograph the six coffees
+  // declare is a REAL file, never a stand-in». This one is kept because it is the half that comes BACK — the
+  // day a coffee is added, or a real file is removed, its three stand-ins are planned again and this is what
+  // says the generator was not re-run.
   const catalog = JSON.parse(readFileSync(join(PLACEHOLDER_DIR, '..', 'catalog.json'), 'utf8'));
-  for (const item of planStoryPlaceholders(catalog.products, new Set(readdirSync(join(PLACEHOLDER_DIR, '..', 'photos'))))) {
+  const planned = planStoryPlaceholders(
+    catalog.products,
+    new Set(readdirSync(join(PLACEHOLDER_DIR, '..', 'photos'))),
+  );
+  assert.equal(
+    planned.length,
+    0,
+    `${planned.length} coffee photograph(s) are still served by a stand-in — see seed/media.test.mjs, which ` +
+      'names them one by one.',
+  );
+  for (const item of planned) {
     assert.ok(existsSync(join(PLACEHOLDER_DIR, item.file)), `missing ${item.file}`);
   }
 });

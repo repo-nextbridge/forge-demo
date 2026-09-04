@@ -1,0 +1,131 @@
+{
+  "_readme": [
+    "A10 (the DEMO half) — THE `chrome` APP IS BORN INSTALLED, PLACED **AND FILLED IN**.",
+    "",
+    "★★ THE ACHIEVEMENT IS THE THIRD VERB, and the achado that produced this file is about usability, not",
+    "about apps: «eu instalei, apareceu os blocos lá no compose, mas eu não sei bem pra onde arrastar» — said",
+    "by the person who DESIGNED the product. A lojista would not have had a chance. ⇒ AN APP INSTALLED AND",
+    "EMPTY TEACHES LESS THAN NO APP AT ALL, because it adds five things to drag and no example of where they",
+    "go. The demo is also a living tutorial, so it has to show the finished state.",
+    "",
+    "⚠️ MEASURED 2026-09-04 ON THE BENCH, and every number here is why the file exists:",
+    "  · `chrome` was installed in BOTH tenants — by HAND, at 19:14 and 20:39, while somebody was testing.",
+    "    Nothing in any seed installs it, and it is not in the platform seeder's list either.",
+    "  · the shoe tenant carried SEVEN placements, all with test content (`\"back\":\"a\"`, `\"seal\":\"c\"`,",
+    "    `\"title\":\"2\"`), and the coffee tenant carried ZERO. So the café's checkout and account screens wear",
+    "    the REFERENCE mark today — our wordmark, in somebody else's shop, which is the exact outcome the app",
+    "    exists to remove.",
+    "  · installing it places NOTHING: the manifest declares `hooks: []`, so `seedDefaultPlacements` returns",
+    "    immediately (packages/core/src/commands/extension.ts). Composing is not installing, and installing is",
+    "    not placing. All three gestures are this file's.",
+    "",
+    "★ THE FIVE BLOCKS AND THE FIVE SLOTS, read off the app's own manifest and confirmed against the",
+    "`target_override` column of the placements a human made on the bench:",
+    "    checkout_header → storefront:checkout.header      account_header → storefront:account.header",
+    "    checkout_footer → storefront:checkout.footer      account_footer → storefront:account.footer",
+    "    brand           → storefront:header.brand",
+    "",
+    "⛔ NOTHING WRITTEN ⇒ NOTHING DRAWN, and that is the app's decision, not a bug to work around. Every field",
+    "is optional and there is NO default word anywhere in it — a word nobody wrote would be this app choosing",
+    "Portuguese for somebody else's shop. So an unfilled block is an invisible one, which is precisely why a",
+    "demo that placed the blocks and left them empty would look like the app does nothing.",
+    "",
+    "⚠️ `brand` REPLACES THE THEME'S WORDMARK rather than standing beside it (the kit's header cedes the mark",
+    "when something is placed in that slot). So a `brand` block with an empty config would DELETE the mark",
+    "from every page of the shop. Each entry below therefore carries either a logo or a word — never neither."
+  ],
+  "app": "chrome",
+  "slots": {
+    "checkout_header": "storefront:checkout.header",
+    "checkout_footer": "storefront:checkout.footer",
+    "account_header": "storefront:account.header",
+    "account_footer": "storefront:account.footer",
+    "brand": "storefront:header.brand"
+  },
+  "stores": {
+    "forge": {
+      "_why": "The reference shoe store. TEXT ONLY, and the absence of a logo is a measurement rather than a shortcut: this tenant's asset library has no mark in it (04/09 — 18 582 catalogue photographs and seven banner tiles, no logo file anywhere in `seed/`). Inventing one would be art this repository does not have; the app's other road — a base word plus an accent-painted tail — is exactly the shape the theme's own wordmark has, so the store keeps a mark that reads like its own.",
+      "brand": { "text": "Forge", "tail": ".store" },
+      "checkout_header": {
+        "back": "Voltar à loja",
+        "title": "Checkout",
+        "seal": "Ambiente seguro · seus dados trafegam criptografados"
+      },
+      "checkout_footer": {
+        "start_text": "Dúvidas? Fale com a gente pelo chat da loja",
+        "middle_text": "Trocas e devoluções em até 30 dias",
+        "end_text": "Forge · calçados e acessórios"
+      },
+      "account_header": { "back": "Voltar à loja", "account": "Minha conta", "cart": "Sacola" },
+      "account_footer": {
+        "start_text": "Precisa de ajuda com um pedido?",
+        "middle_text": "Acompanhe a entrega pela página do pedido",
+        "end_text": "Forge · calçados e acessórios"
+      }
+    },
+    "outlet": {
+      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. The seal is the outlet's own promise and not a copy of the shop's — a claim only that store can make is the app's own hint for this field.",
+      "brand": { "text": "Forge", "tail": " Outlet" },
+      "checkout_header": {
+        "back": "Voltar ao Outlet",
+        "title": "Checkout",
+        "seal": "Outlet oficial · produtos originais com nota fiscal"
+      },
+      "checkout_footer": {
+        "start_text": "Peças de ponta de estoque, com garantia de fábrica",
+        "middle_text": "Trocas em até 7 dias para itens de outlet",
+        "end_text": "Forge Outlet"
+      },
+      "account_header": { "back": "Voltar ao Outlet", "account": "Minha conta", "cart": "Sacola" },
+      "account_footer": {
+        "start_text": "Seus pedidos do Outlet ficam aqui",
+        "middle_text": "Trocas em até 7 dias para itens de outlet",
+        "end_text": "Forge Outlet"
+      }
+    },
+    "cafe": {
+      "_why": "★ THE STORE THIS ITEM WAS REALLY ABOUT. Its vitrine is a FORK and wears its own chrome; its CHECKOUT and its ACCOUNT screens are ours, hosted, and until this file they wore the reference mark — the café's buyers reached the payment step under somebody else's wordmark. This is the one entry with a LOGO, because it is the one store whose logo this repository actually has: `seed/photos/forge-co-logo.png`, the same mark the forked storefront imports as a bundled file (storefront-coffee/src/components/coffee/CoffeeChrome.tsx). The fork owns its copy; the hosted funnel needs it as an ASSET, which is what `logo` is — a `type:'id'` reference the kernel resolves to a url at read time.",
+      "brand": { "logo": "forge-co-logo.png", "text": "forge.co" },
+      "checkout_header": {
+        "logo": "forge-co-logo.png",
+        "back": "Voltar à loja",
+        "title": "Finalizar pedido",
+        "seal": "Pagamento seguro · Pix e cartão"
+      },
+      "checkout_footer": {
+        "start_text": "Torrefação própria em São Paulo",
+        "middle_text": "Assinaturas podem ser pausadas quando você quiser",
+        "end_text": "forge.co · café de origem"
+      },
+      "account_header": {
+        "logo": "forge-co-logo.png",
+        "back": "Voltar à loja",
+        "account": "Minha conta",
+        "cart": "Sacola"
+      },
+      "account_footer": {
+        "start_text": "Sua assinatura e seus pedidos ficam aqui",
+        "middle_text": "Dúvidas sobre um pedido? Fale com a torrefação",
+        "end_text": "forge.co · café de origem"
+      }
+    },
+    "balcao": null
+  },
+  "_balcao_why": [
+    "⛔ THE COUNTER GETS NO CHROME, AND IT IS NAMED HERE RATHER THAN SILENTLY SKIPPED — the same rule",
+    "`seed/box.json` writes for the warming step: «a store simply absent from a report is indistinguishable",
+    "from one that failed, and this repository has already paid twice for a summary that was silent about what",
+    "it did not do».",
+    "",
+    "MEASURED: all five chrome blocks declare `surface: 'storefront'` and render inside the two deployables a",
+    "browser reaches — the vitrine (`brand`) and the hosted checkout/account screens (the other four). The",
+    "counter is neither. It is a whole-host app of its own (caddy `:82`, no store in the URL), it never appears",
+    "behind `/s/<id>` (`seed/box.json` marks it `servable: false` for exactly this reason) and it places its",
+    "orders through its own screens. Five placements there would render nowhere: rows in a Compose board that",
+    "an operator can move around and never see the effect of, which is a worse lesson than an empty board.",
+    "",
+    "⇒ THE DEMO SHOWS THE APP IN THE THREE SHOPS A PERSON CAN OPEN. Wanting it on the counter as well is one",
+    "entry in `stores` above and no code change — that is what makes this a declaration rather than a decision",
+    "welded into a module."
+  ]
+}

@@ -111,6 +111,9 @@
           "handle": "outlet",
           "name": "Forge Outlet",
           "theme_key": "outlet",
+          "guest_checkout_enabled": false,
+          "masked_checkout_enabled": true,
+          "_checkout_posture_why": "★★ A22 — POSTURE 2 OF 3: NO GUEST, BUT A RECOGNISED BUYER IS SPARED THE TYPING. An outlet lives on returning bargain hunters, so it asks for an identity and then asks for as little as possible. Measured before this line existed (04/09): guest=t (the column's default) and masked=f, i.e. this store had no posture at all — it had the accident of two defaults. ⚠️ THE SIBLING `forge` DELIBERATELY DECLARES NOTHING: step 9 (`dist/seed-demo.js` → `configureStore`) re-asserts masked+guest ON for the tenant's BOOTSTRAP store on every run, AFTER this script, so a declaration there would be overwritten in silence — `bootstrapFlagConflicts` in seed/posture.mjs refuses it by name. Its posture (permit both) is therefore the one-shot's and happens to be exactly the one the contrast wants.",
           "why": "The same catalogue under a theme of its own. Second store of T1, created through the port."
         }
       ]
@@ -126,19 +129,35 @@
           "shelves",
           "recommendations",
           "payment-reference",
-          "payment-mercadopago",
           "admin-dashboard"
         ],
         "_apps_why": [
           "THE APPS STEP 9 USED TO INSTALL HERE AS A SIDE EFFECT OF FILLING A CATALOGUE THIS TENANT SHOULD NEVER",
-          "HAVE HAD. Measured on the bench of 02/09 (`forge_control.extension_installation`): these six landed in",
+          "HAVE HAD. Measured on the bench of 02/09 (`forge_control.extension_installation`): six landed in",
           "`forgecafe` at 00:59:41, inside `seedCuratedStorefront` — the second half of the dataset one-shot.",
           "`reviews` and `subscriptions` are NOT here and must not be: `seed/coffee.mjs` installs those, and one",
           "gesture may only have one owner.",
           "",
-          "⚠️ `payment-reference` and `payment-mercadopago` are why a coffee cart can be paid at all — a store with",
-          "no payment app reaches the payment step with no method, which is a dead end that reads as a broken",
-          "checkout. `admin-dashboard` is what puts the three widgets on this tenant's admin home."
+          "⚠️ `payment-reference` is why a coffee cart can be paid at all — a store with no payment app reaches",
+          "the payment step with no method, which is a dead end that reads as a broken checkout.",
+          "`admin-dashboard` is what puts the three widgets on this tenant's admin home.",
+          "",
+          "★★ 04/09 (A14) — `payment-mercadopago` LEFT THIS LIST, AND THE LINE IT TAKES WITH IT IS THE POINT.",
+          "His words: «não precisa vir instalado, é feature interessante mas precisa ser explicada, aí quando eu",
+          "quiser fazer uma demo pra alguém eu instalo manualmente e mostro». So the app stays COMPOSED — it is",
+          "still in `composition.json`, still in the image, still a row in the admin's Apps area he can install",
+          "with two clicks — and simply is not installed at birth.",
+          "",
+          "⚠️ THE VISIBLE CONSEQUENCE, NAMED SO NOBODY FILES IT AS A BUG: the checkout's «Pagar com» line",
+          "DISAPPEARS. It is not a regression, it is the mechanism he liked: with one provider per method",
+          "`candidates.length > 1` is false and the second line does not render, with the reason written in the",
+          "source — «a store with one provider per method has no choice to offer, and offering one would be",
+          "inventing a decision» (`PaymentStep.tsx:477`). Wanting the choice visible again is a SECOND",
+          "SIMULATOR, never the Mercado Pago.",
+          "",
+          "⛔ `payment-pos` IS NOT ON THIS LIST AND MUST NOT JOIN IT — `seed/coffee.mjs` owns it, and it is what",
+          "the counter's totem charges through. `payment-zero` is not here either, and adding it would be",
+          "INVENTING a capability this tenant never had rather than removing one he asked to remove."
         ],
         "delivery": {
           "zone": {
@@ -213,14 +232,16 @@
           "name": "Forge Café",
           "theme_key": "coffee-store",
           "bootstrap": true,
-          "masked_checkout_enabled": true,
-          "_masked_checkout_why": "A RECOGNISED BUYER SKIPS RE-TYPING WHAT THE SHOP ALREADY KNOWS. Born OFF (the column's default), and until now it was flipped ON by `configureStore` inside the dataset one-shot — the same step 9 this tenant no longer runs. Declared here so the coffee shop keeps the checkout a human already tested. The counter does not declare it: a totem has no returning session to recognise.",
+          "guest_checkout_enabled": false,
+          "masked_checkout_enabled": false,
+          "_checkout_posture_why": "★★ A22 — POSTURE 3 OF 3: NEITHER. A coffee shop that sells subscriptions and a loyalty relationship wants an account, not an anonymous sale, so it asks the buyer to sign in and recognises nobody who has not. This REPLACES the `masked_checkout_enabled: true` this store carried since 02/09, and the replacement is the point of the whole item: the demo's three shops used to answer this question identically by accident, which demonstrates nothing. ⚠️ DECLARING IT HERE IS LEGAL AND ON `forge` IT WOULD NOT BE — this tenant is `dataset: false`, so no step 9 runs against it and nobody else writes these columns.",
           "why": "The coffee e-commerce, on its forked storefront. Born in T2 rather than moved into it: data does not travel sideways between tenants, so on a virgin box this is simply where it is created."
         },
         {
           "handle": "balcao",
           "name": "Forge Café · Balcão",
           "servable": false,
+          "_checkout_posture_why": "⛔ THE COUNTER DECLARES NO POSTURE, AND THE MEASUREMENT IS WHY — A22's table reads «Café / Balcão: neither», and applying it here would BREAK THE TOTEM. `totem/src/lib/buyer.ts:70` sends `guest: true` on every counter order (a person at a kiosk typed a name, not an address), and `checkout.place_order` refuses a pure-guest cart with `forbidden · guest_disabled` when the store's flag is off (packages/core/src/commands/checkout.ts:787). So `guest_checkout_enabled: false` here is a counter that cannot sell coffee. The contrast A22 is built on is between the THREE SERVABLE SHOPS — Forge, Outlet, Café — and this fourth store is the totem's, not a shop a browser reaches. `masked_checkout_enabled` is already `false` here (the column's default) and is left unstated for the same reason it always was: a totem has no returning session to recognise.",
           "_servable_why": "NOT SERVED BY A VITRINE, so there is nothing here to warm. The totem is a whole-host app of its own (caddy `:82`, no store in the URL) and this store never appears behind `/s/<id>` — a warm run pointed at it would fetch pages nobody opens and report them as this shop's. The flag exists so the warming step SKIPS it BY NAME: a store simply absent from a warm report is indistinguishable from one that failed, and this repository has already paid twice for a summary that was silent about what it did not do.",
           "why": "The counter the totem serves. No `theme_key` on purpose: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps. Same tenant as `cafe` — one catalogue, two assortments."
         }
