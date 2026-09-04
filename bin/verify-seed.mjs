@@ -208,6 +208,14 @@ const rows = (payload) => (Array.isArray(payload) ? payload : (payload?.items ??
  * assertion about the shop — and it fails in the dangerous direction: it says the rule holds when the
  * offending row is on page two. (The dry run also found the cap: `promotions_admin` refuses `limit=200` with
  * `too_big … maximum: 100`, so a hand-picked large limit is not a substitute for paging either.)
+ *
+ * ⚠️ ★ AND `page` IS A QUESTION TOO — THE SAME SPECIES, IN THE PARAMS INSTEAD OF THE FIELDS. Not every read
+ * pages by that word: `read.promotions_admin` declares `offset`, and a param a read does not declare is
+ * SILENTLY DROPPED (its Zod object strips what it does not know). So a walk over it would ask for page 2,
+ * be handed page 1 again, append the same hundred rows, and go round until the backstop — and until this
+ * tenant grows past a hundred promotions, nothing about that is visible. The envelope is what answers it:
+ * a read that pages by `page` ECHOES the page it was given (`ReadList`), and one that does not publishes no
+ * such key. So the second lap checks, before it believes anything, that the read heard the question.
  */
 async function allOf(name, params = {}) {
   const limit = 100;
@@ -216,6 +224,14 @@ async function allOf(name, params = {}) {
     const payload = await internal(name, { ...params, limit: String(limit), page: String(page) });
     const batch = rows(payload);
     if (Array.isArray(payload)) return batch; // an unpaginated read answers a bare array
+    if (page > 1 && Number(payload?.page) !== page) {
+      fail(
+        `read.${name} does not page by \`page\` — asked for page ${page}, and the answer says ` +
+          `${payload?.page === undefined ? 'nothing at all (no `page` in the envelope)' : `\`page: ${payload.page}\``}. ` +
+          'This walk would have re-read the first page until the backstop and then called the pile the whole ' +
+          'set. The read pages by another word (`offset`, for the promotion list). Nothing was measured.',
+      );
+    }
     all.push(...batch);
     if (batch.length < limit) return all;
   }

@@ -210,6 +210,14 @@ const pageOf = (all, url) => {
   return { items: all.slice((page - 1) * limit, page * limit), page, limit, total: all.length };
 };
 
+/** `read.promotions_admin` pages by `offset`, so `page` is a param it never declared and Zod strips it: the
+ *  answer is always the first page, and it carries no `page` key to say so. */
+const offsetOnly = (all, url) => {
+  const limit = Number(url.searchParams.get('limit') ?? 25);
+  const offset = Number(url.searchParams.get('offset') ?? 0);
+  return { items: all.slice(offset, offset + limit), total: all.length };
+};
+
 /**
  * A read face that answers with the DECLARED box. `drop` removes a key from every row of a named read, which
  * is how "the read stopped publishing this" is staged without touching the kernel.
@@ -232,7 +240,12 @@ async function serve(box, { drop } = {}) {
     };
     if (p === '/v1/read/internal/stores') return send(without('stores', box.stores));
     if (p === '/v1/read/internal/promotions_admin')
-      return send(pageOf(without('promotions_admin', box.promotions), url));
+      return send(
+        (box.promotionsPageByOffset ? offsetOnly : pageOf)(
+          without('promotions_admin', box.promotions),
+          url,
+        ),
+      );
     if (p === '/v1/read/internal/promotion_stores')
       return send(without('promotion_stores', box.promotionStores));
     if (p === '/v1/read/internal/shipping_methods_admin')
@@ -395,6 +408,29 @@ test('★ a TENANT-WIDE free-shipping promotion reaches the counter too, and is 
     const { code, stdout } = await verify(VERIFIER, face.api);
     assert.ok(/✗ balcao — 1 free-shipping promotion/.test(stdout), stdout);
     assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ a read that pages by another word is refused, not walked in circles', async () => {
+  // ⚠️ THE SAME WRONG QUESTION, IN THE PARAMS. `promotions_admin` declares `offset`, never `page`, and an
+  // undeclared param is dropped in silence — so a walk asking for page 2 is handed page 1 again. Below a
+  // hundred promotions nothing shows; above it, the enumeration would append the same rows over and over and
+  // call the pile the whole set, which is precisely the "assertion about the first N rows, dressed as an
+  // assertion about the shop" this walk exists to prevent.
+  const box = declaredBox();
+  box.promotionsPageByOffset = true;
+  const filler = COFFEE_PROMOTIONS[0];
+  for (let i = 0; i < 120; i++) box.promotions.push(promotionRow(`promo_fill_${i}`, filler, 'active'));
+  const face = await serve(box);
+  try {
+    const { code, stdout, stderr } = await verify(VERIFIER, face.api);
+    assert.ok(
+      /does not page by `page`/.test(stderr),
+      `the walk had to refuse instead of believing page 1 twice:\n${stderr}\n${stdout}`,
+    );
+    assert.equal(code, 2, stderr);
   } finally {
     face.close();
   }
