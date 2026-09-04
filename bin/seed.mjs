@@ -41,6 +41,18 @@ import { planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs
 import { createMinted, unresolved } from '../seed/minted.mjs';
 import { planStock } from '../seed/stock.mjs';
 import { createReadAll } from '../seed/paginate.mjs';
+// THE PACER — one token bucket PER FACE, because the kernel's ceilings are per face and never one. Its own
+// header carries the measurement (74 min against 11 for the same box) and the table of which path answers to
+// which bucket; the only thing this file does with it is ask which face a URL belongs to, and refuse to
+// guess when the answer is "none of them".
+import {
+  FACES,
+  createPacer,
+  faceOf,
+  pacingWarnings,
+  ratesFromEnv,
+  refusalSentence,
+} from '../seed/pacer.mjs';
 // ⛔ THE STOCK POOL — products this brand OWNS and no store SELLS, which is what the demo's 180-day past is
 // built from. Imported here rather than folded into `products()` above because that function's next act is
 // `publish()`, and publishing one of these is exactly the mistake the pool exists to avoid.
@@ -202,7 +214,7 @@ async function assertCredentialTenant() {
 //
 // ★ S1 — THE KERNEL RATE-LIMITS THIS CREDENTIAL, AND UNTIL THE SPORTS STORE THERE WAS NO WAY TO NOTICE.
 //
-// `apps/api/src/index.ts:791` caps a credential at FORGE_RATE_LIMIT_PER_CREDENTIAL commands per
+// `apps/api/src/index.ts` caps a credential at FORGE_RATE_LIMIT_PER_CREDENTIAL commands per
 // FORGE_RATE_LIMIT_WINDOW_SECONDS — 6000/60s by default, which is what this box runs (both variables are
 // empty in its .env, measured). Fourteen products never came close. The forge store is ~74 000 commands, so
 // the cap is now the clock, and a seed that simply fires as fast as it can spends the difference collecting
@@ -212,63 +224,92 @@ async function assertCredentialTenant() {
 // rate is the whole mechanism: the 429 handling further down stays as the net, and on a correctly paced run
 // it never fires.
 //
-// ⚠️ IT COVERS READS TOO, and that is not caution. The limiter is ONE bucket over the command face AND the
-// internal read face (`index.ts`'s own comment on `commandRateLimit` says so). A pacer that counted only
-// writes would be a pacer that is wrong by exactly the number of reads.
-const RATE_PER_SECOND = Number(process.env.FORGE_SEED_RATE_PER_SECOND ?? 85);
-// ⚠️ THE BUCKET HOLDS AT LEAST ONE TOKEN, AND WITHOUT THIS LINE THE KNOB BELOW 1/s HANGS THE SEED FOREVER.
-// The ceiling used to be the rate itself, so a rate under one meant `tokens` could never reach the `>= 1`
-// the pump waits for: the queue filled, the timer re-armed, and nothing was ever sent. Measured on the bench
-// of 2026-09-03 — and it matters because a rate under 1/s is exactly what some faces need. The anonymous
-// create face (`/v1/ext-public`, where the reviews seeder posts) caps at 30 per 60 s per address, so the
-// honest pace there is 0.5/s, and the refusal's own advice ("lower it with FORGE_SEED_RATE_PER_SECOND=<n>")
-// pointed at a number the pacer could not carry. A knob that cannot express the value its own error message
-// asks for is worse than no knob.
-const BUCKET_CEILING = Math.max(RATE_PER_SECOND, 1);
-const pacer = (() => {
-  let tokens = BUCKET_CEILING;
-  let last = Date.now();
-  const queue = [];
-  const refill = () => {
-    const now = Date.now();
-    tokens = Math.min(BUCKET_CEILING, tokens + ((now - last) / 1000) * RATE_PER_SECOND);
-    last = now;
-  };
-  const pump = () => {
-    refill();
-    while (queue.length > 0 && tokens >= 1) {
-      tokens -= 1;
-      queue.shift()();
-    }
-    if (queue.length > 0) setTimeout(pump, Math.ceil(1000 / RATE_PER_SECOND));
-  };
-  return () =>
-    new Promise((resolve) => {
-      queue.push(resolve);
-      pump();
-    });
+// ★★ AND THE PACE IS **PER FACE**, WHICH IS WHERE THIS COMMENT USED TO BE TRUE AND STILL MISLEAD. It said:
+//
+//     ⚠️ IT COVERS READS TOO, and that is not caution. The limiter is ONE bucket over the command face AND
+//     the internal read face […]. A pacer that counted only writes would be a pacer that is wrong by
+//     exactly the number of reads.
+//
+// Every word of that is right — about the CREDENTIAL bucket, which really is one bucket over commands and
+// internal reads. It reads, though, as "the kernel has one bucket", and the kernel has three; the tightest
+// is not the one the sentence describes and has nothing to do with the credential. Measured on the birth of
+// 2026-09-03: the run died on `ratelimit:ext-public-write` (30 per 60 s per IP, the anonymous review form),
+// while the bucket this comment named had 100/s free. Lowering the ONE knob to the only value that fitted
+// the form — 0,5/s — made the box take **74 minutes instead of 11**, because ~1840 calls that had 100/s
+// available waited two seconds each for a ceiling that never applied to them.
+//
+// ⇒ The faces, their buckets, their knobs and the whole measurement live in `seed/pacer.mjs`. Three lanes,
+// three token buckets, and an unknown path is a LOUD failure rather than a free ride on the fastest one.
+const rates = (() => {
+  try {
+    return ratesFromEnv(process.env);
+  } catch (error) {
+    fail(error.message);
+  }
 })();
+const pacer = createPacer(rates);
+for (const warning of pacingWarnings(rates)) log(warning);
 
 /**
- * One HTTP call to the kernel, paced, with the 429 net behind the pacer.
+ * One HTTP call to the kernel, paced on ITS OWN face, with the 429 net behind the pacer.
  *
  * A 429 that is retried immediately is a request that is refused again; the kernel's window is fixed, so the
- * only useful wait is until the window turns over. `retry-after` carries that when the kernel sends it.
+ * only useful wait is until the window turns over. `retry-after` carries that when the kernel sends it —
+ * and the anonymous app-form face does NOT send it, which is why the fallback is the face's own declared
+ * window rather than a shared two seconds.
  */
 async function paced(url, init, describe) {
+  const face = faceOf(url);
+  if (!face) {
+    // ⛔ AN UNKNOWN PATH IS NOT A FAST PATH. Defaulting it to the credential lane is how a tight face added
+    // later rides 100/s and kills a birth nobody changed. `seed/pacer.mjs` carries the table to extend.
+    fail(
+      `no face declared for ${url} (${describe}). Every call this seed makes belongs to one of the\n` +
+        "  kernel's rate-limit buckets, and guessing the fastest one is how a birth dies at 22:00 on a run\n" +
+        '  nobody touched. Add the prefix to FACE_PATTERNS in seed/pacer.mjs, with the bucket it answers to.',
+    );
+  }
+  const spec = FACES[face];
+  let refusal;
   for (let attempt = 0; ; attempt++) {
-    await pacer();
+    await pacer.take(face);
     const res = await fetch(url, init);
     if (res.status !== 429) return res;
+    // ★★ THE KERNEL NAMES THE CEILING THAT REFUSED, SO READ IT INSTEAD OF GUESSING. Since `pk7/p1` a 429
+    // carries `error.details.{limit_bucket,limit,window_seconds,limit_env}`, and `limit_env` is an explicit
+    // `null` when that ceiling has no button. The body is read on every attempt because the LAST refusal is
+    // the one the operator needs described — and it is read here, where the response is already spent.
+    refusal = await res
+      .json()
+      .then((body) => body?.error?.details)
+      .catch(() => undefined);
     if (attempt >= 5) {
+      // ★ THE REFUSAL NAMES THE BUCKET THAT ACTUALLY BARRED, AND THE KNOB THAT MOVES **THIS SEED**. The
+      // version this replaces named `FORGE_RATE_LIMIT_PER_CREDENTIAL` whatever face refused — so the
+      // operator of the 19:42 birth read a true sentence about the wrong bucket, turned a knob that could
+      // not move the thing, and died in the same place. `refusalSentence` prefers the kernel's own words and
+      // says out loud when it had none to prefer.
       fail(
-        `${describe} → HTTP 429 after ${attempt} retries. The credential's window ` +
-          `(FORGE_RATE_LIMIT_PER_CREDENTIAL) is smaller than this seed's pace. Lower it with\n` +
-          `  FORGE_SEED_RATE_PER_SECOND=<n>  (currently ${RATE_PER_SECOND}/s).`,
+        `${describe} → HTTP 429 after ${attempt} retries, on the ${face} face —\n` +
+          `  ${spec.label}.\n` +
+          `  ${refusalSentence({ face, seedRate: rates[face], details: refusal })}\n` +
+          '  ⚠️ Lowering another face\'s knob will not help: the three faces have three buckets.\n' +
+          // What the run had already spent when it died, per face. A refusal that names the face and then
+          // makes the reader guess how many calls got there is half an answer.
+          `  ${pacer.summary()}`,
       );
     }
+    // The wait, in order of how much the answer is worth: the kernel's `Retry-After`, then the window it
+    // just named in the body, then this repo's declared fallback for that face. A fixed-window ceiling with
+    // no header is the case that made the fallback necessary — two seconds against a 60 s window is a guess.
     const after = Number(res.headers.get('retry-after'));
-    await new Promise((r) => setTimeout(r, Number.isFinite(after) && after > 0 ? after * 1000 : 2000));
+    const named = Number(refusal?.window_seconds);
+    const wait = Number.isFinite(after) && after > 0
+      ? after
+      : Number.isFinite(named) && named > 0
+        ? named
+        : spec.retryAfterSeconds;
+    await new Promise((r) => setTimeout(r, wait * 1000));
   }
 }
 
@@ -1431,6 +1472,10 @@ await seedCommerce({
 });
 
 } // ── end of the window phase ────────────────────────────────────────────────────────────────────────────────
+// ★ WHERE THE MINUTES WENT, per face — the number nobody could answer after a 74-minute birth without
+// reading the source. It counts what was DONE (a token handed out), never what was planned: three of the
+// seven failures of the 2026-09-03 birth were a screen stating what the program had not done.
+log(pacer.summary());
 log('done. Re-running this is a no-op.');
 log(
   'NOT seeded, and named rather than silently missing: the three supporting products the catalogue ' +

@@ -116,6 +116,57 @@ map of how the box is born:
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
 fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then.)
 
+### ⏱ What a birth COSTS — and it is a number nobody could quote until 2026-09-03
+
+`bash bin/box-up.sh` on a virgin box is a **~12-minute** job on this bench, and **it used to be 74**. Both
+ends of that are measured; the 12 is the arithmetic of the two measurements below and the first birth after
+this slice is what will confirm it — the run prints its own numbers now, so nobody has to take this
+paragraph's word for it.
+
+The difference was not Docker and not Postgres. `bin/seed.mjs` paces itself below
+the kernel's rate limits rather than discovering them with 429s, and until this slice it did so with **one**
+knob over **every** call. The kernel has three ceilings, not one, and they are 200× apart:
+
+| face | what goes through it | ceiling | seed's pace |
+|---|---|---|---|
+| credential | `/v1/commands/*`, `/v1/read/internal/*` — everything the catalogue is made of | 6000/60 s (`FORGE_RATE_LIMIT_PER_CREDENTIAL`) | 85/s |
+| anonymous | the public reads and the cart/checkout/payment faces | 400/60 s, per store+IP | 6/s |
+| ext_public | an app's anonymous create face — the PDP review form | 30/60 s, per IP | 0,5/s |
+
+Two births of the same box, both measured on the night of 2026-09-03:
+
+| pace | result |
+|---|---|
+| 85/s (the old default) | **~11 min**, then dead: `HTTP 429` on the first anonymous review post |
+| 0,5/s (the only global pace that fitted that face) | **~74 min**, and it completed |
+
+The seed writes **52** open reviews through the tight face — `52 × 2 s = 104 s`. Every other call in the run
+(~1840 of them, by the arithmetic of the two clocks above) waited two seconds each for a ceiling that never
+applied to it. Measured on a recording stub of the door, the first 240 calls of a `forgeco` curated run are
+**240 credential, 0 anonymous, 0 ext_public** — and 188 of them are the media pair
+(`media.request_upload` + `asset.create`), a face with 100/s available spending 0,5.
+
+So the pace is **per face** now (`seed/pacer.mjs`), and every run ends by saying where its minutes went —
+the SHAPE of that line, with `<n>` where the run puts its own count (nothing here is a recorded run):
+
+```
+[seed] pace — <n> call(s) through 3 face(s) in <n>s, <n>s of it pacing:
+    credential  <n> call(s) at 85/s — <n>s waiting on its own bucket
+    anonymous   <n> call(s) at 6/s — <n>s waiting on its own bucket
+    ext_public  <n> call(s) at 0.5/s — <n>s waiting on its own bucket
+```
+
+⚠️ **If a birth is slow, read that line before blaming the box.** And if a 429 kills one, the refusal now
+**echoes the kernel's own words**: since `pk7/p1` a 429 carries `error.details.{limit_bucket, limit,
+window_seconds, limit_env}`, and `limit_env` is an explicit `null` when that ceiling has no variable at all.
+The seed prints what arrives; against an older kernel — **the one this box's `forge.lock` still pins** — it
+says out loud that it is falling back to this repo's table instead of quoting the kernel. The seed's own
+three knobs are in `.env.example`, all optional, all defaulting to the ceiling they were measured against.
+
+⛔ **Do not export `FORGE_SEED_RATE_PER_SECOND=0.5`.** It was the way past the 429 on the night this was
+measured, and it is now the one value that restores the 74 minutes while curing nothing: that knob paces the
+*credential* face, which was never the face that refused. The seed says so out loud if it finds it set.
+
 ### 2b. Two things that used to be typed by hand, and died at every rebirth
 
 Both were real arrangements on the bench that the next `bash bin/box-up.sh` erased, and neither loss was

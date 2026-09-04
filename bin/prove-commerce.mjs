@@ -16,6 +16,13 @@
 // tenant, in a 200.
 
 import { seedCommerce } from '../seed/commerce.mjs';
+// ⚠️ THIS HARNESS DRIVES THE SAME ANONYMOUS FORM THE SEED DOES, AND IT WAS NOT PACED AT ALL. `seedCommerce`
+// writes 52 open reviews through `/v1/ext-public/reviews/review`, whose ceiling is 30 per 60 s per address:
+// unpaced, this file 429s on the 31st and the wall is invisible from here (`post` logs and answers null, so
+// the shortfall surfaces much later as "products carry fewer reviews than planned"). Same pacer as
+// `bin/seed.mjs`, same per-face lanes, same knobs — a second pacing policy would be a second answer to a
+// question the kernel only asks once.
+import { createPacer, faceOf as faceOfUrl, ratesFromEnv } from '../seed/pacer.mjs';
 
 const argOf = (name) => {
   const i = process.argv.indexOf(name);
@@ -39,9 +46,18 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+const pacer = createPacer(ratesFromEnv());
+/** Every call this harness makes, on the lane of the face it belongs to. An unknown path is a loud stop. */
+const pacedFetch = async (url, init) => {
+  const face = faceOfUrl(url);
+  if (!face) fail(`no face declared for ${url} — add it to FACE_PATTERNS in seed/pacer.mjs.`);
+  await pacer.take(face);
+  return fetch(url, init);
+};
+
 /** A command on one of the kernel's write faces. `store` rides in the header, like every other caller. */
 async function command(name, input, { store, face = faceOf(name) } = {}) {
-  const res = await fetch(`${api}/v1${face ? `/${face}` : ''}/commands/${name}`, {
+  const res = await pacedFetch(`${api}/v1${face ? `/${face}` : ''}/commands/${name}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -84,7 +100,7 @@ async function read(name, params = {}) {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== ''),
   );
-  const res = await fetch(`${api}/v1/read/${name}?${qs}`, {
+  const res = await pacedFetch(`${api}/v1/read/${name}?${qs}`, {
     headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant },
   });
   if (res.status === 404) return null;
@@ -103,7 +119,7 @@ async function post(path, body, { store } = {}) {
   // answers `400 x-forge-store is required`, which is right and is easy to miss when copying the shape of
   // the credentialed calls next door.
   const anonymous = path.startsWith('/v1/ext-public/');
-  const res = await fetch(`${api}${path}`, {
+  const res = await pacedFetch(`${api}${path}`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
