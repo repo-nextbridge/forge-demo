@@ -83,10 +83,17 @@ export COMPOSE_PROJECT_NAME
 # is called "Forge" provisioned fine and the one called "Forge Café" did not — a bug that only exists for
 # SOME of the data, which is the kind that ships. `printf %q` makes the round trip lossless.
 DOCKER_SH="${FORGE_DOCKER_SH:-sg docker -c}"
+# ⚠️ STDIN IS CLOSED, AND THAT IS THE WHOLE POINT OF THIS LINE. `docker compose run` ATTACHES stdin by
+# default, so a `dc run` inside a `while read … <<EOF` loop DRAINS THE HERE-DOC on its first iteration and the
+# loop ends after one pass. Measured on the birth of 2026-09-03: the tailnet promotion claimed the admin door
+# of ONE tenant out of two, counted 1 honestly, and then printed BOTH doors — because the block that prints
+# them re-reads the same here-doc from the start. The café's admin would have opened a login page and refused
+# the POST with `unknown_admin_host`, which is the silent failure the promotion slice exists to kill.
+# Nothing here needs an interactive stdin; every `dc` call is a one-shot command.
 dc() {
   local quoted='' a
   for a in "$@"; do quoted+=" $(printf '%q' "$a")"; done
-  $DOCKER_SH "cd $(printf '%q' "$HERE") && docker compose$quoted"
+  $DOCKER_SH "cd $(printf '%q' "$HERE") && docker compose$quoted" </dev/null
 }
 
 # ★★ A CONTAINER PATH MAY NEVER REACH A HOST PROCESS — enforced, not remembered.
