@@ -727,6 +727,34 @@ EOF
   exit "$promotion_status"
 fi
 
+# ── 0c · ★★ THE DATASET THIS BOX WOULD SEED FROM IS THE ONE ITS IMAGES WERE BUILT WITH (pk7·D2) ────────────
+#
+# ⛔ MEASURED ON THE BIRTH OF 2026-09-03. `.env` pointed at `…/wt-v03/t-forno/instances/demo/dataset`, a
+# worktree 166 COMMITS BEHIND the tree the four images were baked from. The box came up GREEN and the admin's
+# stock panel was born empty — the idle shelf existed in the code, in the image and in the tests, and did NOT
+# exist in the data the box read. It was not one panel: 2 790 products, the categories and the brands all came
+# from yesterday's checkout, and BOXUP was 0.
+#
+# ⚠️ EVERY OTHER INPUT OF THIS BOX IS PINNED. Four images by digest, and `bin/images-from-lock.sh` refuses
+# even a tag. The dataset is the one that is not — deliberately: baking one instance's catalogue into the
+# kernel image is the defect the platform's own `instance-content.guard.test.ts` exists to forbid. So it is
+# RECORDED in `forge.lock` at bake time and CHECKED here, and a host path in a `.env` finally ages loudly.
+#
+# ★ HERE, and not at step 9. The answer costs milliseconds; being wrong costs the ~74 minutes step 9 spends
+# filling a whole store with the wrong catalogue. It is also AFTER the promotion block above on purpose —
+# `--tailnet` does not seed anything, and a promotion that refuses over the seed's input would be nonsense.
+say '0c · the dataset (is it the one these images were built with?)'
+provenance="$(host_node "$HERE/bin/dataset-provenance.mjs" "$HERE/forge.lock" 2>&1)"
+provenance_rc=$?
+if [ "$provenance_rc" -eq 0 ]; then
+  while IFS= read -r line; do note "$line"; done <<EOF
+$provenance
+EOF
+else
+  printf '%s\n' "$provenance" >&2
+  die 'refusing to seed. Both stamps are named above — one of them is the tree you meant.'
+fi
+
 # ── 1 · the data tier ───────────────────────────────────────────────────────────────────────────────────────
 say '1 · postgres + redis'
 dc up -d postgres redis >/dev/null 2>&1 || die 'could not start postgres/redis.'
