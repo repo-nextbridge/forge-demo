@@ -365,6 +365,46 @@ like an empty bucket.
 If a pull cannot complete, the seed **refuses**: *"Refusing to seed a partial dataset"*, naming what is
 missing. It does not fill a catalogue with broken images.
 
+#### ⛔ …and the box refuses to seed from a dataset that is not the one its images were built with
+
+**The birth of 2026-09-03.** `FORGE_SEED_DATASET_HOST_DIR` pointed at a worktree **166 commits behind** the
+tree the four images were baked from. The box came up **green**; the admin's stock panel was born empty with
+the feature that fills it *inside the image*; and the whole demo — 2 790 products, its categories, its brands
+— came from yesterday's checkout. Nothing anywhere said so.
+
+**Every other input of this box is pinned.** Four images by digest, and `bin/images-from-lock.sh` refuses even
+a tag. The dataset is the one that is not — deliberately: there is one `infra/Dockerfile`, so baking one
+instance's catalogue into the kernel image would put it in *every customer's* kernel, which is the defect the
+platform's own `instance-content.guard.test.ts` forbids in both directions. (Measured before choosing: the
+directory is **40 MB** — the 3.6 GB of photographs are not in it. Size was never the obstacle; the boundary
+is.)
+
+**So it is recorded and compared, in two halves:**
+
+| where | what |
+|---|---|
+| `bin/build-local.sh` | copies the dataset's own content stamp (`forge-seed-dataset.json`, written by `pnpm pack:dataset`) into `forge.lock` → `dataset` as it bakes the images |
+| `bin/box-up.sh` step **0c** | compares that record against the pointer of the directory this box mounts, **before a single container starts**, and refuses **naming both stamps** |
+
+```
+     the IMAGES   v0.3.0-pre.cb2154ef7 · pk6/integra@cb2154ef7
+                  were built with  demo · catalog 81bd9fb7658719db · photos 9aa8af0d782b82ec
+     the DATASET  …/wt-v03/t-forno/instances/demo/dataset
+                  declares         demo · catalog c51b5e4b49324fa9 · photos 9aa8af0d782b82ec
+```
+
+**And the stamp is graded against its own directory first.** A comparison is worth exactly what the stamp is
+worth, and nothing upstream keeps the pointer in step with the bytes (`instances/demo/README.md` states the
+order of the day — *write → `check:dataset` → `pack:dataset` → mount* — and no test enforces it). So an edit
+without a re-pack is refused as **stale**, naming what the pointer declares against what the directory holds.
+`catalog.totalBytes` is exactly the sum of the files it lists, so this costs 26 `stat`s. It does **not**
+re-derive the content hash — that algorithm lives in the platform, and a second copy here would be a second
+source of one fact.
+
+Ask the same question by hand with `node bin/dataset-provenance.mjs`. A lock that **records no** `dataset` (one
+downloaded from a promoted release) is a *note*, never a refusal — a check that refuses what it cannot judge is
+a check people route around.
+
 ### The bench's addresses
 
 | face | address | serves |

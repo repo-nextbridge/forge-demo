@@ -40,6 +40,18 @@
     "checkout": "forge-demo-checkout@sha256:c14a691085270fc2abdd628d7eccf29365e3f50b36966c13380d394878fcab7e",
     "admin": "forge-demo-admin@sha256:f70da1634817d8f76df07204b31bd810325e6bfc100e527c23640dca7a0617c0"
   },
+  "dataset": {
+    "source": "instances/demo/dataset",
+    "id": "demo",
+    "catalog": {
+      "version": "81bd9fb7658719db",
+      "totalBytes": 41552643
+    },
+    "photos": {
+      "version": "9aa8af0d782b82ec",
+      "totalBytes": 3627725256
+    }
+  },
   "offerable": false,
   "why_not_offerable": "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer's app must never be handed to another. That is a property of what this box asked for, not a defect."
 }

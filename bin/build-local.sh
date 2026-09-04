@@ -135,6 +135,36 @@ BUILT_FROM="${branch}@${sha}${dirty}"
 # the tree had uncommitted changes, that claim is false and the cheapest honest thing is to say so IN the
 # value. `-dirty` is git's own convention (`git describe`), so it stays one token and one field.
 STAMP_SHA="${sha}${dirty:+-dirty}"
+
+# ★★ pk7/D2 — THE ONE INPUT OF THIS BOX THAT IS NOT INSIDE AN IMAGE IS RECORDED HERE INSTEAD.
+#
+# THE DEFECT (birth of 2026-09-03, `DIARIO-CAIXA-NOVA.md` F4): the box seeded from
+# `…/wt-v03/t-forno/instances/demo/dataset`, a worktree 166 commits behind the tree these images were baked
+# from, and came up GREEN with an empty stock panel — the feature was in the code, in the image and in the
+# tests, and absent from the DATA. 2 790 products from yesterday's checkout, and nothing said so.
+#
+# The dataset deliberately does NOT ride in the image: there is one `infra/Dockerfile`, so baking one
+# instance's shoe catalogue would bake it into EVERY customer's kernel — the exact defect
+# `scripts/publishing/instance-content.guard.test.ts` asserts against, in both directions. (Measured before
+# choosing: the directory is 40 MB, so size was never the obstacle. The boundary is.) So the dataset cannot be
+# PINNED here the way the four digests are — it is RECORDED, and `bin/box-up.sh` compares the record against
+# what the box mounts before it starts a single container.
+#
+# ⚠️ NOTHING IS STAMPED BY HAND. `forge-seed-dataset.json` already carries a content hash per payload
+# (`packages/seed-dataset/src/pointer.ts`, written by `pnpm pack:dataset`); this reads it where the images are
+# baked and copies it into the lock. `generatedAt` is left out on purpose — it is a clock, not content.
+dataset_pointer="$forge/instances/demo/dataset/forge-seed-dataset.json"
+if [ -f "$dataset_pointer" ]; then
+  dataset_json="$(jq --arg source 'instances/demo/dataset' \
+    '{source: $source, id, catalog: {version: .catalog.version, totalBytes: .catalog.totalBytes},
+      photos: {version: .photos.version, totalBytes: .photos.totalBytes}}' "$dataset_pointer")"
+else
+  # `null` is an ANSWER — "these images were baked alongside no example data" — and box-up treats it as one.
+  # An ABSENT key would mean "this lock is silent", which is a different thing and must not be forged here.
+  dataset_json='null'
+  echo "[build-local] no dataset at $dataset_pointer — the lock will record \`dataset: null\`." >&2
+fi
+
 if [ -z "$version" ]; then
   version="v$(jq -r '.version' "$forge/packages/contracts/package.json")-pre.${sha}"
 fi
@@ -195,6 +225,7 @@ jq -n \
   --arg storefront "$storefront_ref" \
   --arg checkout "$checkout_ref" \
   --arg admin "$admin_ref" \
+  --argjson dataset "$dataset_json" \
   --arg origin "local build" \
   --arg built_from "$BUILT_FROM" \
   --arg built_at "$BUILT_AT" \
@@ -212,6 +243,7 @@ jq -n \
     },
     composition: { id: $id, apps: $apps },
     images: { kernel: $kernel, storefront: $storefront, checkout: $checkout, admin: $admin },
+    dataset: $dataset,
     offerable: false,
     why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."
   }' > "$lock"
