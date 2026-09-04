@@ -282,6 +282,7 @@ jq -n \
     },
     composition: { id: $id, apps: $apps },
     images: { kernel: $kernel, storefront: $storefront, checkout: $checkout, admin: $admin },
+    extensions: [],
     dataset: $dataset,
     offerable: false,
     why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."

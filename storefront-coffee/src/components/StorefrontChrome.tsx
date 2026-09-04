@@ -25,12 +25,14 @@
 // nobody can point at. The setting is called "the store's header", so it is the store's, on every page of
 // it. Most merchants never fork; the reference vitrine IS their shop.
 //
-// ★ IT COSTS ONE READ AND THE READ IS ALREADY PAID. `storeChromeContent` is `cache()`d per request AND
-// ISR-cached at the port (see the kit), which is why it is legal on the edge-cacheable `c/[store]` tree that
-// mounts this same component.
+// ⛔ THE `chrome` PROP IS GONE, and with it the read this comment used to justify. `chrome_header` and
+// `chrome_footer` were REPLACE-the-whole-thing fields; the `chrome` APP (Identidade da loja) fills the same
+// regions in PARTS, per store, from Compose. The kit dropped the prop and the `chrome/store-chrome` subpath
+// in pk11/p3, so a fork that kept passing it stopped compiling — which is how THIS fork found out.
+// ★ The fork is the piece that does not inherit the platform's rules for free: the monorepo's typecheck is
+// green without it. Measured 2026-09-04, on the bake that produced this image.
 
 import { StorefrontChrome as KitChrome } from '@forgecommerce/storefront-kit/chrome';
-import { storeChromeContent } from '@forgecommerce/storefront-kit/chrome/store-chrome';
 import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { AccountLink } from '@/components/AccountLink';
@@ -71,7 +73,6 @@ export async function StorefrontChrome({
       <KitChrome
         store={store}
         base={base}
-        chrome={await storeChromeContent(store)}
         outlet={ExtensionOutlet}
         account={<AccountLink base={base} />}
         minicart={
