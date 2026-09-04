@@ -483,8 +483,14 @@ PYEOF
       esac
     fi
   done
-  put_env FORGE_STORE_HOSTS "'{${map%,}}'"
-  note "host → store map rebuilt · $(echo "$hosts" | wc -w) hostname(s)"
+  # ⚠️ COMPUTED HERE, WRITTEN LOWER DOWN — with the other three, AFTER the doors are claimed. Everything
+  # above this point is a read, and the claim below is the first thing that can prove this box was never
+  # born. If `.env` were already rewritten by then, the refusal would leave the box pointed at a tailnet it
+  # cannot serve: BIRTH rewrites FORGE_STORE_HOSTS but never FORGE_PUBLIC_ORIGIN, so the next
+  # `bash bin/box-up.sh` would mint every product-image URL on an origin no page is opened at — the exact
+  # mixed-content evening this file's own comment above records. A refusal has to leave nothing behind.
+  store_hosts_value="'{${map%,}}'"
+  store_hosts_count="$(echo "$hosts" | wc -w)"
 
   # ── the origin every front derives an address from ──────────────────────────────────────────────────────
   # ⚠️ THIS ONE IS NOT COSMETIC. The kernel's local media driver mints every product-image URL from
@@ -552,11 +558,6 @@ EOF
     sib_host=''
     sib_overrides='{}'
   fi
-  put_env FORGE_PUBLIC_ORIGIN "$origin"
-  put_env FORGE_GATE_ADMIN_URL "$gate_admin"
-  put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host" "$sib_overrides")'"
-  note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
-
   # ── the admin front doors, claimed THROUGH THE PORT ─────────────────────────────────────────────────────
   # `read.admin.by_host` keys on `host:port`, so each tenant's admin needs its own claim for each spelling of
   # the machine. `admin-host.js` drives the two platform commands `provision-ref` drives — it is not a second
@@ -567,8 +568,22 @@ EOF
   # an address that opens the login page and then cannot keep the session — the silent failure this slice
   # exists for. A stale front door is worse than no front door, so `--tailnet` removes every spelling it is
   # not claiming, and `--localhost` removes them all.
+  #
+  # ★★ AND WHAT IS RECORDED HERE IS WHAT THE DIRECTORY ACCEPTED — the block below prints from this list and
+  # from nothing else. Two defects of the birth of 03/09 (F2 and F7) are one defect of FORM: everything that
+  # SPOKE at the end of this promotion re-read `seed/box.json`, so the screen described what the box was
+  # ASKED to become instead of what it became. Measured on the bench, with the box torn down five minutes
+  # earlier: `0 claim(s) set`, both admin doors announced by tenant name, `edge → 200`, exit 0. The names came
+  # from the file; the directory held nothing. Then, with the box up but the loop reaching one tenant of two:
+  # `1 claim(s) set` — an honest count nobody compared with the two it expected — and both doors printed
+  # again, the second of which answers `unknown_admin_host` to the operator who types it.
   claimed=0
+  expected=0
   released=0
+  # "<tenant> <origin>", one line per door the directory really took, for the hostname a human types.
+  claimed_doors=''
+  # "<tenant> <authority>", one line per claim that did NOT take. Silence about these is what F7 was.
+  refused_doors=''
   # ⚠️ THE COUNT MEANS SOMETHING ONLY IF IT COUNTS REMOVALS. `admin-host.js remove` on a hostname nobody
   # claimed is not an error — it prints `<host>\tabsent` and exits 0 — so counting the EXIT STATUS would
   # report "4 released" on a virgin box that had nothing to release, which is the shape of a green that
@@ -588,7 +603,19 @@ EOF
       doors="$keep"
       [ "$keep" = "$h:$lport" ] || doors="$doors $h:$lport"
       if [ "$MODE" = tailnet ]; then
-        dc run --rm kernel node dist/admin-host.js set "$keep" "$t" >/dev/null 2>&1 && claimed=$((claimed + 1))
+        expected=$((expected + 1))
+        if dc run --rm kernel node dist/admin-host.js set "$keep" "$t" >/dev/null 2>&1; then
+          claimed=$((claimed + 1))
+          # Only the hostname is printed below: the tailnet IP is the same door by another name, and a
+          # second line for it would read as a second admin.
+          if [ "$h" = "$FORGE_TAILNET_HOST" ]; then
+            claimed_doors="$claimed_doors$t $(origin_for "$h" "$sch" "$prt" "$lport")
+"
+          fi
+        else
+          refused_doors="$refused_doors$t $keep
+"
+        fi
         for a in $doors; do
           [ "$a" = "$keep" ] && continue
           release_door "$a" && released=$((released + 1))
@@ -602,27 +629,78 @@ EOF
   done <<EOF
 $admin_doors
 EOF
-  note "admin directory · $claimed claim(s) set · $released released"
+  if [ "$MODE" = tailnet ]; then
+    # ⚠️ "OF $expected" IS THE WHOLE REPAIR OF THE COUNT. `1 claim(s) set` and `2 claim(s) set` read the same
+    # to a human scrolling past; a number is only gradeable next to the number it was supposed to be.
+    note "admin directory · $claimed of $expected claim(s) set · $released released"
+  else
+    note "admin directory · $claimed claim(s) set · $released released"
+  fi
+
+  # ── ★★ ZERO OF N IS A REFUSAL, NOT A SUCCESS (F2) ────────────────────────────────────────────────────────
+  # The promotion cannot claim a door for a tenant that does not exist, so "not one of them took" has exactly
+  # one common cause: this box was never born. Everything below this line — the doors, the recreate, the
+  # health check — would go on describing a box that is not there, and `edge → 200` only proves the KERNEL is
+  # up, which it is on a box with no tenants at all. That green is what sent an operator away believing the
+  # promotion happened.
+  if [ "$MODE" = tailnet ] && [ "$expected" -gt 0 ] && [ "$claimed" -eq 0 ]; then
+    die "not one of the $expected admin door(s) could be claimed — this box has not been born yet.
+     Run \`bash bin/box-up.sh\` first, then promote it with \`bash bin/box-up.sh --tailnet\`.
+     (The tenant names this script knows come from seed/box.json, which is what the box is MEANT to hold.
+     The admin directory is what it really holds, and it holds none of them — so nothing was printed.
+     Nothing was WRITTEN either: this box's .env is exactly as it was before this command.)"
+  fi
+
+  # ── the four values a front reads at BOOT, written now that the claims have answered ─────────────────────
+  # ⚠️ THEY ARE THE LAST WRITE OF THE PROMOTION AND THAT ORDER IS DELIBERATE (see the map above): everything
+  # before this line is a read or a claim, so the refusal a few lines up is atomic.
+  put_env FORGE_STORE_HOSTS "$store_hosts_value"
+  put_env FORGE_PUBLIC_ORIGIN "$origin"
+  put_env FORGE_GATE_ADMIN_URL "$gate_admin"
+  put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host" "$sib_overrides")'"
+  note "host → store map rebuilt · $store_hosts_count hostname(s)"
+  note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
 
   # ── ★ THE DOORS, PRINTED — because the port an operator has to type CHANGED ──────────────────────────────
   # The promotion already prints `$origin` a few lines down, so this adds no class of value to a scrollback
   # that the block below does not. What it adds is the one fact nobody can derive by looking: after this
   # change the admin is NOT on `:${FORGE_ADMIN_HTTP_PORT:-8201}` over the tailnet, it is wherever `tailscale
   # serve` publishes it — and an operator who types yesterday's address gets a login page that refuses.
+  #
+  # ⛔ AND IT PRINTS `$claimed_doors`, NOT `$admin_doors`. It used to re-read the same here-doc the claim loop
+  # read, from the start — so it listed every door `seed/box.json` DECLARES whatever the directory answered.
+  # A door in this list is a promise that a browser opening it reaches an admin that will hold a session; the
+  # only thing that can make that promise true is the claim having been accepted, so the claim is what speaks.
+  promotion_status=0
   if [ "$MODE" = tailnet ]; then
     say 'the doors, as a browser opens them'
     note "vitrine   $origin"
-    while read -r t lport sch prt; do
+    while read -r t door; do
       [ -n "${t:-}" ] || continue
-      [ "$sch" = '-' ] && sch=''
-      [ "$prt" = '-' ] && prt=''
-      note "admin     $(origin_for "$FORGE_TAILNET_HOST" "$sch" "$prt" "$lport")   ($t)"
+      note "admin     $door   ($t)"
     done <<EOF
-$admin_doors
+$claimed_doors
 EOF
     tsch="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 1)"
     tprt="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 2)"
     note "totem     $(origin_for "$FORGE_TAILNET_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
+
+    # ── ★★ AND WHAT IS MISSING FROM THAT LIST IS SAID OUT LOUD (F7) ───────────────────────────────────────
+    # A tenant simply absent from the block above is not a message: nobody counts admins in a terminal. The
+    # refused doors get their own heading and their own names, and the run does not exit 0 — a promotion that
+    # left one brand's admin unreachable is not a promotion that worked, and every wrapper reads the status
+    # before it reads the prose.
+    if [ -n "$refused_doors" ]; then
+      promotion_status=1
+      say "⚠️ INCOMPLETE — $claimed of $expected admin door(s) claimed"
+      while read -r t door; do
+        [ -n "${t:-}" ] || continue
+        note "REFUSED   $door   ($t) — its admin will answer \`unknown_admin_host\` to a login"
+      done <<EOF
+$refused_doors
+EOF
+      note 'Re-run the promotion once the box is whole; `bash bin/box-up.sh` is idempotent.'
+    fi
   fi
 
   # ── the containers that read all of the above at BOOT ───────────────────────────────────────────────────
@@ -638,8 +716,15 @@ EOF
   done
   [ "${code:-}" = 200 ] || die "the kernel never answered $origin/health (last: ${code:-none})."
   note "edge $origin/health → 200"
+  # ⚠️ `edge → 200` IS THE LAST GREEN LINE AND IT PROVES THE LEAST — the kernel answers `/health` on a box
+  # with no tenant at all. So the run repeats its own verdict here, where the eye lands, and carries it in the
+  # STATUS: a promotion that could not claim every door exits 1 even though every other step worked.
+  if [ "$promotion_status" -ne 0 ]; then
+    printf '\n[box-up] the promotion is INCOMPLETE: %s of %s admin door(s) claimed. See the REFUSED line(s) above.\n' \
+      "$claimed" "$expected" >&2
+  fi
   printf '\n' >&2
-  exit 0
+  exit "$promotion_status"
 fi
 
 # ── 1 · the data tier ───────────────────────────────────────────────────────────────────────────────────────

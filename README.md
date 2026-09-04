@@ -162,6 +162,18 @@ click bounces back to `/login`; over `https://<tailnet>:8443` — the address `s
 admin directory held no claim, so the login refused with `unknown_admin_host`. Publish nothing (or run this
 where `tailscale` cannot be read) and it falls back to the direct ports, which is what it always did.
 
+⚠️ **It refuses on a box that was never born, and it announces only the doors it really claimed.** `--tailnet`
+is a promotion, not a step of the birth, so it is easy to run first — and it used to print the whole green
+summary anyway: both admins listed *by tenant name read from `seed/box.json`*, `edge → 200`, exit 0, with
+`0 claim(s) set` buried among the green lines. Measured on the birth of 03/09, five minutes after the box was
+torn down. The same evening, with the box up, the claim loop reached one tenant of two — and the door block,
+re-reading the same file, printed both. So the count is now stated against what it expected
+(`admin directory · 2 of 4 claim(s) set`), **zero of N is a refusal** that names `bash bin/box-up.sh` and
+writes *nothing* to `.env` (the refusal is atomic on purpose: birth rewrites `FORGE_STORE_HOSTS` and never
+`FORGE_PUBLIC_ORIGIN`, so a half-promoted box would be born minting image URLs on an origin no page is opened
+at), the door block prints only the doors **the admin directory accepted**, and a promotion that claimed some
+and not others lists the rest under `⚠️ INCOMPLETE` and exits non-zero.
+
 ### Step 10 has two halves, the second in a `finally` — and it must run inside the silence
 
 `seed-history` refuses to run when a tenant has **more than one active delivery method** — it will not pick

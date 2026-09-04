@@ -100,7 +100,9 @@ test('★★ A15 — the promotion exists, is opt-in, and refuses to run without
 });
 
 test('★★ A15 — the promotion is idempotent: every .env value is REWRITTEN, never appended', () => {
-  const block = BOX_UP.match(/if \[ "\$MODE" != birth \]; then([\s\S]*?)\n  exit 0\nfi/);
+  // The block ends at its own `exit`, whatever that exit now carries — pk7·D1 made it a variable, because a
+  // promotion that claimed one door of two must not exit 0.
+  const block = BOX_UP.match(/if \[ "\$MODE" != birth \]; then([\s\S]*?)\n  exit [^\n]+\nfi/);
   assert.ok(block, 'the promotion block moved — re-read this guard before believing it.');
   // Anti-vacuity: the block has to be the real thing, not an empty branch.
   assert.ok(block[1].length > 1000, `the promotion block parsed to ${block[1].length} characters.`);
@@ -276,7 +278,17 @@ const SERVE_PUBLISHING = JSON.stringify({
 /** An operator who never ran `tailscale serve` — the case that must keep behaving exactly as it always did. */
 const SERVE_NOTHING = JSON.stringify({ TCP: {}, Web: {} });
 
-function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true }) {
+/** ★★ THE CLAIM THAT DOES NOT TAKE, WHICH IS THE ONLY WAY THE PROMOTION EVER LIES (pk7·D1).
+ *
+ *  `admin-host.js set <door> <tenant>` fails when the tenant is not there — which is precisely what a box
+ *  that was never born looks like from up here. Until this option existed the stub said yes to everything,
+ *  so every test in this file measured the happy path and the two defects of 03/09 (a green promotion on an
+ *  EMPTY box, and a screen listing a door the directory refused) could not be written down.
+ *
+ *  `setFails` holds shell glob patterns matched against the whole compose command line; `['*']` fails them
+ *  all, `['*forgecafe*']` fails one tenant's.
+ */
+function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFails = [], expectStatus = 0 }) {
   const dir = mkdtempSync(join(tmpdir(), 'forge-promotion-'));
   const stub = join(dir, 'stub');
   const log = join(dir, 'docker.log');
@@ -307,7 +319,21 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true }) {
   // READ-ONLY, and the stub proves it: anything but `serve status` exits non-zero, so a promotion that tried
   // to CONFIGURE the network would fail here rather than pass quietly.
   sh('tailscale', `[ "$1 $2" = "serve status" ] || exit 64\ncat <<'JSONEOF'\n${serve}\nJSONEOF\n`);
-  sh('docker', `printf '%s\\n' "$*" >> "$DOCKER_LOG"\nexit 0\n`);
+  sh(
+    'docker',
+    // ⚠️ `set -f` IS LOAD-BEARING. `for pat in $STUB_SET_FAILS` is an unquoted expansion, so without noglob
+    //    the pattern `*` is PATHNAME-expanded to the files of the working directory and matches nothing —
+    //    measured: the stub said yes to every claim while this file believed it was failing them all.
+    //    `case` keeps pattern-matching under `set -f`; only filename expansion is off.
+    `set -f\nprintf '%s\\n' "$*" >> "$DOCKER_LOG"\n` +
+      `case "$*" in\n` +
+      `  *"admin-host.js set"*)\n` +
+      `    for pat in \${STUB_SET_FAILS:-}; do\n` +
+      `      case "$*" in $pat) exit 1;; esac\n` +
+      `    done ;;\n` +
+      `esac\n` +
+      `exit 0\n`,
+  );
   sh(
     'curl',
     `case " $* " in *" -w "*) printf 200; exit 0;; esac\n` +
@@ -315,6 +341,7 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true }) {
   );
 
   let stdout = '';
+  let status = 0;
   try {
     // `2>&1` on purpose: `note`/`say` write to stderr, and what the operator READS is one stream.
     stdout = execFileSync('bash', ['-c', `bash ${JSON.stringify(join(dir, 'bin/box-up.sh'))} --${mode} 2>&1`], {
@@ -325,13 +352,22 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true }) {
         PATH: `${stub}:${process.env.PATH}`,
         FORGE_DOCKER_SH: 'bash -c',
         DOCKER_LOG: log,
+        STUB_SET_FAILS: setFails.join(' '),
         STUB_HTTPS_OK: httpsProbeOk ? '1' : '0',
         COMPOSE_PROJECT_NAME: 'forge-promotion-guard',
       },
     });
   } catch (error) {
-    throw new Error(`the promotion exited ${error.status}:\n${error.stdout ?? ''}${error.stderr ?? ''}`);
+    stdout = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    status = error.status ?? -1;
   }
+  // ★ THE EXIT STATUS IS GRADED, NOT SWALLOWED. `BOXUP=0` on a promotion that claimed nothing is half of the
+  //   03/09 defect — an operator (and any script wrapping this) reads the status before the prose.
+  assert.equal(
+    status,
+    expectStatus,
+    `the promotion exited ${status}, expected ${expectStatus}:\n${stdout}`,
+  );
 
   const env = Object.fromEntries(
     readFileSync(join(dir, '.env'), 'utf8')
@@ -344,8 +380,11 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true }) {
     .filter((l) => l.includes('admin-host.js'))
     .map((l) => l.slice(l.indexOf('admin-host.js') + 'admin-host.js'.length).trim());
   rmSync(dir, { recursive: true, force: true });
-  return { env, calls, stdout };
+  return { env, calls, stdout, status };
 }
+
+/** The admin doors this run ANNOUNCED, as `host:port` — the block a human reads to know what to type. */
+const announcedDoors = (stdout) => [...stdout.matchAll(/^\s*admin\s+https?:\/\/([^\s/]+)/gm)].map((m) => m[1]);
 
 test('★★★ pk6·D2 — `--tailnet` claims the PUBLISHED door, not the internal port', () => {
   const { env, calls, stdout } = runPromotion({ mode: 'tailnet', serve: SERVE_PUBLISHING });
@@ -431,4 +470,121 @@ test('★★ pk6·D2 — `--localhost` releases BOTH spellings and puts the box 
   assert.equal(env.FORGE_GATE_ADMIN_URL, '');
   const siblings = JSON.parse(env.FORGE_ADMIN_SIBLINGS.replace(/^'|'$/g, ''));
   assert.deepEqual(siblings.map((s) => s.url).sort(), ['http://localhost:8201', 'http://localhost:8202']);
+});
+
+// ── pk7·D1 · THE SUMMARY IS DERIVED FROM WHAT WAS DONE, NEVER FROM WHAT WAS ASKED ─────────────────────────
+//
+// ⛔ TWO DEFECTS OF THE BIRTH OF 03/09, AND THEY ARE ONE DEFECT OF FORM. Both blocks that speak at the end of
+// the promotion read `seed/box.json` again instead of reading what the run achieved:
+//
+//   F2 — `--tailnet` on a box that had just been TORN DOWN printed the whole green summary and exited 0:
+//        `admin https://<tailnet>:8443 (forgeco)`, `admin https://<tailnet>:8444 (forgecafe)`,
+//        `edge → 200`, `BOXUP=0` — with `admin directory · 0 claim(s) set · 0 released` buried among the
+//        green lines. The two tenant names came from the file; the directory held nothing. An operator who
+//        ran the runbook out of order left believing the box was promoted.
+//
+//   F7 — the claim loop ended after ONE tenant (`docker compose run` was draining the here-doc; fixed in
+//        pk6·D2's sibling slice) and the door block, re-reading the same here-doc from the start, printed
+//        BOTH doors anyway. The counter said 1 and was RIGHT — nobody compared it with the two it expected,
+//        and the screen derived from the other source.
+//
+// So: zero of N is a refusal, a partial claim is loud and non-zero, and the door block prints the doors the
+// DIRECTORY ACCEPTED. These three tests are the only ones in this file where a claim is allowed to fail.
+
+test('★★★ pk7·D1 — a box that was never born REFUSES the promotion instead of printing a green summary', () => {
+  // Every `set` fails, which is what an empty directory does: the tenants those doors point at do not exist.
+  const { env, calls, stdout, status } = runPromotion({
+    mode: 'tailnet',
+    serve: SERVE_PUBLISHING,
+    setFails: ['*'],
+    expectStatus: 1,
+  });
+
+  assert.ok(calls.some((c) => c.startsWith('set ')), 'the promotion never even tried to claim — this test is measuring nothing.');
+  assert.notEqual(status, 0, 'a promotion that claimed nothing exited 0.');
+  assert.match(
+    stdout,
+    /has not been born/i,
+    `the refusal does not say what is wrong. The operator ran the runbook out of order and the only honest ` +
+      `sentence is "this box has not been born yet":\n${stdout}`,
+  );
+  assert.match(stdout, /bin\/box-up\.sh/, 'the refusal never names the command that fixes it.');
+  assert.deepEqual(
+    announcedDoors(stdout),
+    [],
+    `the promotion announced admin doors that answer for no tenant:\n${stdout}`,
+  );
+  assert.doesNotMatch(
+    stdout,
+    /health → 200/,
+    'the run reached its green health line. `edge → 200` after zero claims is the sentence that made F2 read as success.',
+  );
+
+  // ★★ AND THE REFUSAL IS ATOMIC. A `--tailnet` that refuses must leave `.env` untouched, because BIRTH
+  //    rewrites FORGE_STORE_HOSTS and NEVER rewrites FORGE_PUBLIC_ORIGIN: a half-promoted box would then be
+  //    born on localhost while the kernel minted every product-image URL on a tailnet origin. Silent, and
+  //    the same mixed-content evening the promotion's own comments record.
+  assert.equal(
+    env.FORGE_PUBLIC_ORIGIN,
+    'http://localhost:8200',
+    'the refused promotion re-pointed FORGE_PUBLIC_ORIGIN at a network this box cannot serve.',
+  );
+  assert.equal(
+    env.FORGE_STORE_HOSTS,
+    `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
+    'the refused promotion rewrote the host → store map.',
+  );
+  assert.ok(!('FORGE_GATE_ADMIN_URL' in env), 'the refused promotion wrote FORGE_GATE_ADMIN_URL.');
+  assert.ok(!('FORGE_ADMIN_SIBLINGS' in env), 'the refused promotion wrote FORGE_ADMIN_SIBLINGS.');
+});
+
+test('★★★ pk7·D1 — two tenants claimed means two doors printed, and the count says two of two', () => {
+  const { calls, stdout } = runPromotion({ mode: 'tailnet', serve: SERVE_PUBLISHING });
+  const tenants = JSON.parse(read('seed/box.json')).tenants.map((t) => t.id);
+  assert.ok(tenants.length >= 2, 'seed/box.json declares fewer than two tenants — there is nothing to compare.');
+
+  for (const t of tenants) {
+    assert.ok(
+      calls.includes(`set ${FAKE_TAILNET_HOST}:${t === tenants[0] ? 8443 : 8444} ${t}`),
+      `${t}'s door was not claimed on the published port. Calls:\n  ${calls.join('\n  ')}`,
+    );
+  }
+  assert.deepEqual(
+    announcedDoors(stdout).sort(),
+    [`${FAKE_TAILNET_HOST}:8443`, `${FAKE_TAILNET_HOST}:8444`],
+    `the door block does not print exactly the two doors that were claimed:\n${stdout}`,
+  );
+  // The count is stated against the number EXPECTED — a bare "1 claim(s) set" is a number nobody can grade.
+  assert.match(
+    stdout,
+    /admin directory · \d+ of \d+ claim\(s\) set/,
+    `the claim count is not stated against what was expected, so "1" and "2" read the same:\n${stdout}`,
+  );
+});
+
+test('★★★ pk7·D1 — a door the directory REFUSED is not announced, and the run does not exit 0', () => {
+  // The second tenant's claim fails; the first's holds. This is F7's shape with the here-doc bug repaired:
+  // the loop reaches both, and only one of them takes.
+  const { calls, stdout, status } = runPromotion({
+    mode: 'tailnet',
+    serve: SERVE_PUBLISHING,
+    setFails: ['*forgecafe*'],
+    expectStatus: 1,
+  });
+
+  assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8443 forgeco`), `the tenant that CAN be claimed was not. Calls:\n  ${calls.join('\n  ')}`);
+  assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8444 forgecafe`), `the loop never reached the second tenant. Calls:\n  ${calls.join('\n  ')}`);
+
+  assert.deepEqual(
+    announcedDoors(stdout),
+    [`${FAKE_TAILNET_HOST}:8443`],
+    `the promotion announced a door the directory refused. That address opens a login page and then answers ` +
+      `\`unknown_admin_host\` — the silent failure this whole block exists to kill:\n${stdout}`,
+  );
+  assert.match(
+    stdout,
+    /forgecafe/,
+    `the refused tenant is not named anywhere. Missing from the door list is not a message:\n${stdout}`,
+  );
+  assert.notEqual(status, 0, 'a promotion that claimed one door of two exited 0.');
 });
