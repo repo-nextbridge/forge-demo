@@ -1,5 +1,9 @@
 {
   "forgeVersion": "v0.3.0-pre.48cba8b22",
+  "node": {
+    "minMajor": 24,
+    "engines": ">=24"
+  },
   "provenance": {
     "origin": "local build",
     "built_from": "pk7/integra@48cba8b22",
