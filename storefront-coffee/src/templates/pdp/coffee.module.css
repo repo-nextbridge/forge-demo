@@ -87,11 +87,18 @@
   color: color-mix(in srgb, var(--color-ink) 42%, transparent);
 }
 
+/* ⚠️ `max-width` HERE IS ALSO THE PHOTO'S REQUESTED WIDTH. `PdpCoffee.tsx` hands `MediaImage` a `width` and
+   a `sizes` stating this same number, because those are what a responsive srcset is chosen against: leave
+   them behind when this grows and the browser takes the SMALLER file and stretches it — a blur whose cause
+   lives in another file. `bin/pdp-shot-width.guard.mjs` fails when the two stop agreeing, and carries the
+   one measurement that keeps the claim honest: on the bench of 2026-09-04 the two props are INERT (the shot
+   renders as a plain <img>, no srcset), so this is the call site's declared intent kept correct in advance,
+   not a live symptom. */
 .shot {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
-  max-width: 360px;
+  max-width: 400px;
   position: relative;
   margin: 0 auto;
   display: flex;
@@ -118,7 +125,9 @@
 
 /* ── The buy box ────────────────────────────────────────────────────────────────────────────────────────── */
 .panel {
-  flex: 1 1 380px;
+  /* The buy box starts as wide as the photo beside it. The `max-width` below is a different question — it is
+     the ceiling when there is room to spare — and growing the basis does not move it. */
+  flex: 1 1 400px;
   max-width: 490px;
   align-self: flex-start;
   background: var(--color-canvas-soft);

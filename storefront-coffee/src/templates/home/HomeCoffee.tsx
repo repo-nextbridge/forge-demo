@@ -276,7 +276,7 @@ export function HomeCoffee({ base, products, reviews, rating, slots }: HomeCoffe
             <div className={styles.step}>
               <div className={styles.seal}>
                 <span className={styles.sealBig}>10%</span>
-                <span className={styles.sealSmall}>de desconto</span>
+                <span className={styles.sealSmall}>OFF</span>
               </div>
               <div className={styles.stepNumber}>01</div>
               <div className={styles.stepTitle}>Escolha seu café</div>

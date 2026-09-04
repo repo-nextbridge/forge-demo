@@ -22,8 +22,13 @@ import { HomeCoffee } from '@/templates/home/HomeCoffee';
  *  number is a ceiling on the design rather than a page size: a seventh coffee appears here or nowhere. */
 const HOME_PRODUCTS = 24;
 
-/** The wall's page. The export refuses anything above its own ceiling of 100 rather than clamping. */
-const WALL_REVIEWS = 24;
+/** How many reviews the wall shows. The export refuses anything above its own ceiling of 100 rather than
+ *  clamping, so this is a page size and not a request for "all of them" — and 12 is a DESIGN number, chosen
+ *  by looking at the page: 24 filled the home with testimony and pushed everything below the wall out of
+ *  reach. This is the fork's own file, so a fixed number with a name and a reason is the right shape here.
+ *  ⚠️ Not to be confused with `HOME_PRODUCTS` above: that one is a ceiling on the CATALOGUE, this one is a
+ *  page size on a list that is meant to be partial. */
+const WALL_REVIEWS = 12;
 
 export async function homeMetadata(store: string): Promise<Metadata> {
   const flags = await readClient().storeFlags(store);

@@ -143,8 +143,12 @@ export function PdpCoffee({ product, reviews, rating, addLine, slots }: PdpCoffe
                     src={coverSrc.url}
                     providerKey={coverSrc.providerKey}
                     alt={cover.alt ?? product.title}
-                    width={360}
-                    sizes="(max-width: 900px) 70vw, 360px"
+                    // ★ THE SAME NUMBER AS `.shot`'s `max-width` IN `coffee.module.css`, and it has to be:
+                    // this pair is what a responsive srcset is chosen against, so a CSS box that grew past
+                    // them makes the browser take the smaller file and scale it up. Guarded, because the
+                    // symptom (a soft photo) and the cause (a stylesheet) sit in different files.
+                    width={400}
+                    sizes="(max-width: 900px) 70vw, 400px"
                     priority
                   />
                 ) : null}

@@ -319,11 +319,23 @@
   font-size: 26px;
 }
 
+/* ★ "OFF" IS THE SAME SIZE AS THE "10%", so it COMPOSES the line above instead of restating 26px: two
+   numbers that must agree are better written as one.
+   ⚠️ THE BADGE DOES NOT GROW — `.seal` is a fixed `clamp(78px, 8vw, 96px)` circle — so growing the type by
+   2.7x is only safe if it was MEASURED against the narrowest circle. It was, in the serif this box actually
+   resolves (`--font-display` is never defined, so Georgia falls through to the system serif):
+     · "10%" 52.4px and "OFF" 50.0px at 26px with no tracking; the circle's chord where those lines sit
+       (y = ±23px of a r=39 circle) is 63px. ~5px of air per side at the smallest size.
+     · "OFF" KEEPING the old `letter-spacing: 0.14em` measures 60.9px against that same 63px chord — 1px.
+       That is why the tracking goes: it existed to give weight to 9.5px type, and at 26px it is the
+       difference between fitting and touching the border.
+     · "10% OFF" on ONE line measures 109.1px and cannot fit a 96px circle at any of these sizes, which is
+       what rules out the single-line arrangement rather than taste.
+   The stack also loses its `margin-top` for the same reason: the box is fixed, so the type is what gives. */
 .sealSmall {
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
+  composes: sealBig;
   text-transform: uppercase;
-  margin-top: 3px;
+  margin-top: 0;
 }
 
 .freqPills {
