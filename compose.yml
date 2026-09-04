@@ -122,6 +122,13 @@ services:
       FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
       FORGE_RATE_LIMIT_PER_CREDENTIAL: ${FORGE_RATE_LIMIT_PER_CREDENTIAL:-}
       FORGE_RATE_LIMIT_WINDOW_SECONDS: ${FORGE_RATE_LIMIT_WINDOW_SECONDS:-}
+      # ★★ 04/09 — THE ANONYMOUS WRITE FACE'S CEILING, and it is here because a knob the compose does not
+      # forward is a knob that does nothing WITHOUT SAYING SO. `pk7/p1` gave this ceiling an env on the
+      # kernel; setting it in `.env` moved nothing until this line existed, and the kernel came up on the
+      # default while the operator believed otherwise — the same shape as the refusal that used to name the
+      # wrong button. Empty here means the kernel's own default (30/60s), which is what production wants.
+      FORGE_PUBLIC_WRITE_LIMIT_PER_IP: ${FORGE_PUBLIC_WRITE_LIMIT_PER_IP:-}
+      FORGE_PUBLIC_WRITE_WINDOW_SECONDS: ${FORGE_PUBLIC_WRITE_WINDOW_SECONDS:-}
     volumes:
       # Our extensions, read-only: the kernel loads this code, it never writes it.
       - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
