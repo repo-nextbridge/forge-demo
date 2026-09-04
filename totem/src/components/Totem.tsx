@@ -82,14 +82,30 @@ type Screen = 'menu' | 'cart' | 'identify' | 'terminal' | 'pix' | 'done';
 
 type Paid = { outcome: PosOutcome; orderNumber: number; buyerName: string; bag: Bag };
 
+/**
+ * ★★ THE ORDER THIS BROWSER LEFT BEHIND — pk9/d1 (04/09), and the whole of it is one sentence on the glass.
+ *
+ * Present only when the cart behind the cookie already landed an order, which on a kiosk means exactly one
+ * thing: somebody RELOADED the page instead of letting the till go home. Both fields are the port's own —
+ * `number` is what the barista calls out and `awaitingPayment` is `display_status`, never a guess (page.tsx).
+ *
+ * ⚠️ THE TWO STATES ARE DIFFERENT INSTRUCTIONS, which is why it is not a boolean "something happened". A PAID
+ * order needs nothing from anybody and the line exists only so the person who reloaded is not left wondering.
+ * An order still AWAITING PAYMENT is a real order this screen can no longer settle — its provider ref lived
+ * in the component's state and the reload destroyed it — so the only honest thing to say is: call somebody.
+ */
+export type PreviousOrder = { number: number; awaitingPayment: boolean };
+
 export function Totem({
   initialMenu,
   initialBag,
   idleSeconds,
+  previousOrder = null,
 }: {
   initialMenu: Menu;
   initialBag: Bag;
   idleSeconds: number;
+  previousOrder?: PreviousOrder | null;
 }) {
   const [menu, setMenu] = useState(initialMenu);
   const [bag, setBag] = useState(initialBag);
@@ -687,6 +703,18 @@ export function Totem({
                 <div className={styles.attractCopy}>
                   <div className={styles.attractTitle}>Toque para começar</div>
                   <div className={styles.attractKicker}>auto atendimento</div>
+                  {/* ★★ pk9/d1 — the reload's only trace, said out loud. See `PreviousOrder`. */}
+                  {previousOrder ? (
+                    <div
+                      className={styles.attractPrevious}
+                      role="status"
+                      data-testid="previous-order"
+                    >
+                      {previousOrder.awaitingPayment
+                        ? `O pedido ${previousOrder.number} foi registrado mas ainda não foi pago. Chame um atendente antes de começar outro.`
+                        : `O pedido ${previousOrder.number} foi registrado e pago. Toque para começar um novo.`}
+                    </div>
+                  ) : null}
                 </div>
                 <div className={styles.attractShots}>
                   {sections

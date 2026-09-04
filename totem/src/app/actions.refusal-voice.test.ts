@@ -51,6 +51,7 @@ vi.mock('@/lib/store', () => ({
 }));
 vi.mock('@/lib/cart', () => ({
   ensureCartId: vi.fn().mockResolvedValue('cart_test'),
+  cartForThisCustomer: vi.fn().mockResolvedValue('cart_test'),
   currentCartId: vi.fn().mockResolvedValue('cart_test'),
   startFresh: vi.fn().mockResolvedValue('cart_test'),
   endSession: vi.fn().mockResolvedValue(undefined),

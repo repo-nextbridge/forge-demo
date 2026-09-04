@@ -99,6 +99,15 @@
   color: rgba(243, 237, 227, 0.6);
 }
 
+.attractPrevious {
+  /* pk9/d1 — the line that tells whoever reloaded what became of their order. Narrow enough to read from
+     standing distance without competing with "Toque para começar" above it. */
+  max-width: 760px;
+  font-size: 24px;
+  line-height: 1.4;
+  color: rgba(243, 237, 227, 0.82);
+}
+
 .attractShots {
   position: relative;
   display: flex;

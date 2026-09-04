@@ -14,7 +14,7 @@
 // that fires twice for one tap is not waste, it is somebody's order refused. Measured; see `port.ts`.
 
 import { revalidatePath } from 'next/cache';
-import { endSession, ensureCartId, readCheckout } from '@/lib/cart';
+import { cartForThisCustomer, endSession, ensureCartId, readCheckout } from '@/lib/cart';
 import { couponRefusal } from '@/lib/coupon';
 import { prepareForPayment } from '@/lib/counter-order';
 import { readMenu } from '@/lib/menu';
@@ -104,7 +104,7 @@ async function withBag(
 
 export async function addItem(skuId: string, qty: number): Promise<BagResult> {
   const store = resolveTotemStore();
-  const cartId = await ensureCartId();
+  const cartId = await cartForThisCustomer();
   return withBag(() => totemCommand().addLine(store.id, cartId, skuId, qty), {
     action: 'addItem',
     store: store.id,
@@ -115,7 +115,7 @@ export async function addItem(skuId: string, qty: number): Promise<BagResult> {
 
 export async function changeQty(lineId: string, qty: number): Promise<BagResult> {
   const store = resolveTotemStore();
-  const cartId = await ensureCartId();
+  const cartId = await cartForThisCustomer();
   if (qty <= 0)
     return withBag(() => totemCommand().removeLine(store.id, cartId, lineId), {
       action: 'changeQty(0 → remove)',
@@ -133,7 +133,7 @@ export async function changeQty(lineId: string, qty: number): Promise<BagResult>
 
 export async function removeItem(lineId: string): Promise<BagResult> {
   const store = resolveTotemStore();
-  const cartId = await ensureCartId();
+  const cartId = await cartForThisCustomer();
   return withBag(() => totemCommand().removeLine(store.id, cartId, lineId), {
     action: 'removeItem',
     store: store.id,
@@ -151,7 +151,7 @@ export async function removeItem(lineId: string): Promise<BagResult> {
  */
 export async function applyCoupon(code: string): Promise<BagResult> {
   const store = resolveTotemStore();
-  const cartId = await ensureCartId();
+  const cartId = await cartForThisCustomer();
   const trimmed = code.trim();
   if (!trimmed) return { ok: true, bag: await currentBag() };
   // ⚠️ The code itself is NOT logged: a coupon a customer typed is the one string on this path that is
@@ -165,7 +165,7 @@ export async function applyCoupon(code: string): Promise<BagResult> {
 
 export async function removeCoupon(code: string): Promise<BagResult> {
   const store = resolveTotemStore();
-  const cartId = await ensureCartId();
+  const cartId = await cartForThisCustomer();
   return withBag(() => totemCommand().removeCoupon(store.id, cartId, code), {
     action: 'removeCoupon',
     store: store.id,
@@ -188,6 +188,13 @@ export type PayResult =
 export async function payWith(name: string, method: CounterMethod): Promise<PayResult> {
   const store = resolveTotemStore();
   try {
+    // ⚠️ `ensureCartId`, AND EVERY OTHER WRITE IN THIS FILE USES `cartForThisCustomer` — the difference is
+    // deliberate and is the pk9/d1 fix (04/09). This is the ONE path that must be allowed to reach a vessel
+    // that has already landed an order: `place_order` is sent with the cart id as its idempotency key, so a
+    // retry after a failed `payment.initiate` (the `rate_limited` branch below tells the customer to make
+    // exactly that retry) gets its own order back instead of starting a second one. A NEW customer never
+    // arrives here first — `readyToPay` demands a line in the bag — so the leniency cannot leak. The reason
+    // in full is on `cartForThisCustomer` in lib/cart.ts.
     const cartId = await ensureCartId();
     const prepared = await prepareForPayment(cartId, name);
     if (!prepared.ok)

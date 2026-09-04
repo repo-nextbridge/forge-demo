@@ -54,32 +54,112 @@ export async function currentCartId(): Promise<string | undefined> {
  * ⚠️ A READ BLIP MUST NOT THROW AWAY A LIVE BASKET, so a probe that FAILS reuses the pointer. The common case
  * is a healthy cart; losing a customer's order because one read timed out would be a worse defect than the
  * one this closes.
+ *
+ * ★★ AND IT READS `read.checkout`, NOT `read.cart`, BECAUSE `status` ALONE CANNOT ANSWER IT (pk9/d1, 04/09).
+ * The kernel's cart SURVIVES its own order — "the vessel does NOT die here: the order consumes its lines and
+ * the vessel keeps identity/buyer/address for the next voyage" (packages/core/src/commands/checkout.ts) — so
+ * a cart that has already become an order reads back `status: "active"` with zero lines. Measured against the
+ * live counter, seconds after a completed order:
+ *
+ *     GET /v1/read/cart?…      → {"status":"active","lines":[]}                     ← says nothing
+ *     GET /v1/read/checkout?…  → {"status":"active","lines":[],
+ *                                 "last_order_id":"ord_…","last_order_at":"…"}      ← says everything
+ *
+ * `last_order_id` is the only published fact that tells a landed vessel from a fresh one, and the kit's own
+ * `CartView` says so in prose. One read answers both questions, so the probe moved rather than doubled.
  */
-async function pointerStillUsable(cartId: string): Promise<boolean> {
+async function probePointer(
+  cartId: string,
+): Promise<{ writable: boolean; landedOrderId: string | null } | null> {
   const store = resolveTotemStore();
   try {
-    const cart = await totemRead().cart(store.id, cartId);
+    const view = await totemRead().checkout(store.id, cartId);
     // `null` is the port answering 404 — this store does not have that cart (foreign, swept, or from an
     // older box). Any status but `active` is a cart that `cart.add_line` would refuse anyway.
-    return cart !== null && cart.status === 'active';
+    if (view === null || view.status !== 'active') return { writable: false, landedOrderId: null };
+    return { writable: true, landedOrderId: view.last_order_id ?? null };
   } catch {
-    return true;
+    // The read blip. `null` means "the port did not answer", which is NOT the same as "the pointer is bad".
+    return null;
   }
 }
 
 /**
  * The cart id to write to, minting one if this is the first touch of a new customer — or if the pointer this
- * browser brought is not a cart this counter can write to. See `pointerStillUsable`.
+ * browser brought is not a cart this counter can write to. See `probePointer`.
+ *
+ * ⚠️ IT DELIBERATELY ACCEPTS A VESSEL THAT HAS ALREADY LANDED AN ORDER, and `cartForThisCustomer` below is
+ * the one that does not. The difference is the whole of the pk9/d1 fix — read it there before changing either.
  */
 export async function ensureCartId(): Promise<string> {
   const existing = await currentCartId();
-  if (existing && (await pointerStillUsable(existing))) return existing;
-  if (existing)
-    // The one line that says a customer's pointer was discarded. Without it this recovery is invisible, and
-    // an invisible recovery is how the NEXT version of A52 gets debugged from scratch.
-    console.error(
-      `[totem] discarding a cart pointer this counter cannot write to (cart=${existing}) — minting a fresh cart`,
-    );
+  if (!existing) return startFresh();
+  const probe = await probePointer(existing);
+  if (probe === null || probe.writable) return existing;
+  // The one line that says a customer's pointer was discarded. Without it this recovery is invisible, and
+  // an invisible recovery is how the NEXT version of A52 gets debugged from scratch.
+  console.error(
+    `[totem] discarding a cart pointer this counter cannot write to (cart=${existing}) — minting a fresh cart`,
+  );
+  return startFresh();
+}
+
+/**
+ * ★★ THE CART A CUSTOMER IS PUTTING ITEMS INTO — never the previous customer's spent vessel (pk9/d1, 04/09).
+ *
+ * ── THE DEFECT THE OWNER REPORTED, AND THE MEASUREMENT ────────────────────────────────────────────────────
+ *
+ * "se eu fizer um pedido e ir até o final e só recarregar a página … eu consigo começar outro pedido mas não
+ * terminar, vai até a parte de pagar mas quando aperto pagar dá um erro." The till's own container log, from
+ * the owner's session, five times over:
+ *
+ *     [totem] payWith refused by the port — payment.initiate · validation_failed: order not payable
+ *
+ * A RELOAD is the one way out of this flow that never reaches `resetCounter`: the cookie is httpOnly and
+ * survives, the React state does not, so the screen comes back on the attract panel holding the pointer of a
+ * cart that has ALREADY become an order. Reproduced end to end against the live counter:
+ *
+ *     cart.add_line   on the landed vessel                        → 200   (the kernel allows it: new voyage)
+ *     checkout.place_order, idempotency-key = the CART id         → 200, and the OLD order_id
+ *     payment.initiate on that order                              → 400 validation_failed
+ *                                                                   {"message":"order not payable",
+ *                                                                    "details":{"status":"paid"}}
+ *
+ * ── ⚠️ AND THE REFUSAL IS THE HARMLESS HALF. The port only says "not payable" when the first order was
+ * actually PAID. When it was placed and NOT paid — a customer who reloaded while the pix QR was on the glass —
+ * `payment.initiate` answers 200 and charges the WRONG ORDER. Measured, same box, same minute:
+ *
+ *     customer 1: one coffee   → order #223, total 3861, pending_payment
+ *     customer 2 (after the reload): three coffees, and read.checkout says total_amount 11583
+ *     tap "Pagar" → place_order replays #223 → payment_intent pay_…DE86Q4 amount 3861
+ *
+ * R$ 115,83 on the glass, R$ 38,61 charged, three coffees handed over against an order that says one, and
+ * customer 2's lines still sitting in the cart having never become an order at all.
+ *
+ * ── WHY THE IDEMPOTENCY KEY IS NOT THE THING TO FIX. `payWith` sends the cart id as `idempotency-key`, and
+ * the kernel stores those forever, keyed by (tenant, key), with no command name and no TTL
+ * (`command_idempotency`, PK on two columns). So the SAME cart can only ever produce ONE order through this
+ * till. That is correct for what the key is FOR — a retry after `payment.initiate` failed has to get its order
+ * back, which is exactly the `rate_limited` branch of `payWith` telling a customer to try again in N seconds.
+ * What is wrong is reaching that key with a NEW customer's basket. So the vessel is what gets refused, at the
+ * moment a new basket starts, and `ensureCartId` stays lenient for the pay path.
+ *
+ * ★ THE PAY PATH CAN NEVER BE THE FIRST WRITE OF A VOYAGE — the screen's own `readyToPay` demands
+ * `bag.count > 0`, so an item was added first, and this function already ran. That is what makes the split
+ * safe rather than merely convenient.
+ */
+export async function cartForThisCustomer(): Promise<string> {
+  const existing = await currentCartId();
+  if (!existing) return startFresh();
+  const probe = await probePointer(existing);
+  if (probe === null) return existing; // the read blip: never throw away a live basket over one timeout
+  if (probe.writable && probe.landedOrderId === null) return existing;
+  console.error(
+    probe.landedOrderId
+      ? `[totem] the cart pointer this browser brought has already landed order ${probe.landedOrderId} ` +
+          `(cart=${existing}) — that session ended; minting a fresh cart for the next customer`
+      : `[totem] discarding a cart pointer this counter cannot write to (cart=${existing}) — minting a fresh cart`,
+  );
   return startFresh();
 }
 
