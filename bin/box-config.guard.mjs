@@ -305,6 +305,10 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFai
   // would be measuring a box-up this repository does not ship. It passes here because `bin/test.sh` refuses
   // to run this suite on a node under the floor in the first place.
   writeFileSync(join(dir, 'bin/require-node.sh'), read('bin/require-node.sh'));
+  // ⚠️ AND THE PIN IT READS, because the floor is not typed anywhere any more: `require-node.sh` takes it
+  // from `forge.lock` (pk8/d2). A fixture without one would exercise the "this pin states no floor" branch
+  // — a real branch, but not the one a born box is on, and its notice would land in the output measured here.
+  writeFileSync(join(dir, 'forge.lock'), read('forge.lock'));
   writeFileSync(
     join(dir, '.env'),
     [

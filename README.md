@@ -108,18 +108,28 @@ floor and finished green. *It ran* is not *it is supported*, and nothing on the 
 [node] refusing to start: the node on this PATH is older than the Forge kernel supports.
        found     v22.22.3
        from      /home/you/.local/bin/node
-       required  node major >= …  (bin/require-node.sh)
+       required  node major >= …  (/path/to/forge.lock: node.minMajor)
 ```
 
 ⚠️ **A cron or a systemd unit has no node at all.** `env -i` with a minimal `PATH` finds neither `node` nor
 `pnpm`; only the nvm directory holds the compatible pair. The scheduled reset of this box runs in exactly that
 environment, so give the unit that directory before it runs any of this.
 
-`bin/require-node.sh` **owns the number** — read it there, it is stated once and its header says at length why
-this repository has to type it instead of deriving it from the product. `bin/build-local.sh` is the one script
-that is handed the monorepo, so it is where the two are reconciled: it refuses to bake images if the floor here
-and the monorepo's `engines.node` have drifted apart. `bin/node-floor.guard.mjs` proves the refusal by running
-it against fake `node` binaries in both directions, and proves the number is typed in exactly one tracked file.
+**The number is not this repository's.** It travels in `forge.lock`, the file this box pins the product with,
+as `node.minMajor` — the floor already resolved to a whole major, because everything that acts on it is a shell
+— next to `node.engines`, the range it was resolved from. `bin/require-node.sh` **reads** it and states nothing
+of its own; `bin/build-local.sh`, the one script here that is handed the monorepo, **stamps** it, through the
+product's own derivation (`infra/cicd/node-floor.sh`). Raising the floor is a release, not an edit here.
+
+⚠️ **A lock that states no floor is still a valid pin.** The field was added to an artifact that had already
+left the product's hands, and the lifecycle is forward-only, so a lock stamped by an older release simply does
+not answer the question. This box then says so and refuses nothing on account of it — it has no floor to check
+and will not invent one. Re-stamp the pin to get the check back.
+
+`bin/node-floor.guard.mjs` proves all of it by RUNNING the check: the same fake `node` against two locks with
+different floors, in both directions; a lock with no floor letting an ancient node through while saying so; a
+floor the lock states but a shell cannot grade being refused rather than rounded; and no tracked file here
+declaring a floor of its own.
 
 ### What `bin/box-up.sh` does, in order
 

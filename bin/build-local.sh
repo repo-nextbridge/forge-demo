@@ -49,30 +49,35 @@ command -v jq >/dev/null || {
   exit 1
 }
 
-# ── ★ THE NODE FLOOR, RECONCILED — the one moment this repository holds the product in its hands ─────────────
+# ── ★★ THE NODE FLOOR, DERIVED FROM THE PRODUCT AND STAMPED INTO THE PIN ─────────────────────────────────
 #
-# `bin/require-node.sh` has to TYPE the floor, and its header says at length why: the number lives in the
-# monorepo's root package.json and in no artifact this box receives — not in `forge.lock`, not in a published
-# `@forgecommerce/*` package, not in `templates/instance/`. A typed number is a second truth, and a second
-# truth ages in silence. This is the only script here that is handed the monorepo, so this is the only place
-# that can notice the day the product raises its floor — and it refuses rather than warns, because the images
-# this script bakes are the ones the box then runs for months.
-mono_engine="$(jq -r '.engines.node // empty' "$forge/package.json" 2>/dev/null || true)"
-mono_floor="$(printf '%s' "$mono_engine" | sed -n 's/^>=\([0-9][0-9]*\).*$/\1/p')"
-if [ -z "$mono_floor" ]; then
-  echo "[build-local] the monorepo's package.json does not declare engines.node as '>=<major>'" >&2
-  echo "              (it says: '${mono_engine:-<nothing>}'). bin/require-node.sh derives this box's" >&2
-  echo "              refusal from that shape; a shape it cannot read is a floor it cannot reconcile." >&2
+# Half of this box's birth runs on the HOST — the seeders are node processes on the operator's machine — so
+# the node that machine has is an input of the install, and something has to state which one. It used to be
+# TYPED here, in this repository, because the number lived in the monorepo's root package.json and in no
+# artifact this box receives. One number in two repositories is two truths that age apart in silence.
+#
+# This is the only script here that is handed the monorepo, so it is the only one that can put the release's
+# own floor into the pin — and that is now what it does, through the product's single derivation
+# (`infra/cicd/node-floor.sh`, the same one `infra/cicd/write-forge-lock.sh` stamps a promoted lock with).
+# Nothing here re-reads `engines.node`: a second `sed` over that string would be the drift all over again,
+# one file further down. `bin/require-node.sh` then reads `node.minMajor` out of the lock this writes.
+node_floor_sh="$forge/infra/cicd/node-floor.sh"
+[ -f "$node_floor_sh" ] || {
+  echo "[build-local] '$forge' has no infra/cicd/node-floor.sh." >&2
+  echo "              That file IS the product's answer to 'which node does this release need on the host?'," >&2
+  echo "              and the lock this script writes carries the answer to every box that pins it. A" >&2
+  echo "              checkout that predates it cannot state its own floor, and this repository must not" >&2
+  echo "              invent one on its behalf — that is the second truth this whole mechanism removed." >&2
+  echo "              Point this at a checkout that has it, or promote one." >&2
   exit 1
-fi
-if [ "$mono_floor" != "$FORGE_DEMO_NODE_MIN_MAJOR" ]; then
-  echo "[build-local] THE NODE FLOOR HAS DRIFTED, and this is the only place that can see it." >&2
-  echo "              the monorepo declares  engines.node = $mono_engine  (major $mono_floor)" >&2
-  echo "              this box declares      FORGE_DEMO_NODE_MIN_MAJOR=$FORGE_DEMO_NODE_MIN_MAJOR  (bin/require-node.sh)" >&2
-  echo "              Update bin/require-node.sh to $mono_floor and run this again. Building now would pin" >&2
-  echo "              images whose host requirement nothing on this box states correctly." >&2
-  exit 1
-fi
+}
+# shellcheck source=/dev/null
+. "$node_floor_sh"
+# `set -e` is what makes a floor the product cannot state stop the build: the derivation refuses (loudly, on
+# its own stderr) rather than guessing, and a lock with a WRONG floor is worse than a lock with none.
+node_range="$(forge_node_engines "$forge/package.json")"
+node_major="$(forge_node_min_major "$node_range")"
+echo "[build-local] host node floor: $node_range (major $node_major) — from $forge/package.json" >&2
 
 # THE LIST THE IMAGES ARE BAKED FROM. It is `composition.json` in THIS repo — and the build reads the COPY of
 # it that lives in the monorepo, because `apply-composition.ts` runs inside the build context and can only
@@ -250,6 +255,8 @@ admin_ref="$(build admin forge-demo-admin infra/admin.Dockerfile)"
 
 jq -n \
   --arg version "$version" \
+  --arg nodeEngines "$node_range" \
+  --argjson nodeMinMajor "$node_major" \
   --arg id "$composition_id" \
   --argjson apps "$(jq '[(.instanceApps // [] | .[].id), (.apps[].id)]' "$here/composition.json")" \
   --arg kernel "$kernel_ref" \
@@ -263,6 +270,7 @@ jq -n \
   --arg host "$(hostname)" \
   '{
     forgeVersion: $version,
+    node: { minMajor: $nodeMinMajor, engines: $nodeEngines },
     provenance: {
       origin: $origin,
       built_from: $built_from,
