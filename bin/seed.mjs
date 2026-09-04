@@ -45,7 +45,7 @@ import { createReadAll } from '../seed/paginate.mjs';
 // header carries the measurement (74 min against 11 for the same box) and the table of which path answers to
 // which bucket; the only thing this file does with it is ask which face a URL belongs to, and refuse to
 // guess when the answer is "none of them".
-import { FACES, createPacer, faceOf, ratesFromEnv } from '../seed/pacer.mjs';
+import { FACES, createPacer, faceOf, pacingWarnings, ratesFromEnv } from '../seed/pacer.mjs';
 // ⛔ THE STOCK POOL — products this brand OWNS and no store SELLS, which is what the demo's 180-day past is
 // built from. Imported here rather than folded into `products()` above because that function's next act is
 // `publish()`, and publishing one of these is exactly the mistake the pool exists to avoid.
@@ -241,6 +241,7 @@ const rates = (() => {
   }
 })();
 const pacer = createPacer(rates);
+for (const warning of pacingWarnings(rates)) log(warning);
 
 /**
  * One HTTP call to the kernel, paced on ITS OWN face, with the 429 net behind the pacer.
@@ -276,7 +277,10 @@ async function paced(url, init, describe) {
           `  ${spec.label}.\n` +
           `  The ceiling that refused is ${spec.bucket}.\n` +
           `  This seed's pace for that face is ${rates[face]}/s; lower it with ${spec.knob}=<n>.\n` +
-          '  ⚠️ Lowering another face\'s knob will not help: the three faces have three buckets.',
+          '  ⚠️ Lowering another face\'s knob will not help: the three faces have three buckets.\n' +
+          // What the run had already spent when it died, per face. A refusal that names the face and then
+          // makes the reader guess how many calls got there is half an answer.
+          `  ${pacer.summary()}`,
       );
     }
     const after = Number(res.headers.get('retry-after'));

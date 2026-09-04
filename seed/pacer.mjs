@@ -144,6 +144,33 @@ export function ratesFromEnv(env = process.env) {
 }
 
 /**
+ * ★★ THE HABIT THIS KNOB IS ABOUT TO TEACH, SAID OUT LOUD BEFORE IT COSTS AN HOUR AGAIN.
+ *
+ * `FORGE_SEED_RATE_PER_SECOND` used to pace EVERY face, so the way past the 429 of 2026-09-03 was to export
+ * it at 0,5 — and that is what the 74-minute birth was. It now paces the CREDENTIAL face alone, where 0,5/s
+ * buys nothing and costs everything: the next operator to reach for the same fix out of memory would restore
+ * the whole defect with the whole cure removed, and the run would look exactly as it should.
+ *
+ * ⚠️ IT WARNS, IT DOES NOT REFUSE. A box may genuinely want a slow credential lane (a small Postgres, a
+ * shared bench), and a seed that refuses a legal number is a seed somebody edits out. Returns the sentences;
+ * the caller decides how to say them.
+ */
+export function pacingWarnings(rates, env = process.env) {
+  const out = [];
+  if (env[FACES.credential.knob] && rates.credential <= FACES.ext_public.defaultRate * 4) {
+    out.push(
+      `${FACES.credential.knob}=${rates.credential}/s paces ONLY ${FACES.credential.label}, whose ceiling ` +
+        `is ${FACES.credential.bucket}.\n` +
+        '  ⚠️ If it was set to get past a 429 on the anonymous form, it is the wrong knob and it is the ' +
+        'reason a birth\n' +
+        `  takes over an hour: that face is ${FACES.ext_public.knob}, and it already defaults to ` +
+        `${FACES.ext_public.defaultRate}/s. Unset this one.`,
+    );
+  }
+  return out;
+}
+
+/**
  * ★ ONE TOKEN BUCKET PER FACE, and they do not share tokens — which is the whole slice.
  *
  * ⚠️ THE BUCKET HOLDS AT LEAST ONE TOKEN, AND WITHOUT THIS THE SUB-1/s LANE HANGS FOREVER. The ceiling used

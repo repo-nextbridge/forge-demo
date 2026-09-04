@@ -1,14 +1,14 @@
 // The pacer's tests — `bash bin/test.sh`.
 //
-// ★★ THE ONE THIS FILE EXISTS FOR IS THE THIRD: the seed used to pace EVERY call at the speed of its
-// SLOWEST face, so a birth that needed 0,5/s on 52 calls ran ~1900 of them at 0,5/s and took 74 minutes
-// instead of 11. The first two tests hold the classification that makes the third possible, and the last
-// two hold the two ways this can go wrong quietly — an unknown path riding the fast lane, and the tight
-// lane silently ceasing to pace.
+// ★★ THE ONE THIS FILE EXISTS FOR IS "the many cheap calls no longer pay the tight face's price": the seed
+// used to pace EVERY call at the speed of its SLOWEST face, so a birth that needed 0,5/s on 52 calls ran
+// ~1900 of them at 0,5/s and took 74 minutes instead of 11. Everything around it holds the three ways this
+// can go wrong QUIETLY — an unknown path riding the fastest lane, the tight lane ceasing to pace at all,
+// and the next operator reaching for the old knob out of memory.
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FACES, createPacer, faceOf, ratesFromEnv } from './pacer.mjs';
+import { FACES, createPacer, faceOf, pacingWarnings, ratesFromEnv } from './pacer.mjs';
 
 /** Wall clock around a body, in milliseconds. The tests below are measurements, not assertions of intent. */
 const elapsed = async (body) => {
@@ -161,4 +161,23 @@ test('★ the summary reports what was DONE, per face — the line the README pr
   assert.match(summary, /3 call\(s\) through 3 face\(s\)/);
   assert.match(summary, /credential\s+1 call\(s\)/);
   assert.match(summary, /ext_public\s+2 call\(s\)/);
+});
+
+// ── the habit ───────────────────────────────────────────────────────────────────────────────────────────
+
+test('★ setting the OLD knob to the old workaround value is said out loud, by name', () => {
+  // The way past the 429 of 2026-09-03 was `FORGE_SEED_RATE_PER_SECOND=0.5`, and that is now the one value
+  // that restores the 74-minute birth while curing nothing: it paces the credential face, which was never
+  // the face that refused. Muscle memory is the failure mode, so the run says so.
+  const env = { FORGE_SEED_RATE_PER_SECOND: '0.5' };
+  const warnings = pacingWarnings(ratesFromEnv(env), env);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /FORGE_SEED_RATE_PER_SECOND=0\.5\/s/);
+  assert.match(warnings[0], /FORGE_SEED_RATE_PER_SECOND_EXT_PUBLIC/);
+});
+
+test('and an unset knob, or an ordinary one, says nothing at all', () => {
+  assert.deepEqual(pacingWarnings(ratesFromEnv({}), {}), []);
+  const env = { FORGE_SEED_RATE_PER_SECOND: '40' };
+  assert.deepEqual(pacingWarnings(ratesFromEnv(env), env), []);
 });

@@ -160,6 +160,10 @@ the SHAPE of that line, with `<n>` where the run puts its own count (nothing her
 names the bucket that actually barred and the knob that moves *this seed* for that face — the three knobs
 are in `.env.example`, all three optional, all three defaulting to the kernel's own ceiling.
 
+⛔ **Do not export `FORGE_SEED_RATE_PER_SECOND=0.5`.** It was the way past the 429 on the night this was
+measured, and it is now the one value that restores the 74 minutes while curing nothing: that knob paces the
+*credential* face, which was never the face that refused. The seed says so out loud if it finds it set.
+
 ### 2b. Two things that used to be typed by hand, and died at every rebirth
 
 Both were real arrangements on the bench that the next `bash bin/box-up.sh` erased, and neither loss was
