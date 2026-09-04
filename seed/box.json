@@ -44,6 +44,48 @@
     "the whole shape, with `bootstrap: true` marking who really makes it."
   ],
   "version": 1,
+  "warm": {
+    "_why": [
+      "★★ A BIRTH IS NOT DONE WHEN THE BOX IS UP — IT IS DONE WHEN THE BOX IS WARM, and the argument is",
+      "commercial rather than tidy (Renan, 04/09): *\"ele também vai ser testado por exemplo performance e tal,",
+      "se ele falhar em um teste de performance é prejudicial ao meu comercial\"*. A box handed over cold makes",
+      "the first visitor — who may be the person evaluating it — pay for every cache this box could have filled",
+      "by itself. So `bin/warm-box.mjs` runs at the end of every birth and the run FAILS when a store did not",
+      "warm.",
+      "",
+      "WHICH STORES: every store the PORT reports for the tenant, minus the ones this file marks",
+      "`servable: false`, and a skip is ANNOUNCED with the declared reason. The list is the box's, never this",
+      "field's: a store created tomorrow is warmed with no edit here, and a store this file does not mention is",
+      "warmed and NAMED as undeclared.",
+      "",
+      "⚠️ `threshold_ms` IS NULL AND THAT IS NOT AN OVERSIGHT. A latency ceiling nobody measured is an invented",
+      "promise, and a run that fails a number nobody chose is exactly the prose-that-lies this repository keeps",
+      "paying for (the product's own `WarmOptions.thresholdMs` says the same in the same words). Null ⇒ the run",
+      "asserts that every page WARMED, and says out loud that it asserts nothing about how fast. Put a number",
+      "here — measured on this box — and every birth from then on grades it."
+    ],
+    "threshold_ms": null,
+    "depth": "products",
+    "products": 24
+  },
+  "online_only": [
+    {
+      "id": "edge-cache",
+      "moment": "after-birth",
+      "driver_env": "FORGE_EDGE_PURGE_DRIVER",
+      "what": "Purge the CDN in front of this box, so it stops serving the DEAD box's pages.",
+      "order_why": "⚠️ AFTER THE REBIRTH, NEVER BEFORE, and the order is the whole point: a CDN purged first refills itself with the old origin's answers during the ~17 minutes the birth takes, and comes out of the reset holding exactly what the purge was for. The sequence is reborn → purge → warm → verdict.",
+      "bench_why": "There is no CDN in front of the bench: `caddy` is the edge and it caches nothing. So on this box the driver resolves to `none` and the step is a no-op that SAYS SO — a silent step here would read as work done."
+    },
+    {
+      "id": "media-store",
+      "moment": "after-birth",
+      "driver_env": "FORGE_MEDIA_STORE_DRIVER",
+      "what": "Drop the object prefix the PREVIOUS birth wrote, which nothing points at any more.",
+      "order_why": "After the rebirth for the same reason as the edge: the keys to keep are the ones the new birth just wrote, and they do not exist until it has.",
+      "bench_why": "On the bench the media is a docker VOLUME and `bin/box-down.sh` destroys it by name, so the previous birth's bytes are already gone before this step could run. ONLINE it is a bucket, and a bucket is not a volume: the rebirth uploads a fresh set of keys and last week's stay, paid for and pointed at by nothing. Nothing breaks — it only grows."
+    }
+  ],
   "tenants": [
     {
       "id": "forgeco",
@@ -178,6 +220,8 @@
         {
           "handle": "balcao",
           "name": "Forge Café · Balcão",
+          "servable": false,
+          "_servable_why": "NOT SERVED BY A VITRINE, so there is nothing here to warm. The totem is a whole-host app of its own (caddy `:82`, no store in the URL) and this store never appears behind `/s/<id>` — a warm run pointed at it would fetch pages nobody opens and report them as this shop's. The flag exists so the warming step SKIPS it BY NAME: a store simply absent from a warm report is indistinguishable from one that failed, and this repository has already paid twice for a summary that was silent about what it did not do.",
           "why": "The counter the totem serves. No `theme_key` on purpose: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps. Same tenant as `cafe` — one catalogue, two assortments."
         }
       ]
