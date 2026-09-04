@@ -143,10 +143,22 @@ export function Totem({
    * A ref is written SYNCHRONOUSLY, so the second tap of the same tick sees the first one. That is the whole
    * mechanism, and it is why the guard drives real double taps rather than asserting on `disabled`.
    *
-   * ⚠️ IT IS NOT THE ONLY DEFENCE AND MUST NOT BE READ AS ONE. `checkout.place_order` is idempotent by the
-   * CART — the kernel returns the same order for a converted cart — so a duplicate that beats this latch does
-   * not become two orders. This is the cheap half, and it is the half the customer sees: the till stops
-   * looking like it ignored them.
+   * ⚠️ IT IS NOT THE ONLY DEFENCE AND MUST NOT BE READ AS ONE. `checkout.place_order` answers a duplicate
+   * with the SAME order, so one that beats this latch does not become two. This is the cheap half, and it is
+   * the half the customer sees: the till stops looking like it ignored them.
+   *
+   * ⚠️⚠️ AND "IDEMPOTENT BY THE CART" IS TOO LOOSE A WAY TO SAY IT — this comment used to, and pk9/d1 (04/09)
+   * measured what the looseness hides. The kernel's own rule is a CONJUNCTION: the lines of that voyage are
+   * gone AND the landing is recent (30 min) — "with lines it is a new voyage (the totem)", in its own words
+   * (packages/core/src/commands/checkout.ts). Measured on the live counter, one cart, one set of lines, only
+   * the header differing:
+   *
+   *     place_order, no idempotency-key         → a NEW order (ord_…D8R)
+   *     place_order, a key already used         → the OLD order, replayed
+   *
+   * So a converted cart with something in it orders AGAIN, and what pins one cart to one order is the
+   * `idempotency-key` this app sends — see `payWith` in app/actions.ts and `cartForThisCustomer` in
+   * lib/cart.ts for why that is deliberate and where it had to be fenced.
    */
   const inFlight = useRef(false);
   /**
