@@ -405,6 +405,14 @@ bash bin/verify-composition.sh        # does the running image compose the apps 
 bash bin/test.sh                      # this repo's guards
 ```
 
+⚠️ **One of those guards needs the forks INSTALLED, and says so when they are not.**
+`bin/fork-typecheck.guard.mjs` compiles `storefront-coffee/` and `totem/` against the kit in their own
+`node_modules` (`tsc --noEmit`, ~5 s) — the contract that used to be checked only by the oven, four minutes
+into an image build. It also proves that kit is the one `forge.lock` pins, by finding the checkout whose HEAD
+is that commit (`FORGE_MONOREPO=<path>` names one; a worktree of it is found from any other). Every run
+prints the tree it compiled against, and a run that cannot check prints **NOT CHECKED** with the reason —
+never a silent green.
+
 A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
 
