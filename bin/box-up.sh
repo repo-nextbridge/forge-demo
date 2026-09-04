@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ★★ THE ONE COMMAND — a virgin box becomes this demo's bench. EXECUTE it; do not source it.
 #
-#   bash bin/box-up.sh                birth: the eleven steps below, on `localhost`
+#   bash bin/box-up.sh                birth: the fifteen steps below, on `localhost`
 #   bash bin/box-up.sh --tailnet      PROMOTION: point the born box at this machine's tailnet (A15)
 #   bash bin/box-up.sh --localhost    the promotion, undone
 #
@@ -9,7 +9,7 @@
 # by Renan's decision, and the addresses of a private network may not live in a versioned file.
 #
 # WHAT "ONE COMMAND" PROMISES, AND WHAT IT DOES NOT. It promises that a human types ONE thing and gets a
-# working bench — not that there is only one step underneath. There are seven, they are listed below in the
+# working bench — not that there is only one step underneath. There are fifteen, they are listed below in the
 # order they must happen, and each one is here because the step before it produced something it needs. That
 # order IS the map of how this box is born, so it is written out rather than hidden behind a single verb:
 #
@@ -26,6 +26,12 @@
 #                                about. A dataset belongs to a brand; see $DATASET_TENANTS below.
 #  10. seed-history  × TENANT   the PAST — 180 days of it, and it runs INSIDE the mail silence, never after
 #  11. seed.mjs       × TENANT   the WINDOW (--phase window): promotions, blocks, cache bust, and the RE-ARM
+#  12. verify-seed   × TENANT   the verdict over the DATA — does the box HOLD what this repository declares?
+#  13. online-only               the edge and the bucket: what only exists online. AFTER the rebirth (13–15
+#                                are the reset's own tail, and purging BEFORE it refills from a dying origin)
+#  14. warm-box      × TENANT    every SERVABLE store, warmed and MEASURED. A cold box is a red box.
+#  15. verify-config             the verdict over the CONFIGURATION — is the box WHAT it declares? This is
+#                                the one a rebirth eats: it comes back half promoted and used to exit 0.
 #
 # ⚠️ 8, 9 AND 10 ARE ONE DIRECTION AND NOT A CYCLE, and it only looks circular if you read 8 and 10 as one
 # step. The window promotes products of the MASSIVE catalogue, so it must follow 9; 9 publishes an assortment
@@ -159,8 +165,8 @@ note() { printf '   %s\n' "$*" >&2; }
 die() { printf '\n[box-up] %s\n' "$*" >&2; exit 1; }
 
 # ── ⚠️ 0a · THE HOST'S NODE, AND IT IS THE FIRST THING THIS SCRIPT DOES ─────────────────────────────────────
-# Steps 6, 8, 11 and 12 are node processes on THIS machine (see `host_node` above), so the operator's node is
-# an input of the install. F13 of the install rehearsal: this bench has two of them and the interactive PATH
+# Steps 6, 8, 11, 12, 13, 14 and 15 are node processes on THIS machine (see `host_node` above), so the
+# operator's node is an input of the install. F13 of the install rehearsal: this bench has two of them and the interactive PATH
 # resolves to v22.22.3, under the floor the product declared — every birth of 2026-09-03 ran there and
 # finished green, which is precisely why a refusal and not a warning. It is placed ABOVE the `jq` check
 # because a birth that is going to be refused must be refused before it reads a file, starts a container or
@@ -1403,6 +1409,63 @@ for t in $TENANTS; do
   fi
 done
 
+# ── 13 · ★★ WHAT ONLY EXISTS ONLINE — AND IT RUNS AFTER THE REBIRTH, WHICH IS THE COUNTER-INTUITIVE HALF ────
+#
+# Renan, 04/09: *"ele precisaria também garantir que ligue tudo que só tem online, exemplo cdn se tiver na
+# demo… ou qualquer coisa assim que morre no reset."*
+#
+# ⚠️ PURGING FIRST IS THE OBVIOUS ORDER AND IT IS THE WRONG ONE. A CDN purged before the teardown spends the
+# ~17 minutes of the birth refilling itself from the origin being destroyed, and comes out of the reset
+# holding exactly what the purge was for. So the sequence is REBORN → PURGE → WARM → VERDICT: step 14 below
+# is what refills the edge, with the new box's answers.
+#
+# The facilities are DECLARED in `seed/box.json` and every declared one gets a line, including the ones with
+# nothing to do — see the script's own header for why a list of things to re-enable is the wrong shape.
+say '13 · the edge and the bucket (what only exists online) — after the rebirth, on purpose'
+ONLINE_ONLY_FAILED=''
+host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=1
+
+# ── 14 · ★★ THE BOX IS NOT DONE UNTIL IT IS WARM ────────────────────────────────────────────────────────────
+#
+# ★ THE ARGUMENT IS COMMERCIAL AND IT RAISES THE BAR (Renan, 04/09): *"ele também vai ser testado por exemplo
+# performance e tal, se ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box handed
+# over cold makes the FIRST VISITOR pay for every cache this box could have filled by itself — and on this box
+# that visitor is whoever is evaluating it. So warming is part of the definition of done and it has an exit
+# code, exactly like a tenant that did not settle.
+#
+# ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
+# that lists a tenant's stores resolves the tenant from the CREDENTIAL. The store this box declares
+# `servable: false` — the counter, served by the totem, which has no store in its URLs — is SKIPPED and the
+# skip is announced with its declared reason.
+say '14 · warming every servable store (a birth is not done until the box is warm)'
+COLD=''
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the warming step."
+  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t warm"
+  else
+    COLD="$COLD $t"
+    note "⛔ $t did NOT come out warm — the ✗ lines above name the store and the reason."
+  fi
+done
+
+# ── 15 · ★★★ THE VERDICT OVER THE CONFIGURATION, which is the half a rebirth eats ───────────────────────────
+#
+# Step 12 grades the DATA. This grades what the box IS: the address it publishes itself at, the hostnames its
+# shop answers, the admin door of each tenant, the link the gate sends an operator to, and every FORGE_*
+# address on this box that a promotion would not move.
+#
+# ★ IT EXISTS BECAUSE A REBIRTH DE-PROMOTES THE ADMIN AND NOTHING SAID SO. The database dies, so the directory
+# comes back holding only `seed/box.json`'s `localhost` doors; step 3d rewrites the sibling list back to
+# `localhost`; step 3b rewrites the host map and KEEPS $FORGE_TAILNET_HOST, so the shop still answers on the
+# network. The box ends up HALF PROMOTED — shop reachable, admin refusing `unknown_admin_host` — and the run
+# exited 0. A verdict catches that; a sentence in the last line of a four-hundred-line scrollback does not.
+say '15 · the verdict over the configuration (verify-config)'
+MISCONFIGURED=''
+host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" || MISCONFIGURED=1
+
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
@@ -1427,11 +1490,37 @@ printf '\n' >&2
 
 # ⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE. A birth that leaves a tenant holding another brand's catalogue
 # has to be RED, or the next person reads "the bench" above and believes it.
+#
+# ★ THE THREE REASONS STEPS 13–15 CAN ADD ARE PRINTED HERE, ABOVE THE TWO EXITS BELOW, because those exit
+# where they print: a cold tenant discovered after an unsettled one would otherwise never reach the screen.
+# Each is its own sentence — "the box is cold" and "the box is misconfigured" are different repairs.
+if [ -n "${COLD:-}" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND%s CAME OUT COLD. Warming is part of done, not a courtesy: the first
+         visitor pays for every cache this birth could have filled. Re-read step 14.
+
+' "$COLD" >&2
+fi
+if [ -n "${MISCONFIGURED:-}" ]; then
+  printf '[box-up] ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Step 15 names the face that disagrees;
+         a box reborn while promoted lands here with its admin on localhost and its shop on the network.
+
+' >&2
+fi
+if [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
+  printf '[box-up] ⛔ A FACILITY THAT ONLY EXISTS ONLINE WAS CONFIGURED AND COULD NOT RUN. Step 13 names it.
+
+' >&2
+fi
 if [ -n "${UNSETTLED_EXTRA:-}" ] && [ -z "$UNSETTLED" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND %s IS NOT. The summary above says so where the address would be;\n         this line is here because an exit code is what a script downstream reads.\n\n' "$UNSETTLED_EXTRA" >&2
   exit 1
 fi
 if [ -n "$UNSETTLED" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Everything above is standing; what it HOLDS is not\n         what this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$UNSETTLED" >&2
+  exit 1
+fi
+# The three above are reasons of their own, and reaching this line means the tenants settled — so a run that
+# is cold or misconfigured still ends non-zero, which is what every wrapper reads before it reads the prose.
+if [ -n "${COLD:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
   exit 1
 fi

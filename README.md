@@ -133,8 +133,8 @@ declaring a floor of its own.
 
 ### What `bin/box-up.sh` does, in order
 
-It is one command to TYPE, not one step. Seven, and each needs what the one before it produced — this is the
-map of how the box is born:
+It is one command to TYPE, not one step. Fifteen, and each needs what the one before it produced — this is
+the map of how the box is born:
 
 | # | step | why it is where it is |
 |---|---|---|
@@ -150,10 +150,72 @@ map of how the box is born:
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
-| 12 | **`verify-seed.mjs` × tenant** | the **verdict** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
+| 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
+| 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
+| 14 | **`warm-box.mjs` × tenant** | every **servable** store, warmed and **measured**. A box that comes out cold makes `box-up` exit non-zero |
+| 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
 fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then.)
+
+### ★★ 13–15 are the reset's own tail: reborn → purge → warm → grade
+
+Renan, 04/09, on what a reset has to guarantee: *"no fim dele … sobe tudo novamente"*, and *"ele precisaria
+também garantir que ligue tudo que só tem online, exemplo cdn se tiver na demo… ou qualquer coisa assim que
+morre no reset."*
+
+**Warming is part of DONE, not a courtesy**, and the argument is commercial: *"ele também vai ser testado por
+exemplo performance e tal, se ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box
+handed over cold makes the **first visitor** pay for every cache this box could have filled by itself in the
+minutes nobody was watching — and here that visitor may be whoever is evaluating it. Step 14 drives
+`POST /api/warm`, which the **vitrine itself publishes** (guarded by `FORGE_REVALIDATE_SECRET`, the secret the
+admin already uses to invalidate). One call warms three containers, because the run fetches
+`$FORGE_PUBLIC_ORIGIN/…` and caddy routes each URL to whichever front owns it — the café's fork included.
+
+⚠️ **The counter is skipped, and the skip is ANNOUNCED.** `seed/box.json` marks `balcao` `servable: false`:
+the totem is a whole-host app with no store in its URLs, so there is no vitrine page to warm. A store simply
+missing from a warm report reads exactly like a store that failed.
+
+⚠️ **`warm.threshold_ms` is `null` and that is deliberate.** A latency ceiling nobody measured is an invented
+promise, so the run asserts that the pages **warmed** and says out loud that it asserts nothing about **how
+fast**. Put a measured number in `seed/box.json` → `warm.threshold_ms` and every birth from then on grades it.
+
+⚠️ **Step 13 runs AFTER the rebirth, and the obvious order is the wrong one.** A CDN purged *before* the
+teardown spends the ~17 minutes of the birth refilling itself from the origin being destroyed, and comes out
+of the reset holding exactly what the purge was for. Step 14 is what refills it, with the new box's answers.
+On this bench both facilities are **no-ops that say so**: caddy caches nothing, and the media is a docker
+volume `bin/box-down.sh` destroys by name. **Online a bucket is not a volume** — the rebirth writes ~18 500
+objects under fresh keys and last week's stay, paid for and pointed at by nothing.
+
+### ★★★ Step 15, and why the answer is a verdict rather than a list
+
+The obvious way to "turn back on everything that only exists online" is a checklist. **The checklist is the
+disease**: it ages in silence, somebody adjusts the live box and forgets to add the item, and the next reset
+erases it with nothing saying so. In a list the forgotten item is invisible; in a verdict it is **the answer
+that is missing**.
+
+So `bin/verify-config.mjs` derives every check from one rule — **this box publishes itself at ONE address, and
+every face it declares must be published there** — and compares each face with what the box **answers**:
+
+| what it grades | derived from |
+|---|---|
+| the address the box publishes itself at | `FORGE_PUBLIC_ORIGIN`, probed with a `Host:` header through the edge |
+| the shop, at every hostname it claims | every key of `FORGE_STORE_HOSTS` |
+| one admin door per tenant, on that hostname, **claimed in the directory** | `seed/box.json` × `FORGE_ADMIN_SIBLINGS` × `read.admin.by_host` |
+| the link the gate sends an operator to | `FORGE_GATE_ADMIN_URL` × the directory |
+| the purge secret | `FORGE_REVALIDATE_SECRET` |
+| **any address ON THIS BOX that a promotion would not move** | the `put_env` calls parsed out of `box-up.sh`'s own promotion block |
+| what only exists online | `seed/box.json` → `online_only` |
+
+⛔ **The measured defect it exists for.** A promoted box torn down and reborn comes back **half promoted**: the
+database dies so the directory holds only `seed/box.json`'s `localhost` doors; step 3d rewrites the sibling
+list back to `localhost`; step 3b rewrites the host map and **keeps** `$FORGE_TAILNET_HOST`, so the shop still
+answers on the network. The shop opens, the login refuses `unknown_admin_host`, and `box-up` used to exit 0
+with one warning line under four hundred. Step 15 names the tenant and the hostname, and the run exits 1.
+
+⚠️ **The host probe is `node:http`, never `fetch`** — undici **silently drops** a `host` header. Measured
+against the live bench: `fetch(origin, {headers:{host:'nope.invalid'}})` answered **200** where `node:http`
+answered **404**. A fetch-based probe would have graded every hostname as resolving, on every box, for ever.
 
 ### ⏱ What a birth COSTS — and it is a number nobody could quote until 2026-09-03
 
