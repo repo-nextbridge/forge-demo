@@ -8,7 +8,14 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FACES, createPacer, faceOf, pacingWarnings, ratesFromEnv } from './pacer.mjs';
+import {
+  FACES,
+  createPacer,
+  faceOf,
+  pacingWarnings,
+  ratesFromEnv,
+  refusalSentence,
+} from './pacer.mjs';
 
 /** Wall clock around a body, in milliseconds. The tests below are measurements, not assertions of intent. */
 const elapsed = async (body) => {
@@ -180,4 +187,50 @@ test('and an unset knob, or an ordinary one, says nothing at all', () => {
   assert.deepEqual(pacingWarnings(ratesFromEnv({}), {}), []);
   const env = { FORGE_SEED_RATE_PER_SECOND: '40' };
   assert.deepEqual(pacingWarnings(ratesFromEnv(env), env), []);
+});
+
+// ── ★★ the refusal, in the kernel's own words ───────────────────────────────────────────────────────────
+
+test("★★ a ceiling with NO button is said to have none — and the seed's own knob is the honest advice", () => {
+  // The exact body `pk7/p1` makes the kernel send for the face that killed the 19:42 birth, read from
+  // `apps/api/src/rate-limit.ts` of that slice. `limit_env: null` is an ANSWER, not a missing key.
+  const line = refusalSentence({
+    face: 'ext_public',
+    seedRate: 0.5,
+    details: { limit_bucket: 'ext-public-write', limit: 30, window_seconds: 60, limit_env: null },
+  });
+  assert.match(line, /"ext-public-write"/);
+  assert.match(line, /30 per 60s/);
+  assert.match(line, /NO environment variable/);
+  assert.match(line, /FORGE_SEED_RATE_PER_SECOND_EXT_PUBLIC=<n>/);
+  // ⛔ AND IT MUST NOT NAME A SIBLING. Naming `FORGE_RATE_LIMIT_PER_CREDENTIAL` here is the measured defect:
+  // the operator turned it at 19:53 and the next run died identically.
+  assert.doesNotMatch(line, /FORGE_RATE_LIMIT_PER_CREDENTIAL/);
+});
+
+test('a ceiling that HAS a button names it — the kernel\'s, plus this seed\'s, and they are different things', () => {
+  const line = refusalSentence({
+    face: 'credential',
+    seedRate: 85,
+    details: {
+      limit_bucket: 'per-credential',
+      limit: 6000,
+      window_seconds: 60,
+      limit_env: 'FORGE_RATE_LIMIT_PER_CREDENTIAL',
+    },
+  });
+  assert.match(line, /button ON THE KERNEL: FORGE_RATE_LIMIT_PER_CREDENTIAL/);
+  assert.match(line, /FORGE_SEED_RATE_PER_SECOND=<n>/);
+});
+
+test('★ a kernel that says NOTHING gets the table — labelled as this repo\'s guess, never as its word', () => {
+  // The box measured on 2026-09-03 runs an image from before `pk7/p1`: its 429 carries no `error.details`
+  // at all. Falling back is fine; falling back SILENTLY would print this repo's belief in the kernel's
+  // voice, which is the species the whole wave exists to kill.
+  const line = refusalSentence({ face: 'anonymous', seedRate: 6, details: undefined });
+  assert.match(line, /carried no `error\.details`/);
+  assert.match(line, /THIS REPO'S table and not the kernel's word/);
+  assert.match(line, /ANONYMOUS_FACE_CAP/);
+  // And an empty object is the same case as no object: `limit_bucket` is what makes the body usable.
+  assert.match(refusalSentence({ face: 'anonymous', seedRate: 6, details: {} }), /carried no `error/);
 });

@@ -17,7 +17,7 @@
 //   |------------|------------------------------------------|--------------|-----------|-------------|
 //   | credential | /v1/commands, /v1/read/internal, /v1/ext | credential   | 6000/60 s | FORGE_RATE_LIMIT_PER_CREDENTIAL |
 //   | anonymous  | /v1/read/<cap>, /v1/{cart,checkout,…}    | store + IP   |  400/60 s | none (ANONYMOUS_FACE_CAP) |
-//   | ext_public | /v1/ext-public/<app>/<model>             | IP           |   30/60 s | none at that release |
+//   | ext_public | /v1/ext-public/<app>/<model>             | IP           |   30/60 s | none then; FORGE_PUBLIC_WRITE_LIMIT_PER_IP since pk7/p1 |
 //
 // ⇒ 100/s, 6,6/s and 0,5/s. One knob for the three of them means the run pays the SMALLEST of the three on
 // every call it makes, and the smallest belongs to the face this seed touches 52 times out of ~1900.
@@ -75,10 +75,13 @@ export const FACE_PATTERNS = [
  * release. A refusal that names a button that does not move the thing is worse than a refusal with no
  * advice.
  *
- * `retryAfterSeconds` is what to wait when the refusal carries no `Retry-After`, and it differs per face
- * because the faces differ: the credentialed and face-wide limiters publish `RateLimit-*` + `Retry-After`
- * (`credential-rate-limit.ts`, `anonymous-face-cap.ts`), while the app form's per-IP cap answers a bare
- * `{"error":{"kind":"rate_limited"}}` with no headers — so the only honest wait there is the window.
+ * `retryAfterSeconds` is the LAST resort of the wait — what to do when the refusal carries no `Retry-After`
+ * header AND no `window_seconds` in its body. It differs per face because the faces differed: before
+ * `pk7/p1` the credentialed and face-wide limiters published `RateLimit-*` + `Retry-After` while the app
+ * form's per-IP cap answered a bare `{"error":{"kind":"rate_limited"}}` with no headers at all, so two
+ * seconds against its 60 s fixed window was a guess. Since `pk7/p1` every limiter answers through one
+ * `rateLimitRefusal`, headers included — which is why these numbers are a fallback for OLD kernels and not
+ * the ordinary path.
  */
 export const FACES = {
   credential: {
@@ -99,11 +102,18 @@ export const FACES = {
   },
   ext_public: {
     label: "an app's anonymous create face (/v1/ext-public — the PDP review form)",
-    bucket: "ratelimit:ext-public-write — 30 per 60 s per IP; check this release's env for a knob",
+    // ⚠️ THE FALLBACK PROSE DESCRIBES THE KERNEL THAT NEEDS IT — one from BEFORE `pk7/p1`, which is the only
+    // kernel that reaches this string (a newer one names its own bucket in the body and this is never
+    // printed). On such a kernel the ceiling is a literal with no button at all; `pk7/p1` gave it
+    // `FORGE_PUBLIC_WRITE_LIMIT_PER_IP` and left the 30/60s default where it was.
+    bucket:
+      'ratelimit:ext-public-write — 30 per 60 s per IP, fixed in the kernel with no variable ' +
+      '(since `pk7/p1` it has one: FORGE_PUBLIC_WRITE_LIMIT_PER_IP)',
     knob: 'FORGE_SEED_RATE_PER_SECOND_EXT_PUBLIC',
     /** 30/60 s is exactly 0,5/s. The 429 net below is what covers the edge of the fixed window. */
     defaultRate: 0.5,
-    /** ⚠️ This face publishes NO `Retry-After`, so a refusal here means waiting out the whole window. */
+    /** ⚠️ On a kernel before `pk7/p1` this face published NO `Retry-After`, so the only honest wait is the
+     *  whole window. A newer one sends the number and this is never reached. */
     retryAfterSeconds: 60,
   },
 };
@@ -141,6 +151,57 @@ export function ratesFromEnv(env = process.env) {
     rates[face] = value;
   }
   return rates;
+}
+
+/**
+ * ★★ THE REFUSAL, IN THE KERNEL'S OWN WORDS — because this repo guessing which ceiling refused is the whole
+ * defect, one layer up.
+ *
+ * The version this replaces named a bucket THIS FILE had chosen: first `FORGE_RATE_LIMIT_PER_CREDENTIAL` for
+ * every 429 whatever refused (measured on 2026-09-03 at 19:53 — the operator turned that variable and the
+ * next run died identically, because the ceiling that barred was `ext-public-write` and it had no button at
+ * all), and then, after the lanes below, a per-face table. The table is better and it is still a GUESS: it is
+ * this repo's belief about a kernel it does not compile against, and beliefs about another repo go stale on
+ * their own schedule.
+ *
+ * ★ SINCE `pk7/p1` THE KERNEL SAYS IT ITSELF. Read in the source of that slice (`apps/api/src/rate-limit.ts`,
+ * `rateLimitRefusal`), a 429 body carries:
+ *
+ *     { "error": { "kind": "rate_limited", "message": "…",
+ *                  "details": { "limit_bucket": "ext-public-write", "limit": 30,
+ *                               "window_seconds": 60, "limit_env": null } } }
+ *
+ * ⚠️ AND `limit_env` IS AN EXPLICIT `null`, NEVER AN ABSENT KEY — "this ceiling has no button" is an ANSWER.
+ * This function keeps that distinction: `null` becomes a sentence saying so, and only a body that carries no
+ * `limit_bucket` at all falls back to the table — SAYING that it is falling back. The box measured on
+ * 2026-09-03 runs an image from before that slice and will answer exactly that way, so the fallback is a
+ * live path and not a courtesy.
+ *
+ * ⛔ IT NEVER PRINTS THE TABLE'S NAMES AS IF THEY WERE THE KERNEL'S. A guess presented in the voice of a
+ * measurement is the species this whole wave exists to kill.
+ */
+export function refusalSentence({ face, seedRate, details }) {
+  const spec = FACES[face];
+  const mine = `This seed's pace for the ${face} face is ${seedRate}/s; lower it with ${spec.knob}=<n>.`;
+  const bucket = details?.limit_bucket;
+  if (!bucket) {
+    return (
+      `⚠️ This kernel's 429 carried no \`error.details\` — it predates the refusal naming its own bucket\n` +
+      `  (\`pk7/p1\`), so what follows is THIS REPO'S table and not the kernel's word:\n` +
+      `  the ${face} face answers to ${spec.bucket}.\n` +
+      `  ${mine}`
+    );
+  }
+  const ceiling =
+    details.limit !== undefined && details.window_seconds !== undefined
+      ? `${details.limit} per ${details.window_seconds}s`
+      : 'a ceiling it did not size';
+  const button =
+    details.limit_env == null
+      ? '⚠️ That ceiling has NO environment variable — the kernel says so explicitly (`limit_env: null`).\n' +
+        "  Nothing set on the kernel moves it, so the only honest move is this seed's own pace:"
+      : `That ceiling has a button ON THE KERNEL: ${details.limit_env}. To move this SEED instead:`;
+  return `Refused by the kernel's "${bucket}" ceiling — ${ceiling}.\n  ${button}\n  ${mine}`;
 }
 
 /**

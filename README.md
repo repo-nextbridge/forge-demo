@@ -157,8 +157,11 @@ the SHAPE of that line, with `<n>` where the run puts its own count (nothing her
 ```
 
 ⚠️ **If a birth is slow, read that line before blaming the box.** And if a 429 kills one, the refusal now
-names the bucket that actually barred and the knob that moves *this seed* for that face — the three knobs
-are in `.env.example`, all three optional, all three defaulting to the kernel's own ceiling.
+**echoes the kernel's own words**: since `pk7/p1` a 429 carries `error.details.{limit_bucket, limit,
+window_seconds, limit_env}`, and `limit_env` is an explicit `null` when that ceiling has no variable at all.
+The seed prints what arrives; against an older kernel — **the one this box's `forge.lock` still pins** — it
+says out loud that it is falling back to this repo's table instead of quoting the kernel. The seed's own
+three knobs are in `.env.example`, all optional, all defaulting to the ceiling they were measured against.
 
 ⛔ **Do not export `FORGE_SEED_RATE_PER_SECOND=0.5`.** It was the way past the 429 on the night this was
 measured, and it is now the one value that restores the 74 minutes while curing nothing: that knob paces the

@@ -45,7 +45,14 @@ import { createReadAll } from '../seed/paginate.mjs';
 // header carries the measurement (74 min against 11 for the same box) and the table of which path answers to
 // which bucket; the only thing this file does with it is ask which face a URL belongs to, and refuse to
 // guess when the answer is "none of them".
-import { FACES, createPacer, faceOf, pacingWarnings, ratesFromEnv } from '../seed/pacer.mjs';
+import {
+  FACES,
+  createPacer,
+  faceOf,
+  pacingWarnings,
+  ratesFromEnv,
+  refusalSentence,
+} from '../seed/pacer.mjs';
 // ⛔ THE STOCK POOL — products this brand OWNS and no store SELLS, which is what the demo's 180-day past is
 // built from. Imported here rather than folded into `products()` above because that function's next act is
 // `publish()`, and publishing one of these is exactly the mistake the pool exists to avoid.
@@ -263,28 +270,45 @@ async function paced(url, init, describe) {
     );
   }
   const spec = FACES[face];
+  let refusal;
   for (let attempt = 0; ; attempt++) {
     await pacer.take(face);
     const res = await fetch(url, init);
     if (res.status !== 429) return res;
+    // ★★ THE KERNEL NAMES THE CEILING THAT REFUSED, SO READ IT INSTEAD OF GUESSING. Since `pk7/p1` a 429
+    // carries `error.details.{limit_bucket,limit,window_seconds,limit_env}`, and `limit_env` is an explicit
+    // `null` when that ceiling has no button. The body is read on every attempt because the LAST refusal is
+    // the one the operator needs described — and it is read here, where the response is already spent.
+    refusal = await res
+      .json()
+      .then((body) => body?.error?.details)
+      .catch(() => undefined);
     if (attempt >= 5) {
       // ★ THE REFUSAL NAMES THE BUCKET THAT ACTUALLY BARRED, AND THE KNOB THAT MOVES **THIS SEED**. The
       // version this replaces named `FORGE_RATE_LIMIT_PER_CREDENTIAL` whatever face refused — so the
       // operator of the 19:42 birth read a true sentence about the wrong bucket, turned a knob that could
-      // not move the thing, and died in the same place.
+      // not move the thing, and died in the same place. `refusalSentence` prefers the kernel's own words and
+      // says out loud when it had none to prefer.
       fail(
         `${describe} → HTTP 429 after ${attempt} retries, on the ${face} face —\n` +
           `  ${spec.label}.\n` +
-          `  The ceiling that refused is ${spec.bucket}.\n` +
-          `  This seed's pace for that face is ${rates[face]}/s; lower it with ${spec.knob}=<n>.\n` +
+          `  ${refusalSentence({ face, seedRate: rates[face], details: refusal })}\n` +
           '  ⚠️ Lowering another face\'s knob will not help: the three faces have three buckets.\n' +
           // What the run had already spent when it died, per face. A refusal that names the face and then
           // makes the reader guess how many calls got there is half an answer.
           `  ${pacer.summary()}`,
       );
     }
+    // The wait, in order of how much the answer is worth: the kernel's `Retry-After`, then the window it
+    // just named in the body, then this repo's declared fallback for that face. A fixed-window ceiling with
+    // no header is the case that made the fallback necessary — two seconds against a 60 s window is a guess.
     const after = Number(res.headers.get('retry-after'));
-    const wait = Number.isFinite(after) && after > 0 ? after : spec.retryAfterSeconds;
+    const named = Number(refusal?.window_seconds);
+    const wait = Number.isFinite(after) && after > 0
+      ? after
+      : Number.isFinite(named) && named > 0
+        ? named
+        : spec.retryAfterSeconds;
     await new Promise((r) => setTimeout(r, wait * 1000));
   }
 }
