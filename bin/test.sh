@@ -9,6 +9,12 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
+
+# The floor first: these tests run on the HOST, on whatever node the shell resolved. A suite that passes on
+# a node the product does not support has proven something about a machine, not about this box.
+# shellcheck source=bin/require-node.sh
+. "$HERE/bin/require-node.sh"
+require_node || exit 1
 mapfile -t files < <(find bin seed -type f \( -name '*.test.mjs' -o -name '*.guard.mjs' \) | sort)
 if [ "${#files[@]}" -eq 0 ]; then
   echo "[test] no test files found — that is itself a failure." >&2

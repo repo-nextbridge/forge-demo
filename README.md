@@ -92,6 +92,35 @@ bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
 
+### ⚠️ The host's Node — checked first, and it will refuse you
+
+Half of the birth runs **on your machine**, not in a container: `seed-box.mjs`, `seed.mjs`,
+`verify-seed.mjs` and `dataset-provenance.mjs` are host processes. So the `node` your shell resolves is a real
+input of the install, exactly like `.env` is — and every script here that starts one refuses to begin on a
+node older than the Forge kernel supports, naming **the version it found, the path it came from and the
+floor**, before it reads a file, starts a container or writes a secret.
+
+**This is a refusal and not a warning because the old node WORKED.** On the bench that produced it, two nodes
+were installed and the interactive `PATH` resolved to the smaller one; every birth of 2026-09-03 ran under the
+floor and finished green. *It ran* is not *it is supported*, and nothing on the box could tell them apart.
+
+```
+[node] refusing to start: the node on this PATH is older than the Forge kernel supports.
+       found     v22.22.3
+       from      /home/you/.local/bin/node
+       required  node major >= …  (bin/require-node.sh)
+```
+
+⚠️ **A cron or a systemd unit has no node at all.** `env -i` with a minimal `PATH` finds neither `node` nor
+`pnpm`; only the nvm directory holds the compatible pair. The scheduled reset of this box runs in exactly that
+environment, so give the unit that directory before it runs any of this.
+
+`bin/require-node.sh` **owns the number** — read it there, it is stated once and its header says at length why
+this repository has to type it instead of deriving it from the product. `bin/build-local.sh` is the one script
+that is handed the monorepo, so it is where the two are reconciled: it refuses to bake images if the floor here
+and the monorepo's `engines.node` have drifted apart. `bin/node-floor.guard.mjs` proves the refusal by running
+it against fake `node` binaries in both directions, and proves the number is typed in exactly one tracked file.
+
 ### What `bin/box-up.sh` does, in order
 
 It is one command to TYPE, not one step. Seven, and each needs what the one before it produced — this is the

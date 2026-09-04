@@ -32,6 +32,12 @@ set -euo pipefail
 forge="${1:?usage: pack-apps.sh <path to the forge monorepo checkout>}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# The host's node, before anything is fetched, written or built. `pnpm exec tsx` runs on the host, out of the monorepo — and on this bench `pnpm` exists only beside
+# the node that satisfies the floor.
+# shellcheck source=bin/require-node.sh
+. "$here/bin/require-node.sh"
+require_node || exit 1
+
 [ -d "$forge/scripts/publishing" ] || {
   echo "[pack-apps] '$forge' does not look like the Forge monorepo (no scripts/publishing/)." >&2
   exit 1

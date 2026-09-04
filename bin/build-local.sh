@@ -34,6 +34,12 @@ version="${2:-}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$here/forge.lock"
 
+# The host's node, before anything is fetched, written or built — `docker build` drives npm and node inside
+# the images, but this script's own preflight and the lock it writes run out here.
+# shellcheck source=bin/require-node.sh
+. "$here/bin/require-node.sh"
+require_node || exit 1
+
 command -v jq >/dev/null || {
   echo '[build-local] `jq` is required to write the lock as valid JSON.' >&2
   exit 1
@@ -42,6 +48,31 @@ command -v jq >/dev/null || {
   echo "[build-local] '$forge' does not look like the Forge monorepo (no infra/)." >&2
   exit 1
 }
+
+# ── ★ THE NODE FLOOR, RECONCILED — the one moment this repository holds the product in its hands ─────────────
+#
+# `bin/require-node.sh` has to TYPE the floor, and its header says at length why: the number lives in the
+# monorepo's root package.json and in no artifact this box receives — not in `forge.lock`, not in a published
+# `@forgecommerce/*` package, not in `templates/instance/`. A typed number is a second truth, and a second
+# truth ages in silence. This is the only script here that is handed the monorepo, so this is the only place
+# that can notice the day the product raises its floor — and it refuses rather than warns, because the images
+# this script bakes are the ones the box then runs for months.
+mono_engine="$(jq -r '.engines.node // empty' "$forge/package.json" 2>/dev/null || true)"
+mono_floor="$(printf '%s' "$mono_engine" | sed -n 's/^>=\([0-9][0-9]*\).*$/\1/p')"
+if [ -z "$mono_floor" ]; then
+  echo "[build-local] the monorepo's package.json does not declare engines.node as '>=<major>'" >&2
+  echo "              (it says: '${mono_engine:-<nothing>}'). bin/require-node.sh derives this box's" >&2
+  echo "              refusal from that shape; a shape it cannot read is a floor it cannot reconcile." >&2
+  exit 1
+fi
+if [ "$mono_floor" != "$FORGE_DEMO_NODE_MIN_MAJOR" ]; then
+  echo "[build-local] THE NODE FLOOR HAS DRIFTED, and this is the only place that can see it." >&2
+  echo "              the monorepo declares  engines.node = $mono_engine  (major $mono_floor)" >&2
+  echo "              this box declares      FORGE_DEMO_NODE_MIN_MAJOR=$FORGE_DEMO_NODE_MIN_MAJOR  (bin/require-node.sh)" >&2
+  echo "              Update bin/require-node.sh to $mono_floor and run this again. Building now would pin" >&2
+  echo "              images whose host requirement nothing on this box states correctly." >&2
+  exit 1
+fi
 
 # THE LIST THE IMAGES ARE BAKED FROM. It is `composition.json` in THIS repo — and the build reads the COPY of
 # it that lives in the monorepo, because `apply-composition.ts` runs inside the build context and can only

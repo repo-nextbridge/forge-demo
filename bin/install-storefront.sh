@@ -22,6 +22,11 @@ set -euo pipefail
 
 app_dir="${1:-storefront-coffee}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# The host's node, before anything is fetched, written or built. This runs `node -e` and then `npm install` on the host, and both are the operator's own node.
+# shellcheck source=bin/require-node.sh
+. "$here/bin/require-node.sh"
+require_node || exit 1
 app="$here/$app_dir"
 
 [ -d "$app/vendor" ] || {

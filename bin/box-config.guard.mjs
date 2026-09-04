@@ -301,6 +301,10 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFai
   // Sourced by box-up before anything else; on the real box it reaches a secret store.
   writeFileSync(join(dir, 'env-source.sh'), 'export DATABASE_URL=postgres://stub/stub\n');
   writeFileSync(join(dir, 'bin/images-from-lock.sh'), ':\n');
+  // The REAL floor check, not a stub: box-up sources it as its very first act, and a fixture that stubbed it
+  // would be measuring a box-up this repository does not ship. It passes here because `bin/test.sh` refuses
+  // to run this suite on a node under the floor in the first place.
+  writeFileSync(join(dir, 'bin/require-node.sh'), read('bin/require-node.sh'));
   writeFileSync(
     join(dir, '.env'),
     [
