@@ -313,6 +313,35 @@ services:
       - storefront
       - checkout
       - admin
+    # ★★ THE EDGE SAYS WHETHER IT IS UP, LIKE EVERY OTHER CONTAINER ON THIS BOX (C6, 05/09).
+    #
+    # It did not, and it is the container an operator looks at first. Measured on the live bench: eight of
+    # nine rows of `docker ps` read `(healthy)` and this one read `Up About a minute` — while serving every
+    # one of the other eight. `docker inspect … .Config.Healthcheck` answered `null`, because `caddy:2` is an
+    # upstream image that carries none and compose is the only place this box can declare one. A row that is
+    # permanently blank is not "unknown", it is a row people stop reading; on the day the edge is really down
+    # it says exactly what it said yesterday.
+    #
+    # ⚠️ IT ASKS ABOUT THE EDGE AND NOT ABOUT ITS UPSTREAMS. A probe through `/health` or through a site
+    # would go red whenever the kernel restarts — naming the wrong container, which is the same wrong errand
+    # as the blank column. What Caddy can honestly answer for is its own listener: `caddy run` binds :80 only
+    # after the Caddyfile parsed, and a Caddyfile it cannot parse makes the process EXIT instead of serving.
+    # So "listening on 80" is exactly "a config loaded and this edge is serving it".
+    #
+    # ★ :80 AND NOT :443, MEASURED INSIDE THE RUNNING CONTAINER (05/09): `nc -z 127.0.0.1 80` → 0 and
+    # `nc -z 127.0.0.1 443` → 1, because the bench runs `caddy/Caddyfile.local`, which is HTTP-only. :80 is
+    # the one port bound in BOTH modes, so the probe means the same thing on the bench and in a deployment.
+    # `nc` is in the stock `caddy:2` image (verified with `command -v`), so this adds no layer and no tool.
+    #
+    # The numbers are the house's: the same interval/timeout/retries the fronts declare in their own
+    # Dockerfiles (totem/Dockerfile, storefront-coffee/Dockerfile). `bin/container-health.guard.mjs` derives
+    # the rule — every third-party image on this box declares a probe here — rather than listing the services.
+    healthcheck:
+      test: ['CMD', 'nc', '-z', '127.0.0.1', '80']
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
 
   # Cache + sessions. Degradable: if redis is down the store gets slower, not wrong.
   redis:

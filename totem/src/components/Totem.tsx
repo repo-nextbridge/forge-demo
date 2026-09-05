@@ -22,6 +22,7 @@ import {
   removeCoupon,
   removeItem,
   resetCounter,
+  resumePreviousOrder,
   simulatePixPayment,
   type BagResult,
 } from '@/app/actions';
@@ -91,10 +92,16 @@ type Paid = { outcome: PosOutcome; orderNumber: number; buyerName: string; bag: 
  *
  * ⚠️ THE TWO STATES ARE DIFFERENT INSTRUCTIONS, which is why it is not a boolean "something happened". A PAID
  * order needs nothing from anybody and the line exists only so the person who reloaded is not left wondering.
- * An order still AWAITING PAYMENT is a real order this screen can no longer settle — its provider ref lived
- * in the component's state and the reload destroyed it — so the only honest thing to say is: call somebody.
+ * An order still AWAITING PAYMENT is a real order — and as of C5 (05/09) this screen can FINISH it.
+ *
+ * ★★ WHAT CHANGED, AND IT IS THE WHOLE OF THAT SLICE. The sentence pk9 wrote here said the till "can no
+ * longer settle" such an order, because `providerRef` and the copy-and-paste lived in this component's state
+ * and the reload destroyed them. That was true of the SCREEN and never true of the KERNEL: the envelope is
+ * persisted on the payment attempt and `read.payment` publishes it verbatim. So the honest thing to say is no
+ * longer "call somebody" — it is "toque para retomar", and `orderId` is what makes that tap able to name the
+ * order it is recovering. `lib/pos.ts#recoverCounterPayment` carries the measurement.
  */
-export type PreviousOrder = { number: number; awaitingPayment: boolean };
+export type PreviousOrder = { orderId: string; number: number; awaitingPayment: boolean };
 
 export function Totem({
   initialMenu,
@@ -510,6 +517,37 @@ export function Totem({
     });
   }
 
+  /**
+   * ★★★ PICK UP THE ORDER THIS BROWSER LEFT BEHIND (C5, 05/09) — the tap the attract panel now offers.
+   *
+   * ⚠️ IT IS A TAP AND NEVER A RENDER, deliberately. The attract panel redraws on its own (the idle clock,
+   * the glow, a re-render for anything else); a recovery wired to the render would ask the port about an
+   * order on every one of them. The kit says the same thing about the `resume` flag it is NOT using, and for
+   * the same reason: a screen that polls a payment path is a screen that spends somebody's budget.
+   */
+  async function resume() {
+    if (!previousOrder?.awaitingPayment) return;
+    const orderId = previousOrder.orderId;
+    await exclusive(async () => {
+      const r = await resumePreviousOrder(orderId);
+      if (!r.ok) {
+        if (r.kind === 'rate_limited')
+          say(`O balcão recebeu muitos pedidos ao mesmo tempo. Tente de novo em ${r.retryAfterSeconds} segundos.`, true);
+        // ⚠️ `gone` IS NOT A BREAKAGE AND MUST NOT SOUND LIKE ONE. The order was paid while the screen was
+        // away, or the attempt ended — the till is fine and the person needs a different instruction from
+        // the one a refusal gives.
+        else if (r.kind === 'gone')
+          say('Esse pedido não está mais aguardando pagamento. Chame um atendente se precisar do comprovante.', true);
+        else say('Não foi possível retomar o pagamento. Chame um atendente.', true);
+        return;
+      }
+      setPaid(r);
+      setAttract(false);
+      // The same reading as `pay`: `settled` means it is already paid by the time this returns.
+      setScreen(r.outcome.kind === 'settled' ? 'done' : 'pix');
+    });
+  }
+
   async function simulate() {
     if (!paid || paid.outcome.kind !== 'pix_pending') return;
     const ref = paid.outcome.providerRef;
@@ -723,7 +761,7 @@ export function Totem({
                       data-testid="previous-order"
                     >
                       {previousOrder.awaitingPayment
-                        ? `O pedido ${previousOrder.number} foi registrado mas ainda não foi pago. Chame um atendente antes de começar outro.`
+                        ? `O pedido ${previousOrder.number} foi registrado mas ainda não foi pago. Use o botão abaixo para retomar o pagamento.`
                         : `O pedido ${previousOrder.number} foi registrado e pago. Toque para começar um novo.`}
                     </div>
                   ) : null}
@@ -741,6 +779,28 @@ export function Totem({
                 </div>
                 <div className={styles.attractFoot}>Pedido no totem · retire no balcão</div>
               </button>
+            ) : null}
+
+            {/*
+              ★★ THE WAY OUT OF AN UNPAID ORDER, AND IT IS A SIBLING OF THE ATTRACT PANEL — never a child.
+              The panel is itself one big `<button>` (that is what makes the whole glass tappable), and a
+              button inside a button is invalid HTML that React hydrates wrong. So this sits BESIDE it with a
+              higher z-index: the panel keeps its "Toque para começar" for the next customer — the notice
+              above is a line and never a wall, which pk9 asserted and this slice keeps — and the person who
+              reloaded gets a target of their own.
+            */}
+            {attract && previousOrder?.awaitingPayment ? (
+              <div className={styles.attractResumeBar}>
+                <button
+                  type="button"
+                  className={styles.attractResume}
+                  onClick={resume}
+                  disabled={busy}
+                  data-testid="resume-order"
+                >
+                  Retomar o pagamento do pedido {previousOrder.number}
+                </button>
+              </div>
             ) : null}
           </div>
         )}
@@ -1110,7 +1170,9 @@ export function Totem({
               <div className={styles.numberCard}>
                 <div className={styles.numberLabel}>Número do pedido</div>
                 <div className={styles.numberValue}>{paid.orderNumber}</div>
-                <div className={styles.numberName}>{paid.buyerName}</div>
+                {/* A recovered order has no name to print: `read.order_confirmation` is PII-limited and does
+                    not carry one (C5). An empty element reads as a broken card, so it is not drawn. */}
+                {paid.buyerName ? <div className={styles.numberName}>{paid.buyerName}</div> : null}
               </div>
               <div className={styles.summary}>
                 <div className={styles.fieldLabel}>Resumo do pedido</div>

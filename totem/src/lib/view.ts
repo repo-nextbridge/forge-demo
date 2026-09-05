@@ -5,7 +5,11 @@
 // up. That is what makes "the coupon takes exactly 10%" and "the same coffee costs the same as in the online
 // shop" facts rather than claims — and it is why `bag.test.ts` refuses a version of this file that sums.
 
-import type { CheckoutView, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type {
+  CheckoutView,
+  OrderConfirmationView,
+  ProductDoc,
+} from '@forgecommerce/storefront-kit/read-client';
 import { coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
 import { money } from './money';
 
@@ -51,7 +55,7 @@ export const EMPTY_BAG: Bag = {
  * counter reads the line rather than multiplying by 0.9 — which is also the only version of this that stays
  * true when the promotion changes.
  */
-function totals(view: CheckoutView) {
+function totals(view: Pick<CheckoutView, 'totalizers' | 'total_amount'>) {
   // ⚠️ THE ID IS `subtotal`, MEASURED. It was written as `items` here first, from memory, and a cart on the
   // counter store answered `[('subtotal', 1400)]` — so the subtotal silently fell through to a computed
   // fallback that happened to agree. It agrees until a totalizer this screen has never seen appears.
@@ -110,5 +114,49 @@ export function toBag(view: CheckoutView | null, products: ProductDoc[]): Bag {
     discountTitle: t.discountAmount === 0 ? null : t.discountLabel,
     totalLabel: money(t.total),
     couponCode: coupon?.code ?? null,
+  };
+}
+
+/**
+ * ★★ THE BAG OF AN ORDER THAT ALREADY EXISTS — for the screen that comes back to a payment (C5, 05/09).
+ *
+ * A reload lands on a till whose CART is spent: `place_order` consumes the lines and the vessel comes back
+ * empty (see `payWith` in app/actions.ts, which captures the bag BEFORE placing for that very reason). So a
+ * recovered pix screen fed from `read.checkout` would print **Total a pagar R$ 0,00** over a live QR — a lie
+ * about money, on the one screen where money is the whole point.
+ *
+ * The order is its own answer: `read.order_confirmation` publishes the lines, the totalizers and
+ * `total_amount` of what was actually placed. Same rule as `toBag` and the same reason: every number here is
+ * the kernel's, formatted — nothing in this file adds anything up.
+ *
+ * ⚠️ `cartId` IS NULL AND THAT IS THE TRUTH, not a gap. There is no cart behind this bag any more, and a
+ * screen that thought there was would try to write to one.
+ *
+ * ⚠️ The confirmation is PII-LIMITED by design, so it carries no photograph, no variant label and no line
+ * ids — a line's identity here is its SKU, which is what the confirmation states. The summary reads as a
+ * receipt rather than as a basket, which is what it is.
+ */
+export function bagOfOrder(order: OrderConfirmationView): Bag {
+  const t = totals(order);
+  const lines = order.lines.map((l) => ({
+    lineId: l.sku_id,
+    skuId: l.sku_id,
+    name: l.title,
+    variant: '',
+    imageUrl: undefined,
+    qty: l.qty,
+    lineTotalLabel: money(l.line_total),
+  }));
+  return {
+    cartId: null,
+    lines,
+    count: lines.reduce((n, l) => n + l.qty, 0),
+    subtotalLabel: money(t.subtotal),
+    discountLabel: t.discountAmount === 0 ? null : money(-Math.abs(t.discountAmount)),
+    discountTitle: t.discountAmount === 0 ? null : t.discountLabel,
+    totalLabel: money(t.total),
+    // A coupon is a fact about a cart; the order carries its EFFECT (the discount totalizer above) and not
+    // the code. Claiming one here would be inventing it.
+    couponCode: null,
   };
 }

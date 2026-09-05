@@ -23,7 +23,7 @@
 
 import { commandBaseUrl } from '@forgecommerce/storefront-kit/config';
 import type { NextAction } from '@forgecommerce/storefront-kit/command-client';
-import { totemCommand } from './port';
+import { totemCommand, totemRead } from './port';
 import { resolveTotemStore } from './store';
 
 /** The app that serves this counter's two methods. Its id in the instance's composition. */
@@ -103,6 +103,81 @@ export function readOutcome(next: NextAction | null): PosOutcome {
     `payment-pos answered an envelope this counter cannot draw: ${next ? next.type : 'null'}. ` +
       'The contract is CONTRATO-POS.md; a new type means the app changed and this screen has not.',
   );
+}
+
+/**
+ * `readOutcome`, for a caller that is not allowed to throw. `null` where the other one refuses.
+ *
+ * The difference is the SCREEN it is on. `readOutcome` throws because a blank QR at the moment of paying is
+ * worse than a refusal that names the contract; the attract panel, where the recovery below runs, is a place
+ * a person is only passing through — a crash there takes the whole till down over an order that is not even
+ * theirs.
+ */
+function drawableOutcome(next: NextAction | null): PosOutcome | null {
+  try {
+    return readOutcome(next);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ★★★ THE ORDER A RELOAD LEFT BEHIND, MADE PAYABLE AGAIN — C5 (caderno 04/09, closed 05/09).
+ *
+ * And the whole of it is a READ.
+ *
+ * The defect: `providerRef` and the copy-and-paste lived in the component's state and nowhere else, so the
+ * one exit from this flow that never reaches `resetCounter` destroyed the only way to settle an order the
+ * kernel had already accepted. pk9 made the glass SAY so; nothing recovered it.
+ *
+ * ★ AND THE ANSWER IS NOT A SECOND PLACE TO KEEP IT. The pair is already persisted where it belongs — on the
+ * payment attempt, inside the envelope the app returned — and `read.payment` publishes that envelope
+ * VERBATIM (`coalesce(pa.next_action, pi.next_action)`, handed back untouched by `loadPaymentView`). It is
+ * public, PII-zero and anonymous. So the till RE-READS instead of remembering: no cookie, no URL, no local
+ * store, and nothing that could disagree with the kernel later.
+ *
+ * ⚠️ AND IT IS DELIBERATELY **NOT** `initiatePayment(…, resume: true)`, which is the door the brief named.
+ * `resume` forces the adapter to re-invoke the app so it can answer `attempt_failed` — the honest way out of
+ * an EXPIRED code, and the kit restricts it to an explicit act of the buyer for exactly that reason. Here it
+ * would buy nothing and cost a provider call: the read already carries the envelope, and `payment-pos`
+ * derives both fields from `idempotency_key` (the attempt id, unchanged), so a re-invoke can only reproduce
+ * byte for byte what the read just answered. See `pos.recover.test.ts` for the measurement.
+ *
+ * ⚠️ THE ONE CASE A READ CANNOT ANSWER is an attempt claimed but never invoked (`next_action: null` — the
+ * process died between the two). There this asks the port, and a PLAIN `payment.initiate` is enough: the
+ * adapter re-invokes precisely that shape on its own, on the SAME attempt with the SAME idempotency key. One
+ * order, one charge, by construction.
+ *
+ * Answers `null` for everything that must not put a QR back on the glass: an order already paid, an attempt
+ * the issuer or the app ended, a method this counter has no screen for, and a port that would not say.
+ */
+export async function recoverCounterPayment(orderId: string): Promise<PosOutcome | null> {
+  const store = resolveTotemStore();
+  let view: { status: string; method: string; next_action: NextAction | null } | null = null;
+  try {
+    view = await totemRead().payment(store.id, orderId);
+  } catch {
+    return null;
+  }
+  // `pending` is the only status with something still to pay. `approved` is done, and `rejected`/`failed`
+  // are attempts that ENDED — re-opening either from this screen would be opening a second charge, which is
+  // the one thing this whole path exists not to do.
+  if (!view || view.status !== 'pending') return null;
+
+  // The stored envelope first, because it costs nothing and cannot charge anybody.
+  const stored = drawableOutcome(view.next_action);
+  if (stored) return stored;
+
+  // ⚠️ THE METHOD IS THE PORT'S, NEVER THIS SCREEN'S GUESS. A card order re-initiated as a pix is a charge
+  // against the wrong rail that nothing on the glass would reveal — the same trap `initiateCounterPayment`
+  // carries its own warning about.
+  if (view.method !== 'pix' && view.method !== 'card') return null;
+  try {
+    const { next_action } = await totemCommand().initiatePayment(store.id, orderId, view.method);
+    return drawableOutcome(next_action);
+  } catch {
+    return null;
+  }
 }
 
 /**

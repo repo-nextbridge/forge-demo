@@ -114,6 +114,18 @@ floor and finished green. *It ran* is not *it is supported*, and nothing on the 
        required  node major >= …  (/path/to/forge.lock: node.minMajor)
 ```
 
+⚠️ **AND `jq` MISSING IS A REFUSAL ABOUT `jq`, not about your node.** The floor lives inside `forge.lock`,
+which is JSON, so a machine without `jq` cannot be graded at all — and the check stops there, before
+`box-up.sh` ever reaches its own `jq is required`. It says so under its own tag, and it names the node it
+found precisely so you do not go and install a different one:
+
+```
+[jq] refusing to start: `jq` is not installed, and this box cannot read its own pin without it.
+     missing   jq   <- install THIS; it is the only thing wrong here
+     node      v24.18.0  (/home/you/.nvm/versions/node/v24.18.0/bin/node)
+               ^ found, and NOT what refused you: the floor was never graded, this stopped first
+```
+
 ⚠️ **A cron or a systemd unit has no node at all.** `env -i` with a minimal `PATH` finds neither `node` nor
 `pnpm`; only the nvm directory holds the compatible pair. The scheduled reset of this box runs in exactly that
 environment, so give the unit that directory before it runs any of this.
@@ -1168,6 +1180,16 @@ Open **http://localhost:8102** (the bench) — you should land on "Toque para co
    test: by then the order exists in the kernel, and the QR on the glass is the only copy of what can settle
    it. The inactivity clock stops there and the pix's own 15-minute window runs in its place — because
    standing still while paying in the bank app is not the same fact as walking away.
+8b. **RELOAD the page while the PIX QR is up** — the one exit from this flow that never reaches the reset.
+   The till comes back to "Toque para começar" with a line naming the order and saying it is **still unpaid**,
+   and — this is what C5 added — a button: **"Retomar o pagamento do pedido N"**. Tap it and the SAME QR is
+   back, with the same order number and the order's own total. Touch it to settle, and the order closes.
+   ⚠️ **Nothing was remembered to make that work.** The envelope lives on the payment attempt in the kernel
+   and `read.payment` publishes it; the till re-reads instead of holding a live payment in memory, so no
+   second charge can exist. Do the same reload after paying with **Cartão** and there is no button at all —
+   an order that is already paid must never draw a QR again. And in both cases the next customer can still
+   start their own order with the ordinary tap: the notice is a line, never a wall.
+
 9. **Turn on "reduce motion"** in the operating system and reload. Every animation stops. A public screen is
    the one place a person cannot walk away from motion they did not ask for.
 
