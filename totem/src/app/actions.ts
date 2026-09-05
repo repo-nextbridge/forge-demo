@@ -21,9 +21,16 @@ import { readMenu } from '@/lib/menu';
 import { PortRateLimited, totemCommand, totemRead } from '@/lib/port';
 import { logPortRefusal } from '@/lib/refusal-log';
 import { readProduct } from '@/lib/product';
-import { chooseCounterMethod, type CounterMethod, initiateCounterPayment, type PosOutcome, simulateScan } from '@/lib/pos';
+import {
+  chooseCounterMethod,
+  type CounterMethod,
+  initiateCounterPayment,
+  type PosOutcome,
+  recoverCounterPayment,
+  simulateScan,
+} from '@/lib/pos';
 import { resolveTotemStore } from '@/lib/store';
-import { type Bag, EMPTY_BAG, toBag } from '@/lib/view';
+import { type Bag, bagOfOrder, EMPTY_BAG, toBag } from '@/lib/view';
 
 /** Re-read the bag from the kernel, joining the product docs the lines need for a name and a photograph. */
 async function currentBag(): Promise<Bag> {
@@ -231,6 +238,58 @@ export async function payWith(name: string, method: CounterMethod): Promise<PayR
       kind: 'refused',
       message: error instanceof Error ? error.message : 'unknown',
     };
+  }
+}
+
+/**
+ * ★★★ FINISH THE ORDER THIS BROWSER LEFT BEHIND — the recovery half of C5 (05/09).
+ *
+ * pk9 gave the attract panel a voice for an order left `awaiting_payment` by a reload; this gives it a way
+ * out. Everything it needs is READ back from the port — the QR, the ref, the order's own money — so nothing
+ * about a live payment has to survive in this process, in a cookie or in a URL. See
+ * `recoverCounterPayment` for why it is a read and not `resume: true`.
+ *
+ * ⚠️ IT RUNS FROM A TAP AND FROM NOWHERE ELSE. It is a server ACTION, never a render: `page.tsx` may not
+ * call it while drawing the attract panel. An idle kiosk re-renders, and a recovery on render would ask the
+ * port about somebody else's order on every one of them.
+ *
+ * ⚠️ AND IT NEVER TOUCHES THE CART. The vessel behind the cookie is spent; this path reads an ORDER. A
+ * recovery that also reset or created a cart would be answering a different question with somebody's money
+ * on the glass.
+ */
+export type ResumeResult =
+  | { ok: true; outcome: PosOutcome; orderNumber: number; buyerName: string; bag: Bag }
+  | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number }
+  | { ok: false; kind: 'gone' }
+  | { ok: false; kind: 'refused'; message: string };
+
+export async function resumePreviousOrder(orderId: string): Promise<ResumeResult> {
+  const store = resolveTotemStore();
+  try {
+    const outcome = await recoverCounterPayment(orderId);
+    // `gone` is not a failure of this till. The order was paid while the screen was away, or the attempt
+    // ended — either way there is nothing to put back on the glass, and saying so is different from saying
+    // the counter broke. The screen answers the two with different sentences.
+    if (!outcome) return { ok: false, kind: 'gone' };
+    const confirmation = await totemRead().orderConfirmation(store.id, orderId);
+    if (!confirmation) return { ok: false, kind: 'gone' };
+    return {
+      ok: true,
+      outcome,
+      orderNumber: confirmation.number,
+      // ⚠️ THE CONFIRMATION IS PII-LIMITED AND CARRIES NO NAME, which is correct: the buyer's name is not a
+      // public fact about an order id anybody could type. The card on the "pronto" screen prints the number,
+      // which is what the barista calls out; an empty name draws nothing rather than inventing one.
+      buyerName: '',
+      // ★ THE ORDER'S OWN MONEY, not the spent cart's — see `bagOfOrder`. Reading the cart here would print
+      // R$ 0,00 over a live QR.
+      bag: bagOfOrder(confirmation),
+    };
+  } catch (error) {
+    logPortRefusal('resumePreviousOrder', { store: store.id, order: orderId }, error);
+    if (error instanceof PortRateLimited)
+      return { ok: false, kind: 'rate_limited', retryAfterSeconds: error.retryAfterSeconds };
+    return { ok: false, kind: 'refused', message: error instanceof Error ? error.message : 'unknown' };
   }
 }
 

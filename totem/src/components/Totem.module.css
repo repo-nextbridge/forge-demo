@@ -108,6 +108,40 @@
   color: rgba(243, 237, 227, 0.82);
 }
 
+/* C5 — the recovery target for an order a reload left unpaid. A SIBLING of `.attract` (which is itself the
+   button that covers the glass), so it needs its own stacking context above it. `pointer-events` is the load-
+   bearing part: the bar spans the panel for centring, and a bar that swallowed taps would break the
+   "Toque para começar" the next customer needs. Only the button itself takes a finger. */
+.attractResumeBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 176px;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.attractResume {
+  pointer-events: auto;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 28px;
+  font-weight: 600;
+  padding: 22px 44px;
+  border-radius: 999px;
+  background: var(--totem-bg);
+  color: var(--totem-header);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+}
+
+.attractResume:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .attractShots {
   position: relative;
   display: flex;

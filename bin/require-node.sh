@@ -62,14 +62,28 @@
 # on stderr — when the lock CLAIMS a floor this cannot be trusted to grade. The three are different answers
 # and the caller treats them differently.
 _forge_node_floor() {
-  local raw type
+  local raw type node_path="${1:-}"
 
+  # ★★ THE REFUSAL IS ABOUT `jq`, AND IT MAY NOT WEAR THE `[node]` TAG. C6 (04/09), measured on a machine
+  # without jq: the box refused under `[node]`, an operator reads the TAG before the paragraph, and the errand
+  # it sends them on is a node they cannot fix because nothing is wrong with it. `box-up.sh` has its own
+  # `command -v jq || die 'jq is required.'` and never reaches it — the floor is deliberately graded first
+  # (see `require_node` below), so this is the sentence a jq-less machine actually gets. The ORDER stays; the
+  # SUBJECT of the sentence is what was wrong. `bin/node-floor.guard.mjs` holds both halves against each
+  # other: this one must name jq and must not say `[node]`, and the cron case (no node at all) must keep
+  # saying nothing about jq.
   if ! command -v jq >/dev/null 2>&1; then
-    printf '\n[node] refusing to start: `jq` is required to read the node floor out of the pin.\n' >&2
-    printf '       lock      %s\n' "$FORGE_LOCK" >&2
-    printf '       The floor this box must run travels in `forge.lock`, which is JSON; without jq nothing\n' >&2
-    printf '       here can read it, and guessing is the one thing this check exists not to do.\n' >&2
-    printf '       Install it (apt install jq / brew install jq) and run this again.\n\n' >&2
+    printf '\n[jq] refusing to start: `jq` is not installed, and this box cannot read its own pin without it.\n' >&2
+    printf '     missing   jq   <- install THIS; it is the only thing wrong here\n' >&2
+    if [ -n "$node_path" ]; then
+      printf '     node      %s  (%s)\n' "$("$node_path" -v 2>/dev/null || echo '<unreadable>')" "$node_path" >&2
+      printf '               ^ found, and NOT what refused you: the floor was never graded, this stopped first\n' >&2
+    fi
+    printf '     lock      %s\n' "$FORGE_LOCK" >&2
+    printf '     The floor this box must run travels in `forge.lock`, which is JSON; without jq nothing\n' >&2
+    printf '     here can read it, and guessing is the one thing this check exists not to do.\n' >&2
+    printf '     Install it (apt install jq / brew install jq) and run this again.\n' >&2
+    printf '     Nothing has been read, started or written.\n\n' >&2
     return 2
   fi
 
@@ -130,7 +144,9 @@ require_node() {
     return 1
   fi
 
-  floor="$(_forge_node_floor)"
+  # The node path is HANDED OVER rather than re-resolved: the jq refusal above prints it to say "this is not
+  # the problem", and a second `command -v node` there could name a different binary than the one graded here.
+  floor="$(_forge_node_floor "$path")"
   status=$?
   if [ "$status" -eq 2 ]; then
     return 1

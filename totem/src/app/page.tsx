@@ -43,6 +43,12 @@ async function previousOrderOf(view: CheckoutView | null): Promise<PreviousOrder
     const confirmation = await totemRead().orderConfirmation(store.id, view.last_order_id);
     if (!confirmation) return null;
     return {
+      // ★ THE ID TRAVELS TOO (C5, 05/09), because the attract panel's "Retomar o pagamento" has to be able to
+      // NAME the order it is recovering. It is not a secret: `read.order_confirmation` and `read.payment` are
+      // both public, PII-limited reads keyed on exactly this pair, and the browser standing here is the one
+      // that placed it. What it buys is that the recovery asks the port about ONE order — this one — instead
+      // of the till holding a live payment in memory, which is the defect being closed.
+      orderId: view.last_order_id,
       number: confirmation.number,
       awaitingPayment: confirmation.display_status === 'awaiting_payment',
     };

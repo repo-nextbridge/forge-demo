@@ -105,11 +105,42 @@ carimbado como propriedade conhecida desta caixa, e carded como trabalho de prod
 honesta e pequena: **o app se chama por um lugar** ("Pagar no balcão"), para que a aparição dele fora do
 balcão leia como configuração errada e nunca como oferta legítima.
 
+## ★ E o pedido que uma recarga deixou aberto pode ser TERMINADO no próprio totem
+
+Capacidade nova (C5, 05/09). Uma recarga de página é a única saída do fluxo do balcão que nunca passa pelo
+reset: o cookie sobrevive e o estado da tela não. Com o QR do PIX na tela, isso deixava um pedido **colocado e
+não pago** que ninguém mais conseguia liquidar — o `provider_ref` e o copia-e-cola moravam no estado do
+componente e a recarga os destruía. A pk9 fez a tela **dizer** isso ("chame um atendente"); ela não recuperava
+nada.
+
+**Agora o painel de espera oferece "Retomar o pagamento do pedido N", e a tela volta para o mesmo QR.**
+
+⚠️ **Sem um segundo lugar de verdade, e sem risco de segunda cobrança.** O envelope não é lembrado por
+ninguém: ele já está persistido na *tentativa* de pagamento, e `read.payment` o publica **verbatim** — leitura
+pública, PII-zero, anônima. O totem **relê** em vez de guardar. Não há cookie novo, não há URL com capacidade
+dentro, e uma leitura não cobra ninguém.
+
+⚠️ **E não é `payment.initiate(..., resume: true)`, que era o caminho óbvio.** O `resume` existe para o QR
+**expirado**: ele força o adapter a reinvocar o app para que este possa responder `attempt_failed`. Aqui ele
+não compraria nada e custaria uma chamada a provedor — o `payment-pos` deriva os dois campos do
+`idempotency_key` (o id da tentativa, que não muda), então uma reinvocação só reproduz byte a byte o que a
+leitura acabou de responder. O único caso que a leitura não responde é a tentativa reivindicada e nunca
+invocada (`next_action: null`), e aí um `payment.initiate` **simples** basta: o kernel reentra na MESMA
+tentativa com a MESMA chave. **Um pedido, uma cobrança**, por construção.
+
+O botão só aparece para um pedido que o kernel diz estar **aguardando**: pedido pago, tentativa recusada ou
+encerrada não voltam a desenhar QR nenhum. E ele é um botão **ao lado** do painel, nunca dentro — o próximo
+cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
+
 ## Onde isto é provado
 
 * `apps/payment-pos/provider.test.ts` — `card` liquida no `initiate`; `pix` não liquida e devolve o ref; a
   porta do escaneio recusa o que não é uma cobrança PIX aberta deste app.
 * `apps/payment-pos/manifest.test.ts` — os métodos neutros, as janelas em minutos, os toggles, e a regra de
   cópia que o guard do monorepo não alcança um app da instância para cobrar.
+* `totem/src/lib/pos.recover.test.ts` — a recuperação é uma LEITURA (nenhuma escrita), o `resume` fica
+  desligado, e um pedido já pago não volta a oferecer QR.
+* `totem/src/components/Totem.reload.test.tsx` — o painel oferece a saída, o toque nomeia o pedido pelo id, e
+  **nenhum render** alcança a porta de pagamento.
 * `RELATORIO-T-B.md` (nos briefs da onda) — as sabotagens medidas e o pedido de verdade pago pelos dois
   métodos.

@@ -379,6 +379,46 @@ test('the refusal tells the operator what to DO, not only what is wrong', () => 
   );
 });
 
+test('★★ NO `jq` IS A REFUSAL ABOUT JQ — it must never send the operator to look at node', () => {
+  // C6 (04/09), measured on a machine without jq: the box refused under a `[node]` tag while the paragraph
+  // was about a JSON tool, and an operator reads the tag before the paragraph. `box-up.sh` carries its own
+  // `command -v jq || die 'jq is required.'` and NEVER reaches it, because the node floor is graded first on
+  // purpose (see the header of require-node.sh, and `box-up.sh checks the floor before anything` above).
+  //
+  // ★ SO THE REPAIR IS THE SENTENCE AND NOT THE ORDER, and the cron test above is why: with an empty PATH
+  // there is neither node nor jq, and that case must keep answering about the PATH. Two refusals, two
+  // subjects; this one is the second.
+  const version = 'v99.0.0'; // far ABOVE any floor a release has declared: nothing is wrong with this node
+  const dir = fakeNodeDir(version);
+  // ⚠️ PATH is the fixture ALONE — no /usr/bin, so `jq` is genuinely unreachable. This is the whole
+  // difference from `withJq(dir)`, which every other test in this file uses.
+  const { code, err } = runCheck(dir, fakeLock({ minMajor: 24, engines: '>=24' }));
+
+  assert.equal(code, 1, `a box that cannot read its own pin was allowed to start:\n${err}`);
+  assert.ok(/jq/.test(err), `the refusal never names the tool that is missing:\n${err}`);
+  assert.ok(
+    !/\[node\]/.test(err),
+    `the refusal wears the [node] tag while the missing thing is jq — that is the defect:\n${err}`,
+  );
+  // The node it found, said out loud and called fine: without it the operator has no way to tell that the
+  // thing named in the tag is not the thing to fix.
+  assert.ok(err.includes(version), `the refusal does not name the node it found:\n${err}`);
+  assert.ok(err.includes(join(dir, 'node')), `the refusal does not name WHERE that node came from:\n${err}`);
+  assert.ok(
+    /apt install jq|brew install jq/.test(err),
+    `the refusal names no way out — the one thing an operator can act on:\n${err}`,
+  );
+  assert.ok(
+    !/nvm|older than|node major >=/.test(err),
+    `the refusal reads like a node-version problem, which is exactly the wrong errand:\n${err}`,
+  );
+  assert.match(
+    err,
+    /nothing (has been|was) (read|written|started)/i,
+    `the refusal does not say the box is untouched:\n${err}`,
+  );
+});
+
 test('the guard fixture is a real directory, not a name — a fake node that never ran would prove nothing', () => {
   const dir = fakeNodeDir('v99.0.0');
   mkdirSync(dir, { recursive: true });
