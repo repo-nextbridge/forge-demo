@@ -30,6 +30,8 @@
 #  13. online-only               the edge and the bucket: what only exists online. AFTER the rebirth (13–15
 #                                are the reset's own tail, and purging BEFORE it refills from a dying origin)
 #  14. warm-box      × TENANT    every SERVABLE store, warmed and MEASURED. A cold box is a red box.
+#  14b. prove-doors   × TENANT    every DOOR of every store, opened anonymously — vitrine, checkout,
+#                                conta and LOGIN. The catalogue is warm; nothing else ever opened these.
 #  15. verify-config             the verdict over the CONFIGURATION — is the box WHAT it declares? This is
 #                                the one a rebirth eats: it comes back half promoted and used to exit 0.
 #
@@ -1451,6 +1453,35 @@ for t in $TENANTS; do
   fi
 done
 
+# ── 14-bis · ★★★ EVERY DOOR OF EVERY STORE, OPENED ──────────────────────────────────────────────────────────
+#
+# ⛔ IT EXISTS BECAUSE A BOX CAME UP GREEN WITH SIGN-IN DEAD ON THREE OF ITS FOUR SHOPS (2026-09-04).
+# `/s/<id>/account/login` answered 404 — the vitrine's 404, because the edge rule that claims the
+# store-scoped account door stopped one slash short — and every other step of the birth was settled: the
+# data verified, the pages warm, the configuration graded. Warming does not catch it (the warmer walks the
+# CATALOGUE, and the login page is in no catalogue) and `verify-config` does not either (it grades the
+# declaration, and the declaration was right). Nothing in the birth had ever opened that door.
+#
+# ⚠️ IT GRADES WHICH CONTAINER ANSWERED, not only the status code — see the file's own header. The vitrine
+# answers 200 for paths it does not own, so a code alone cannot tell the forkable front from the one that
+# holds the money and the session.
+#
+# ONCE PER TENANT with that tenant's own token, for the same reason 3, 6, 8, 11 and 14 are: the read face
+# that lists a tenant's stores resolves the tenant from the CREDENTIAL.
+say '14-bis · opening every door of every store (a shop nobody can sign in to is a red box)'
+SHUT=''
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the doors step."
+  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t — every door opens"
+  else
+    SHUT="$SHUT $t"
+    note "⛔ $t has SHUT doors — the ✗ lines above name the store and the path."
+  fi
+done
+
 # ── 15 · ★★★ THE VERDICT OVER THE CONFIGURATION, which is the half a rebirth eats ───────────────────────────
 #
 # Step 12 grades the DATA. This grades what the box IS: the address it publishes itself at, the hostnames its
@@ -1500,6 +1531,13 @@ if [ -n "${COLD:-}" ]; then
 
 ' "$COLD" >&2
 fi
+if [ -n "${SHUT:-}" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND%s HAS DOORS A SHOPPER CANNOT OPEN. Step 14-bis names the store and the
+         path. A shop whose sign-in page 404s sells to nobody who is not already signed in, and every other
+         step of this birth can be green while it is true — that is why the step exists.
+
+' "$SHUT" >&2
+fi
 if [ -n "${MISCONFIGURED:-}" ]; then
   printf '[box-up] ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Step 15 names the face that disagrees;
          a box reborn while promoted lands here with its admin on localhost and its shop on the network.
@@ -1521,6 +1559,6 @@ if [ -n "$UNSETTLED" ]; then
 fi
 # The three above are reasons of their own, and reaching this line means the tenants settled — so a run that
 # is cold or misconfigured still ends non-zero, which is what every wrapper reads before it reads the prose.
-if [ -n "${COLD:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
+if [ -n "${COLD:-}" ] || [ -n "${SHUT:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
   exit 1
 fi

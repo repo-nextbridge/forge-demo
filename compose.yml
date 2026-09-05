@@ -158,6 +158,11 @@ services:
     image: ${FORGE_STOREFRONT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
+      # ⚠️ F11, SEGUNDA VEZ — 04/09. Sem esta linha a vitrine cai no 3º degrau de `resolveOrigin`
+      # (host da requisição + `x-forwarded-proto`, que a borda não manda ⇒ **http**), e o aquecedor
+      # monta todas as URLs num esquema que este host não serve: 831 planejadas, 0 aquecidas.
+      # O guard `env-forwarding` do produto pega isto — e grada os 3 composes DELE, não este.
+      FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:-}
       # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
       #
       # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`
@@ -206,6 +211,11 @@ services:
     image: ${FORGE_CHECKOUT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
+      # ⚠️ F11, SEGUNDA VEZ — 04/09. Sem esta linha a vitrine cai no 3º degrau de `resolveOrigin`
+      # (host da requisição + `x-forwarded-proto`, que a borda não manda ⇒ **http**), e o aquecedor
+      # monta todas as URLs num esquema que este host não serve: 831 planejadas, 0 aquecidas.
+      # O guard `env-forwarding` do produto pega isto — e grada os 3 composes DELE, não este.
+      FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:-}
       # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
       #
       # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`

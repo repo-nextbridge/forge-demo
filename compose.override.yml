@@ -30,6 +30,9 @@ services:
       context: ./storefront-coffee
     restart: unless-stopped
     environment:
+      # ⚠️ F11 (2ª vez, 04/09) — o fork aquece pelas MESMAS rotas; sem isto ele resolve a origem
+      # pelo host da requisição + `x-forwarded-proto` e monta URLs em http:// que este host não serve.
+      FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:-}
       NODE_ENV: production
       PORT: 3000
       # The SAME kernel as every other front on this box, and it has to be: the cart a shopper fills here is

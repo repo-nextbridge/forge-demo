@@ -77,10 +77,27 @@
 	# So the two paths above are the production spelling and these two are the bench's. Without them the
 	# demo's shop is a shop whose "Finalizar compra" leads to the vitrine's 404 — which is the same defect
 	# the front split exists to prevent, one layer out.
-	handle /s/*/checkout* {
-		reverse_proxy checkout:3000
-	}
-	handle /s/*/account* {
+	# ⚠️⚠️ `path_regexp`, NOT `handle /s/*/account*`, AND THE DIFFERENCE IS THE LOGIN PAGE.
+	#
+	# MEASURED 2026-09-04 on this box, by the `X-Forge-Served-By` header the fall-through sets:
+	#
+	#     /s/<id>/account          → checkout    ✓
+	#     /s/<id>/account/login    → storefront  ✗ 404   ← the door of every store that has no rule of its own
+	#     /s/<id>/account/orders   → storefront  ✗ 404
+	#     /s/<id>/checkout         → checkout    ✓
+	#
+	# Caddy has TWO path-matching regimes and the pattern picks which one: ONE trailing `*` and nothing else
+	# is a PREFIX match (crosses `/`), while a pattern with a SECOND wildcard falls back to Go's `path.Match`,
+	# where `*` matches any run of NON-SEPARATOR characters — so `/s/*/account*` stops dead at the slash
+	# before `login`. That is why `caddy/extra/coffee.local.caddy`, which spells the store id out and
+	# therefore carries a single trailing `*`, has a WORKING login while the generic rule right here does not.
+	#
+	# A regexp has one regime. The alternative was five handles at five depths (`/s/*/account/*`,
+	# `/s/*/account/*/*`, … up to `/account/social/<provider>/callback`) — a ladder that silently loses the
+	# next route the checkout app grows.
+	@store_scoped_checkout path_regexp ^/s/[^/]+/(checkout|account)(/|$)
+	handle @store_scoped_checkout {
+		header X-Forge-Served-By "checkout"
 		reverse_proxy checkout:3000
 	}
 	# ⚠️ `/api/account/orders/*` and NOT `/api/account*`: `/api/account/status` is still the VITRINE's route
