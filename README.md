@@ -33,7 +33,10 @@ seed/                  the birth data: the stores, the coffee and counter catalo
                        STOCK POOL (`catalog.json` → `stock_pool`), products this brand owns that no store
                        sells. They look like an oversight and are the opposite: step 10 builds the stock
                        screen's three alert states by ZEROING them, and refuses a pool under 13.
-docs/                  the capability pages: what this box can DO that it could not before, one page each.
+docs/capabilities/     what this box can DO that it could not before, one page each.
+docs/operations/       how this box is OPERATED. `runbook-demo.md` is the online instance's runbook — the
+                       deploy order, what to fill in, the weekly reset. This README is the BENCH; that is
+                       the box anyone can reach.
 bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
 ```
@@ -232,10 +235,15 @@ answered **404**. A fetch-based probe would have graded every hostname as resolv
 
 ### ⏱ What a birth COSTS — and it is a number nobody could quote until 2026-09-03
 
-`bash bin/box-up.sh` on a virgin box is a **~12-minute** job on this bench, and **it used to be 74**. Both
-ends of that are measured; the 12 is the arithmetic of the two measurements below and the first birth after
-this slice is what will confirm it — the run prints its own numbers now, so nobody has to take this
+`bash bin/box-up.sh` on a virgin box is a **19 min 17 s** job on this bench, and **it used to be 74**. Both
+ends of that are measured, and the 19 is a whole birth that finished with exit 0 (the run of 2026-09-04, with
+the defaults) rather than an estimate — the run prints its own numbers now, so nobody has to take this
 paragraph's word for it.
+
+⚠️ **This paragraph said "~12 minutes" until 2026-09-04 and that number was never a birth.** It was the
+arithmetic of the two measurements below, extrapolated from a run that **died** in the window phase and
+therefore never wrote the past, the window or the verdict. Of the real 19 min, **113 s** is waiting on rate
+limits — and **102 s of that is 52 calls** through the `ext_public` face, which is the review form.
 
 The difference was not Docker and not Postgres. `bin/seed.mjs` paces itself below
 the kernel's rate limits rather than discovering them with 429s, and until this slice it did so with **one**
