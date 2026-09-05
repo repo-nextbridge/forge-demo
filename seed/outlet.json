@@ -347,6 +347,104 @@
       "catalogue cannot disagree without somebody going red."
     ]
   },
+  "_pages_why": [
+    "★★ THE SEVEN INSTITUTIONAL PAGES OF THE OUTLET — AND THE HALF OF THEM THIS FILE CANNOT WRITE.",
+    "",
+    "MEASURED 05/09 ON THE BENCH, seven requests each: the `forge` store answers 200 at /contato, /entrega,",
+    "/faq, /privacidade, /sobre, /termos and /trocas-e-devolucoes; the OUTLET answered 404 at all seven, in",
+    "the same tenant. The institutional sidebar the storefront draws on those pages is HARDCODED with the",
+    "same seven links (`storefront-coffee/src/templates/cms/PageView.tsx:13-21`, a byte-identical copy of the",
+    "reference storefront's), so a shopper who reached one of them from the Outlet was handed seven dead",
+    "links. That is what this block ends.",
+    "",
+    "⛔⛔ AND THE TEXT ON THOSE PAGES IS NOT DATA — NOT HERE, AND NOT ANYWHERE. `content.page.create` writes",
+    "the page CARD only: slug, title, template_key, meta_title, meta_description, published. There is no body",
+    "column and it is a product decision, written at `packages/core/src/commands/page.ts:1-3` («the CONTENT is",
+    "the theme template's code (yellow zone), never stored here»). The prose comes from ONE component per",
+    "`template_key`, in the storefront image, resolved by a registry with NO STORE AXIS",
+    "(`apps/storefront/src/templates/cms/registry.ts:22-32`), and the Outlet is served by the vanilla image",
+    "(`caddy/Caddyfile.local:150-151`). So the Outlet's /trocas-e-devolucoes renders, word for word, the same",
+    "paragraphs as the Forge store's — verified live on the bench, «7 dias corridos» and all.",
+    "",
+    "⇒ THE OWNER ASKED FOR TEXT OF ITS OWN («faz sentido ser diferente para outlet») AND THIS SLICE COULD",
+    "ONLY DELIVER PART OF IT. What is genuinely the Outlet's here is the `title` — which the template prints",
+    "as the page's <h1> — and the two meta fields. The BODY needs one of two things this repository may not",
+    "do: a store axis on the CMS template registry, or a body on the page card. Both are the product's, both",
+    "are in the other repo, and the slice report names them.",
+    "",
+    "★ SO EVERY `meta_description` BELOW IS TRUE OF THE PAGE THAT WILL ACTUALLY RENDER. It was written",
+    "against the vanilla templates as they stand, clause by clause: nothing here promises a paragraph the",
+    "shared body does not carry. A description that advertised outlet-specific answers over the reference",
+    "FAQ would be exactly the species of prose this repository keeps paying for.",
+    "",
+    "⚠️ AND THE OUTLET IS NOT A SECONDS SHOP. The brief supposed «peça de ponta de estoque / segunda linha»;",
+    "the dataset says otherwise and the dataset wins. The products here ARE the Forge store's products, the",
+    "dataset's real catalogue with real photographs and real size grids, re-priced for a clearance store (the",
+    "`_readme` above says so, and `seed/forge.mjs` publishes the very same handles into `forge`). What is",
+    "scarce is the SIZE GRID — that is what the `acabando` collection is named for. No copy below claims a",
+    "defect, an avaria or a second line, because the catalogue has none.",
+    "",
+    "★ `privacidade` AND `termos` KEEP THE LOJA-MÃE'S TITLE ON PURPOSE. A privacy policy or a terms page that",
+    "reads differently per storefront is a LEGAL claim nobody in this house made, and inventing a variation",
+    "to look less duplicated would be decoration with a liability attached. The two shops share the tenant,",
+    "the customer records and the carriers; those two pages say the same thing because they are the same",
+    "thing.",
+    "",
+    "★ THE CARRIERS CLAIM IN `entrega` IS MEASURED, not flattery: `read.shipping_methods_admin` has no store",
+    "parameter and `seed/box.json` declares delivery PER TENANT, so the Outlet ships on the same methods the",
+    "Forge store does. `bin/verify-seed.mjs` reads that same list without a store filter."
+  ],
+  "pages": [
+    {
+      "slug": "trocas-e-devolucoes",
+      "template_key": "returns",
+      "title": "Trocas e devoluções no Outlet",
+      "meta_title": "Trocas e devoluções · Forge Outlet",
+      "meta_description": "Peça de Outlet troca e devolve como qualquer outra: 7 dias corridos após o recebimento, com o produto sem uso e na embalagem original. O reembolso volta pelo mesmo meio de pagamento do pedido."
+    },
+    {
+      "slug": "entrega",
+      "template_key": "shipping",
+      "title": "Entrega e prazos do Outlet",
+      "meta_title": "Entrega e prazos · Forge Outlet",
+      "meta_description": "O Outlet entrega pelas mesmas transportadoras da loja Forge. O frete é calculado no checkout a partir do seu CEP e o prazo começa a contar depois da aprovação do pagamento; o rastreio fica em Meus pedidos."
+    },
+    {
+      "slug": "contato",
+      "template_key": "contact",
+      "title": "Fale com o Outlet",
+      "meta_title": "Fale com o Outlet · Forge Outlet",
+      "meta_description": "Atendimento do Forge Outlet por e-mail e WhatsApp, de segunda a sexta, das 9h às 18h. Tenha o número do pedido em mãos: é por ele que a equipe encontra a sua peça."
+    },
+    {
+      "slug": "faq",
+      "template_key": "faq",
+      "title": "Dúvidas do Outlet",
+      "meta_title": "Dúvidas frequentes · Forge Outlet",
+      "meta_description": "Prazo de entrega, como pedir uma troca e quais formas de pagamento aparecem no checkout — as três perguntas que chegam antes de toda compra em liquidação."
+    },
+    {
+      "slug": "sobre",
+      "template_key": "about",
+      "title": "Sobre o Forge Outlet",
+      "meta_title": "Sobre o Forge Outlet",
+      "meta_description": "O Outlet é a vitrine de liquidação da Forge: as mesmas marcas e as mesmas fichas técnicas da loja principal, com preço de saída e uma numeração que vai acabando."
+    },
+    {
+      "slug": "privacidade",
+      "template_key": "privacy",
+      "title": "Política de Privacidade",
+      "meta_title": "Política de Privacidade · Forge Outlet",
+      "meta_description": "Quais dados o Forge Outlet coleta ao processar um pedido, para que os usa e como você pede acesso, correção ou exclusão deles. Em linha com a LGPD."
+    },
+    {
+      "slug": "termos",
+      "template_key": "terms",
+      "title": "Termos de Uso",
+      "meta_title": "Termos de Uso · Forge Outlet",
+      "meta_description": "As regras de compra no Forge Outlet: valem o preço e as condições exibidos no momento da compra, e o pedido só é confirmado depois da aprovação do pagamento."
+    }
+  ],
   "_home_why": [
     "★★ 02/09 — THE BLOCKS OF THE HOME ALL LIVE IN ONE SLOT, AND THAT IS THE TEMPLATE'S DOING.",
     "(03/09, pk5: they are THREE — the mosaic, «Quase de graça» and «Outlet Kids». «Acabando!» left the home",

@@ -18,6 +18,8 @@
 //     whole archetype rests on. It cannot be written here; `priceOutlet()` at the foot says why.
 //   · the three collections the shelves and the banners are sourced from (`acabando` outlives the shelf that
 //     used to show it: it is still a list a shopper reaches at `/collection/acabando`);
+//   · the SEVEN institutional pages, published — the shop had zero of them while its own footer and the
+//     institutional sidebar linked all seven (measured 05/09; `seed/outlet.json` → `_pages_why`);
 //   · the four Compose placements that ARE the home: the announcement band, and — all three in the SINGLE
 //     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
 //     banner mosaic, the "Quase de graça" shelf and the "Outlet Kids" shelf, which carries the «Outlet Kids»
@@ -87,6 +89,7 @@ export async function seedOutlet(port) {
   const assets = await uploadMedia(port);
   const products = await seedProducts(port, store, assets, categories);
   await seedCollections(port, products);
+  await seedPages(port, store);
   await compose(port, store, assets);
 
   log('outlet — done. Re-running this is a no-op.');
@@ -592,6 +595,57 @@ async function seedCollections({ command, read, log }, products) {
     }
     log(`collection ${collection.handle} — ${members.length} product(s) pinned, in the artboard's order`);
   }
+}
+
+// ── 5b. the institutional pages ─────────────────────────────────────────────────────────────────────
+// MEASURED 05/09, seven requests per store on the bench: `forge` answered 200 at /contato, /entrega, /faq,
+// /privacidade, /sobre, /termos and /trocas-e-devolucoes; the OUTLET answered 404 at all seven, in the same
+// tenant. The sidebar the storefront draws on an institutional page carries those exact seven links and is
+// HARDCODED (`storefront-coffee/src/templates/cms/PageView.tsx:13-21` — this repo's own byte-identical copy
+// of the reference storefront's), so the shop was publishing seven dead links. `seed/outlet.json`'s
+// `_pages_why` holds the rest of the measurement, including the half this repository cannot write: the page
+// BODY is theme code, shared with the Forge store, and no dataset can vary it.
+//
+// ⚠️⚠️ THE PARAM IS `store_id`, AND SPELLING IT `store` IS A SILENT WHOLE-TENANT READ. `read.internal.pages`
+// declares `store_id` (packages/core/src/read/internal-capabilities.ts:669) and its Zod object STRIPS what it
+// does not know — so `{ store: <id> }` is not a narrower question that gets ignored, it is NO question, and
+// the answer is every page of the tenant. On this box that matters the day it runs: the `forge` store already
+// holds seven pages with these very slugs, so a `have` set built from an unfiltered read contains all seven
+// before this store has one, every slug is skipped as "already there", and the step reports success having
+// created NOTHING. The `store_id` filter is asked of the read AND re-asserted on the row, because a read that
+// answers a different question than the one asked is a species this repo has met three times.
+//
+// IDEMPOTENT like everything else here: keyed by the slug this file chooses, existing ones skipped, nothing
+// ever updated or removed. A title an operator edited by hand in the admin is the operator's.
+export async function seedPages({ command, readAll, log }, store) {
+  const pages = outletPages();
+  const have = new Set(
+    (await readAll('pages', { store_id: store.id }))
+      .filter((page) => page.store_id === store.id)
+      .map((page) => page.slug),
+  );
+  let created = 0;
+  for (const page of pages) {
+    if (have.has(page.slug)) continue;
+    await command('content.page.create', {
+      store_id: store.id,
+      slug: page.slug,
+      title: page.title,
+      template_key: page.template_key,
+      meta_title: page.meta_title,
+      meta_description: page.meta_description,
+      published: true,
+    });
+    created += 1;
+  }
+  log(`outlet — pages: ${created} created, ${pages.length - created} already there`);
+}
+
+/** The seven cards this store publishes, as the dataset declares them. Exported so the verifier and the
+ *  guards grade the SAME list the seed writes — a second copy of these slugs is a second copy that goes
+ *  stale, which is the failure `bin/verify-seed.mjs` was written against. */
+export function outletPages() {
+  return data.pages;
 }
 
 // ── 6. the home ─────────────────────────────────────────────────────────────────────────────────────

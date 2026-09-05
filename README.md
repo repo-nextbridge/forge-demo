@@ -809,8 +809,17 @@ It is idempotent — re-running it is a no-op.
 The same run stands the **Outlet** up (`seed/outlet.mjs`, its data in `seed/outlet.json`): it installs the
 two apps that store composes with, uploads its photographs and campaign art, publishes the products
 `outlet.json` names with their prices and their stock, pins the three collections its shelves and its
-campaign art are sourced from, and places the four Compose blocks that are its home page. Not one line of
-front-end code — a theme, data, and a composition.
+campaign art are sourced from, publishes its **seven institutional pages**, and places the four Compose
+blocks that are its home page. Not one line of front-end code — a theme, data, and a composition.
+
+⚠️ **The seven pages are CARDS, and the text on them is not this repository's.** Until 05/09 the Outlet
+published none of them while the Forge store beside it published seven, in the same tenant, and the
+institutional sidebar the storefront draws is hardcoded with all seven links — so the shop was drawing seven
+links into its own 404. What the seed can write is the card: slug, title, meta, `template_key`, published.
+The **body** is a component per `template_key` inside the storefront image, resolved by a registry with no
+store axis, so the Outlet's «Trocas e devoluções» renders the same paragraphs as the Forge store's. The
+measurement and the two ways out (a store axis on that registry, or a body on the page card — both the
+product's, neither this repo's) are in `seed/outlet.json`'s `_pages_why`.
 
 ⚠️ **Three of those four are in ONE slot.** The reference home draws its sections in a fixed order and the two
 headings this store keeps — «Compre por categoria» and «Marcas que amamos» — are theme chrome, not slots, with
