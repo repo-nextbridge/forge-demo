@@ -28,6 +28,7 @@ import { promisify } from 'node:util';
 
 import { COFFEE_PROMOTIONS, expectedCoffees } from '../seed/coffee.mjs';
 import { poolProducts } from '../seed/pool.mjs';
+import { outletPages } from '../seed/outlet.mjs';
 
 const run = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -37,9 +38,12 @@ const readSeed = (name) => JSON.parse(readFileSync(join(REPO, 'seed', name), 'ut
 
 const catalog = readSeed('catalog.json');
 const totem = readSeed('totem.json');
+const outlet = readSeed('outlet.json');
 
 const CAFE = 'sto_cafe';
 const BALCAO = 'sto_balcao';
+const FORGE = 'sto_forge';
+const OUTLET = 'sto_outlet';
 
 // ── the box the seed declares, as the frozen reads would answer it ───────────────────────────────────────
 
@@ -196,10 +200,95 @@ function declaredBox() {
       pii: null,
     })),
     productStores: {},
+    // The coffee tenant declares no institutional page and publishes none — the case the new section has to
+    // report as a LINE rather than as silence, so that "this shop has none" stops looking like "nobody looked".
+    pages: [],
     assets: [
       { id: 'ast_1', kind: 'image', provider_key: 'placeholder-cafe.png', filename: 'placeholder-cafe.png', mime: 'image/png', size: 10, created_by: null, created_at: '2026-09-03T00:00:00Z' },
     ],
     reviews,
+  };
+}
+
+/** One page row, with the key set `read.internal.pages` publishes (id, store_id, slug, title, template_key,
+ *  published, archived_at — `internal-capabilities.ts`'s select list). */
+const pageRow = (storeId, spec, published = true) => ({
+  id: `page_${storeId}_${spec.slug}`,
+  store_id: storeId,
+  slug: spec.slug,
+  title: spec.title,
+  template_key: spec.template_key,
+  published,
+  archived_at: null,
+});
+
+/**
+ * THE FOOTWEAR TENANT, as the frozen reads would answer it — the box the institutional-page section is about.
+ *
+ * ★ IT IS THE MINIMUM THAT MAKES THAT TENANT SETTLE, and every number in it is derived: the Outlet's fifty-five
+ * from `seed/outlet.json`, its seven pages from the very function `seed/outlet.mjs` creates them with. The
+ * Forge store carries seven pages too — the mounted dataset's — and the point of the section is that those are
+ * REPORTED and never graded, so they are here with slugs this repository does not declare anywhere.
+ */
+function footwearBox() {
+  const outletProducts = outlet.products.map((p, i) => ({
+    product_id: `prod_outlet_${i}`,
+    handle: p.handle,
+    title: p.handle,
+    status: 'active',
+    metadata: {},
+    content_sections: [],
+    media: [],
+    skus: [],
+  }));
+  // The dataset's catalogue is not knowable from this repository; the section only asserts it is not empty.
+  const datasetProducts = Array.from({ length: 2790 }, (_, i) => ({
+    product_id: `prod_ds_${i}`,
+    handle: `ds-${i}`,
+    title: `ds-${i}`,
+    status: 'active',
+    metadata: {},
+    content_sections: [],
+    media: [],
+    skus: [],
+  }));
+  return {
+    stores: [
+      storeRow(FORGE, 'forge', 'Forge', null),
+      storeRow(OUTLET, 'outlet', 'Forge Outlet', 'outlet'),
+    ],
+    published: { [FORGE]: datasetProducts, [OUTLET]: outletProducts },
+    catalogue: [...datasetProducts, ...outletProducts],
+    promotions: [],
+    promotionStores: [],
+    shippingMethods: [],
+    pickupLocations: [],
+    // ★ `app:demo-data` is the SOURCE the verifier identifies the dataset's vocabulary by, never a list of
+    // names — so the fake face carries the source and not nine typed keys.
+    customFields: ['genero', 'material', 'uso'].map((key, i) => ({
+      id: `cfd_ds_${i}`,
+      owner_entity: 'product',
+      key,
+      type: 'text',
+      required: false,
+      options: [],
+      facetable: false,
+      source: 'app:demo-data',
+      status: 'active',
+      label: key,
+      pii: null,
+    })),
+    productStores: {},
+    pages: [
+      ...outletPages().map((spec) => pageRow(OUTLET, spec)),
+      // The Forge store's own seven, with the dataset's titles. Nothing here grades them.
+      ...outletPages().map((spec) => pageRow(FORGE, { ...spec, title: `${spec.title} (dataset)` })),
+    ],
+    stock: { in_stock: 40, low: 6, partial: 5, out: 4 },
+    assets: [
+      { id: 'ast_1', kind: 'image', provider_key: 'placeholder-outlet.png', filename: 'placeholder-outlet.png', mime: 'image/png', size: 10, created_by: null, created_at: '2026-09-05T00:00:00Z' },
+    ],
+    reviews: [],
   };
 }
 
@@ -261,6 +350,16 @@ async function serve(box, { drop } = {}) {
     if (p === '/v1/read/internal/product_stores')
       return send(box.productStores[url.searchParams.get('product_id')] ?? []);
     if (p === '/v1/read/internal/assets') return send(without('assets', box.assets));
+    // ⚠️ DELIBERATELY BLIND TO `store_id`. The real read declares that parameter and would honour it, but a
+    // fake face that filters for the verifier hides the thing worth proving: the verifier narrows the answer
+    // AGAIN on the `store_id` each row carries. Answering the whole tenant here is the hostile version, and
+    // it is the shape that produced the defect — a shop's seven slugs read as "already there" because
+    // ANOTHER shop had them.
+    if (p === '/v1/read/internal/pages') return send(pageOf(without('pages', box.pages ?? []), url));
+    if (p === '/v1/read/internal/stock_levels') {
+      const cut = url.searchParams.get('availability');
+      return send({ items: [], page: 1, limit: 1, total: box.stock?.[cut] ?? 0 });
+    }
     if (p === '/v1/read/products') {
       const store = url.searchParams.get('store');
       const rows = box.published[store];
@@ -278,9 +377,9 @@ async function serve(box, { drop } = {}) {
 }
 
 /** Run a verifier (the real one, or a sabotaged copy) against a fake face. Never throws on a red exit. */
-async function verify(script, api) {
+async function verify(script, api, tenant = 'forgecafe') {
   try {
-    const { stdout } = await run(process.execPath, [script, '--api', api, '--tenant', 'forgecafe'], {
+    const { stdout } = await run(process.execPath, [script, '--api', api, '--tenant', tenant], {
       env: { ...process.env, FORGE_SEED_TOKEN: 'tok_fake' },
       maxBuffer: 8 * 1024 * 1024,
     });
@@ -431,6 +530,107 @@ test('★ a read that pages by another word is refused, not walked in circles', 
       `the walk had to refuse instead of believing page 1 twice:\n${stderr}\n${stdout}`,
     );
     assert.equal(code, 2, stderr);
+  } finally {
+    face.close();
+  }
+});
+
+// ── ★★ THE INSTITUTIONAL PAGES (pk12/d1) ─────────────────────────────────────────────────────────────────
+//
+// The defect these grade is the one that had NO CHECK AT ALL: the Outlet published zero institutional pages
+// while the Forge store beside it published seven, in the same tenant, for as long as the bench existed.
+// Nothing was wrong with the kernel and nothing was red — the count was simply never taken, and the bench
+// inventory printed a "Páginas institucionais" heading under one shop and no heading under the other, which
+// reads as "this shop has none" and not as "nobody looked".
+
+test('★★ the footwear tenant with all seven Outlet pages published — the verifier settles', async () => {
+  const face = await serve(footwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.match(stdout, /✓ outlet — all 7 institutional page\(s\) published/, stdout);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+  }
+});
+
+test('★★ SABOTAGE — one page deleted from the dataset never reaches the box, and the verifier names the SLUG', async () => {
+  // The sabotage the brief asks for, staged where it really happens: `seed/outlet.json` loses an entry, so
+  // `seed/outlet.mjs` never creates it and the box comes out with six. What must NOT happen is the verifier
+  // shrinking its expectation along with the dataset and going green over a shop with a dead link in its
+  // sidebar — so the BOX here is built from the shortened list while the SLUG is asserted by name.
+  const box = footwearBox();
+  const gone = 'trocas-e-devolucoes';
+  box.pages = box.pages.filter((p) => !(p.store_id === OUTLET && p.slug === gone));
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.match(stdout, /✗ outlet — MISSING, by name: trocas-e-devolucoes \(1 of 7\)/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★★ a page card that exists as a DRAFT is a 404 to every shopper, and counting rows would miss it', async () => {
+  const box = footwearBox();
+  for (const row of box.pages) if (row.store_id === OUTLET && row.slug === 'faq') row.published = false;
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.match(stdout, /✗ outlet — MISSING, by name: faq \(1 of 7\)/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test("★★ ANOTHER store's seven do not answer for this one — the row's `store_id` is the filter", async () => {
+  // ⛔ THE DANGEROUS DIRECTION, and it is silent. `read.internal.pages` answers the whole tenant unless it is
+  // asked with `store_id`, and the Forge store already holds these exact seven slugs. A count taken over the
+  // unfiltered answer says seven for a shop that has none.
+  const box = footwearBox();
+  box.pages = box.pages.filter((p) => p.store_id !== OUTLET);
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.match(stdout, /✗ outlet — MISSING, by name: .*\(7 of 7\)/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ a shop this repository declares no page for gets a LINE, not silence and not an accusation', async () => {
+  // `forge`'s seven are the mounted dataset's, which this repository cannot read — so its number is printed
+  // and never graded. And the coffee tenant, which has none at all, still gets its two lines.
+  const footwear = await serve(footwearBox());
+  try {
+    const { stdout } = await verify(VERIFIER, footwear.api, 'forgeco');
+    assert.match(stdout, /· forge — 7 page\(s\), 7 published\. This repository declares none/, stdout);
+  } finally {
+    footwear.close();
+  }
+  const coffee = await serve(declaredBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, coffee.api);
+    assert.match(stdout, /· cafe — 0 page\(s\), 0 published\./, stdout);
+    assert.match(stdout, /· balcao — 0 page\(s\), 0 published\./, stdout);
+    assert.equal(code, 0, `a shop with no declared page is not a failure:\n${stdout}`);
+  } finally {
+    coffee.close();
+  }
+});
+
+test('★ a read that stops publishing `published` is the verifier\'s wrong question, never the box\'s defect', async () => {
+  const face = await serve(footwearBox(), { drop: { read: 'pages', key: 'published' } });
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.ok(stdout.includes('does not publish `published`'), stdout);
+    assert.ok(!/✗ outlet — MISSING/.test(stdout), `a missing key became an accusation about the data:\n${stdout}`);
+    assert.equal(code, 2, stdout);
   } finally {
     face.close();
   }

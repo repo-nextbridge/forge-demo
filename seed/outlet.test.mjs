@@ -21,7 +21,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { discountPercent } from './outlet.mjs';
+import { discountPercent, outletPages, seedPages } from './outlet.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const data = JSON.parse(readFileSync(join(SEED, 'outlet.json'), 'utf8'));
@@ -735,4 +735,172 @@ test('★ A6 — the kids art is the 04/09 re-cut, and its ratio is the shelf CE
     'the superseded 912x752 file is still in the repository — two versions of one piece of art is how the ' +
       'wrong one gets uploaded next time',
   );
+});
+
+// ── the seven institutional pages (pk12/d1) ────────────────────────────────────────────────────────────
+//
+// ⛔ WHAT WENT WRONG, and it went wrong for as long as this bench existed: the Outlet published ZERO
+// institutional pages while the Forge store beside it published seven, in the same tenant. Measured 05/09,
+// seven requests per store — `forge` 200 at all seven slugs, `outlet` 404 at all seven.
+//
+// ★★ AND THE EXPECTATION IS DERIVED FROM THE PAGE THAT DRAWS THE LINKS, never typed here. The institutional
+// sidebar is a HARDCODED literal in the storefront (`NAV` in `templates/cms/PageView.tsx`), and this repo
+// holds a byte-identical copy of that file inside the coffee FORK — so the seven slugs a shopper can click
+// are readable from disk. Drop one from `outlet.json` and this test names it; add an eighth link over there
+// (in a release this repo re-cuts the fork from) and it names that too.
+//
+// ⚠️ WHAT IT CANNOT SEE, said out loud like the menu mirror above: the Outlet is served by the VANILLA
+// storefront image (`caddy/Caddyfile.local`), not by the fork. The fork is a copy cut from a Forge release
+// and it is the closest thing in this repository to that image's own list — if the two drift, this test
+// grades the copy. That is a named limit, not a hidden one.
+
+const FORK_PAGE_VIEW = join(
+  SEED,
+  '..',
+  'storefront-coffee',
+  'src',
+  'templates',
+  'cms',
+  'PageView.tsx',
+);
+
+/** The slugs the storefront's institutional sidebar links, read off the component that links them. */
+function navSlugs() {
+  const source = readFileSync(FORK_PAGE_VIEW, 'utf8');
+  const nav = /const NAV[^=]*=\s*\[([\s\S]*?)\];/.exec(source);
+  assert.ok(nav, `no NAV literal in ${FORK_PAGE_VIEW} — the derivation this test rests on is gone`);
+  const slugs = [...nav[1].matchAll(/slug:\s*'([^']+)'/g)].map((m) => m[1]);
+  assert.ok(slugs.length > 0, 'the NAV literal parsed to zero slugs — the shape changed under this regex');
+  return slugs;
+}
+
+test('★★ the Outlet declares a page for EVERY link the institutional sidebar draws — a gap is a dead link', () => {
+  const declared = (data.pages ?? []).map((p) => p.slug);
+  const missing = navSlugs().filter((slug) => !declared.includes(slug));
+  assert.deepEqual(
+    missing,
+    [],
+    `the storefront links ${missing.join(', ')} and seed/outlet.json declares no page for it. The sidebar is ` +
+      'hardcoded, so every one of those is a link this shop draws into its own 404.',
+  );
+});
+
+test('★ and it declares nothing the sidebar does NOT link — a page nobody can reach is not content', () => {
+  const nav = navSlugs();
+  const orphans = (data.pages ?? []).map((p) => p.slug).filter((slug) => !nav.includes(slug));
+  assert.deepEqual(orphans, [], `${orphans.join(', ')} is declared and reachable from no menu in the storefront`);
+});
+
+test('★ CONTROL — the derivation really reads the component, and notices when a link is missing from it', () => {
+  // The negative control the guard needs to be worth anything: if `navSlugs()` were returning an empty list
+  // (a renamed literal, a changed quote style), the two tests above would pass over a dataset with nothing
+  // in it at all. This one proves the parse finds the real seven.
+  assert.equal(navSlugs().length, 7, `the sidebar draws ${navSlugs().length} links, not 7 — read the file`);
+  assert.ok(navSlugs().includes('trocas-e-devolucoes'), navSlugs().join(', '));
+});
+
+test('★ every page carries a template the storefront can actually resolve', () => {
+  // An unknown `template_key` does not 500 — it falls back to the placeholder «Esta é uma página
+  // institucional da loja», which is the demo looking unfinished rather than the demo being broken. The
+  // registry is read off the same fork.
+  const registry = readFileSync(join(SEED, '..', 'storefront-coffee', 'src', 'templates', 'cms', 'registry.ts'), 'utf8');
+  const block = /const REGISTRY[^=]*=\s*{([\s\S]*?)};/.exec(registry);
+  assert.ok(block, 'no REGISTRY literal — the derivation is gone');
+  const known = [...block[1].matchAll(/^\s*'?([a-z-]+)'?:/gm)].map((m) => m[1]);
+  assert.ok(known.includes('institutional-default'), known.join(', '));
+  for (const page of data.pages ?? []) {
+    assert.ok(
+      known.includes(page.template_key),
+      `page "${page.slug}" asks for template "${page.template_key}", which the storefront does not register ` +
+        `(${known.join(', ')}). Unknown keys fall back to the placeholder template, silently.`,
+    );
+  }
+});
+
+test('★ the Outlet speaks in its own voice where it CAN — title and meta are per page, and none is empty', () => {
+  // ⚠️ THE BODY IS NOT ONE OF THEM, and `_pages_why` in the dataset carries the measurement: the page card
+  // has no body column (`content.page.create`), the prose lives in one component per `template_key` and the
+  // registry has no store axis. So the two fields below are the whole of what this shop can say for itself,
+  // and a blank one is the shop saying nothing.
+  const seen = new Set();
+  for (const page of data.pages ?? []) {
+    for (const key of ['title', 'meta_title', 'meta_description']) {
+      assert.equal(typeof page[key], 'string', `page "${page.slug}" has no ${key}`);
+      assert.ok(page[key].trim().length > 0, `page "${page.slug}" has an empty ${key}`);
+    }
+    assert.ok(!seen.has(page.meta_description), `two pages share one description: ${page.slug}`);
+    seen.add(page.meta_description);
+  }
+});
+
+// ── the step that writes them, against a port that answers like the real read ──────────────────────────
+//
+// ⛔⛔ THE FAILURE THIS PAIR IS FOR IS SILENT SUCCESS. `read.internal.pages` declares `store_id`
+// (`packages/core/src/read/internal-capabilities.ts`) and its Zod object STRIPS any other name — so the
+// misspelling `store` is not a narrower question that gets ignored, it is NO question, and the answer is
+// every page of the tenant. The Forge store already holds these exact seven slugs. A `have` set built from
+// that answer contains all seven before the Outlet has one, every slug is skipped as "already there", and
+// the step logs `0 created, 7 already there` and exits 0 over a shop with seven dead links.
+
+/** A fake port: the read answers the WHOLE TENANT (as the real one does when it is not narrowed), and every
+ *  command is recorded. `narrows` says whether the fake honours `store_id`, so the same test can be run
+ *  against a read that filters and a read that does not. */
+function fakePort({ tenantPages, narrows = true }) {
+  const commands = [];
+  return {
+    commands,
+    port: {
+      log: () => {},
+      command: async (name, input) => {
+        commands.push({ name, input });
+        return { page_id: `page_${input.slug}` };
+      },
+      readAll: async (name, params) => {
+        assert.equal(name, 'pages');
+        if (!narrows || !params.store_id) return tenantPages;
+        return tenantPages.filter((p) => p.store_id === params.store_id);
+      },
+    },
+  };
+}
+
+const OUTLET_ID = 'sto_outlet';
+const FORGE_ID = 'sto_forge';
+const forgesSeven = () =>
+  outletPages().map((p) => ({ id: `page_forge_${p.slug}`, store_id: FORGE_ID, slug: p.slug, published: true }));
+
+test('★★ the Outlet gets its seven even though ANOTHER store already holds all seven slugs', async () => {
+  const { port, commands } = fakePort({ tenantPages: forgesSeven() });
+  await seedPages(port, { id: OUTLET_ID });
+  assert.equal(commands.length, 7, `expected seven creates, got ${commands.map((c) => c.input.slug).join(', ')}`);
+  assert.deepEqual(
+    commands.map((c) => c.input.slug).sort(),
+    outletPages().map((p) => p.slug).sort(),
+  );
+  for (const c of commands) {
+    assert.equal(c.name, 'content.page.create');
+    assert.equal(c.input.store_id, OUTLET_ID, 'a page was written into the wrong store');
+    assert.equal(c.input.published, true, `page "${c.input.slug}" would be born as a draft, which is a 404`);
+  }
+});
+
+test('★★ SABOTAGE — a read that answers the whole tenant must NOT make the step skip its own work', async () => {
+  // The same call, against a face that ignores `store_id` — which is exactly what the kernel does with a
+  // param it does not declare. The row filter inside the step is the belt that has to hold here.
+  const { port, commands } = fakePort({ tenantPages: forgesSeven(), narrows: false });
+  await seedPages(port, { id: OUTLET_ID });
+  assert.equal(
+    commands.length,
+    7,
+    'the step read another store\'s pages as its own and created ' +
+      `${commands.length} instead of seven. This is the silent-success failure: it would have logged ` +
+      '"0 created, 7 already there" and exited 0.',
+  );
+});
+
+test('★ and re-running it creates NOTHING — idempotent by the slug it chooses', async () => {
+  const mine = outletPages().map((p) => ({ id: `page_o_${p.slug}`, store_id: OUTLET_ID, slug: p.slug, published: true }));
+  const { port, commands } = fakePort({ tenantPages: [...forgesSeven(), ...mine] });
+  await seedPages(port, { id: OUTLET_ID });
+  assert.deepEqual(commands, []);
 });

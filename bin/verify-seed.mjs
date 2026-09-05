@@ -45,6 +45,9 @@ import { COFFEE_PROMOTIONS, expectedCoffees } from '../seed/coffee.mjs';
 // The pool is graded here for the same reason everything else is: what it declares is worthless until the
 // box holds it, and the one way it can go wrong is invisible on every screen.
 import { poolProducts } from '../seed/pool.mjs';
+// The Outlet's institutional set, from the function the SEED writes it with. A second list of those seven
+// slugs typed in here would be a second list that goes stale — and it would go stale agreeing with itself.
+import { outletPages } from '../seed/outlet.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -320,6 +323,13 @@ const ARCHETYPE = {
 };
 /** The shops that must NEVER carry freight or a free-shipping promotion. */
 const COUNTERS = ['balcao'];
+
+/** handle → the institutional slugs THIS REPOSITORY declares that shop publishes. A shop that is not a key
+ *  here is reported and never judged: `forge`'s seven are the mounted dataset's, `cafe` and `balcao` declare
+ *  none, and an expectation invented for any of them would be this file disagreeing with the box on purpose. */
+const PAGES_DECLARED = {
+  outlet: outletPages().map((p) => p.slug),
+};
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────
 const store$ = of('stores');
@@ -601,6 +611,58 @@ if (!seen.includes('outlet')) {
       bad('the four cuts', `${line} — EMPTY: ${empty.join(', ')}. A flat stock figure is what does this.`);
     }
   });
+}
+say();
+
+// ── 3b. ★★ THE INSTITUTIONAL PAGES — a line for EVERY store, including the ones with none ────────────────
+//
+// ⛔ THE DEFECT THIS SECTION EXISTS FOR IS THE ABSENCE OF THIS SECTION. Until 05/09 the Outlet published
+// ZERO institutional pages while the Forge store beside it published seven, in the same tenant, and nothing
+// went red — because no check counted them. Measured then, seven requests per store: `forge` answered 200 at
+// /contato, /entrega, /faq, /privacidade, /sobre, /termos and /trocas-e-devolucoes and the Outlet answered
+// 404 at all seven. The bench inventory of that day printed a "Páginas institucionais" heading under one
+// shop and simply no heading under the other, and A MISSING SECTION IS INDISTINGUISHABLE FROM "this shop
+// does not have any". That is why every store gets a line here even when the answer is zero.
+//
+// ★ AND ONLY THE STORES THIS REPOSITORY DECLARES PAGES FOR ARE JUDGED. The Forge store's seven are the
+// mounted DATASET's (`instances/demo/dataset/storefront.json`, mounted by path and not readable from here),
+// so its count is REPORTED and never graded — the same rule section 1 applies to its catalogue. Inventing an
+// expectation for a file this repository cannot see is how a verifier starts disagreeing with reality.
+//
+// ⚠️ `published` IS PART OF THE QUESTION, not a detail. A page card that exists with `published: false` is a
+// 404 to every shopper, so counting rows would go green over a store whose whole institutional set is drafts.
+say('THE INSTITUTIONAL PAGES — one line per store, because a section that is absent reads as "none exist"');
+const page$ = of('pages');
+{
+  const allPages = await allOf('pages');
+  for (const handle of seen) {
+    await checking(() => {
+      const id = storeIdOf(handle);
+      const mine = allPages.filter((p) => page$(p, 'store_id') === id);
+      const live = new Set(
+        mine.filter((p) => page$(p, 'published') === true).map((p) => page$(p, 'slug')),
+      );
+      const declared = PAGES_DECLARED[handle];
+      if (!declared) {
+        say(
+          `  · ${handle} — ${mine.length} page(s), ${live.size} published. This repository declares none for ` +
+            'this shop, so the number is reported and not judged.',
+        );
+        return;
+      }
+      const missing = declared.filter((slug) => !live.has(slug));
+      if (missing.length === 0) {
+        ok(`${handle}`, `all ${declared.length} institutional page(s) published: ${declared.join(', ')}`);
+      } else {
+        bad(
+          `${handle}`,
+          `MISSING, by name: ${missing.join(', ')} (${missing.length} of ${declared.length}). The storefront's ` +
+            'institutional sidebar is hardcoded with all seven links, so each one of those is a link the shop ' +
+            'draws into its own 404.',
+        );
+      }
+    });
+  }
 }
 say();
 

@@ -399,17 +399,21 @@ async function seedPages(port, store, declared) {
     ...(declared.qa_draft_page ? [declared.qa_draft_page] : []),
   ];
   if (pages.length === 0) return;
-  // ⚠️⚠️ THE `store` PARAM IS IGNORED BY THIS READ AND THE ROWS PROVE IT — measured on this bench, `read.
-  // internal.pages?store=<cafe>` answered 200 with EIGHT pages, every one of them carrying
-  // `store_id: <forge>`. It is the exact twin of the defect bin/seed.mjs's `publicRead` was written for
-  // (`read.internal.products?store=` answering the whole tenant), and the same shape: a read that answers a
-  // DIFFERENT question than the one asked, silently, with no way for the caller to tell.
+  // ⚠️⚠️ THE PARAM IS `store_id`, AND `store` IS NOT A NARROWER QUESTION — IT IS NO QUESTION AT ALL.
+  // Measured on this bench: `read.internal.pages?store=<cafe>` answered 200 with EIGHT pages, every one of
+  // them carrying `store_id: <forge>`. This line used to spell it `store` and read that as "the read ignores
+  // the parameter"; the cause is narrower and worth knowing, because it generalises. The read DECLARES
+  // `store_id` (packages/core/src/read/internal-capabilities.ts:669) and its Zod object STRIPS every name it
+  // does not know — so an undeclared param is dropped in silence and the answer is the whole tenant, with no
+  // way for the caller to tell. (The same species as `read.internal.products?store=`, and as the `page` the
+  // promotion list never declared.)
   //
-  // So the filter is done HERE, on the `store_id` the row carries. Trusting the param would be safe on this
-  // box only by luck — no other store has a page — and would stop being safe the first time the coffee shop
-  // gets a `sobre`: this seed would then read "already there" and never create the sports store's.
+  // ⇒ The read is asked with `store_id`, AND the rows are filtered again on the `store_id` they carry. Two
+  // belts, because the failure is silent in the dangerous direction: an unfiltered `have` set already holds
+  // this store's slugs from ANOTHER store — the outlet publishes the same seven since pk12 — so every slug
+  // reads "already there" and the step reports success having created nothing.
   const have = new Set(
-    (await readAll('pages', { store: store.id }))
+    (await readAll('pages', { store_id: store.id }))
       .filter((page) => page.store_id === store.id)
       .map((page) => page.slug),
   );
