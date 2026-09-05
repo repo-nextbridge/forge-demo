@@ -26,7 +26,12 @@
 // they are allowed to read. `lib/edge-cache.ts` holds the rule; nothing about it is per-customer.
 
 import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
-import { cachedPathFor, isCacheableRequest } from '@forgecommerce/storefront-kit/edge-cache';
+import {
+  cachedPathFor,
+  isCacheableRequest,
+  isServerActionSubmission,
+  SERVER_ACTION_HEADER,
+} from '@forgecommerce/storefront-kit/edge-cache';
 import { storeHasGate } from '@forgecommerce/storefront-kit/gate/directory';
 import { type NextRequest, NextResponse } from 'next/server';
 import { isRootRoutePath } from './lib/root-routes';
@@ -108,8 +113,24 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // the one store-level fact that can veto it: a store with a gate installed is by-possession on EVERY route
   // (the layout reads the dismissal cookie), so it stays on the dynamic tree. The lookup is cached in-process
   // and only happens for requests that already passed the request-line rule — a POST never pays for it.
+  //
+  // ★★ V04-ACTION-TREE — A SERVER ACTION IS ANSWERED BY ITS OWN DOCUMENT'S TREE, and this fork was one
+  // version behind that: the kit's `isCacheableRequest` grew a fourth argument with NO DEFAULT precisely so
+  // no caller could keep the old answer by accident, and `bin/fork-typecheck.guard.mjs` refused this
+  // directory until it was answered here too. Without it the café's first *adicionar* on a domain-addressed
+  // store lands in the dynamic tree while its document came from the cacheable one, Next REPLACES the
+  // subtree, and every piece of client state under the shop's chrome is rebuilt — the drawer opening,
+  // dying with the tree and being reopened is only the visible part.
+  //
+  // The Server Action fact is read HERE and passed in, so the rule stays a pure function over facts and the
+  // middleware stays the only thing that touches a request object.
   if (
-    isCacheableRequest(req.method, url.pathname, url.searchParams) &&
+    isCacheableRequest(
+      req.method,
+      url.pathname,
+      url.searchParams,
+      isServerActionSubmission(req.method, req.headers.get(SERVER_ACTION_HEADER)),
+    ) &&
     !(await storeHasGate(store))
   ) {
     const cached = new URL(cachedPathFor(store, url.pathname), req.url);
