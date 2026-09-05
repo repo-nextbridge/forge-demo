@@ -12,6 +12,10 @@
 // This tree sits OUTSIDE `s/[store]/layout.tsx` on purpose: that layout owns the gate machinery, and nothing
 // that reads a cookie may sit above a cacheable page. A gated store is simply never routed here.
 
+import {
+  requirePublicStorefront,
+  requireStore,
+} from '@forgecommerce/storefront-kit/require-store.server';
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
 import type { ReactNode } from 'react';
@@ -25,6 +29,15 @@ export default async function CachedStoreLayout({
   params: Promise<{ store: string }>;
 }) {
   const { store } = await params;
+
+  // ★★ pk9/P1 — ★ THE OTHER TWIN THAT GETS FORGOTTEN, and the one a `/s/`-only fix would leave open. The
+  // middleware resolves a HOST to a store and routes a clean catalogue request here; it never asks whether
+  // that store is on the street. So a store with no public page and a public URL would keep serving its
+  // home, PLP and PDP from this cached tree while the dynamic tree already answered 404 — the fast pages
+  // lying and the slow ones telling the truth. `requireStore` is what hands the flags over; the store here
+  // always exists (the middleware resolved it), so its own 404 is a floor and never the point.
+  requirePublicStorefront(await requireStore(store));
+
   // MS-M2 — ★ THE TWIN THAT GETS FORGOTTEN. This is the tree that serves the CACHED HTML, so a theme wired
   // only into `s/[store]` would vanish on exactly the pages that are fast — home, PDP, PLP clean — and appear
   // on the slow ones, which reads as a flicker between palettes rather than as a missing feature. The read is
