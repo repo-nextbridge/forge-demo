@@ -229,6 +229,35 @@ test('★★ the runbook marks as "may be empty" exactly the variables compose l
 
 // ── the gap this document is born with ────────────────────────────────────────────────────────────────────
 
+test('★★★ a VIRGIN box survives `cp .env.example .env` — an empty line is a refusal, not a blank to fill', () => {
+  // ⛔ MEASURED 2026-09-05, and it killed the very first thing a new operator does. `${VAR:?…}` refuses a
+  // variable that is PRESENT AND BLANK exactly as it refuses an absent one — `docker compose config` on a
+  // two-line fixture answered *"required variable … is missing a value"* for `NAME=` in the env file. The
+  // compose interpolates the whole file on EVERY command, so `cp .env.example .env && bash bin/box-up.sh`
+  // died on step 1 naming FORGE_TOTEM_STORE_ID — the counter's store, which only becomes knowable at step 6.
+  //
+  // ★ THE TEST IS ABOUT THE `.env.example`, NOT ABOUT ONE VARIABLE. The previous rule only asked whether the
+  // file CLAIMED the name (`^NAME=`), and a claim with nothing after the `=` satisfied it — which is exactly
+  // the shape of the defect. What has to hold is that a value the operator cannot know yet ships as a
+  // SENTINEL the birth understands, never as a blank the compose reads as absence.
+  const example = read('.env.example');
+  const blank = [];
+  for (const [name, mayBeEmpty] of requiredVariables()) {
+    if (mayBeEmpty === 'yes') continue; // `${VAR?}` — empty IS the configuration (see requiredFrom)
+    const m = example.match(new RegExp(`^${name}=(.*)$`, 'm'));
+    if (!m) continue; // a variable this file does not claim is the OTHER rule's business
+    if (m[1].trim() === '') blank.push(name);
+  }
+  assert.deepEqual(
+    blank,
+    [],
+    `.env.example ships ${blank.join(', ')} EMPTY, and the compose refuses an empty value for it. A new ` +
+      'operator who copies this file to `.env` gets a box that dies before the first container, naming a ' +
+      'variable they have no way to know yet. Ship a sentinel the birth already understands (the counter ' +
+      'uses `sto_PENDING_SEED`, which `bin/box-up.sh` reads as "not provisioned yet") — never a blank.',
+  );
+});
+
 test('★ the runbook still says out loud that it is incomplete, and between which two steps', () => {
   const doc = read(RUNBOOK_PATH);
   const gap = doc.match(/<!-- BEGIN staging-gap -->\n([\s\S]*?)<!-- END staging-gap -->/);
