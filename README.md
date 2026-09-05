@@ -630,15 +630,31 @@ is that commit (`FORGE_MONOREPO=<path>` names one; a worktree of it is found fro
 prints the tree it compiled against, and a run that cannot check prints **NOT CHECKED** with the reason —
 never a silent green.
 
+⚠️ **And one of them is about a rule this repository never asked for.** `bin/store-mount-drift.guard.mjs`
+reads the REFERENCE vitrine out of that same pinned checkout and requires `storefront-coffee/`'s
+store-scoped root layouts to mount whatever the reference mounts there from `@forgecommerce/*`. It exists
+because `/s/cafe` answered **200** from the fork on the same bench where `/s/outlet` answered 404 from the
+reference: a fix that shipped in the product does not travel to a cut of it, and until this guard the only
+thing that knew was `curl`. A red here is not automatically "go copy the product" — this fork owns its
+front — but a divergence has to be a decision, not a surprise.
+
 A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
 
-⚠️ **It is the ID (`sto_…`), not the handle, and `/s/<handle>` fails QUIETLY.** The read face takes a store
-id and answers a handle with a 404 that says so; the page itself still returns **200**, because a store
-whose facts cannot be read degrades to a neutral shell rather than to an error. What you get is a shop
-titled "Loja", with no theme, no products and no composed blocks — which looks like a store that was never
-seeded rather than like a URL that was never right. `docker compose exec kernel …`, the admin's store list,
-or `read.internal.stores` all give you the id.
+⚠️ **It is the ID (`sto_…`), not the handle — and a handle now answers 404, LOUDLY.** The read face takes a
+store id and answers a handle with a 404 that says so, and since the reference vitrine started asking
+(`requireStore`, in the store-scoped root layout) the PAGE says it too. Measured on this bench 2026-09-04,
+by the header the edge stamps:
+
+```
+/s/outlet           → 404   x-forge-served-by: storefront
+/s/inexistente-xyz  → 404   x-forge-served-by: storefront
+```
+
+It used to return **200** — a shop titled "Loja", with no theme, no products and no composed blocks, which
+looked like a store that was never seeded rather than like a URL that was never right, and for `curl`, a
+monitor or a crawler looked like a store answering OK. `docker compose exec kernel …`, the admin's store
+list, or `read.internal.stores` all give you the id.
 
 With no SMTP configured the login code is written to the kernel's stdout: `docker compose logs kernel` is
 the inbox.

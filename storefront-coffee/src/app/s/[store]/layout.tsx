@@ -20,6 +20,10 @@ import { readClient } from '@forgecommerce/storefront-kit/config';
 import { GATE_DISMISSED_COOKIE } from '@forgecommerce/storefront-kit/cookies';
 import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
 import { resolveGate } from '@forgecommerce/storefront-kit/gate/registry';
+import {
+  requirePublicStorefront,
+  requireStore,
+} from '@forgecommerce/storefront-kit/require-store.server';
 import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
@@ -34,6 +38,27 @@ export default async function StoreLayout({
   params: Promise<{ store: string }>;
 }) {
   const { store } = await params;
+
+  // ★★ P4 — THE FIRST QUESTION, AND IT IS ASKED HERE FOR THE REASON THE GATE IS: this layout is the single
+  // parent of every route group, so a store that does not exist is refused on EVERY entrance rather than on
+  // the ones somebody remembered. Until this line, `/s/<anything>` answered 200 with the full chrome — the
+  // status line said OK about a store the read port had already refused (see `requireStore` for the
+  // measurement and for why the handle is not resolved instead).
+  //
+  // ★★ pk12/D2 — AND THIS FORK IS WHY THE RULE HAS A GUARD OF ITS OWN. The fix above shipped in the
+  // reference vitrine and did not travel here: measured on the bench 2026-09-04, `/s/outlet`, `/s/forge` and
+  // `/s/inexistente-xyz` answered 404 (`x-forge-served-by: storefront`) while `/s/cafe` answered 200
+  // (`x-forge-served-by: storefront-coffee`) — the same segment, two answers, because a fork inherits the
+  // code and not the rule. `bin/store-mount-drift.guard.mjs` is the rule; this is the code.
+  const flags = await requireStore(store);
+
+  // ★★ pk9/P1 — THE SECOND QUESTION, AND IT IS A DIFFERENT ONE: the store exists, but is it a STREET store?
+  // A counter, a wholesale desk, an employee shop or a test store has no public page, and until that slice
+  // there was no way for it to say so — `store.status` was a dead column, so every store that existed was
+  // served here. It costs no round trip: the answer rides on the flags `requireStore` just fetched.
+  // ⚠️ It turns off THIS PAGE and nothing else: that store's catalogue, prices, stock and orders are
+  // untouched and the port keeps answering for it, which is how a totem at that counter keeps selling.
+  requirePublicStorefront(flags);
 
   // MS-M2 — the store's own skin, above everything this layout can return (the route, the gate's interstitial,
   // the dismissed-gate ribbon): a themed store is themed on all three, and the gate is full-screen, so leaving

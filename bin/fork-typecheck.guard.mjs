@@ -46,12 +46,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+// ★ pk12/D2 — the tree discovery below the fold moved to `bin/release-tree.mjs` when a SECOND guard
+// (`bin/store-mount-drift.guard.mjs`) had to answer the same question. Not one line of it changed; what it
+// stopped being is a copy. Nothing else in this file moved.
+import { gitOut, pinnedCommit, releaseTree, ROOT, readJson as read } from './release-tree.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
 const say = (line) => console.error(`[fork-typecheck] ${line}`);
 
 /** The package every front of this repository forks the Forge surface through. One package, and a fork that
@@ -96,78 +97,6 @@ function installedKit(fork) {
     }
   })();
   return { dir, version: read(join(dir, 'package.json')).version, integrity: lockEntry?.integrity ?? null };
-}
-
-// ── the tree, derived from the lock rather than guessed ─────────────────────────────────────────────────
-
-/** The commit this box's images were baked from — `pk6/integra@cb2154ef7` shaped. It is `null` once this box
- *  stops being pre-release and the lock names registry digests instead of a branch; at that same moment the
- *  kit comes from npm and the tarballs (and this question) are gone. */
-function pinnedCommit() {
-  const from = read(join(ROOT, 'forge.lock')).provenance?.built_from;
-  if (typeof from !== 'string') return null;
-  const at = from.lastIndexOf('@');
-  return at < 0 ? null : { ref: from, sha: from.slice(at + 1) };
-}
-
-const gitOut = (cwd, args) => {
-  try {
-    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  } catch {
-    return null;
-  }
-};
-
-/** Does this directory hold the Forge monorepo, and at which commit? `existsSync` on the directory is not
- *  enough — a half-cloned or renamed tree would make every comparison below argue about an empty tree. */
-function checkout(base) {
-  if (!base || !existsSync(join(base, 'packages', 'storefront-kit', 'package.json'))) return null;
-  const head = gitOut(base, ['rev-parse', 'HEAD']);
-  return head ? { path: base, head } : null;
-}
-
-/** Where a Forge checkout might be. Same first door as this repo's other guards — `FORGE_MONOREPO` — and the
- *  rest are the layouts this repository is actually cloned in, as a plain checkout and as a worktree. */
-function candidates() {
-  return [
-    process.env.FORGE_MONOREPO,
-    join(ROOT, '..', 'forge'),
-    join(ROOT, '..', '..', 'forge'),
-    join(ROOT, '..', '..', '..', 'forge'),
-  ].filter(Boolean);
-}
-
-/** The checkout whose HEAD is the pinned commit, and the sentence that says how it was found.
- *
- *  ⚠️ A CANDIDATE THAT IS THE WRONG TREE IS NOT SILENTLY ACCEPTED — it is expanded. `git worktree list` on any
- *  Forge checkout enumerates every worktree of that repository, so a machine that has the release's tree
- *  checked out somewhere is found from a `FORGE_MONOREPO` pointing at a sibling branch, and a machine that
- *  does not have it says so. This is the whole defence against the species that produced two false findings
- *  on this bench in one night: an answer measured against a tree nobody verified. */
-function releaseTree(pinned) {
-  const tried = [];
-  for (const base of candidates()) {
-    const found = checkout(base);
-    if (!found) {
-      tried.push(
-        existsSync(join(base, 'packages', 'storefront-kit', 'package.json'))
-          ? `${base} — a Forge tree that git cannot name a commit for`
-          : `${base} — not a Forge checkout`,
-      );
-      continue;
-    }
-    if (found.head.startsWith(pinned.sha)) return { ...found, how: 'checked out here' };
-    tried.push(`${base} @ ${found.head.slice(0, 9)} — a different commit`);
-    const list = gitOut(base, ['worktree', 'list', '--porcelain']) ?? '';
-    for (const block of list.split('\n\n')) {
-      const path = block.match(/^worktree (.+)$/m)?.[1];
-      const head = block.match(/^HEAD ([0-9a-f]+)$/m)?.[1];
-      if (!path || !head || !head.startsWith(pinned.sha)) continue;
-      const sibling = checkout(path);
-      if (sibling) return { ...sibling, how: `a worktree of ${base}` };
-    }
-  }
-  return { tried };
 }
 
 const PINNED = pinnedCommit();
