@@ -197,9 +197,10 @@ O que um operador precisa saber **antes** de rodar:
 **Custo.** **19 min 17 s** para um nascimento completo, medido na corrida de 04/09 **na bancada por
 `localhost`**, com os defaults e **exit 0**. Desses, **113 s** são espera de teto de rate limit — e **102 s**
 são **52 chamadas** na face `ext_public` (o formulário de avaliação da PDP, 0,5/s). Sem essa face, ~17 min.
-⚠️ **Esse número não inclui um passo 14 que estoura o teto** — aquela corrida saiu 0, e `COLD` faz o `box-up`
-sair 1. Numa caixa **promovida**, onde o plano do aquecedor cresce (ver abaixo), some até **15 min** de teto
-ao orçamento: ~34 min de janela, não 19. **Meça a sua, não herde a minha.**
+⚠️ **Esse número não inclui um passo 14 que estoura o teto.** Numa caixa **promovida**, onde o plano do
+aquecedor cresce (ver abaixo), some até **15 min** de teto ao orçamento: ~34 min de janela, não 19.
+**Meça a sua, não herde a minha.** ⚠️ Desde 05/09 esse teto **não** faz mais o `box-up` sair 1 — o passo 14
+virou **relatório** (abaixo); ele continua custando os 15 min de relógio.
 ⚠️ **Se você viu "~12 min" em algum lugar, era estimativa, não medição** — o número saía da aritmética de duas
 corridas, uma das quais **morreu** na fase da janela e nunca fez o passado, a janela nem a verificação. O
 `README.md` carregou esse número até 04/09; foi corrigido. Prefira sempre o medido, e o que a corrida imprime
@@ -225,18 +226,33 @@ Medido em 03/09, antes disso: o diretório tinha reivindicação para `<tailnet>
 `unknown_admin_host`. **Ler nunca é configurar**: o script jamais roda `tailscale up` ou `serve`; entrar na
 rede continua sendo gesto do operador.
 
-**⚠️ O passo 14 (aquecimento) sai VERMELHO na caixa PROMOVIDA, por construção — e isso é esperado.**
-Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado. O plano do aquecedor não é feito de
-páginas: são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada HTML — `planned=20822`,
-`warmed=4964`, `15865 urls nunca visitadas`. O teto que corta é o da
+**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — decisão do Renan em 05/09:** *"D1 - Pode ser
+só relatório"*. Ele **não** faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo
+nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
+do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
+HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que corta é o da
 **vitrine**, `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, no produto),
-que `bin/warm-box.mjs` não sobrescreve (ele manda só `depth`, `products` e `threshold_ms`, `:222-226`).
-⚠️ Não confunda com o `--deadline-ms` **desta caixa** (20 min, `bin/warm-box.mjs:86`): esse é o prazo de
+que `bin/warm-box.mjs` não sobrescreve.
+⚠️ Não confunda com o `--deadline-ms` **desta caixa** (20 min, em `bin/warm-box.mjs`): esse é o prazo de
 **espera pela resposta**, outro número.
-⇒ **Veredicto do Renan, 05/09:** *"nascer caixa ou aquecer será feito de madrugada. Então nada a corrigir"*.
-⛔ Não abra fatia para isso. **Mas leia o vermelho:** um `box-up` que termina com
-`⛔ THE BOX IS UP AND … CAME OUT COLD` **por causa do passo 14** é o esperado; o mesmo vermelho por qualquer
-outra razão não é.
+E ele também **inventava** vermelho: `failed=198` num nascimento contra `failed=0` para as mesmas urls na
+caixa **ociosa** minutos depois — é a carga que o próprio aquecedor impõe a uma caixa que ainda está
+assentando. ★ **Um passo sempre vermelho é um passo que as pessoas aprendem a pular**, e aí ele deixa de
+valer para o dia em que estiver certo.
+
+⛔ **Nada foi apagado nem silenciado.** O passo roda igual e agora diz **mais**: **quais** urls não
+responderam (com o status ou o timeout de cada uma) e **quais nunca foram visitadas** — que é outro fato e
+outro conserto. O relatório antigo dizia *"198 of 419 pages did not answer"* e **não nomeava nenhuma**.
+O `box-up` imprime `⚠️ REPORT — THE BOX IS UP AND … DID NOT COME OUT FULLY WARM` e **sai 0**; se ele nem
+conseguiu perguntar, imprime `⚠️ REPORT — WARMTH IS UNKNOWN FOR …`, que é outra frase.
+
+⛔ **Uma metade do passo 14 continua vermelha:** uma loja que o `seed/box.json` **declara** e a caixa **não
+tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSITORY DECLARES`). Isso não é
+aquecimento, é *"o nascimento não construiu"* — e o passo 14 é o **único** que enxerga: o 12 e o 14-bis
+percorrem as lojas que a **porta reporta**, então uma loja que nunca nasceu é uma loja sobre a qual nenhum
+dos dois pergunta.
+⇒ **Veredicto anterior do Renan sobre a LENTIDÃO (outro assunto):** *"nascer caixa ou aquecer será feito de
+madrugada. Então nada a corrigir"*. ⛔ Não abra fatia para isso.
 ⚠️ E enquanto o passo 14 roda, a caixa **cobra o preço**: 41% de CPU na vitrine servindo o próprio
 aquecedor, e páginas a ~1,9 s pela rede (contra ~90 ms com a caixa parada). **Antes de acusar código de
 lentidão, pergunte se a caixa estava nascendo.**

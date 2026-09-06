@@ -167,7 +167,7 @@ the map of how the box is born:
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
 | 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
-| 14 | **`warm-box.mjs` × tenant** | every **servable** store, warmed and **measured**. A box that comes out cold makes `box-up` exit non-zero |
+| 14 | **`warm-box.mjs` × tenant** | every **servable** store, warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
 | 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
@@ -186,6 +186,36 @@ minutes nobody was watching — and here that visitor may be whoever is evaluati
 `POST /api/warm`, which the **vitrine itself publishes** (guarded by `FORGE_REVALIDATE_SECRET`, the secret the
 admin already uses to invalidate). One call warms three containers, because the run fetches
 `$FORGE_PUBLIC_ORIGIN/…` and caddy routes each URL to whichever front owns it — the café's fork included.
+
+### ★★ Step 14 REPORTS; it stopped grading — and that was the point
+
+Renan, 05/09: *"D1 - Pode ser só relatório"*. Three measurements, all from real births of this box:
+
+1. **Red by construction.** The plan is not made of pages: ~420 pages plus ~20 400 **image derivatives**
+   discovered in each HTML's `srcset` — `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What
+   cuts it is the **vitrine's** own ceiling (`DEFAULT_MAX_DURATION_MS = 15 * 60_000`, in the product), which
+   this box neither sets nor can raise. ⚠️ Not the same number as this box's `--deadline-ms` (20 min), which
+   is only how long it waits for an answer. **Every** run ends this way.
+2. **And it invented red.** `failed=198` and `failed=189` on two births — and the same brands and collections
+   answered **200** on the idle box, with this same step reporting **`failed=0`**. Those are the load the
+   warmer imposes on a box that is still settling: it is the last step of the birth and it races the tail of
+   the seed.
+3. **And the `p95` it publishes is not the visitor's.** `735 ms` for the coffee shop against **19–29 ms**
+   measured with `curl` at the same instant.
+
+★ **A step that is always red is a step people learn to skip** — and then it is worth nothing on the day it is
+right. So warmth left the exit conjunction of `bin/box-up.sh`. ⛔ **Nothing was deleted, silenced or
+`|| true`d**: the step still runs, and it now says **more** than it used to — every URL that **did not answer**
+by name (with the status or timeout it gave), and every URL that was **never visited**, which is a different
+fact and a different repair. The old report said `198 of 419 pages did not answer` and named **none** of them,
+so nobody reading a birth could check whether the pages were broken or the warmer had overloaded a settling
+box. They were the second.
+
+⛔ **One half of step 14 still fails the birth: a store `seed/box.json` DECLARES and the box does not hold**
+(`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it" — and step 14 is the
+**only** step that can see it: step 12 grades the stores the **port reports** and step 14-bis opens the doors
+of the stores the **port reports**, so a store that was never created is a store neither of them asks about.
+`bin/reset-complete.guard.mjs` executes the real exit block and holds both halves in place.
 
 ⚠️ **The counter is skipped, and the skip is ANNOUNCED.** `seed/box.json` marks `balcao` `servable: false`:
 the totem is a whole-host app with no store in its URLs, so there is no vitrine page to warm. A store simply

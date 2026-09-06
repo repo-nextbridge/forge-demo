@@ -29,7 +29,9 @@
 #  12. verify-seed   × TENANT   the verdict over the DATA — does the box HOLD what this repository declares?
 #  13. online-only               the edge and the bucket: what only exists online. AFTER the rebirth (13–15
 #                                are the reset's own tail, and purging BEFORE it refills from a dying origin)
-#  14. warm-box      × TENANT    every SERVABLE store, warmed and MEASURED. A cold box is a red box.
+#  14. warm-box      × TENANT    every SERVABLE store, warmed and MEASURED. ★ A REPORT, not a gate: warmth
+#                                does not decide the exit code (it was red on every run by construction —
+#                                see the step). A store DECLARED and not built still does.
 #  14b. prove-doors   × TENANT    every DOOR of every store, opened anonymously — vitrine, checkout,
 #                                conta and LOGIN. The catalogue is warm; nothing else ever opened these.
 #  15. verify-config             the verdict over the CONFIGURATION — is the box WHAT it declares? This is
@@ -1427,30 +1429,61 @@ say '13 · the edge and the bucket (what only exists online) — after the rebir
 ONLINE_ONLY_FAILED=''
 host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=1
 
-# ── 14 · ★★ THE BOX IS NOT DONE UNTIL IT IS WARM ────────────────────────────────────────────────────────────
+# ── 14 · ★★ THE BOX IS WARMED, AND WHAT IT LEARNED IS A REPORT ──────────────────────────────────────────────
 #
-# ★ THE ARGUMENT IS COMMERCIAL AND IT RAISES THE BAR (Renan, 04/09): *"ele também vai ser testado por exemplo
-# performance e tal, se ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box handed
-# over cold makes the FIRST VISITOR pay for every cache this box could have filled by itself — and on this box
-# that visitor is whoever is evaluating it. So warming is part of the definition of done and it has an exit
-# code, exactly like a tenant that did not settle.
+# ★ THE ARGUMENT IS COMMERCIAL (Renan, 04/09): *"ele também vai ser testado por exemplo performance e tal, se
+# ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box handed over cold makes the
+# FIRST VISITOR pay for every cache this box could have filled by itself — and on this box that visitor is
+# whoever is evaluating it. So the box is still warmed at the end of every birth.
+#
+# ⚠️ BUT WARMTH STOPPED DECIDING THIS SCRIPT'S EXIT CODE (Renan, 05/09: *"D1 - Pode ser só relatório"*), and
+# the reason is that it was ALWAYS red. The plan is ~420 pages plus ~20 400 image derivatives found in each
+# HTML's `srcset`, against the VITRINE's own 15-minute ceiling that this box does not set and cannot raise
+# (`apps/storefront/src/lib/warm/warm.ts`, in the product): every run ends `15865 urls were never visited`. It
+# also invented red — `failed=198` on a birth, `failed=0` for the same URLs on the idle box minutes later,
+# because the warmer is the last step of the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS
+# RED IS A STEP PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
+#
+# ⛔ IT WAS NOT DELETED, SILENCED OR `|| true`d. It runs, and it now says MORE than it did: which URLs did not
+# answer BY NAME, and which were never VISITED — a different thing, and a different repair.
+#
+# ⛔ AND ONE THING IT REPORTS IS STILL A RED: exit 3, "the box does not hold a store `seed/box.json` declares".
+# That is not warmth, it is "the birth did not build it", and no other step can see it — steps 12 and 14-bis
+# both walk the stores the PORT reports, so a store that is not there is a store they never ask about.
 #
 # ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
 # that lists a tenant's stores resolves the tenant from the CREDENTIAL. The store this box declares
 # `servable: false` — the counter, served by the totem, which has no store in its URLs — is SKIPPED and the
 # skip is announced with its declared reason.
-say '14 · warming every servable store (a birth is not done until the box is warm)'
+say '14 · warming every servable store, and REPORTING what came back (warmth does not grade the birth)'
 COLD=''
+WARM_UNKNOWN=''
+MISSING_STORE=''
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment for the warming step."
-  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
-    note "$t warm"
-  else
-    COLD="$COLD $t"
-    note "⛔ $t did NOT come out warm — the ✗ lines above name the store and the reason."
-  fi
+  # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if`: this step answers 0 (warm), 1 (a report — not fully warm),
+  # 2 (it could not ask) and 3 (a store this repository declares was never built), and an `if` can only tell
+  # zero from non-zero — which would fold "the birth did not build a store" into "the box is a bit cold" and
+  # lose the one red that is left.
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+  case "$?" in
+    0) note "$t warm" ;;
+    1)
+      COLD="$COLD $t"
+      note "⚠ $t did NOT come out fully warm. REPORTED, NOT FATAL — the ⚠ lines above name every url that did
+     not answer and every one that was never visited. Read them before you believe either." ;;
+    2)
+      WARM_UNKNOWN="$WARM_UNKNOWN $t"
+      note "⚠ $t could not be ASKED about warmth — nothing was learned; the ⚑ line above says why." ;;
+    3)
+      MISSING_STORE="$MISSING_STORE $t"
+      note "⛔ $t is MISSING a store this repository declares — the ✗ line above names it." ;;
+    *)
+      WARM_UNKNOWN="$WARM_UNKNOWN $t"
+      note "⚠ the warming step itself ended with a status it does not define — nothing was learned about $t." ;;
+  esac
 done
 
 # ── 14-bis · ★★★ EVERY DOOR OF EVERY STORE, OPENED ──────────────────────────────────────────────────────────
@@ -1522,14 +1555,35 @@ printf '\n' >&2
 # ⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE. A birth that leaves a tenant holding another brand's catalogue
 # has to be RED, or the next person reads "the bench" above and believes it.
 #
-# ★ THE THREE REASONS STEPS 13–15 CAN ADD ARE PRINTED HERE, ABOVE THE TWO EXITS BELOW, because those exit
+# ★ THE REASONS STEPS 13–15 CAN ADD ARE PRINTED HERE, ABOVE THE TWO EXITS BELOW, because those exit
 # where they print: a cold tenant discovered after an unsettled one would otherwise never reach the screen.
 # Each is its own sentence — "the box is cold" and "the box is misconfigured" are different repairs.
+#
+# ⚠️ AND ONE OF THEM IS A REPORT. `COLD` and `WARM_UNKNOWN` are PRINTED and NOT counted below (Renan, 05/09:
+# *"D1 - Pode ser só relatório"*) — see step 14 for the three measurements that took warmth out of the exit
+# code. They are still loud, and they are still first: a report nobody reads is the same as a red nobody acts
+# on, which is exactly what the old always-red step had become.
 if [ -n "${COLD:-}" ]; then
-  printf '[box-up] ⛔ THE BOX IS UP AND%s CAME OUT COLD. Warming is part of done, not a courtesy: the first
-         visitor pays for every cache this birth could have filled. Re-read step 14.
+  printf '[box-up] ⚠️  REPORT — THE BOX IS UP AND%s DID NOT COME OUT FULLY WARM. This does NOT make the birth
+         red, and step 14 says why (the warmer plans ~20 400 image derivatives against a 15-minute ceiling
+         this box does not own, so it was ALWAYS red — and a step that is always red is a step people learn
+         to skip). What it DOES say is in the report above, by name: which urls did not answer, and which
+         were never visited. Read them; the first is a page, the second is a ceiling.
 
 ' "$COLD" >&2
+fi
+if [ -n "${WARM_UNKNOWN:-}" ]; then
+  printf '[box-up] ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: step 14 could not ASK. Nothing above is a claim about
+         how warm those tenants are, which is a different sentence from "they are cold".
+
+' "$WARM_UNKNOWN" >&2
+fi
+if [ -n "${MISSING_STORE:-}" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND%s IS MISSING A STORE THIS REPOSITORY DECLARES. The birth did not build
+         it — that is not warmth, and step 14 is the only step that can see it: 12 and 14-bis both walk the
+         stores the PORT reports, so a store that is not there is a store they never ask about.
+
+' "$MISSING_STORE" >&2
 fi
 if [ -n "${SHUT:-}" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s HAS DOORS A SHOPPER CANNOT OPEN. Step 14-bis names the store and the
@@ -1557,8 +1611,16 @@ if [ -n "$UNSETTLED" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Everything above is standing; what it HOLDS is not\n         what this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$UNSETTLED" >&2
   exit 1
 fi
-# The three above are reasons of their own, and reaching this line means the tenants settled — so a run that
-# is cold or misconfigured still ends non-zero, which is what every wrapper reads before it reads the prose.
-if [ -n "${COLD:-}" ] || [ -n "${SHUT:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
+# ⛔ THE CONJUNCTION, AND WHAT IS DELIBERATELY NOT IN IT. Reaching this line means the tenants settled — so a
+# birth with doors a shopper cannot open, a configuration that is not what the box declares, an online-only
+# facility that refused, or a store this repository declares and the box does not hold still ends non-zero,
+# which is what every wrapper reads before it reads the prose.
+#
+# ⚠️ `COLD` AND `WARM_UNKNOWN` ARE NOT HERE, ON PURPOSE (Renan, 05/09: *"D1 - Pode ser só relatório"*). They
+# are printed above and they are not an exit code. ⛔ Do not add them back without re-reading step 14: the
+# warming step was red on EVERY run of this box by construction, so it graded nothing and taught people to
+# skip a red. `MISSING_STORE` is the half of it that still grades, and it is deliberately its own variable so
+# that this line cannot lose it by accident.
+if [ -n "${SHUT:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ]; then
   exit 1
 fi

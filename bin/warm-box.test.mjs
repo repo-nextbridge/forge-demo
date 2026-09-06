@@ -1,4 +1,10 @@
-// ★★ THE BIRTH ENDS WARM, AND IT ENDS RED WHEN IT DOES NOT.
+// ★★ THE BIRTH ENDS WARM, AND WHEN IT DOES NOT IT SAYS SO — BY NAME.
+//
+// ⚠️ THE EXIT CODES MOVED ON 05/09 (*"D1 - Pode ser só relatório"*), and this file is where that is proved.
+// Warmth is a REPORT: `bin/box-up.sh` no longer fails a birth on it (that half is graded by
+// `bin/reset-complete.guard.mjs`, which executes the exit block). This step still answers non-zero for a human
+// who ran it by hand and asked a yes/no question — 1 for "not fully warm" — and it keeps ONE red of its own:
+// exit 3, a store `seed/box.json` declares and the box does not hold, which is not warmth at all.
 //
 // This grades `bin/warm-box.mjs` against a FAKE BOX — a real http server on a real port, speaking the two
 // faces the step uses (`read.internal.stores` and the vitrine's `/api/warm`). Nothing here talks to the
@@ -35,11 +41,31 @@ const CAFE_STORES = [
 ];
 
 /**
+ * ★ THE PER-STORE BODY THE VITRINE REALLY SENDS, and this fixture is a copy of the product's own types
+ * (`apps/storefront/src/lib/warm/warm.ts` → `StoreReport` / `PassReport`), not a shape invented here.
+ *
+ * ⚠️ IT EXISTS BECAUSE THE OLD FIXTURE SENT `stores: []`, which is exactly why nobody noticed that this step
+ * threw the whole breakdown away: a fake that carries no detail cannot prove a report that omits detail.
+ *
+ * `failed` is a url that ANSWERED BADLY; `skipped` is a url the run's ceiling arrived before it was TRIED.
+ * They are the two halves the birth of 04/09 folded into one number, and they are different repairs.
+ */
+const pass = ({ planned, done, failed = [], skipped = 0, p95 = 120 }) => ({
+  planned,
+  done,
+  p95,
+  failed,
+  hits: done,
+  skipped,
+});
+
+/**
  * A box that answers.
  *
  * `warm` decides what the vitrine does with a POST:
  *   'ok'         a run that finishes green
  *   'incomplete' a run that finishes with reasons — the shape of "some pages did not warm"
+ *   'cut'        a run the CEILING cut: urls that were never TRIED, which is this box's every real birth
  *   'failed'     a run with NO report at all (the origin could not even be planned)
  *   'absent'     the route is not there: an image built before the warmer existed
  *   'unauth'     the secret does not match
@@ -90,10 +116,97 @@ async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, 
             ...run,
             settleTo:
               warm === 'ok'
-                ? { state: 'ok', report: { planned, warmed: planned, failed: 0, p95, p95Pass: 'warm', thresholdMs: null, stores: [], reasons: [], ok: true } }
+                ? {
+                    state: 'ok',
+                    report: {
+                      planned,
+                      warmed: planned,
+                      failed: 0,
+                      p95,
+                      p95Pass: 'warm',
+                      thresholdMs: null,
+                      stores: [
+                        {
+                          store: 'sto_CAFE',
+                          url: `http://127.0.0.1:${port}/s/sto_CAFE/`,
+                          planned,
+                          sections: {},
+                          short: [],
+                          pages: pass({ planned, done: planned, p95 }),
+                          images: { ...pass({ planned: 0, done: 0 }), foreignHosts: [], declared: 0, cut: false },
+                          verify: undefined,
+                        },
+                      ],
+                      reasons: [],
+                      ok: true,
+                    },
+                  }
                 : warm === 'incomplete'
-                  ? { state: 'incomplete', report: { planned, warmed: planned - 2, failed: 2, p95, p95Pass: 'warm', thresholdMs: null, stores: [], reasons: ['2 page(s) did not answer'], ok: false } }
-                  : { state: 'failed', report: null, error: 'no store claims the host "127.0.0.1"' },
+                  ? {
+                      state: 'incomplete',
+                      report: {
+                        planned,
+                        warmed: planned - 2,
+                        failed: 2,
+                        p95,
+                        p95Pass: 'warm',
+                        thresholdMs: null,
+                        stores: [
+                          {
+                            store: 'sto_CAFE',
+                            url: `http://127.0.0.1:${port}/s/sto_CAFE/`,
+                            planned,
+                            sections: {},
+                            short: [],
+                            pages: pass({
+                              planned,
+                              done: planned - 2,
+                              p95,
+                              failed: [
+                                { url: '/s/sto_CAFE/marcas/lavazza', error: 'HTTP 503' },
+                                { url: '/s/sto_CAFE/colecoes/torra-escura', error: 'timeout after 20000ms' },
+                              ],
+                            }),
+                            images: { ...pass({ planned: 0, done: 0 }), foreignHosts: [], declared: 0, cut: false },
+                            verify: undefined,
+                          },
+                        ],
+                        reasons: ['2 page(s) did not answer'],
+                        ok: false,
+                      },
+                    }
+                  : warm === 'cut'
+                    ? {
+                        state: 'incomplete',
+                        report: {
+                          planned,
+                          warmed: 1,
+                          failed: 0,
+                          p95: 0,
+                          p95Pass: 'verify',
+                          thresholdMs: null,
+                          stores: [
+                            {
+                              store: 'sto_CAFE',
+                              url: `http://127.0.0.1:${port}/s/sto_CAFE/`,
+                              planned,
+                              sections: {},
+                              short: [],
+                              pages: pass({ planned, done: 1, skipped: planned - 1, p95: 0 }),
+                              images: {
+                                ...pass({ planned: 0, done: 0 }),
+                                foreignHosts: [],
+                                declared: 0,
+                                cut: false,
+                              },
+                              verify: undefined,
+                            },
+                          ],
+                          reasons: [`sto_CAFE: ${planned - 1} urls were never visited: the run hit its ceiling of 900000ms`],
+                          ok: false,
+                        },
+                      }
+                    : { state: 'failed', report: null, error: 'no store claims the host "127.0.0.1"' },
           };
         }
         return json(202, { ok: true, started: true, run: { ...run, settleTo: undefined } });
@@ -201,24 +314,34 @@ test('★ a store the port holds and this file does not declare is warmed AND na
   }
 });
 
-test('★★ a store this file declares and the box does not hold is RED — the birth did not build it', async () => {
+test('★★★ a store this file declares and the box does not hold is RED — and it is the ONE red left here', async () => {
+  // ⛔ THE HALF THAT DID NOT BECOME A REPORT. "The birth did not build a store this repository declares" is
+  //    not a statement about warmth, and no other step of the birth can see it: `bin/verify-seed.mjs` grades
+  //    the stores the PORT reports and `bin/prove-doors.mjs` opens the doors of the stores the PORT reports,
+  //    so a store that was never created is a store neither of them asks about. Its own exit code (3) is what
+  //    lets `bin/box-up.sh` keep failing on it while it stops failing on cold.
   const box = await fakeBox({ warm: 'ok', stores: [{ id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café' }] });
   try {
     const { stdout, status } = await runStep({ box });
-    assert.equal(status, 1, `a missing declared store passed:\n${stdout}`);
+    assert.equal(status, 3, `a missing declared store did not answer 3:\n${stdout}`);
     assert.match(stdout, /balcao[\s\S]{0,160}(not|missing)/i, stdout);
+    // And the verdict must say WHICH sentence this is — "cold" and "never built" are different repairs.
+    assert.match(stdout, /DECLARES/, `the verdict does not say what kind of red this is:\n${stdout}`);
   } finally {
     box.close();
   }
 });
 
-// ── how it FAILS, which is the half the box is bought for ─────────────────────────────────────────────────
+// ── how it REPORTS a box that is not warm, which is the half the box is bought for ────────────────────────
+//
+// Every case below used to fail the birth. They now answer 1 — a report — and the assertions are about what
+// the report SAYS, because a number nobody can act on was the whole defect of the old step.
 
-test('★★★ a vitrine that publishes no /api/warm fails BY NAME, and names the pin that explains it', async () => {
+test('★★★ a vitrine that publishes no /api/warm is reported BY NAME, and names the pin that explains it', async () => {
   const box = await fakeBox({ warm: 'absent' });
   try {
     const { stdout, status } = await runStep({ box });
-    assert.equal(status, 1, `a 404 from the warmer passed:\n${stdout}`);
+    assert.equal(status, 1, `a 404 from the warmer was not reported:\n${stdout}`);
     assert.match(stdout, /404/, stdout);
     // The operator must not have to guess WHY the route is missing: this box pins its images by digest, and
     // an image older than the warmer is the one cause. `forge.lock` is where that is written down.
@@ -228,7 +351,7 @@ test('★★★ a vitrine that publishes no /api/warm fails BY NAME, and names t
   }
 });
 
-test('★★ a secret the container does not share fails BY NAME, never as "warming did not work"', async () => {
+test('★★ a secret the container does not share is named BY NAME, never as "warming did not work"', async () => {
   const box = await fakeBox({ warm: 'ok' });
   try {
     const { stdout, status } = await runStep({ box, secret: 'the-wrong-one' });
@@ -240,12 +363,68 @@ test('★★ a secret the container does not share fails BY NAME, never as "warm
   }
 });
 
-test('★★★ a run that came back INCOMPLETE is red, and it prints the run\'s own reasons', async () => {
+test('★★★ a run that came back INCOMPLETE reports, and it prints the run\'s own reasons', async () => {
   const box = await fakeBox({ warm: 'incomplete' });
   try {
     const { stdout, status } = await runStep({ box });
-    assert.equal(status, 1, `an incomplete run passed:\n${stdout}`);
+    assert.equal(status, 1, `an incomplete run did not report:\n${stdout}`);
     assert.match(stdout, /2 page\(s\) did not answer/, `the run's reasons are not relayed:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and it NAMES the pages that did not answer — the number alone was the defect', async () => {
+  // ⛔ MEASURED, 05/09. The birth printed `failed=198` and `forgeco: 198 of 419 pages did not answer` and not
+  //    one of the 198 urls. Sondas on the idle box answered 200 for the same brands and collections minutes
+  //    later, so the number was not even about the pages — but nobody reading the birth could have known,
+  //    because there was nothing to check. A report that replaces a gate has to be checkable.
+  const box = await fakeBox({ warm: 'incomplete' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.match(stdout, /marcas\/lavazza/, `the failing url is not named:\n${stdout}`);
+    assert.match(stdout, /colecoes\/torra-escura/, `the second failing url is not named:\n${stdout}`);
+    // The reason each one gave, too: a 503 and a timeout are different repairs.
+    assert.match(stdout, /HTTP 503/, `the error the url answered with is not printed:\n${stdout}`);
+    assert.match(stdout, /timeout/, `a timeout is not distinguished from a bad status:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ "never visited" is its own word, and never folded into "did not answer"', async () => {
+  // ⛔ THIS IS EVERY REAL BIRTH OF THIS BOX. The plan is ~420 pages plus ~20 400 image derivatives against the
+  //    VITRINE's 15-minute ceiling, so the run always ends with urls it never TRIED. Nothing answered badly;
+  //    the ceiling arrived. Reporting those as failures is how a fast box reads as a broken one.
+  const box = await fakeBox({ warm: 'cut' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 1, stdout);
+    // ⚠️ THE ASSERTION IS ON THIS FILE'S OWN PASS LINE, NOT ON `stdout`. Measured by sabotage, 05/09: a bare
+    //    `/never visited/` over the whole output stayed GREEN with the pass line folding the two counts into
+    //    one, because the VITRINE's own `reasons` sentence carries the words too and this step relays it. An
+    //    expectation that another source can satisfy is an expectation about nothing.
+    const pages = stdout.split('\n').find((l) => /^\s+pages\s/.test(l));
+    assert.ok(pages, `the per-pass breakdown is not printed at all:\n${stdout}`);
+    assert.match(pages, /0 did NOT answer/, `the pass line calls a never-visited url a failure: ${pages}`);
+    assert.match(pages, /\b9 never visited\b/, `the pass line does not count "never visited" apart: ${pages}`);
+    assert.match(
+      stdout,
+      /never TRIED/,
+      `nothing says WHY they were never visited — "the run's own ceiling arrived first" is the repair:\n${stdout}`,
+    );
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ the breakdown is printed on a GREEN run too — a shape only ever seen in anger cannot be read', async () => {
+  const box = await fakeBox({ warm: 'ok' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /sto_CAFE/, `the per-store breakdown is missing on a green run:\n${stdout}`);
+    assert.match(stdout, /pages\s+10 of 10 answered/, `the pass line is not printed on a green run:\n${stdout}`);
   } finally {
     box.close();
   }
@@ -266,7 +445,7 @@ test('★★ a run that never finishes is CUT and named — a birth may not hang
   const box = await fakeBox({ warm: 'running' });
   try {
     const { stdout, status } = await runStep({ box, extra: ['--deadline-ms', '1500', '--poll-ms', '200'] });
-    assert.equal(status, 1, `a run that never settled passed:\n${stdout}`);
+    assert.equal(status, 1, `a run that never settled was not reported:\n${stdout}`);
     assert.match(stdout, /still running|deadline/i, stdout);
     assert.ok(box.asked.gets > 1, 'the step never polled — it cannot have waited');
   } finally {
@@ -307,14 +486,14 @@ test('★★★ the latency ceiling comes from seed/box.json, and a box that dec
   }
 });
 
-test('★★★ …and when a ceiling IS declared, a p95 over it turns the birth red', async () => {
+test('★★★ …and when a ceiling IS declared, a p95 over it is REPORTED against it', async () => {
   const box = await fakeBox({ warm: 'ok', p95: 4000 });
   try {
     // `--threshold-ms` is how the declaration reaches the step, so overriding it here exercises exactly the
     // path a declared number takes. The endpoint is told too (`threshold_ms=`), which is what makes the run
     // itself say so in `reasons` on a real box.
     const { stdout, status } = await runStep({ box, extra: ['--threshold-ms', '800'] });
-    assert.equal(status, 1, `a p95 of 4000 ms passed a ceiling of 800 ms:\n${stdout}`);
+    assert.equal(status, 1, `a p95 of 4000 ms was not reported against a ceiling of 800 ms:\n${stdout}`);
     assert.match(stdout, /800/, stdout);
     assert.match(stdout, /4000/, stdout);
   } finally {
