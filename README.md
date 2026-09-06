@@ -866,6 +866,20 @@ could not fake. It runs after the coffee step and says so if they are not there.
 the other stores' checkouts too. On this box that is additive — the tenant had no shipping configuration at
 all before it — and it is the same shop; it is written here so nobody discovers it from a checkout screen.
 
+★ **The counter's OPENING WEEK, and why it is a check and not just seven more lines of JSON (05/09).** Until
+this date `seed/totem.json` declared the point with no `hours` key at all, and the checkout's pickup card
+listed the seven days as «Fechado» with «Fechado hoje» under them. Nothing was broken:
+`pickup_location.create` accepts a point with no week, an **omitted day is closed exactly like a `null` one**
+(`pickupHoursSchema` is `.strict()` over `mon..sun`), and the create handler stores `input.hours ?? {}` —
+measured on this bench, where the row read back `Balcão · Forge Café | {}` while the shoe brand's four each
+read back a full week. So the dataset was the only place that ambiguity could be refused, and it was not being refused there
+either: the guard that graded a week lived in `seed/logistics.test.mjs` and had never contained this point.
+`seed/pickup-hours.mjs` now holds one rule for **every** point the box declares, `bin/verify-seed.mjs` asks it
+of the **live** box and names the point (and the day) it is missing, and the counter's week is a Vila Madalena
+café's: 08:00–19:00 to start the week, later on Thursday, until 23:00 on Friday and Saturday, brunch on
+Sunday. ⚠️ Both seed steps are idempotent **by name**, so a box born before 05/09 keeps its empty week through
+every re-run — the week arrives with the next birth, and until then the verifier is red about it, by name.
+
 ⚠️ **The SHOE brand's four pickup points (04/09, `seed/logistics.json`) are a different case, and the
 difference is exactly one command.** They exist so `/logistics/pickup-points` is a populated screen, and this
 box deliberately creates **no `pickup`-kind shipping method** in that tenant — so they are registry rows an

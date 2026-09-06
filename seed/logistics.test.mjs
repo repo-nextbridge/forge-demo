@@ -12,12 +12,11 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { TRACKING_PLACEHOLDER, missingByName, trackingTemplateProblem } from './logistics.mjs';
+import { pickupWeekProblem } from './pickup-hours.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(readFileSync(join(SEED, 'logistics.json'), 'utf8'));
 
-/** The kernel's own week, `.strict()` over exactly these keys. */
-const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 test('★★ every declared tracking template passes the check the KERNEL will make', () => {
   for (const carrier of DATA.carriers) {
@@ -60,31 +59,18 @@ test('the placeholder this file checks for is the one the kernel checks for', ()
   assert.equal(TRACKING_PLACEHOLDER, '{code}');
 });
 
-test('★★ every pickup point writes the KERNEL’s week, and no other spelling', () => {
-  // `pickupHoursSchema` is `.strict()`: `segunda` instead of `mon` is a REFUSAL, and the reason the schema is
-  // strict at all is that the alternative was a bag the storefront renders as "closed every day".
+test('★★ every pickup point writes the KERNEL’s week — the rule now lives where BOTH files can reach it', () => {
+  // ⇒ THE RULE MOVED, AND THE MOVE IS THE POINT. It used to be written out here, over this file's four
+  // points, and it was right about all four for a year — while the counter's point in `seed/totem.json`, one
+  // tenant away, had no `hours` at all and nobody's list contained it. `seed/pickup-hours.mjs` holds the
+  // check now, `seed/pickup-hours.test.mjs` runs it over EVERY point the dataset declares, and this test
+  // stays so that a shoe-brand point that rots is still red in the file that declares it.
   for (const point of DATA.pickup_points) {
-    const keys = Object.keys(point.hours ?? {});
-    assert.deepEqual(
-      keys,
-      WEEKDAYS,
-      `pickup point "${point.name}" writes ${keys.join(',')} — the kernel accepts only ${WEEKDAYS.join(',')}`,
+    assert.equal(
+      pickupWeekProblem(point),
+      null,
+      `pickup point "${point.name}" would be shown to a shopper as a door that never opens`,
     );
-  }
-});
-
-test('★★ no day closes before it opens — the kernel refuses it and it would read as a lie on the checkout', () => {
-  for (const point of DATA.pickup_points) {
-    for (const [day, hours] of Object.entries(point.hours ?? {})) {
-      if (hours === null) continue;
-      assert.match(hours.open, /^(?:[01]\d|2[0-3]):[0-5]\d$/, `${point.name} ${day} open`);
-      assert.match(hours.close, /^(?:[01]\d|2[0-3]):[0-5]\d$/, `${point.name} ${day} close`);
-      assert.ok(
-        hours.open < hours.close,
-        `${point.name} ${day}: ${hours.open}–${hours.close}. An overnight shift is REFUSED by the kernel ` +
-          '(it needs a second interval per day, which is a shape decision nobody has asked for).',
-      );
-    }
   }
 });
 

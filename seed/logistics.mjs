@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pickupWeekProblem } from './pickup-hours.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const data = JSON.parse(readFileSync(join(SEED, 'logistics.json'), 'utf8'));
@@ -65,6 +66,13 @@ export function missingByName(wanted, existing) {
 export async function seedLogistics({ command, readAll, log, fail }) {
   for (const carrier of data.carriers) {
     const problem = trackingTemplateProblem(carrier);
+    if (problem) fail(`logistics — ${problem}`);
+  }
+  // ⛔ AND THE SAME REFUSAL FOR THE WEEK, which the kernel would NOT have made: a point with no `hours`, or
+  // with one day missing, is accepted and then rendered as a shop that never opens. The rule and the
+  // measurement live in `seed/pickup-hours.mjs`, shared with the counter's point one tenant away.
+  for (const point of data.pickup_points) {
+    const problem = pickupWeekProblem(point);
     if (problem) fail(`logistics — ${problem}`);
   }
 

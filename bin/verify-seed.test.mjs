@@ -39,6 +39,20 @@ const readSeed = (name) => JSON.parse(readFileSync(join(REPO, 'seed', name), 'ut
 const catalog = readSeed('catalog.json');
 const totem = readSeed('totem.json');
 const outlet = readSeed('outlet.json');
+const logistics = readSeed('logistics.json');
+
+/** One pickup point row, with the key set `read.pickup_locations` publishes — `hours` included, because it
+ *  does (packages/core/src/read/pickup-admin-capabilities.ts lists it in `COLUMNS`). Derived from the seed
+ *  declaration and never typed: a fake face that invented a week would grade the verifier against a fiction,
+ *  which is exactly the defect the counter's missing week was. */
+const pickupRow = (id, point) => ({
+  id,
+  name: point.name,
+  active: true,
+  lat: null,
+  lng: null,
+  hours: point.hours,
+});
 
 const CAFE = 'sto_cafe';
 const BALCAO = 'sto_balcao';
@@ -182,7 +196,7 @@ function declaredBox() {
       { id: 'shm_1', name: 'Retirada no balcão', active: true, carrier_id: null, carrier_name: null, kind: 'pickup', dimensional_divisor: null, max_weight_grams: null, tariffed_zone_count: 0 },
       { id: 'shm_2', name: 'Entrega Padrão', active: true, carrier_id: null, carrier_name: null, kind: 'standard', dimensional_divisor: 6000, max_weight_grams: 30000, tariffed_zone_count: 1 },
     ],
-    pickupLocations: [{ id: 'pck_1', name: 'Balcão Forge Café', active: true, lat: null, lng: null }],
+    pickupLocations: [pickupRow('pck_1', totem.pickup.location)],
     customFields: [
       ...(catalog.custom_fields ?? []).map((f) => f.key),
       ...(totem.custom_fields ?? []).map((f) => f.key),
@@ -262,7 +276,9 @@ function footwearBox() {
     promotions: [],
     promotionStores: [],
     shippingMethods: [],
-    pickupLocations: [],
+    // ★ THE SHOE BRAND HAS FOUR, and they were absent from this fake box until 05/09 — so the footwear run
+    // graded no pickup point at all. `seed/logistics.json` declares them; this derives them from it.
+    pickupLocations: logistics.pickup_points.map((point, i) => pickupRow(`pck_shoe_${i}`, point)),
     // ★ `app:demo-data` is the SOURCE the verifier identifies the dataset's vocabulary by, never a list of
     // names — so the fake face carries the source and not nine typed keys.
     customFields: ['genero', 'material', 'uso'].map((key, i) => ({
@@ -630,6 +646,134 @@ test('★ a read that stops publishing `published` is the verifier\'s wrong ques
     const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
     assert.ok(stdout.includes('does not publish `published`'), stdout);
     assert.ok(!/✗ outlet — MISSING/.test(stdout), `a missing key became an accusation about the data:\n${stdout}`);
+    assert.equal(code, 2, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+
+// ── ★★ THE PICKUP WEEK (pk14/d1) ─────────────────────────────────────────────────────────────────────────
+//
+// The defect these grade is the one section 2 was GREEN about: it asserted the counter's pickup point exists,
+// and `points.length >= 1` is true of a point whose week nobody wrote. The owner photographed the result —
+// seven «Fechado» on the pickup card — and the box was correct in every respect: `pickup_location.create`
+// accepts a point with no `hours`, and an omitted day is closed exactly like a `null` one.
+//
+// ⚠️ AND THE SEED CANNOT REPAIR AN EXISTING BOX. Both pickup steps are idempotent BY NAME, so a bench born
+// before 05/09 keeps its weekless point through every re-run. That is precisely why the check has to be able
+// to go red against a LIVE box, and why these tests stage the box and not the JSON.
+
+test('★★ both tenants, with the week the seed declares — the verifier settles and PRINTS the count', async () => {
+  const coffee = await serve(declaredBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, coffee.api);
+    assert.match(stdout, /✓ pickup point "Balcão · Forge Café" — open 7 of 7 days/, stdout);
+    assert.match(stdout, /✓ the week — 1 of 1 declared point\(s\) publish a week/, stdout);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, stdout);
+  } finally {
+    coffee.close();
+  }
+  // ⇒ AND THE SHOE BRAND'S FOUR ARE GRADED TOO, which is the reach half of this slice: the rule existed for
+  // them in a test over the JSON and had never once been asked of a box.
+  const footwear = await serve(footwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, footwear.api, 'forgeco');
+    assert.match(stdout, /✓ the week — 4 of 4 declared point\(s\) publish a week/, stdout);
+    assert.match(stdout, /✓ pickup point "Forge Loja Oscar Freire" — open 6 of 7 days/, stdout);
+    assert.ok(!stdout.includes('⚑'), stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    footwear.close();
+  }
+});
+
+test('★★ SABOTAGE — the point the owner found: it exists, and its week is EMPTY. Accused, by name', async () => {
+  // ★ THE REPORTED BOX, STAGED FROM A MEASUREMENT AND NOT FROM AN IDEA OF ONE. On the bench of 05/09,
+  //     select name, hours from <coffee schema>.pickup_location
+  //   answered `Balcão · Forge Café | {}` while the shoe brand's four each answered a full week — the create
+  //   handler stores `input.hours ?? {}`, so a file with no key becomes an EMPTY week and not a null one, and
+  //   the two are the same shop. The point is there, section 2's `points.length >= 1` is still true, and the
+  //   only thing wrong is a week nobody wrote.
+  const box = declaredBox();
+  for (const row of box.pickupLocations) row.hours = {};
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ pickup point "Balcão · Forge Café"/, stdout);
+    assert.match(stdout, /does not write mon, tue, wed, thu, fri, sat, sun/, stdout);
+    // ⛔ THE HALF THAT WOULD HAVE HIDDEN IT: section 2 stays green about the same point, because "it exists"
+    // and "somebody can collect from it" are different questions and only one of them was ever asked.
+    assert.match(stdout, /✓ pickup point — Balcão · Forge Café/, stdout);
+    assert.match(stdout, /· 0 of 1 declared point\(s\) publish a week/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★★ SABOTAGE — ONE day dropped from one shoe-brand point, and the verdict names the point and the day', async () => {
+  // The dangerous shape: six days written reads as a week somebody maintained, and the seventh silently
+  // means closed. And it is one point of four, so the count has to move from 4 to 3.
+  const box = footwearBox();
+  const victim = box.pickupLocations[1];
+  const hours = { ...victim.hours };
+  delete hours.thu;
+  victim.hours = hours;
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.match(stdout, new RegExp(`✗ pickup point "${victim.name}"`), stdout);
+    assert.match(stdout, /does not write thu/, stdout);
+    assert.match(stdout, /· 3 of 4 declared point\(s\) publish a week/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ SABOTAGE — a point shut all seven days is a valid week and still a door nobody opens', async () => {
+  // `null` on all seven is accepted by the kernel and is the exact screen the owner photographed. A rule that
+  // only compared day names would have called this box clean.
+  const box = declaredBox();
+  for (const row of box.pickupLocations) {
+    row.hours = Object.fromEntries(Object.keys(row.hours).map((day) => [day, null]));
+  }
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ pickup point "Balcão · Forge Café"/, stdout);
+    assert.match(stdout, /all seven days are `null`/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ SABOTAGE — a point the dataset declares and the box does not have is MISSING, not silent', async () => {
+  const box = declaredBox();
+  box.pickupLocations = [];
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ pickup point "Balcão · Forge Café" — seed\/totem\.json declares it/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test("★ a read that stops publishing `hours` is the verifier's wrong question, never the box's defect", async () => {
+  const face = await serve(declaredBox(), { drop: { read: 'pickup_locations', key: 'hours' } });
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.ok(stdout.includes('does not publish `hours`'), stdout);
+    assert.ok(
+      !/✗ pickup point/.test(stdout),
+      `a missing key became an accusation about correct data:\n${stdout}`,
+    );
     assert.equal(code, 2, stdout);
   } finally {
     face.close();

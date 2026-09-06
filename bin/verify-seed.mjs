@@ -48,6 +48,9 @@ import { poolProducts } from '../seed/pool.mjs';
 // The Outlet's institutional set, from the function the SEED writes it with. A second list of those seven
 // slugs typed in here would be a second list that goes stale — and it would go stale agreeing with itself.
 import { outletPages } from '../seed/outlet.mjs';
+// ★ THE PICKUP WEEK, from the module that holds the rule and the list of points the dataset declares — so
+// this file grades a live point against the SAME sentence the seed refuses to write with.
+import { declaredPickupPoints, pickupWeekProblem } from '../seed/pickup-hours.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -473,6 +476,51 @@ if (counters.length === 0) {
       bad('delivery', `none, but ${delivers.join(', ')} deliver(s) — those shops cannot quote freight`);
     }
   });
+}
+say();
+
+// ── 2c. ★★ THE PICKUP WEEK — the half of a point the box can hold WRONG while every other check is green ──
+//
+// ⛔ THE DEFECT, reported by the owner on 05/09 with a screenshot: the counter's pickup card listed the seven
+// days as «Fechado» and its today-line said «Fechado hoje». Section 2 above already asserted the point EXISTS
+// and was green about it — because `points.length >= 1` is true of a point nobody can ever collect from.
+//
+// ★ AND NOTHING WAS BROKEN ANYWHERE. `pickup_location.create` accepts a point with no `hours`, an OMITTED day
+// is closed to the kernel exactly like a `null` one, and the checkout renders that faithfully. The dataset was
+// the only place the ambiguity could be refused, and it was not being refused there either.
+//
+// ⚠️ THE EXPECTATION IS DERIVED AND THE SEED IS IDEMPOTENT BY NAME — which is why this check has to exist
+// HERE and not only over the JSON. A bench born before 05/09 holds the point WITHOUT the week, and no re-run
+// of the seed will add it: `seedTotem` and `seedLogistics` both skip a point whose name is already there. A
+// stale box is therefore a ✗ with the point's name in it, and never a silence.
+say('THE PICKUP WEEK — a point with no hours is a door the checkout invites the shopper to and never opens');
+const declaredPoints = declaredPickupPoints().filter((d) => seen.includes(d.store));
+if (declaredPoints.length === 0) {
+  say('  · this tenant declares no pickup point — nothing to grade');
+} else {
+  const week$ = of('pickup_locations');
+  const livePoints = rows(await internal('pickup_locations'));
+  let withAWeek = 0;
+  for (const { source, point } of declaredPoints) {
+    await checking(() => {
+      // `name` and `hours` both go through the assertion: a read that stopped publishing either is THIS
+      // file's wrong question (⚑, exit 2) and may never become an accusation about the data.
+      const row = livePoints.find((r) => week$(r, 'name') === point.name);
+      if (!row) {
+        return bad(`pickup point "${point.name}"`, `${source} declares it and this box does not have it`);
+      }
+      const problem = pickupWeekProblem({ name: point.name, hours: week$(row, 'hours') });
+      if (problem) return bad(`pickup point "${point.name}"`, problem);
+      withAWeek += 1;
+      const days = Object.entries(week$(row, 'hours'))
+        .filter(([, h]) => h != null)
+        .map(([day]) => day);
+      ok(`pickup point "${point.name}"`, `open ${days.length} of 7 days (${days.join(', ')})`);
+    });
+  }
+  const counted = `${withAWeek} of ${declaredPoints.length} declared point(s) publish a week`;
+  if (withAWeek === declaredPoints.length) ok('the week', counted);
+  else say(`  · ${counted} — the rest are the ✗ lines above, each with its point's name in it`);
 }
 say();
 

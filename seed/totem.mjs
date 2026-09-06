@@ -43,6 +43,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { planRepoint } from './media.mjs';
 import { unresolved } from './minted.mjs';
+import { pickupWeekProblem } from './pickup-hours.mjs';
 import { planStock } from './stock.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -159,7 +160,15 @@ export function photoNames(catalogue = data) {
  *                rows: Function, log: Function, fail: Function, uploadAsset: Function }}
  */
 export async function seedTotem(port) {
-  const { log } = port;
+  const { log, fail } = port;
+
+  // ⛔ THE COUNTER'S WEEK, REFUSED BEFORE THE FIRST WRITE — and the kernel would NOT have refused it. A point
+  // with no `hours` is accepted by `pickup_location.create`, stored, and rendered as seven «Fechado»; that is
+  // how this counter spent its whole existence until 05/09. FIRST and not at step 8, because a run that is
+  // going to fail on the pickup point should not have created twenty-one products first.
+  // The rule and its measurement live in `seed/pickup-hours.mjs`.
+  const weekProblem = pickupWeekProblem(data.pickup.location);
+  if (weekProblem) fail(`totem — ${weekProblem} It is written in seed/totem.json → pickup.location.hours.`);
 
   const store = await theStore(port);
   await customFields(port);
