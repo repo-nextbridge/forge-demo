@@ -50,6 +50,21 @@ services:
       # never fails. So a missing mount here is not an outage, it is a shop quietly wearing the wrong
       # clothes, which is exactly the kind of thing nobody notices in a demo until it is on a screen.
       FORGE_THEMES_DIR: ${FORGE_THEMES_DIR:-/app/themes-instance}
+      # ★★ THE STORE THIS IMAGE IS THE FORK OF — the third consumer of the technique step 3c already uses.
+      #
+      # It selects WHOSE version of an institutional template renders (`src/templates/cms/registry.ts`): the
+      # café gets its own «Sobre», every other store of this image gets the shared body. The value CANNOT be
+      # written into the source, because a store id is a ULID minted fresh on every `bash bin/box-up.sh` — the
+      # exact rot that made `caddy/extra/coffee.local.caddy` match nothing and hand every café request to the
+      # VANILLA storefront, while the page still looked right because the theme comes from the store's row.
+      #
+      # ⚠️ SOFT (`:-`), UNLIKE THE TOTEM'S BELOW, AND THE DIFFERENCE IS DELIBERATE. A totem with no store is
+      # the wrong shop and must not boot. A vitrine with no overlay is this vitrine as it was before the axis
+      # existed: every page still answers 200, in the body shared with the reference storefront. Refusing to
+      # start the shop over one paragraph would trade a visible defect for an outage — so the loss is a
+      # warning at runtime and a RED in `bin/coffee-store-id.guard.mjs`, which is where it can be caught
+      # before a bench ever sees it.
+      FORGE_COFFEE_STORE_ID: ${FORGE_COFFEE_STORE_ID:-}
     volumes:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
     depends_on:

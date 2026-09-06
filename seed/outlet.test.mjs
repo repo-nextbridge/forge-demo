@@ -801,11 +801,19 @@ test('★ CONTROL — the derivation really reads the component, and notices whe
 
 test('★ every page carries a template the storefront can actually resolve', () => {
   // An unknown `template_key` does not 500 — it falls back to the placeholder «Esta é uma página
-  // institucional da loja», which is the demo looking unfinished rather than the demo being broken. The
-  // registry is read off the same fork.
+  // institucional da loja», which is the demo looking unfinished rather than the demo being broken.
+  //
+  // ⚠️ THE REGISTRY IS READ OFF THE COFFEE FORK AND THE OUTLET IS NOT SERVED BY IT — it rides the vanilla
+  // image. The fork is simply the only copy of that registry this repository can open, and the SHARED map is
+  // the half the two images have in common. What is read is therefore `SHARED` and never the café's own
+  // overlay: an Outlet page pointed at a key only the café registers would resolve to the placeholder there.
+  //
+  // ⛔ IT USED TO READ `const REGISTRY`, WHICH NO LONGER EXISTS. The store axis split that one map into
+  // `SHARED` + `OWN`, and the regex would have produced `null` — which this assertion catches, and which is
+  // exactly why the assertion is here rather than a silent `?? []`.
   const registry = readFileSync(join(SEED, '..', 'storefront-coffee', 'src', 'templates', 'cms', 'registry.ts'), 'utf8');
-  const block = /const REGISTRY[^=]*=\s*{([\s\S]*?)};/.exec(registry);
-  assert.ok(block, 'no REGISTRY literal — the derivation is gone');
+  const block = /const SHARED[^=]*=\s*{([\s\S]*?)};/.exec(registry);
+  assert.ok(block, 'no SHARED literal — the derivation is gone');
   const known = [...block[1].matchAll(/^\s*'?([a-z-]+)'?:/gm)].map((m) => m[1]);
   assert.ok(known.includes('institutional-default'), known.join(', '));
   for (const page of data.pages ?? []) {
@@ -819,9 +827,12 @@ test('★ every page carries a template the storefront can actually resolve', ()
 
 test('★ the Outlet speaks in its own voice where it CAN — title and meta are per page, and none is empty', () => {
   // ⚠️ THE BODY IS NOT ONE OF THEM, and `_pages_why` in the dataset carries the measurement: the page card
-  // has no body column (`content.page.create`), the prose lives in one component per `template_key` and the
-  // registry has no store axis. So the two fields below are the whole of what this shop can say for itself,
-  // and a blank one is the shop saying nothing.
+  // has no body column (`content.page.create`) and the prose lives in one component per `template_key`. The
+  // registry DOES have a store axis now, and it does not help this shop — the Outlet is served by the vanilla
+  // image, whose overlay ships empty and is held empty by a guard, because an entry there would be one
+  // customer's store id in every instance. So the two fields below are still the whole of what THIS shop can
+  // say for itself, and a blank one is the shop saying nothing. (The café's fork owns its image and does fill
+  // the overlay — see `storefront-coffee/src/templates/cms/registry.ts`.)
   const seen = new Set();
   for (const page of data.pages ?? []) {
     for (const key of ['title', 'meta_title', 'meta_description']) {

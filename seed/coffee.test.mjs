@@ -25,6 +25,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   COFFEE_PROMOTIONS,
+  coffeePages,
   expectedCoffee,
   expectedCoffees,
   expectedMetadata,
@@ -372,4 +373,139 @@ test('D14 — a box that already holds both spends no command', async () => {
   const { port, sent } = fakeBox({ published });
   await subscriberPromotions(port, { id: 'sto_cafe' });
   assert.equal(sent.length, 0, 'a re-run must create nothing — the name is the idempotence key');
+});
+
+// ── ★★ THE INSTITUTIONAL PAGES — seven cards, and the one page whose BODY is this shop's ─────────────────
+//
+// The shop published ZERO of these while its sidebar and its footer drew all seven links, which made every
+// one of them a link into the shop's own 404 (`bin/verify-seed.mjs`, section 3b, 05/09).
+
+const FORK_CMS = join(SEED, '..', 'storefront-coffee', 'src', 'templates', 'cms');
+
+/** The sidebar's links, read off the component that draws them — never a second list of the same slugs. */
+function navSlugs() {
+  const source = readFileSync(join(FORK_CMS, 'PageView.tsx'), 'utf8');
+  const nav = /const NAV[^=]*=\s*\[([\s\S]*?)\];/.exec(source);
+  assert.ok(nav, 'no NAV literal in the fork PageView — the derivation this test rests on is gone');
+  const slugs = [...nav[1].matchAll(/slug:\s*'([^']+)'/g)].map((m) => m[1]);
+  assert.ok(slugs.length > 0, 'the NAV literal parsed to zero slugs — the shape changed under this regex');
+  return slugs;
+}
+
+/** The template keys this image can resolve: the shared map plus the café's own overlay. */
+function registeredKeys() {
+  const source = readFileSync(join(FORK_CMS, 'registry.ts'), 'utf8');
+  const keys = [];
+  for (const name of ['SHARED', 'OWN']) {
+    const block = new RegExp(`const ${name}: Record<string, PageTemplate> = \\{([^}]*)\\}`).exec(source);
+    assert.ok(block, `no ${name} map in the fork registry — the derivation is gone`);
+    keys.push(...[...block[1].matchAll(/^\s*'?([a-z-]+)'?:/gm)].map((m) => m[1]));
+  }
+  assert.ok(keys.includes('institutional-default'), keys.join(', '));
+  return keys;
+}
+
+test('★★ the café declares a page for EVERY link its institutional sidebar draws — a gap is a dead link', () => {
+  const declared = coffeePages().map((p) => p.slug);
+  const missing = navSlugs().filter((slug) => !declared.includes(slug));
+  assert.deepEqual(
+    missing,
+    [],
+    `the storefront links ${missing.join(', ')} and this shop declares no page for it. The sidebar is ` +
+      'hardcoded, so a slug it draws and the shop does not publish is a 404 the shop links to itself.',
+  );
+});
+
+test('★ every card asks for a template this image can actually resolve', () => {
+  const known = registeredKeys();
+  for (const page of coffeePages()) {
+    assert.ok(
+      known.includes(page.template_key),
+      `page "${page.slug}" asks for template "${page.template_key}", which this storefront does not ` +
+        `register (${known.join(', ')}). Unknown keys fall back to the placeholder template, silently.`,
+    );
+  }
+});
+
+test('★ the shop speaks for itself in every field a card CAN carry, and no two say the same thing', () => {
+  const seen = new Set();
+  for (const page of coffeePages()) {
+    for (const key of ['title', 'meta_title', 'meta_description']) {
+      assert.equal(typeof page[key], 'string', `page "${page.slug}" has no ${key}`);
+      assert.ok(page[key].trim().length > 0, `page "${page.slug}" has an empty ${key}`);
+    }
+    assert.ok(!seen.has(page.meta_description), `two pages share one description: ${page.slug}`);
+    seen.add(page.meta_description);
+  }
+});
+
+test('⛔ no meta promises FREE FREIGHT — on this store the only rule that zeroes it is the subscription', () => {
+  // The trap named in `PAGES`: `Shipping.tsx` offers "frete grátis acima do valor indicado", which is the
+  // reference store's rule and not this one's. A meta repeating it would be the shop promising in a search
+  // result what its own page does not say — the species of prose this repository keeps paying for.
+  for (const page of coffeePages()) {
+    assert.doesNotMatch(
+      page.meta_description,
+      /frete gr[áa]tis/i,
+      `page "${page.slug}" promises free freight in its meta. This store's only free-freight rule is the ` +
+        'subscription perk, and the shared shipping template ties it to a cart threshold instead.',
+    );
+  }
+});
+
+test('★★ AND ONE OF THEM HAS A BODY OF ITS OWN — the card alone would be the shoe shop under a coffee theme', () => {
+  // The whole point of the slice: `sobre` is the café's, resolved through the store overlay. Without this,
+  // seven cards could be published over seven shared bodies and every check above would still be green.
+  const about = coffeePages().find((p) => p.template_key === 'about');
+  assert.ok(about, 'no card asks for the `about` template — the one page this shop wrote for itself');
+  const registry = readFileSync(join(FORK_CMS, 'registry.ts'), 'utf8');
+  const own = /const OWN: Record<string, PageTemplate> = \{([^}]*)\}/.exec(registry);
+  assert.ok(own, 'the fork registry no longer exports an OWN overlay');
+  assert.match(
+    own[1],
+    /\babout:\s*CoffeeAbout\b/,
+    'the café stopped overriding `about`, so /sobre serves the body shared with the reference vitrine — ' +
+      'which opens "Somos uma loja de calçados".',
+  );
+});
+
+test('the page step is idempotent and asks the read the STORE\'S question, not the tenant\'s', async () => {
+  // ⚠️ `read.internal.pages` declares `store_id` and Zod strips anything else, so a mis-spelled filter is
+  // not a narrower question — it is no question, and the answer is the whole tenant. On this box that turns
+  // "create the seven" into "skip the seven" the day another store of this tenant holds the same slugs.
+  const { seedCoffeePagesForTest } = await import('./coffee.mjs');
+  assert.equal(typeof seedCoffeePagesForTest, 'function');
+
+  const asked = [];
+  const sent = [];
+  const other = coffeePages().map((spec) => ({ ...spec, store_id: 'sto_balcao' }));
+  const port = {
+    readAll: async (name, params) => {
+      asked.push([name, params]);
+      // A face that IGNORED store_id would answer these — the counter's cards, with this store's slugs.
+      return params?.store_id === 'sto_cafe' ? [] : other;
+    },
+    command: async (name, input) => {
+      sent.push([name, input]);
+    },
+    log: () => {},
+  };
+  await seedCoffeePagesForTest(port, { id: 'sto_cafe' });
+  assert.deepEqual(asked, [['pages', { store_id: 'sto_cafe' }]]);
+  assert.equal(sent.length, coffeePages().length, 'the seven were not created');
+  assert.equal(sent[0][0], 'content.page.create');
+  assert.equal(sent[0][1].store_id, 'sto_cafe');
+  assert.equal(sent[0][1].published, true);
+
+  // And a re-run creates nothing.
+  const again = [];
+  await seedCoffeePagesForTest(
+    {
+      readAll: async () => coffeePages().map((spec) => ({ ...spec, store_id: 'sto_cafe' })),
+      command: async (name, input) => again.push([name, input]),
+      log: () => {},
+    },
+    { id: 'sto_cafe' },
+  );
+  assert.deepEqual(again, [], 're-running the phase must create nothing');
 });

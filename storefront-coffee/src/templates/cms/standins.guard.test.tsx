@@ -4,8 +4,8 @@
 // `/contato` served *"E-mail: contato@loja.exemplo · WhatsApp: (00) 00000-0000"*, on a page a shopper
 // reaches from the footer of every other page. The other six institutional pages read like a shop; this one
 // read like a fixture, and nothing anywhere said so — the seed creates these pages with a title and a
-// `template_key` and NO body (seed/vitrine.mjs), so every word on all seven comes from a template in this
-// directory and a stand-in in one of them is a stand-in on the shop.
+// `template_key` and NO body, so every word on all seven comes from a template in this directory and a
+// stand-in in one of them is a stand-in on the shop.
 //
 // ── WHY THE GUARD IS OVER THE SET AND OVER THE RENDER ───────────────────────────────────────────────────
 // Fixing the one string and asserting the new one would pin `/contato` and leave its six siblings, which is
@@ -14,26 +14,33 @@
 // RENDERED, because a constant nobody uses cannot put a fake phone number on a page and a source-only scan
 // would grade one that does.
 //
+// ⚠️ AND THE ENUMERATION NOW READS THE MAPS, NOT THE FILE. It used to `readFileSync('registry.ts')` and
+// slice between two literal strings — which is a guard coupled to the SHAPE of a source file it does not
+// own. The store axis changed that shape (one `REGISTRY` became `SHARED` + `OWN`) and the slice would have
+// silently produced an empty list; a guard whose enumeration can quietly become empty is a guard that goes
+// green over a directory it never looked at. The exported maps ARE the registry at runtime, they cannot be
+// read as empty by accident, and the emptiness check below refuses it if they somehow are.
+//
+// ★ IT NOW COVERS THE STORE OVERLAY TOO. `OWN` holds the templates only the café gets, and a stand-in there
+// reaches exactly the same shopper on exactly the same page.
+//
 // The patterns are stand-in SHAPES, not a list of today's offenders: reserved example domains (RFC 2606 and
 // friends), a phone made of zeros, lorem, and the scaffolding words. Real copy for a fictional shop passes —
 // what is refused is copy that ANNOUNCES it was never written.
 
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
-import { resolvePageTemplate } from './registry';
+import { OWN, type PageTemplate, SHARED } from './registry';
 
-/** The template keys that can reach a shopper, read off the registry itself — a template added there next
- *  month is graded without anybody editing this file. */
-function registeredKeys(): string[] {
-  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'registry.ts'), 'utf8');
-  const body = src.slice(src.indexOf('const REGISTRY'), src.indexOf('/** Resolve a template_key'));
-  const keys = [...body.matchAll(/^\s*'?([a-z-]+)'?:\s*[A-Z]/gm)].flatMap((m) => m[1] ?? []);
-  if (keys.length < 2) throw new Error('the registry moved — this guard is reading the wrong shape');
-  return keys;
+/** Every template that can reach a shopper on this front: the shared set, plus the café's own overrides. */
+function registeredTemplates(): [string, PageTemplate][] {
+  const out: [string, PageTemplate][] = [
+    ...Object.entries(SHARED).map(([key, t]): [string, PageTemplate] => [`shared:${key}`, t]),
+    ...Object.entries(OWN).map(([key, t]): [string, PageTemplate] => [`cafe:${key}`, t]),
+  ];
+  if (out.length < 2) throw new Error('the registry moved — this guard is reading the wrong shape');
+  return out;
 }
 
 const STAND_INS: [RegExp, string][] = [
@@ -56,9 +63,7 @@ const page = (key: string): PageDoc => ({
 
 test('★★ every registered institutional template renders copy a shop could have written', () => {
   const offenders: string[] = [];
-  for (const key of registeredKeys()) {
-    const { template: Template, fallback } = resolvePageTemplate(key);
-    expect(fallback, `"${key}" is registered but does not resolve`).toBe(false);
+  for (const [key, Template] of registeredTemplates()) {
     const html = renderToString(<Template page={page(key)} />);
     for (const [pattern, what] of STAND_INS) {
       const hit = html.match(pattern);
@@ -78,4 +83,11 @@ test('★ the guard can SEE a stand-in — the same scan over the string it was 
   const wasThere = '<li>E-mail: contato@loja.exemplo</li><li>WhatsApp: (00) 00000-0000</li>';
   const caught = STAND_INS.filter(([pattern]) => pattern.test(wasThere));
   expect(caught).toHaveLength(2);
+});
+
+test('★ the guard has something to look at — an empty enumeration must accuse itself', () => {
+  // Against the vacuum: `registeredTemplates()` throwing on a moved registry is only half of it. If both maps
+  // were emptied the loop above would iterate nothing and pass, having graded no page at all.
+  expect(registeredTemplates().length).toBeGreaterThanOrEqual(Object.keys(SHARED).length);
+  expect(Object.keys(SHARED).length).toBeGreaterThan(1);
 });

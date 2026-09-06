@@ -129,7 +129,7 @@ export async function CatalogView({
   }
 
   if (r.kind === 'page') {
-    return <PageView page={r.page} base={base} />;
+    return <PageView page={r.page} base={base} store={store} />;
   }
 
   if (r.kind === 'category') {
