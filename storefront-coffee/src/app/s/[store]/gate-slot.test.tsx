@@ -31,10 +31,21 @@ vi.mock('@forgecommerce/storefront-kit/config', () => ({
   GATE_DISMISSED_COOKIE: 'forge_gate_dismissed',
   readClient: () => ({
     extensions: () => extensionsMock(),
-    // MS-M2 — the layout also asks this store which theme it wears (`storeThemeStyle`). It answers null here:
-    // the gate machinery is what this file is about, and a store with no flags renders the base theme, which
-    // adds nothing to the markup the assertions below read.
-    storeFlags: async () => null,
+    // ★★ pk14/D3 — THIS ANSWER USED TO BE `null`, AND `null` STOPPED MEANING "no flags" ON THE DAY P4 LANDED.
+    // MS-M2 put the read here for the THEME, where a store with no flags simply wore the base skin. P4 gave
+    // the same answer a second meaning — `null` is the port's 404, "not a store of this instance"
+    // (`require-store.server.ts`) — and pk12/D2 dragged that layout change into this fork. The mock did not
+    // move, so from that day every case in this file rendered a 404 instead of a page, and all six were red
+    // until `bin/fork-suite.guard.mjs` ran this suite for the first time on 2026-09-05.
+    // The flags below are therefore the MINIMUM that says "this store exists and is on the street": a name for
+    // the theme layer, and `storefront_enabled` left absent on purpose — `requirePublicStorefront` refuses
+    // only on an explicit `false`, so absence is what a store served by an older kernel looks like.
+    storeFlags: async () => ({
+      name: 'Acme',
+      masked_checkout_enabled: false,
+      guest_checkout_enabled: true,
+      timezone: 'America/Sao_Paulo',
+    }),
   }),
 }));
 vi.mock('@forgecommerce/storefront-kit/gate/actions', () => ({

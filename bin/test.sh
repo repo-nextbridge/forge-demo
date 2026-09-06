@@ -6,6 +6,14 @@
 # This repository has no package manager and no runner of its own — it is a box's configuration, not a
 # library — so the tests are plain `node --test` files and this script is the thing that finds them all.
 # Anything matching `*.test.mjs` or `*.guard.mjs` under `bin/` and `seed/` runs.
+#
+# ★ pk14/D3 — AND THAT NOW REACHES THE FORKS' OWN SUITES TOO, which is worth saying out loud because the
+# `find` below does not show it: this repository also owns two Next apps (`storefront-coffee/`, `totem/`)
+# with vitest suites of their own, and until 2026-09-05 nothing ran them — not this script, not the build
+# scripts, not the Dockerfiles, and there is no CI. `bin/fork-suite.guard.mjs` is the loop that does, and it
+# is picked up by the same `find`. So THE ANSWER TO "who runs the fork's tests" IS THIS COMMAND. A fork whose
+# `node_modules` is absent is reported NOT CHECKED, never quietly passed; see that file for the measured cost
+# (~5.6 s of work, which the parallelism below mostly absorbs) and for what the first run found.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
