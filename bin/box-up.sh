@@ -969,9 +969,20 @@ handle_path /_coffee/* {
 	reverse_proxy storefront-coffee:3000
 }
 CADDY
-  note "coffee fork → /s/$CAFE_STORE (rule generated, routes stamped X-Forge-Served-By)"
+  # ★★ AND THE SAME ID GOES TO THE FORK ITSELF, not only to the edge that reaches it. The café's storefront
+  # gives ONE store its own institutional pages (`storefront-coffee/src/templates/cms/registry.ts`), keyed on
+  # a store id — so it needs the id for the same reason the rule above does, and it would rot in the same way
+  # for the same reason. Written here rather than anywhere else because this is the line where the id is
+  # known, and BEFORE step 5: the container reads its environment at boot, so a value written after
+  # `dc up -d storefront-coffee` is a value the running container does not have.
+  #
+  # ⚠️ ITS ABSENCE IS SILENT BY CONSTRUCTION — the shop answers 200 either way, in the body it shares with
+  # the reference vitrine — which is why `bin/coffee-store-id.guard.mjs` grades this write, the compose entry
+  # and the `.env.example` declaration together. Any one of the three missing is invisible on the bench.
+  put_env FORGE_COFFEE_STORE_ID "$CAFE_STORE"
+  note "coffee fork → /s/$CAFE_STORE (rule generated, routes stamped X-Forge-Served-By; FORGE_COFFEE_STORE_ID written into .env)"
 else
-  note '⚠️ no café store id — the coffee fork will not receive its store'
+  note '⚠️ no café store id — the coffee fork will not receive its store, and its own institutional pages will fall back to the shared body'
 fi
 
 # ── 3d · THE ADMIN'S SIBLING SWITCHER (A44) ─────────────────────────────────────────────────────────────────

@@ -71,6 +71,109 @@ export const SUBSCRIBABLE_HANDLES = [
   'forge-descafeinado',
 ];
 
+/**
+ * ★★ THE SEVEN INSTITUTIONAL PAGES OF THE COFFEE SHOP — and it published ZERO of them.
+ *
+ * MEASURED (`bin/verify-seed.mjs`, section 3b, 05/09): the `forge` store publishes seven and the Outlet
+ * gained its seven in pk12; `cafe` and `balcao` declared none, and the section reported the number without
+ * judging it. The sidebar the storefront draws on an institutional page is HARDCODED with all seven links
+ * (`storefront-coffee/src/templates/cms/PageView.tsx`), and so is the footer — so a shop with no cards is a
+ * shop drawing seven links into its own 404. That is the whole reason all seven are here and not just the
+ * one this slice wrote a body for: seeding `sobre` alone would trade one dead link for six.
+ *
+ * ── ⚠️ WHAT A CARD CAN AND CANNOT CARRY, WHICH IS WHAT MADE THE METAS HARD ───────────────────────────────
+ *
+ * `content.page.create` takes `store_id, slug, title, template_key, meta_title, meta_description, published`
+ * and has NO column for a body. So a card chooses the shop's `<h1>` (the title) and its `<head>` copy, and
+ * the paragraphs come from a React component in the image. Two of these pages have the café's own body
+ * (`about` → `CoffeeAbout`, via the registry's store overlay; `contact` → this fork's own channels) and five
+ * render the body shared with the reference storefront.
+ *
+ * ⇒ EVERY `meta_description` BELOW IS WRITTEN CLAUSE BY CLAUSE AGAINST THE TEMPLATE THAT WILL RENDER, and
+ * for the five shared ones that means promising nothing the shared paragraphs do not say. The trap is real
+ * and specific: `Shipping.tsx` offers "frete grátis acima do valor indicado", and on THIS store the only
+ * rule that zeroes the freight is the subscription (the seal in `CoffeeChrome.tsx` says exactly that, from
+ * the same measurement). A meta repeating the threshold would be the shop promising in Google what its own
+ * page does not say. This is the same rule `seed/outlet.json` states for the Outlet's seven.
+ *
+ * IDEMPOTENT like everything else here: keyed by the slug, existing cards skipped, nothing ever updated or
+ * removed. A title an operator edited in the admin is the operator's.
+ */
+const PAGES = [
+  {
+    slug: 'sobre',
+    template_key: 'about',
+    title: 'Sobre a Forge Café',
+    meta_title: 'Sobre · Forge Café',
+    meta_description:
+      'Uma torrefação pequena: seis cafés de produtores que conseguimos nomear, torrados na semana do ' +
+      'envio, e uma assinatura sem fidelidade. Conheça as origens e como a curadoria é feita.',
+  },
+  {
+    slug: 'contato',
+    template_key: 'contact',
+    title: 'Fale com a Forge Café',
+    meta_title: 'Fale conosco · Forge Café',
+    meta_description:
+      'Os canais de atendimento da Forge Café: e-mail, WhatsApp e o horário em que respondemos. Dúvidas ' +
+      'sobre um pedido, uma assinatura ou uma moagem passam por aqui.',
+  },
+  {
+    slug: 'entrega',
+    template_key: 'shipping',
+    title: 'Entrega e rastreio',
+    meta_title: 'Prazos de entrega · Forge Café',
+    // ⛔ NOT A WORD ABOUT FREE FREIGHT: the shared template ties it to a cart threshold and this store's
+    //    only rule that zeroes it is the subscription. Promising it here would be a meta the page denies.
+    meta_description:
+      'Entregamos para todo o Brasil. O prazo e o valor do frete são calculados no checkout a partir do seu ' +
+      'CEP, e o código de rastreio fica na sua conta assim que o pedido é despachado.',
+  },
+  {
+    slug: 'trocas-e-devolucoes',
+    template_key: 'returns',
+    title: 'Trocas e devoluções',
+    meta_title: 'Trocas e devoluções · Forge Café',
+    meta_description:
+      'Até 7 dias corridos após o recebimento para solicitar a troca ou a devolução, com o produto sem ' +
+      'sinais de uso e na embalagem original. O reembolso volta pelo mesmo meio de pagamento do pedido.',
+  },
+  {
+    slug: 'faq',
+    template_key: 'faq',
+    title: 'Perguntas frequentes',
+    meta_title: 'Perguntas frequentes · Forge Café',
+    meta_description:
+      'As respostas rápidas: como o prazo de entrega é calculado, como pedir uma troca em até 7 dias e ' +
+      'onde as formas de pagamento aparecem.',
+  },
+  {
+    slug: 'privacidade',
+    template_key: 'privacy',
+    title: 'Privacidade',
+    meta_title: 'Privacidade · Forge Café',
+    meta_description:
+      'Quais dados a loja coleta ao processar um pedido, para que os usa e como pedir acesso, correção ou ' +
+      'exclusão. Um resumo em linha com a LGPD — não vendemos os seus dados.',
+  },
+  {
+    slug: 'termos',
+    template_key: 'terms',
+    title: 'Termos de uso',
+    meta_title: 'Termos de uso · Forge Café',
+    meta_description:
+      'As regras de compra e de uso do site: preços e condições valem os exibidos no momento da compra, e ' +
+      'um pedido é confirmado após a aprovação do pagamento.',
+  },
+];
+
+/** The seven cards this store publishes, as this repository declares them. Exported so the verifier grades
+ *  the SAME list the seed writes — a second copy of these slugs is a second copy that goes stale, which is
+ *  the failure `bin/verify-seed.mjs` was written against. */
+export function coffeePages() {
+  return PAGES;
+}
+
 /** This app's key on the SKU bag. It belongs to `@forgecommerce/ext-subscriptions` (`subscribable.ts`) and
  *  is repeated here because a seed script may not import an app's source — the app lives in the image. */
 export const SUB_ENABLED_FIELD = 'sub_enabled';
@@ -206,6 +309,7 @@ export async function seedCoffee(port) {
   await installApps(port);
   await markSubscribable(port, store);
   await subscriberPromotions(port, store);
+  await seedPages(port, store);
 
   log('coffee — done. Re-running this is a no-op.');
 }
@@ -407,3 +511,40 @@ export async function subscriberPromotions({ command, readAll, log }, store) {
 // So the wall renders EMPTY against this seed, and the storefront draws nothing rather than a broken
 // section — which is the degradation the pages were written for anyway. Named here rather than silently
 // missing, exactly like the three supporting products the catalogue promises and does not list.
+
+// ── 4. the institutional pages ──────────────────────────────────────────────────────────────────────────
+//
+// ⚠️⚠️ THE PARAM IS `store_id`, AND SPELLING IT `store` IS A SILENT WHOLE-TENANT READ. `read.internal.pages`
+// declares `store_id` and its Zod object STRIPS what it does not know — so `{ store: <id> }` is not a
+// narrower question that gets ignored, it is NO question, and the answer is every page of the tenant. That
+// matters here the day the counter gets cards of its own: the `have` set would already hold these slugs
+// before this store had one, every slug would be skipped as "already there", and the step would report
+// success having created NOTHING. The filter is asked of the read AND re-asserted on the row, because a read
+// that answers a different question than the one asked is a species this repository has met three times.
+async function seedPages({ command, readAll, log }, store) {
+  const pages = coffeePages();
+  const have = new Set(
+    (await readAll('pages', { store_id: store.id }))
+      .filter((page) => page.store_id === store.id)
+      .map((page) => page.slug),
+  );
+  let created = 0;
+  for (const page of pages) {
+    if (have.has(page.slug)) continue;
+    await command('content.page.create', {
+      store_id: store.id,
+      slug: page.slug,
+      title: page.title,
+      template_key: page.template_key,
+      meta_title: page.meta_title,
+      meta_description: page.meta_description,
+      published: true,
+    });
+    created += 1;
+  }
+  log(`coffee — pages: ${created} created, ${pages.length - created} already there`);
+}
+
+/** The step above, reachable from the suite. Exported apart from the phase so `seedCoffee` keeps ONE entry
+ *  point for the seed and the test still grades the step that actually writes. */
+export const seedCoffeePagesForTest = seedPages;

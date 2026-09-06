@@ -48,6 +48,10 @@ import { poolProducts } from '../seed/pool.mjs';
 // The Outlet's institutional set, from the function the SEED writes it with. A second list of those seven
 // slugs typed in here would be a second list that goes stale — and it would go stale agreeing with itself.
 import { outletPages } from '../seed/outlet.mjs';
+// ★ AND THE CAFÉ'S SEVEN, for the same reason and from the same shape of function. It declared NONE until
+// this slice — the section below reported the number and did not judge it — while the shop's own sidebar and
+// footer drew all seven links into its own 404.
+import { coffeePages } from '../seed/coffee.mjs';
 // ★ THE PICKUP WEEK, from the module that holds the rule and the list of points the dataset declares — so
 // this file grades a live point against the SAME sentence the seed refuses to write with.
 import { declaredPickupPoints, pickupWeekProblem } from '../seed/pickup-hours.mjs';
@@ -328,10 +332,12 @@ const ARCHETYPE = {
 const COUNTERS = ['balcao'];
 
 /** handle → the institutional slugs THIS REPOSITORY declares that shop publishes. A shop that is not a key
- *  here is reported and never judged: `forge`'s seven are the mounted dataset's, `cafe` and `balcao` declare
- *  none, and an expectation invented for any of them would be this file disagreeing with the box on purpose. */
+ *  here is reported and never judged: `forge`'s seven are the mounted dataset's, `balcao` declares none (it
+ *  is the totem's store and no browser reaches it), and an expectation invented for either would be this
+ *  file disagreeing with the box on purpose. */
 const PAGES_DECLARED = {
   outlet: outletPages().map((p) => p.slug),
+  cafe: coffeePages().map((p) => p.slug),
 };
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────

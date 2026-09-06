@@ -183,8 +183,26 @@ que só é conhecível no passo 6 — o id da loja do balcão é um ULID que nas
 **O que fazer:** antes do primeiro `box-up`, escreva o sentinela que o script já conhece —
 `FORGE_TOTEM_STORE_ID=sto_PENDING_SEED`. `bin/box-up.sh:1044` o trata como "ainda não", o passo 6 resolve o
 id de verdade e **reescreve o `.env`** (`:1018`), e o passo 7 sobe o totem.
-⚠️ Hoje **nenhum arquivo desta caixa escreve esse sentinela** — ele só é lido. Enquanto isso for verdade, a
-linha acima é uma instrução, não um mecanismo.
+⚠️⚠️ **ESSA ⚠️ ESTAVA VENCIDA E FOI MEDIDA EM 05/09.** Ela dizia *"nenhum arquivo desta caixa escreve esse
+sentinela — ele só é lido"*; o `.env.example` **já o escreve** (`FORGE_TOTEM_STORE_ID=sto_PENDING_SEED`, e o
+parágrafo dele explica a medição). ⇒ **a linha acima virou mecanismo**: `cp .env.example .env` já entrega o
+sentinela e o passo 6 o reescreve. O que sobra de instrução é só não *apagar* a linha.
+
+**(d) `FORGE_COFFEE_STORE_ID` — a mesma técnica, terceiro consumidor, e a única com falha SILENCIOSA.**
+A vitrine do café é um **fork nosso**, então ela pode dar a **UMA** loja páginas institucionais próprias — a
+vitrine de referência não pode (um `sto_…` no mapa dela seria o dado de um cliente dentro da imagem de todo
+mundo). O id é o mesmo ULID que nasce a cada `box-up`, então ele **não pode ser escrito no fonte**: é
+exatamente o defeito que o `caddy/extra/coffee.local.caddy` teve, quando a regra escrita à mão parou de casar
+e **toda** requisição do café caiu na vitrine vanilla sem ninguém perceber (a página continuava com a cara
+certa — o tema vem da linha da loja). O passo **3c** do `box-up`, que já gera aquela regra, agora também
+escreve `FORGE_COFFEE_STORE_ID` no `.env`; o `compose.override.yml` a entrega ao container.
+
+⚠️ **Aqui a interpolação é MOLE (`:-`) de propósito, ao contrário da do totem.** Um totem sem loja é a loja
+errada e não deve subir; uma vitrine sem essa variável é a vitrine **como era antes do eixo existir** — todas
+as páginas respondem 200, com o corpo compartilhado com a vitrine de referência. ⇒ **a ausência não tem
+sintoma**, e é por isso que ela é gradada fora da caixa: `bin/coffee-store-id.guard.mjs` prova as quatro
+pernas de uma vez (derivada no `box-up`, declarada no `.env.example`, entregue pelo compose, lida pelo fork)
+e recusa qualquer `sto_…` escrito à mão no fonte do fork.
 
 ---
 

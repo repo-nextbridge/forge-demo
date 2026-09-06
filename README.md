@@ -171,7 +171,10 @@ the map of how the box is born:
 | 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
-fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then.)
+fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then. **3c
+writes two things from the one id it resolves**: the edge rule AND `FORGE_COFFEE_STORE_ID` in `.env`, which
+is what lets the café's own vitrine give its own store institutional pages of its own — the id cannot be
+typed into either, for the same reason, and `bin/coffee-store-id.guard.mjs` grades all four legs of it.)
 
 ### ★★ 13–15 are the reset's own tail: reborn → purge → warm → grade
 

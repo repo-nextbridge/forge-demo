@@ -601,10 +601,20 @@ async function seedCollections({ command, read, log }, products) {
 // MEASURED 05/09, seven requests per store on the bench: `forge` answered 200 at /contato, /entrega, /faq,
 // /privacidade, /sobre, /termos and /trocas-e-devolucoes; the OUTLET answered 404 at all seven, in the same
 // tenant. The sidebar the storefront draws on an institutional page carries those exact seven links and is
-// HARDCODED (`storefront-coffee/src/templates/cms/PageView.tsx:13-21` — this repo's own byte-identical copy
-// of the reference storefront's), so the shop was publishing seven dead links. `seed/outlet.json`'s
-// `_pages_why` holds the rest of the measurement, including the half this repository cannot write: the page
-// BODY is theme code, shared with the Forge store, and no dataset can vary it.
+// HARDCODED (`storefront-coffee/src/templates/cms/PageView.tsx` — the same list the reference storefront
+// draws), so the shop was publishing seven dead links. `seed/outlet.json`'s `_pages_why` holds the rest of
+// the measurement, including the half this repository cannot write: the page BODY is theme code, shared with
+// the Forge store, and no dataset can vary it.
+//
+// ⚠️ THAT LAST SENTENCE IS TRUE OF THE OUTLET AND IS NO LONGER TRUE OF EVERY SHOP, and the difference is
+// ownership of the image rather than anything about the dataset. The Outlet is served by the REFERENCE
+// storefront, whose CMS template registry ships its per-store overlay empty on purpose — an entry there
+// would be one customer's store id inside every instance's image. The café is served by a FORK this
+// repository builds, so it fills the overlay and its «Sobre» is its own (`storefront-coffee/src/templates/
+// cms/registry.ts`). ⛔ AND THE LINE REFERENCE THAT USED TO BE HERE IS GONE ON PURPOSE: it also claimed this
+// fork's `PageView.tsx` was BYTE-IDENTICAL to the reference storefront's, which stopped being true the day
+// the fork took the store axis. A comment that pins another file's line numbers is a comment with an expiry
+// date nobody sees pass.
 //
 // ⚠️⚠️ THE PARAM IS `store_id`, AND SPELLING IT `store` IS A SILENT WHOLE-TENANT READ. `read.internal.pages`
 // declares `store_id` (packages/core/src/read/internal-capabilities.ts:669) and its Zod object STRIPS what it

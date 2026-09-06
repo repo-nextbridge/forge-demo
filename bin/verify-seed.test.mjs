@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
-import { COFFEE_PROMOTIONS, expectedCoffees } from '../seed/coffee.mjs';
+import { COFFEE_PROMOTIONS, coffeePages, expectedCoffees } from '../seed/coffee.mjs';
 import { poolProducts } from '../seed/pool.mjs';
 import { outletPages } from '../seed/outlet.mjs';
 
@@ -214,9 +214,11 @@ function declaredBox() {
       pii: null,
     })),
     productStores: {},
-    // The coffee tenant declares no institutional page and publishes none — the case the new section has to
-    // report as a LINE rather than as silence, so that "this shop has none" stops looking like "nobody looked".
-    pages: [],
+    // ★ THE CAFÉ'S SEVEN, derived from the function the seed writes them with — never a second list of the
+    // same slugs. It published ZERO until pk15/d1, which the section reported as a line and did not judge;
+    // now it is declared, so the same line is a verdict. The COUNTER still declares none, and that store is
+    // why the "report, do not judge" branch is still exercised by this very box.
+    pages: coffeePages().map((spec) => pageRow(CAFE, spec)),
     assets: [
       { id: 'ast_1', kind: 'image', provider_key: 'placeholder-cafe.png', filename: 'placeholder-cafe.png', mime: 'image/png', size: 10, created_by: null, created_at: '2026-09-03T00:00:00Z' },
     ],
@@ -621,7 +623,13 @@ test("★★ ANOTHER store's seven do not answer for this one — the row's `sto
 
 test('★ a shop this repository declares no page for gets a LINE, not silence and not an accusation', async () => {
   // `forge`'s seven are the mounted dataset's, which this repository cannot read — so its number is printed
-  // and never graded. And the coffee tenant, which has none at all, still gets its two lines.
+  // and never graded. The COUNTER is the other one: it is the totem's store, no browser reaches it, and it
+  // publishes nothing. Both must produce a LINE.
+  //
+  // ⚠️ THE CAFÉ USED TO BE THE SECOND EXAMPLE HERE AND IS NOW A GRADED SHOP (pk15/d1 declared its seven), so
+  // the branch is exercised by `balcao` instead. That substitution is the point of keeping this test: a
+  // repository that declares a page set for every shop would leave the "report, do not judge" path dead, and
+  // the next shop born without one would meet an untested branch.
   const footwear = await serve(footwearBox());
   try {
     const { stdout } = await verify(VERIFIER, footwear.api, 'forgeco');
@@ -632,11 +640,26 @@ test('★ a shop this repository declares no page for gets a LINE, not silence a
   const coffee = await serve(declaredBox());
   try {
     const { code, stdout } = await verify(VERIFIER, coffee.api);
-    assert.match(stdout, /· cafe — 0 page\(s\), 0 published\./, stdout);
-    assert.match(stdout, /· balcao — 0 page\(s\), 0 published\./, stdout);
+    assert.match(stdout, /· balcao — 0 page\(s\), 0 published\. This repository declares none/, stdout);
     assert.equal(code, 0, `a shop with no declared page is not a failure:\n${stdout}`);
   } finally {
     coffee.close();
+  }
+});
+
+test('★★ the café is now GRADED, and a missing card of its own is named', async () => {
+  // The other half of the substitution above: `cafe` moved from "reported" to "judged", and a section that
+  // judges has to be able to fail. Without this, declaring the seven would be a claim nothing tests.
+  const box = declaredBox();
+  const gone = 'sobre';
+  box.pages = box.pages.filter((p) => p.slug !== gone);
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ cafe — MISSING, by name: sobre/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
   }
 });
 
