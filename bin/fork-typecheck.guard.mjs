@@ -45,43 +45,22 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 // ★ pk12/D2 — the tree discovery below the fold moved to `bin/release-tree.mjs` when a SECOND guard
 // (`bin/store-mount-drift.guard.mjs`) had to answer the same question. Not one line of it changed; what it
 // stopped being is a copy. Nothing else in this file moved.
-import { gitOut, pinnedCommit, releaseTree, ROOT, readJson as read } from './release-tree.mjs';
+import { gitOut, pinnedCommit, releaseTree, readJson as read } from './release-tree.mjs';
+// ★ pk14/D3 — and the fork discovery took the same road when `bin/fork-suite.guard.mjs` became the second
+// guard that had to ask "which directories here are forks?". Same rule, same derivation, one copy.
+import { forks, KIT } from './forks.mjs';
 
 const say = (line) => console.error(`[fork-typecheck] ${line}`);
 
-/** The package every front of this repository forks the Forge surface through. One package, and a fork that
- *  installs it has chrome, theme, slots and the port clients — so it is also the one whose signatures a fork
- *  can fall behind. */
-const KIT = '@forgecommerce/storefront-kit';
-
 // ── the forks, derived from what they DEPEND ON ─────────────────────────────────────────────────────────
 
-/** Every Next app this repository owns that installs the kit, found by reading manifests rather than from a
- *  list typed in here: a third fork tomorrow is covered without anybody remembering this file exists. */
-function forks() {
-  const out = [];
-  for (const entry of readdirSync(ROOT, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-    let manifest;
-    try {
-      manifest = read(join(ROOT, entry.name, 'package.json'));
-    } catch {
-      continue;
-    }
-    if (!manifest.dependencies?.[KIT]) continue;
-    if (!manifest.scripts?.typecheck) continue;
-    out.push({ dir: entry.name, path: join(ROOT, entry.name) });
-  }
-  return out.sort((a, b) => a.dir.localeCompare(b.dir));
-}
-
-const FORKS = forks();
+const FORKS = forks('typecheck');
 
 /** What `npm install` actually put on disk, or null. The kit ships its own `src/` (not a built `dist`), so
  *  the fork's `tsc` reads the kit's TypeScript directly — which is why an arity change upstream is visible

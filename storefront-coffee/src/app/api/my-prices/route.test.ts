@@ -17,7 +17,15 @@ vi.mock('@forgecommerce/storefront-kit/kernel-write-clients', () => ({
 
 import { GET } from './route';
 
-const call = (skus: string) => GET(new Request(`https://loja.test/api/my-prices?skus=${skus}`));
+// ★★ pk14/D3 — THE STORE RIDES ALONG, and this file learned it a release late, exactly like the route did.
+// pk6/M5 made the overlay's port call store-scoped and the fix reached `route.ts:70` through the OVEN; the
+// test that was supposed to describe the route stayed on the old URL, so four of its cases were reading the
+// 204 the route now returns for a request no store claims — a fixture asserting the absence of the feature
+// it was written for. It was red from that day until 2026-09-05, when `bin/fork-suite.guard.mjs` ran this
+// suite for the first time. The store arrives the way a fragment fetched from inside `/s/<store>/` sends it:
+// EXPLICITLY, on the query (`lib/store-context.ts` — the Host is only the fallback).
+const call = (skus: string) =>
+  GET(new Request(`https://loja.test/api/my-prices?skus=${skus}&store=acme`));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -60,6 +68,16 @@ test('★ an anonymous visit costs 204 and NEVER reaches the port', async () => 
     myPrices,
     'the overlay called the port for a visitor with no session',
   ).not.toHaveBeenCalled();
+});
+
+test('★ pk14/D3 — a signed-in ask that names NO store is 204 too, and never reaches the port', async () => {
+  // The branch the four stale cases above were accidentally exercising, now asserted on purpose. A member
+  // price is scoped to a shop (pk6/M5), so an overlay with no shop to compare against has no true answer:
+  // the page keeps its anonymous price, which is right for everyone. `loja.test` resolves to no store here,
+  // and no `?store=` names one.
+  const res = await GET(new Request('https://loja.test/api/my-prices?skus=sku_a'));
+  expect(res.status).toBe(204);
+  expect(myPrices, 'the overlay called the port without knowing which store').not.toHaveBeenCalled();
 });
 
 // ── The ceiling ─────────────────────────────────────────────────────────────────────────────────────────

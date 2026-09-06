@@ -642,7 +642,15 @@ bash bin/verify-composition.sh        # does the running image compose the apps 
 bash bin/test.sh                      # this repo's guards
 ```
 
-⚠️ **One of those guards needs the forks INSTALLED, and says so when they are not.**
+⚠️ **`bin/test.sh` is also who runs the FORKS' own suites.** `storefront-coffee/` and `totem/` carry vitest
+suites of their own — 774 and 171 tests — and until 2026-09-05 nothing ran them: not this script, not
+`bin/build-coffee.sh`, not the Dockerfiles, and this repository has no CI. `bin/fork-suite.guard.mjs` is the
+loop that does, and the very first run came back **red** on the coffee vitrine: two test files left behind by
+fixes that had travelled into the fork's source and stopped there. It costs ~5.6 s of work, which the
+parallelism of `node --test` mostly absorbs on an idle machine and does not on a busy one, and a fork that is
+not installed is reported **NOT CHECKED**, never quietly passed.
+
+⚠️ **Two of those guards need the forks INSTALLED, and say so when they are not.**
 `bin/fork-typecheck.guard.mjs` compiles `storefront-coffee/` and `totem/` against the kit in their own
 `node_modules` (`tsc --noEmit`, ~5 s) — the contract that used to be checked only by the oven, four minutes
 into an image build. It also proves that kit is the one `forge.lock` pins, by finding the checkout whose HEAD
