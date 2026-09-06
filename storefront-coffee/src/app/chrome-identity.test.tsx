@@ -168,6 +168,11 @@ for (const entry of TREES) {
 test('★ and the keyboard shortcut survived the adoption — it is the first focusable thing in both trees', async () => {
   // The reference chrome had one and this shop's did not, so moving the cacheable tree over would have
   // removed the last skip link in the deployable. Asserted where it can regress, not where it was written.
+  //
+  // ★ pk15/D2 — THIS IS THE TREE'S HALF OF ONE RULE, NOT A SECOND COPY OF IT. The rule itself — first
+  // focusable, landing on the wrapper that holds the page — is stated over the chrome that carries it, in
+  // `components/coffee/CoffeeChrome.skiplink.guard.test.tsx`. What is asserted HERE is that neither tree
+  // lost it on the way to the shopper: a layout that stops mounting that chrome, or mounts another one.
   const { MAIN_CONTENT_ID } = await import('@forgecommerce/storefront-kit/SkipLink');
   for (const entry of TREES) {
     const html = await tree(entry);

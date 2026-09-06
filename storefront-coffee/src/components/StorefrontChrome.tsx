@@ -1,3 +1,23 @@
+// ⛔⛔ pk15/D2 — THIS IS THE CONTROL. NO LAYOUT OF THIS APP MOUNTS IT, AND THAT IS DELIBERATE.
+//
+// It is the REFERENCE vitrine's chrome, inherited with the cut. Since pk14/D5 both trees of this deployable
+// wear the shop's own <CoffeeChrome> (`app/c/[store]/layout.tsx:77`, `app/s/[store]/(storefront)/layout.tsx:26`),
+// so nothing a shopper can open renders this file. Measured 2026-09-05, in source: its only importers are
+// `chrome-parity.test.tsx` and `app/chrome-identity.test.tsx` — both TESTS, neither a route.
+//
+// ★ IT IS KEPT ANYWAY, on Renan's call (05/09), because deleting it would delete a rule rather than dead
+// code. `chrome-identity.test.tsx` judges the two trees by what they must NOT look like, and it re-derives
+// that marker from THIS component on every run instead of trusting a literal: the day `site-header` stops
+// being what the reference chrome renders, its negative assertions would quietly become true of everything.
+// A control that is not rendered is not a control.
+//
+// ⚠️ SO DO NOT MOUNT IT, AND DO NOT PUT A RULE ABOUT THIS SHOP ON IT. The accessibility rule used to live
+// here (`components/SkipLink.test.tsx`) and it was green while the café chrome had no skip link at all —
+// measured under sabotage in pk15/D2. It now lives on the chrome the deployable wears:
+// `components/coffee/CoffeeChrome.skiplink.guard.test.tsx`.
+//
+// ── WHAT THE COMPONENT IS, FOR WHOEVER RE-FORKS FROM IT ─────────────────────────────────────────────────
+//
 // The STOREFRONT's chrome: the kit's composition, this app's three fragments.
 //
 // The chrome itself — skip link, header, main landmark, footer, and every `header.*`/`footer.*` extension

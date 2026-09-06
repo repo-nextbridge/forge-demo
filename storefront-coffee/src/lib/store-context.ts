@@ -8,8 +8,15 @@
 // ── THE CLASS, AND HOW TO ENUMERATE IT (never by memory) ──────────────────────────────────────────────────
 // It is exactly what `middleware.ts`'s `matcher` EXCLUDES: those requests never see the `/s/<store>` rewrite,
 // so nothing but themselves can resolve their store. Today that is `/api/**`, `/feeds/**`, `/robots.txt` and
-// `/sitemap.xml`. `store-context.guard.test.ts` walks those directories and fails on a route that resolves a
-// store without going through here — a new sibling is born red rather than born leaking.
+// `/sitemap.xml`.
+//
+// ⚠️ pk15/D2 — AND IN THIS FORK NOTHING ENFORCES IT. This comment used to say that
+// `store-context.guard.test.ts` walks those directories and fails on a route that resolves a store without
+// coming through here, so a new sibling is born red rather than born leaking. That guard is REAL and it is
+// not here: it lives in the product monorepo (`apps/storefront/src/store-context.guard.test.ts`, measured
+// 2026-09-05) and the cut did not bring it. Same shape as `CoffeeChrome.store-route.guard.test.tsx`, which
+// exists here precisely because the reference's link guard did not come with the fork either. Until someone
+// writes the fork's own, a new route under those paths is born leaking and nothing says so.
 //
 // ── THE TWO SURFACES THAT ARE HOST-ONLY BY CONSTRUCTION, AND WHY THAT IS THE RIGHT ANSWER ─────────────────
 // `app/sitemap.ts`, `app/robots.ts` and `app/feeds/google.xml` are CRAWLER DOCUMENTS, and every URL they emit
@@ -23,10 +30,18 @@
 // the store does not fill (see `lib/sitemap-data.ts`).
 //
 // ── AND THE ONES THAT ARE NOT STORE-SCOPED AT ALL ─────────────────────────────────────────────────────────
-// Session-scoped (`my-prices`, `account/*`), theme-scoped (`slots`), key-scoped (`media`, `img`) and the
-// secret-guarded `revalidate` hook resolve no store and must not start: adding one would invent a dimension
-// the answer does not have. They are listed BY NAME in the guard — an exception to an isolation rule is
-// written down, never inferred (the same doctrine as the kernel's `GLOBAL_READS`).
+// Session-scoped (`account/status`), theme-scoped (`slots`, `themes`, `theme-assets`), key-scoped (`media`,
+// `img`) and the secret-guarded `revalidate` hook resolve no store and must not start: adding one would
+// invent a dimension the answer does not have.
+//
+// ⚠️ pk15/D2 — `my-prices` IS NOT ONE OF THEM, AND THIS LINE SAID IT WAS. It was true when the route was
+// written (session-scoped, decision 7: the price difference is per SHOPPER) and pk6/M5 ended it: the kernel
+// narrows a member-price overlay BY STORE, so a promotion belonging to one shop of a two-store tenant never
+// reached the overlay while the call carried no store. The kit's signature changed with it —
+// `customerClient().myPrices(store, token, skus)` — and this fork learned it in the oven. It calls
+// `resolveRequestStore` like any other store-scoped sibling (`app/api/my-prices/route.ts:70`) and answers
+// 204 when nothing claims the request. Every caller of this function is now store-scoped:
+// `my-prices`, `suggest`, `categories`, `availability`.
 
 import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
 import { STORE_PARAM } from '@/lib/store-param';

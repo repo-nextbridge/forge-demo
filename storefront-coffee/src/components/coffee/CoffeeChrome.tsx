@@ -21,8 +21,12 @@
 // answered a keyboard with the whole header before the first product (WCAG 2.4.1 — the kit's own file has the
 // 90-Tab measurement that put it there). It went unnoticed because the EDGE-CACHEABLE tree still mounted the
 // reference chrome and therefore still had one; adopting this chrome there (`app/c/[store]/layout.tsx`) would
-// have taken the last one away. The shortcut is the kit's, by its own id, so `SkipLink.test.tsx` next door and
-// this shop are talking about the same anchor rather than two that look alike.
+// have taken the last one away. The shortcut is the kit's, by its own id, so this shop and the kit's other
+// consumers are talking about the same anchor rather than two that look alike.
+//
+// ★ pk15/D2 — AND THE RULE IS NOW ASSERTED HERE: `CoffeeChrome.skiplink.guard.test.tsx` beside this file. It
+// used to be `components/SkipLink.test.tsx`, which rendered the REFERENCE chrome — the one no layout of this
+// app mounts any more. Measured under sabotage: deleting the `<SkipLink />` below left that file GREEN.
 
 import { MAIN_CONTENT_ID, SkipLink } from '@forgecommerce/storefront-kit/SkipLink';
 import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';

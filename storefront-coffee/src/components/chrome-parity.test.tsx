@@ -13,6 +13,11 @@
 //
 // So every expectation below is a VALUE IMPORTED FROM THE KIT. Change the kit and both files follow; change
 // one front and only that front goes red, naming it.
+//
+// ⚠️ pk15/D2 — AND IN THIS FORK "THE VITRINE" IS THE INHERITED COMPONENT, NOT A PAGE. `StorefrontChrome` is
+// mounted by no layout here since pk14/D5 (see its header); this file therefore judges the fork's COPY of
+// the reference chrome, which is what a re-fork starts from and what `chrome-identity.test.tsx` uses as its
+// control. Nothing about the shop the visitor opens is asserted here — that is `components/coffee/`.
 
 import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
 import { SEARCH_PROMPT } from '@forgecommerce/storefront-kit/subtemplates';
