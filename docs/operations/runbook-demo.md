@@ -257,6 +257,53 @@ madrugada. Então nada a corrigir"*. ⛔ Não abra fatia para isso.
 aquecedor, e páginas a ~1,9 s pela rede (contra ~90 ms com a caixa parada). **Antes de acusar código de
 lentidão, pergunte se a caixa estava nascendo.**
 
+### 4.1 ⛔ Um nascimento VERMELHO guarda a testemunha antes que o passo seguinte a apague
+
+**Medido no nascimento de 05/09 04:01.** O seed curado morreu em `catalog.collection.pin → HTTP 502` depois
+de ~300 chamadas boas. Um 502 é a **borda** dizendo *"o upstream não me respondeu"* — quem sabe o porquê é o
+**kernel**, e a mensagem manda o operador rodar `bash bin/box-up.sh --tailnet`, cuja última ação **recria**
+sete serviços, o kernel entre eles. `docker inspect`, depois do fato: o container que serviu o seed nasceu
+**04:01:44** e o que ficou no lugar dele, **04:02:06**. Vinte e dois segundos. E o `bin/box-down.sh` seguinte
+remove os containers de vez. ⇒ **a cura que o erro receita destrói a prova.**
+
+Hoje o `box-up` copia os logs para o **disco do host** antes disso, em dois pontos (`die()` e imediatamente
+antes do recreate da promoção — a ordem é vigiada por `bin/evidence-order.guard.mjs`):
+
+```
+postmortem/2026-09-05T04-01-44Z__8-a-data-curada/
+  MANIFEST.md      motivo, instante e, por container: id, QUANDO FOI CRIADO, estado, tamanho do log
+  kernel.log       docker logs --timestamps, stdout E stderr
+  kernel.inspect.json
+```
+
+À mão, e é o que rodar **antes de qualquer outra coisa** quando um nascimento sai vermelho por outro motivo:
+
+```bash
+node bin/capture-evidence.mjs --reason seed-red
+```
+
+⚠️ **A captura nunca muda o veredicto da corrida** — um nascimento que já falhou não melhora com uma segunda
+falha em cima, e uma promoção que funcionou não pode ficar vermelha por causa de um post-mortem desnecessário.
+⚠️ **E apontada para uma caixa que não existe ela ACUSA**, em vez de gravar uma pasta vazia: medido, o
+`docker ps -a --filter label=…` responde **exit 0 com lista vazia** para um projeto inexistente, então a
+implementação óbvia criaria um diretório de nada e diria que deu certo.
+⚠️ `postmortem/` é **gitignorado** — log de container carrega token, hostname e dado de comprador.
+
+**A mensagem do seed também deixou de calar.** Uma chamada recusada agora diz o comando, **a porta** (método
+e URL), **em que ponto da sequência** (nº da chamada + o resumo por face), **quanto tempo** levou, **quem
+respondeu** (`Server: Caddy` num 5xx é a borda, não o kernel) e — quando o corpo vem vazio — **diz que veio
+vazio**, porque uma linha em branco e "esta ferramenta não imprime corpo" são indistinguíveis.
+⚠️ **Não existe `request-id` nesta porta** (medido nas duas faces: só `content-length`, `content-type`,
+`date`, `via` e os `ratelimit-*`), então a única correlação com o log do kernel é o **relógio** — por isso a
+mensagem carrega um instante ISO e a captura pede `--timestamps`.
+
+**Repetir um 5xx?** Só **leitura**, e no máximo 2 vezes. Uma escrita **não** é repetida: um 502 não diz se o
+comando *rodou*. ⓘ O kernel **tem** o mecanismo — `idempotency-key` é header de toda a face de escrita
+(`apps/api/src/adapter.ts:46` → `packages/core/src/dispatcher.ts:349,465`) — mas **quinze comandos o
+recusam** com `validation_failed` (todos os que mintam segredo), e este seed chama um deles
+(`extension.install`). Ligar isso em massa quebraria um nascimento verde num passo que nada tem a ver com
+502. Fica **nomeado, não contrabandeado**.
+
 ---
 
 ## 5. O reset (passo 6) — e a promoção **entra no mesmo laço**

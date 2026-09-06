@@ -26,3 +26,7 @@ totem/tsconfig.tsbuildinfo
 # A committed copy is correct for one box and a lie for every other. The shape lives in
 # caddy/extra/coffee.local.caddy.example, which the Caddyfile does not import.
 caddy/extra/coffee.local.caddy
+
+# ★★ WHAT A RED RUN LEFT BEHIND — container logs copied out by `capture_evidence` in bin/box-up.sh before
+# anything could recreate them. Never committed: a kernel log carries tokens, hostnames and buyer data.
+postmortem/

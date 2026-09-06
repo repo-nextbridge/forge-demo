@@ -35,6 +35,12 @@ import { seedCommerce, silenceBuyerChannels } from '../seed/commerce.mjs';
 // from a catalogue committed here. `mimeOf` comes from the same module because the mime of a dataset file
 // is the dataset's business, and `upload()` below is the one place that needs to ask.
 import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
+// ★★ WHAT A REFUSED CALL SAYS — and the whole reason this module exists is one line printed at 04:01 on
+// 2026-09-05: `catalog.collection.pin → HTTP 502`, followed by a blank line. Its header carries the
+// measurement of every field it adds, and of the one field that cannot be added because this door emits none
+// (a request id). `mayRetry` is the other half: whether a gateway 5xx may be sent again, which is a question
+// about the METHOD and not about the command.
+import { httpFailure, mayRetry } from '../seed/failure.mjs';
 import { planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs';
 // WHICH SKUs STILL NEED STOCKING — a function, and it takes BOTH reads on purpose. See the file: the version
 // that trusted `stock_levels` alone could not stock a product that had never been stocked, in silence.
@@ -267,6 +273,47 @@ for (const warning of pacingWarnings(rates)) log(warning);
  * and the anonymous app-form face does NOT send it, which is why the fallback is the face's own declared
  * window rather than a shared two seconds.
  */
+// ── ★★ WHAT EVERY CALL REMEMBERS ABOUT ITSELF, so a failure can say more than its status code ───────────────
+//
+// The birth of 2026-09-05 04:01 printed `catalog.collection.pin → HTTP 502` and a blank line, and every other
+// fact a reader needed — which door, how long, how far into the run, who answered — was gone the moment the
+// process exited. None of it is expensive to keep; it simply was not kept. `seed/failure.mjs` renders it and
+// carries the measurement of each field.
+//
+// A WeakMap rather than a wider return type: `paced()` has six callers and all of them already branch on the
+// Response. Changing that signature to carry a second value would touch every one for no gain, and a property
+// glued onto the Response would be a field the fetch API does not have.
+const traces = new WeakMap();
+/** How many HTTP calls this process has made. THE answer to "where in the sequence did it die?". */
+let callsMade = 0;
+/** By method, because the retry policy below is a policy about methods. Printed with the pace. */
+const byMethod = { GET: 0, POST: 0, PUT: 0, other: 0 };
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** The refusal sentence for a response `paced()` produced. `text` is the body the caller already drained. */
+function refusalMessage(name, res, text) {
+  const trace = traces.get(res) ?? {};
+  return httpFailure({
+    name,
+    method: trace.method,
+    url: trace.url,
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+    bodyText: text ?? '',
+    elapsedMs: trace.elapsedMs,
+    call: trace.call,
+    retried: trace.retried,
+    retryVerdict: trace.retryVerdict,
+    at: trace.at,
+    pace: `${pacer.summary()}\n    by method — ${Object.entries(byMethod)
+      .filter(([, n]) => n > 0)
+      .map(([m, n]) => `${n} ${m}`)
+      .join(', ')}`,
+  });
+}
+
 async function paced(url, init, describe) {
   const face = faceOf(url);
   if (!face) {
@@ -279,11 +326,46 @@ async function paced(url, init, describe) {
     );
   }
   const spec = FACES[face];
+  const method = String(init?.method ?? 'GET').toUpperCase();
   let refusal;
-  for (let attempt = 0; ; attempt++) {
+  // ⚠️ TWO NETS, TWO BUDGETS. The 429 net waits for a fixed window to turn over; the gateway net absorbs a
+  // blip. Sharing one counter would let a run that met three 502s arrive at the 429 net with no attempts
+  // left, and the failure would name the wrong ceiling — which is the exact defect `refusalSentence` exists
+  // to have stopped.
+  let gatewayRetries = 0;
+  for (let attempt = 0; ; ) {
     await pacer.take(face);
+    const startedAt = Date.now();
+    callsMade += 1;
+    if (byMethod[method] === undefined) byMethod.other += 1;
+    else byMethod[method] += 1;
     const res = await fetch(url, init);
-    if (res.status !== 429) return res;
+    const elapsedMs = Date.now() - startedAt;
+    if (res.status !== 429) {
+      // ── ★ THE GATEWAY NET — reads only, and the verdict is recorded either way. See `seed/failure.mjs`
+      // for the measurement: `idempotency-key` is a header of the whole write face and this seed sends none,
+      // so a repeated POST would be a second write and not a replay.
+      const verdict = mayRetry({ method, status: res.status, attempt: gatewayRetries });
+      if (verdict.retry) {
+        gatewayRetries += 1;
+        log(
+          `${describe} → HTTP ${res.status} from the gateway (${elapsedMs} ms) — ${verdict.why}. ` +
+            'Nothing was written: this is a read.',
+        );
+        await sleep(gatewayRetries * 1000);
+        continue;
+      }
+      traces.set(res, {
+        method,
+        url,
+        elapsedMs,
+        call: callsMade,
+        retried: gatewayRetries,
+        retryVerdict: verdict,
+        at: new Date(),
+      });
+      return res;
+    }
     // ★★ THE KERNEL NAMES THE CEILING THAT REFUSED, SO READ IT INSTEAD OF GUESSING. Since `pk7/p1` a 429
     // carries `error.details.{limit_bucket,limit,window_seconds,limit_env}`, and `limit_env` is an explicit
     // `null` when that ceiling has no button. The body is read on every attempt because the LAST refusal is
@@ -319,6 +401,9 @@ async function paced(url, init, describe) {
         ? named
         : spec.retryAfterSeconds;
     await new Promise((r) => setTimeout(r, wait * 1000));
+    // LAST, so the budget below is spent exactly as it was before the gateway net was added: the check
+    // `attempt >= 5` sees 0 on the first refusal, the way a `for(;;attempt++)` header used to give it.
+    attempt += 1;
   }
 }
 
@@ -361,7 +446,7 @@ async function command(name, input, { tolerate = [] } = {}) {
     if (reason && tolerate.includes(reason)) return { refused: true, reason, error: body };
     // The kernel's refusals are actionable and this script must not swallow them: a seed that reports
     // "failed" instead of "handle already taken" costs somebody an hour of guessing.
-    fail(`${name} → HTTP ${res.status}\n  ${text.slice(0, 900)}`);
+    fail(refusalMessage(name, res, text));
   }
   return text ? JSON.parse(text) : {};
 }
@@ -374,7 +459,7 @@ async function read(name, params = {}) {
     { headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant } },
     `read.${name}`,
   );
-  if (!res.ok) fail(`read.${name} → HTTP ${res.status}\n  ${(await res.text()).slice(0, 500)}`);
+  if (!res.ok) fail(refusalMessage(`read.${name}`, res, await res.text()));
   return res.json();
 }
 
@@ -399,7 +484,9 @@ const publicReadAll = createReadAll({ read: publicRead, rows, fail });
 async function publicRead(name, params = {}) {
   const qs = new URLSearchParams(params).toString();
   const res = await paced(`${api}/v1/read/${name}${qs ? `?${qs}` : ''}`, {}, `read.${name} (public)`);
-  if (!res.ok) fail(`read.${name} (public) → HTTP ${res.status}`);
+  // ⚠️ THE BODY IS DRAINED AND PRINTED. The version this replaces threw it away — so a public read that
+  // failed said its status and nothing else, which on a 502 is nothing at all.
+  if (!res.ok) fail(refusalMessage(`read.${name} (public)`, res, await res.text()));
   return res.json();
 }
 
@@ -712,7 +799,7 @@ async function upload(file, { library = true, dir = 'photos' } = {}) {
       },
       `media.request_upload(${filename})`,
     );
-    if (!res.ok) fail(`media.request_upload(${filename}) → HTTP ${res.status}\n  ${await res.text()}`);
+    if (!res.ok) fail(refusalMessage(`media.request_upload(${filename})`, res, await res.text()));
     return res.json();
   })();
 
@@ -1215,7 +1302,11 @@ const commerceCommand = async (name, input, { store } = {}) => {
     name,
   );
   const text = await res.text();
-  if (!res.ok) fail(`${name} → ${refusalOf(res.status, text)}`);
+  // ⚠️ TWO SENTENCES, ON PURPOSE. `refusalOf` reads the kernel's own `details.missing` — the thing a
+  // `checkout incomplete` refusal names and the caller used to throw away. `refusalMessage` says where in
+  // the run the call was and who answered. A 502 has no details to read, and a `validation_failed` has no
+  // container log to go and read, so the two answer different questions and both are printed.
+  if (!res.ok) fail(`${refusalMessage(name, res, text)}\n  ${refusalOf(res.status, text)}`);
   return text ? JSON.parse(text) : {};
 };
 
@@ -1272,7 +1363,7 @@ const commerceRead = async (name, params = {}) => {
     `read.${name}`,
   );
   if (res.status === 404) return null;
-  if (!res.ok) fail(`read.${name} → HTTP ${res.status}\n  ${(await res.text()).slice(0, 500)}`);
+  if (!res.ok) fail(refusalMessage(`read.${name}`, res, await res.text()));
   return res.json();
 };
 
@@ -1294,7 +1385,14 @@ const commercePost = async (path, body, { store } = {}) => {
     },
     path,
   );
-  if (!res.ok) return null;
+  // ⚠️ THE NULL STAYS, THE SILENCE DOES NOT. This helper answers `null` for a refusal on purpose — the two
+  // app faces it drives have refusals the caller reads as ordinary states. But a 502 here used to be
+  // indistinguishable from "the app said no", and the run went on. It is now SAID, with the same sentence
+  // every other refused call gets, and the return value is unchanged.
+  if (!res.ok) {
+    log(refusalMessage(`POST ${path}`, res, await res.text().catch(() => '')));
+    return null;
+  }
   return res.json().catch(() => ({}));
 };
 

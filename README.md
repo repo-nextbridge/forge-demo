@@ -543,6 +543,41 @@ container path with its host counterpart and then **refuses to launch** if any `
 a value under `/app` or `/data`, naming every offender. The replacement list covers what we know; the refusal
 covers what we do not — a variable of that shape added next month is caught on its first run.
 
+### ★★ A RED birth keeps its own witness — `postmortem/`
+
+⛔ **The defect this exists for, measured on the birth of 2026-09-05 04:01.** The curated seed died on
+`catalog.collection.pin → HTTP 502` after ~300 good calls. A 502 is the EDGE saying *the upstream did not
+answer me*; the only witness to why is the kernel container. The failure told the operator to run
+`bash bin/box-up.sh --tailnet` — and the promotion's last act recreates seven services, the kernel among
+them. `docker inspect`, after the fact: **the kernel that served the seed was created 04:01:44 and its
+replacement 04:02:06.** Twenty-two seconds. And `bin/box-down.sh` removes the containers outright.
+
+⇒ So a run that is about to lose a container copies its log to the HOST first:
+
+```
+postmortem/2026-09-05T04-01-44Z__8-the-curated-data/
+  MANIFEST.md            reason, instant, and per container: id, CREATED AT, state, log size
+  kernel.log             docker logs --timestamps, stdout AND stderr
+  kernel.inspect.json
+  caddy.log  admin.log  …
+```
+
+Two call sites, and `bin/evidence-order.guard.mjs` grades both: **`die()`** (every red exit of a birth) and
+the promotion, **immediately before** the recreate. By hand, and this is what to run the moment a birth goes
+red for any other reason:
+
+```bash
+node bin/capture-evidence.mjs --reason seed-red
+```
+
+⚠️ **It can never change the verdict of the run that called it** — a birth that already failed is not
+improved by a second failure, and a promotion that worked must not go red over an unnecessary post-mortem.
+⚠️ **And pointed at a box that is not there it ACCUSES rather than writing an empty folder.** Measured:
+`docker ps -a --filter label=com.docker.compose.project=<none such>` exits **0** with an empty list, so the
+obvious implementation creates a tidy directory of nothing and reports success. A post-mortem folder full of
+0-byte files is worse than no folder — somebody reads it and concludes the kernel was silent.
+`postmortem/` is gitignored: container logs carry tokens, hostnames and buyer data.
+
 ### Tearing it down to be born again
 
 ```bash

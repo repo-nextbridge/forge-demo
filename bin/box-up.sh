@@ -164,9 +164,40 @@ host_node() { # <script> [args…]
   env $overrides node "$@"
 }
 
-say() { printf '\n\033[1m── %s\033[0m\n' "$*" >&2; }
+# `say` also REMEMBERS which step is running, and that is not decoration: it is what names the post-mortem
+# directory below. `postmortem/2026-09-05T04-01-44Z__8-the-curated-data-once-per-tenant/` answers "which step
+# died" from the directory listing, which is where somebody looks first and the only place they look fast.
+STEP_NOW=''
+say() { STEP_NOW="$*"; printf '\n\033[1m── %s\033[0m\n' "$*" >&2; }
 note() { printf '   %s\n' "$*" >&2; }
-die() { printf '\n[box-up] %s\n' "$*" >&2; exit 1; }
+
+# ── ★★ A RED RUN COPIES ITS OWN WITNESS OUT BEFORE ANYTHING CAN RECREATE IT (pk14·D2) ───────────────────────
+#
+# ⛔ THE 04:01 BIRTH OF 2026-09-05, AND IT IS THE REASON THIS FUNCTION EXISTS. Step 8 died on
+# `catalog.collection.pin → HTTP 502`. A 502 is the EDGE reporting that the upstream did not answer it — the
+# only witness to WHY is the kernel container, and the failure told the operator to run
+# `bash bin/box-up.sh --tailnet`, whose last act recreates seven services, the kernel among them.
+#
+#     docker inspect: the kernel that served the seed was created 04:01:44; its replacement, 04:02:06.
+#
+# ⇒ THE CURE THE ERROR PRESCRIBES DESTROYS THE EVIDENCE, in twenty-two seconds, and `bin/box-down.sh` removes
+# the containers outright. So the logs are copied to the HOST — `postmortem/<stamp>__<reason>/` — from the two
+# places a container is about to stop being the container that failed: `die()`, and the promotion's recreate.
+#
+# ⚠️ IT CAN NEVER CHANGE THIS RUN'S VERDICT. A birth that already failed is not improved by a second failure
+# on top of it, and a promotion that worked must not go red because its post-mortem was unnecessary — hence
+# `|| true`. `bin/evidence-order.guard.mjs` grades both the placement and that swallow.
+#
+# ⚠️ AND IT ONLY FIRES ONCE THIS RUN HAS TOUCHED A CONTAINER. `die 'jq is required.'` has no box to take
+# evidence from, and an accusation there would be noise on the one screen that must stay readable.
+BOX_TOUCHED=0
+capture_evidence() { # <reason>
+  [ "${BOX_TOUCHED:-0}" = 1 ] || return 0
+  FORGE_DOCKER_SH="$DOCKER_SH" node "$HERE/bin/capture-evidence.mjs" \
+    --project "$COMPOSE_PROJECT_NAME" --reason "${1:-red}" >&2 || true
+}
+
+die() { printf '\n[box-up] %s\n' "$*" >&2; capture_evidence "die-${STEP_NOW:-early}"; exit 1; }
 
 # ── ⚠️ 0a · THE HOST'S NODE, AND IT IS THE FIRST THING THIS SCRIPT DOES ─────────────────────────────────────
 # Steps 6, 8, 11, 12, 13, 14 and 15 are node processes on THIS machine (see `host_node` above), so the
@@ -728,6 +759,15 @@ EOF
   # ── the containers that read all of the above at BOOT ───────────────────────────────────────────────────
   # Every variable touched here is read once, at process start. Without the recreate the files are right and
   # the running box is not — which reads exactly like the change having done nothing.
+  # ⛔ ★★ AND THE LOG OF EVERY CONTAINER ABOUT TO DIE IS COPIED OUT FIRST (pk14·D2). This is the exact line
+  # that ate the evidence of the 04:01 birth of 2026-09-05: the seed had just died on
+  # `catalog.collection.pin → HTTP 502`, the failure told the operator to run this promotion, and the kernel
+  # that could have said what happened was replaced twenty-two seconds later. The promotion is CORRECT — the
+  # services really do have to re-read the environment — so the repair is to take the witness with us, not to
+  # stop recreating. `|| true` is inside `capture_evidence`: a promotion never goes red over its post-mortem.
+  say 'saving the logs of the services about to be recreated'
+  BOX_TOUCHED=1
+  capture_evidence "before-recreate-${MODE}"
   say 'recreating the services that read the environment'
   dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem >/dev/null 2>&1 \
     || note '⚠️ some service did not come back — `docker compose ps`'
@@ -779,6 +819,10 @@ fi
 
 # ── 1 · the data tier ───────────────────────────────────────────────────────────────────────────────────────
 say '1 · postgres + redis'
+# ★ FROM HERE ON A RED EXIT HAS SOMETHING TO SHOW, so `die()` starts copying container logs out. Set BEFORE
+# the `dc up` rather than after: a compose invocation that fails halfway can still have started a container,
+# and that container's log is precisely the one worth keeping.
+BOX_TOUCHED=1
 dc up -d postgres redis >/dev/null 2>&1 || die 'could not start postgres/redis.'
 note 'up'
 
