@@ -40,8 +40,12 @@ vi.mock('next/headers', () => ({
     throw new Error('the theme must not make a store dynamic');
   },
 }));
-vi.mock('@/components/StorefrontChrome', () => ({
-  StorefrontChrome: ({ children }: { children: ReactNode }) => <main>{children}</main>,
+// ★ pk14/D5 — THE CHROME THIS MOCK HAS TO NAME MOVED, and naming the old one would have been a silent pass:
+// `vi.mock` of a module nothing imports stubs nothing, so the real chrome would render here and this suite
+// would be asserting the theme through a component it never meant to exercise. Both trees mount <CoffeeChrome>
+// since the cacheable tree stopped wearing the reference vitrine's header.
+vi.mock('@/components/coffee/CoffeeChrome', () => ({
+  CoffeeChrome: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
 const FONT_BYTES = new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0xd2, 0xe2, 0xfa, 0xce]);

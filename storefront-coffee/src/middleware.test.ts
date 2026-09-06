@@ -304,3 +304,39 @@ test('★ every root-level route handler reaches Next untouched, on GET and on P
     'these URLs are served by a root-level route handler, and the middleware rewrote them into a tree where that file does not exist',
   ).toEqual([]);
 });
+
+// ── ★★ pk14/D5 — WHAT ANSWERS `/`, AND WHY `app/page.tsx` IS NOT IT ────────────────────────────────────────
+//
+// The card that opened this slice (`FORK-RAIZ-SEM-CHROME`) reads: *"o `app/page.tsx` da raiz herdou o layout
+// do corte"* — routing `/` at this container gives the café's body inside the reference vitrine's chrome.
+// The symptom was real and the file named for it is not: `src/app/page.tsx` here is BYTE-IDENTICAL to the
+// reference's landing stub ("Forge · Storefront-base"), it renders no shop and no chrome at all, and nothing
+// can reach it. The matcher below matches `/`, the middleware resolves the host, and every outcome is a
+// rewrite. So the fork's root is a STORE TREE, and which chrome `/` wears is decided in the layout of that
+// tree — which is where the fix went (`app/c/[store]/layout.tsx`, and `chrome-identity.test.tsx` proves it
+// for both trees).
+//
+// This test is what stops that from having to be re-derived by reading three files, and it is the one that
+// goes red the day somebody exempts `/` from the matcher and quietly puts the platform's landing stub back
+// on a merchant's front door.
+test('★★ `/` is never answered by the root landing stub — it is always rewritten into a store tree', async () => {
+  const matches = new RegExp(`^${config.matcher[0] as string}$`);
+  expect(matches.test('/'), '`/` is excluded from the matcher: the bare landing stub now answers the shop’s front door').toBe(true);
+
+  // No rewrite header AT ALL is the failure this test is about: it means Next served `/` as it arrived, and
+  // what sits there is the landing stub. Said in words, because a bare `null` reads as a broken assertion.
+  const STUB = '(no rewrite — Next answered `/` itself, which is app/page.tsx, the landing stub)';
+  const routed = async () => (await middleware(request('/'))).headers.get('x-middleware-rewrite') ?? STUB;
+
+  // The ordinary case: a host that resolves. Clean, no query, no gate → the edge-cacheable tree.
+  expect(await routed(), 'a resolvable host must land in a store tree').toContain('/c/demo');
+
+  // The same URL on a store with a gate: still a store tree, the dynamic one.
+  storeHasGate.mockResolvedValue(true);
+  expect(await routed(), 'a gated store must land in the dynamic tree').toContain('/s/demo/');
+  storeHasGate.mockResolvedValue(false);
+
+  // And an unknown host gets the store-LESS 404, not the stub either.
+  resolveStoreForHost.mockResolvedValue(undefined);
+  expect(await routed(), 'an unknown host must get the store-less 404').toContain('/404');
+});
