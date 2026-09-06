@@ -14,7 +14,17 @@
 //
 // What this shop does NOT mount from it: the drawer, the search box, the account modal. The bag is a LINK to
 // the checkout, and the badge is the only feedback — see SacolaBadge.tsx.
+//
+// ★ pk14/D5 — AND THE SKIP LINK IS KEPT, which it was not. This chrome was written from the artboard, and an
+// artboard cannot draw a control that is invisible until it has focus: `<SkipLink>` and the `tabindex="-1"`
+// target it jumps to were left behind with the rest of the reference header, so every page of this shop
+// answered a keyboard with the whole header before the first product (WCAG 2.4.1 — the kit's own file has the
+// 90-Tab measurement that put it there). It went unnoticed because the EDGE-CACHEABLE tree still mounted the
+// reference chrome and therefore still had one; adopting this chrome there (`app/c/[store]/layout.tsx`) would
+// have taken the last one away. The shortcut is the kit's, by its own id, so `SkipLink.test.tsx` next door and
+// this shop are talking about the same anchor rather than two that look alike.
 
+import { MAIN_CONTENT_ID, SkipLink } from '@forgecommerce/storefront-kit/SkipLink';
 import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';
@@ -106,6 +116,8 @@ export function CoffeeChrome({
 
   return (
     <MinicartProvider actions={minicartActions}>
+      {/* Ahead of everything else, or it is not a skip link. */}
+      <SkipLink />
       <div className={styles.announce}>{ANNOUNCEMENT}</div>
 
       <header className={styles.header}>
@@ -147,7 +159,9 @@ export function CoffeeChrome({
         </div>
       </header>
 
-      <main id="conteudo">{children}</main>
+      <main id={MAIN_CONTENT_ID} tabIndex={-1}>
+        {children}
+      </main>
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>

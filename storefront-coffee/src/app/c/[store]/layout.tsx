@@ -7,7 +7,29 @@
 // time; it cannot be conditional at runtime. And it must be conditional: the same PLP is cacheable clean and
 // uncacheable filtered, and a store with a GATE reads a dismissal cookie on every route (`s/[store]/layout`),
 // which on a cacheable route is a 500 rather than a degrade. Hence two trees — and, deliberately, ONE
-// implementation: the chrome is <StorefrontChrome> and the pages mount the same views the dynamic tree does.
+// implementation: the pages mount the same views the dynamic tree does, under the same chrome.
+//
+// ── ★★ pk14/D5 — AND "THE SAME CHROME" IS WHAT THIS FILE HAD STOPPED BEING ───────────────────────────────
+//
+// This layout mounted <StorefrontChrome> — the REFERENCE vitrine's header and footer, inherited with the cut
+// — while its twin `s/[store]/(storefront)/layout.tsx` mounted the shop's own <CoffeeChrome>. One deployable,
+// one store, two identities, chosen by which TREE the edge picked. Measured 2026-09-05 in this repository, in
+// source, and it is exactly the hybrid the bench showed when `/` was routed to this container on 01/09: the
+// café's own home body (`templates/home/HomeCoffee`, mounted by both trees) inside the reference vitrine's
+// menu and logo.
+//
+// ⚠️ AND IT WAS NEVER ABOUT THE ROOT ROUTE. `src/app/page.tsx` is byte-identical to the reference's landing
+// stub and NO REQUEST REACHES IT: the middleware matches `/`, resolves the host and rewrites it — to `/404`
+// when no store answers for that host, and otherwise into one of these two trees (`middleware.ts`, and the
+// test beside it that asserts exactly this). So the fork's real root is HERE, and it is here for every clean
+// catalogue URL as well: the home, the unfiltered PLP and the PDP are precisely the requests the edge sends
+// to this tree. On the bench that stayed invisible because one origin serves three stores and the café is
+// reached by `/s/<store>/…`, which is path-scoped and therefore always dynamic; a store with its OWN HOST —
+// which is what production is — lands here on every page.
+//
+// ⇒ the chrome is <CoffeeChrome>, the same object the dynamic twin mounts. `bin/fork-chrome-drift.guard.mjs`
+// is the rule (the two trees wear ONE chrome, and a tree the reference gives a chrome may not lose it); this
+// is the code.
 //
 // This tree sits OUTSIDE `s/[store]/layout.tsx` on purpose: that layout owns the gate machinery, and nothing
 // that reads a cookie may sit above a cacheable page. A gated store is simply never routed here.
@@ -19,7 +41,7 @@ import {
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
 import type { ReactNode } from 'react';
-import { StorefrontChrome } from '@/components/StorefrontChrome';
+import { CoffeeChrome } from '@/components/coffee/CoffeeChrome';
 
 export default async function CachedStoreLayout({
   children,
@@ -52,9 +74,9 @@ export default async function CachedStoreLayout({
   return (
     <>
       {theme}
-      <StorefrontChrome store={store} base={HOST_BASE}>
+      <CoffeeChrome store={store} base={HOST_BASE}>
         {children}
-      </StorefrontChrome>
+      </CoffeeChrome>
     </>
   );
 }
