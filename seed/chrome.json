@@ -56,12 +56,24 @@
     "= Sacola`) and is the one the owner told us to leave alone. So the instruction and the defect are the same",
     "line, and the guard now ties the two files together instead of pinning a word.",
     "",
-    "⛔ STILL NO LOGO FOR `forge` AND `outlet`, AND NOW FOR A SECOND REASON. The first is unchanged: this",
-    "repository has no mark for them (`seed/photos/` holds `forge-co-logo.png` and its negative, and nothing",
-    "else that is a logo). The second is the component: `extensions/chrome/checkout-header.tsx:43-51` draws the",
-    "logo and the `back` word as ONE element — `{logo.url ? <img …/> : back}` — so configuring a logo TODAY",
-    "would DELETE «Voltar à loja» from the funnel. The header the owner described (logo+step left, way back",
-    "right) needs three positions where the block has two; that is the monorepo's half of R4."
+    "★★ pk20/D1 — AND NOW THE SHOE STORES HAVE A MARK IN THE FUNNEL TOO, WHICH RETIRES BOTH OF THE REASONS",
+    "THIS FILE USED TO GIVE FOR THEM NOT HAVING ONE. Both are gone, and both were checked against the source",
+    "rather than assumed:",
+    "  · «this repository has no mark for them» — it has, since this pass: `seed/photos/forge-store-logo.png`",
+    "    and `seed/photos/forge-outlet-logo.png`, cut from the two stores' own rendered wordmarks on",
+    "    transparent ground, named after `forge-co-logo.png` because that is the precedent the uploader reads",
+    "    (`bin/seed.mjs:772` resolves a bare name inside `seed/photos/`).",
+    "  · «a logo would DELETE «Voltar à loja» from the funnel» — TRUE when it was written, FALSE today. The",
+    "    monorepo's half of R4 landed (`2eb9c56c2`, in `v03/integra`): `extensions/chrome/checkout-header.tsx`",
+    "    now draws the mark, the step label and the way back as THREE positions (lines 63-100), and",
+    "    `account-header.tsx:34-45` does the same with a divider between the mark and the way back. A logo and",
+    "    a written word coexist; neither erases the other.",
+    "",
+    "⛔ AND THE LOGO GOES IN THE TWO BARS ONLY — NEVER IN `brand`. That block is the one place where the two",
+    "are still exclusive: `extensions/chrome/brand.tsx:40-50` draws `logo.url ? <img> : (text + tail)`, so a",
+    "logo in the shop's header would DELETE the wordmark the owner asked for in the same breath. The vitrine's",
+    "mark is TEXT on purpose — it re-tints itself with the theme's accent (`.tail` is `var(--color-accent)`,",
+    "chrome.module.css:148) and a raster does not."
   ],
   "app": "chrome",
   "slots": {
@@ -73,12 +85,13 @@
   },
   "stores": {
     "forge": {
-      "_why": "The reference shoe store. TEXT ONLY, and the absence of a logo is a measurement rather than a shortcut: this tenant's asset library has no mark in it (04/09 — 18 582 catalogue photographs and seven banner tiles, no logo file anywhere in `seed/`), and pk19 added a second reason — the block draws `logo` and `back` as the same element, so a logo here would delete the way out of the funnel. The app's other road — a base word plus an accent-painted tail — is exactly the shape the theme's own wordmark has, so the store keeps a mark that reads like its own. ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing.",
+      "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing.",
       "brand": {
-        "text": "Forge",
+        "text": "forge",
         "tail": ".store"
       },
       "checkout_header": {
+        "logo": "forge-store-logo.png",
         "back": "Voltar à loja",
         "title": "Checkout",
         "seal": ""
@@ -89,6 +102,7 @@
         "end_text": "Compra Segura"
       },
       "account_header": {
+        "logo": "forge-store-logo.png",
         "back": "Voltar à loja",
         "account": "Minha conta",
         "cart": "Carrinho"
@@ -100,12 +114,13 @@
       }
     },
     "outlet": {
-      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back and the footer's right-hand mark.",
+      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back and the footer's right-hand mark.",
       "brand": {
-        "text": "Forge",
-        "tail": " Outlet"
+        "text": "forge",
+        "tail": ".outlet"
       },
       "checkout_header": {
+        "logo": "forge-outlet-logo.png",
         "back": "Voltar ao Outlet",
         "title": "Checkout",
         "seal": ""
@@ -116,6 +131,7 @@
         "end_text": "Compra Segura"
       },
       "account_header": {
+        "logo": "forge-outlet-logo.png",
         "back": "Voltar ao Outlet",
         "account": "Minha conta",
         "cart": "Carrinho"
