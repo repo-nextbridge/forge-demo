@@ -1558,16 +1558,29 @@ done
 # that lists a tenant's stores resolves the tenant from the CREDENTIAL.
 say '14-bis · opening every door of every store (a shop nobody can sign in to is a red box)'
 SHUT=''
+DOORS_UNKNOWN=''
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment for the doors step."
-  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
-    note "$t — every door opens"
-  else
-    SHUT="$SHUT $t"
-    note "⛔ $t has SHUT doors — the ✗ lines above name the store and the path."
-  fi
+  # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if` — the same reason step 14 does it, and pk19 is why it
+  # matters here too. This step answers 0 (every door opens), 1 (a door is shut) and 2 (IT COULD NOT ASK: no
+  # declaration for this tenant, or a credential that belongs to somebody else). An `if` folded 2 into 1 and
+  # printed "has SHUT doors" over a run that never opened one — a wrong sentence about the very failure this
+  # step was just taught to detect. ⛔ BOTH still exit the birth non-zero; nothing was demoted here.
+  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+  case "$?" in
+    0) note "$t — every door opens" ;;
+    1)
+      SHUT="$SHUT $t"
+      note "⛔ $t has SHUT doors — the ✗ lines above name the store and the path." ;;
+    2)
+      DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
+      note "⛔ $t was never ASKED about its doors — the ⚑ line above says why. Nothing was learned." ;;
+    *)
+      DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
+      note "⛔ the doors step ended with a status it does not define — nothing was learned about $t." ;;
+  esac
 done
 
 # ── 15 · ★★★ THE VERDICT OVER THE CONFIGURATION, which is the half a rebirth eats ───────────────────────────
@@ -1647,6 +1660,14 @@ if [ -n "${SHUT:-}" ]; then
 
 ' "$SHUT" >&2
 fi
+if [ -n "${DOORS_UNKNOWN:-}" ]; then
+  printf '[box-up] ⛔ THE BOX IS UP AND NOTHING WAS LEARNED ABOUT%s'"'"'S DOORS. Step 14-bis refused to ask — the
+         ⚑ line names which question it could not put (a tenant `seed/box.json` does not declare, or a
+         credential that belongs to another tenant). ⚠️ Read it as UNPROVEN, never as proven-open: until
+         2026-09-07 this step answered that case with a GREEN over the other tenant'"'"'s stores.
+
+' "$DOORS_UNKNOWN" >&2
+fi
 if [ -n "${MISCONFIGURED:-}" ]; then
   printf '[box-up] ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Step 15 names the face that disagrees;
          a box reborn while promoted lands here with its admin on localhost and its shop on the network.
@@ -1676,6 +1697,6 @@ fi
 # warming step was red on EVERY run of this box by construction, so it graded nothing and taught people to
 # skip a red. `MISSING_STORE` is the half of it that still grades, and it is deliberately its own variable so
 # that this line cannot lose it by accident.
-if [ -n "${SHUT:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ]; then
+if [ -n "${SHUT:-}" ] || [ -n "${DOORS_UNKNOWN:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ]; then
   exit 1
 fi
