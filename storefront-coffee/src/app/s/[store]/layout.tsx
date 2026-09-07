@@ -21,11 +21,12 @@ import { GATE_DISMISSED_COOKIE } from '@forgecommerce/storefront-kit/cookies';
 import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
 import { resolveGate } from '@forgecommerce/storefront-kit/gate/registry';
 import {
+  requestAddresses,
   requirePublicStorefront,
   requireStore,
 } from '@forgecommerce/storefront-kit/require-store.server';
 import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
 
 const GATE_TARGET = 'storefront:gate';
@@ -58,7 +59,33 @@ export default async function StoreLayout({
   // served here. It costs no round trip: the answer rides on the flags `requireStore` just fetched.
   // ⚠️ It turns off THIS PAGE and nothing else: that store's catalogue, prices, stock and orders are
   // untouched and the port keeps answering for it, which is how a totem at that counter keeps selling.
-  requirePublicStorefront(flags);
+  //
+  // ── ★★ pk22/D3 — THE THIRD QUESTION ARRIVES IN THE FORK, AND IT IS ADOPTED, NOT REFUSED ────────────────
+  //
+  // pk21/P1 taught the reference to ask one more thing before it answers 404: is this store served
+  // SOMEWHERE ELSE? `store_flags.public_url` is the address the merchant declared, and off-our-street WITH an
+  // address is the merchant who replaced the vitrine with a front of their own — the shopper is sent there
+  // instead of into a dead end. The second argument has no default precisely so a fork has to decide, and
+  // `bin/store-mount-drift.guard.mjs` is what carried the decision across the repository boundary.
+  //
+  // ★ ADOPTED. This front is a CUT of the reference, not a second policy: `storefront_enabled` is the PORT'S
+  // word for "this store has no public page" (`read.store_flags`), not "the reference vitrine declines to
+  // serve it", so a café front that kept serving such a store would be answering 200 about an address the
+  // kernel says does not exist — the pk12/D2 defect (`/s/cafe` → 200 while every other store 404'd) with the
+  // roles swapped. Refusing the rule would have to argue that the flag means something different when THIS
+  // deployable reads it, and nothing in the port says so.
+  //
+  // ★★ AND THE THUNK IS THE RIGHT SECOND ARGUMENT FOR THIS TREE, measured on this fork's own middleware
+  // rather than inherited: `/s/…` is reached BOTH by the host rewrite (`middleware.ts` line 141) and by a
+  // literal `/s/…` that the middleware passes straight through (line 79, and it is how the bench reaches
+  // this shop at all). So the address this request came in on is genuinely unknown here and has to be asked
+  // for — unlike the cacheable twin, which is only ever entered after the host was resolved. It stays a
+  // THUNK so `headers()`, a dynamic API, is called ONLY after the flags already said the store has no page:
+  // a street store's pages are as static as they were, which the tree-split test holds in place.
+  //
+  // ⚠️ THE `await` IS LOAD-BEARING (see the twin): the refusal now throws inside an async function, and an
+  // unawaited one renders the store anyway.
+  await requirePublicStorefront(flags, async () => requestAddresses(await headers()));
 
   // MS-M2 — the store's own skin, above everything this layout can return (the route, the gate's interstitial,
   // the dismissed-gate ribbon): a themed store is themed on all three, and the gate is full-screen, so leaving
