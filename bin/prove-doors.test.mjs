@@ -11,13 +11,12 @@
 //   node --test bin/prove-doors.test.mjs      (or: bash bin/test.sh)
 
 import { execFile } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import test, { after } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -25,7 +24,14 @@ const STEP = join(ROOT, 'bin/prove-doors.mjs');
 const TOKEN = 'fot_test';
 const run = promisify(execFile);
 
-/** The tenant this fixture speaks for — `forgeco` is declared in `seed/box.json` with both its stores. */
+/**
+ * The tenant this fixture speaks for — `forgeco` is declared in `seed/box.json` with both its stores.
+ *
+ * ⚠️ NEITHER ROW CARRIES `storefront_enabled`, ON PURPOSE: that is the answer of a kernel OLDER than the
+ * capability, which a box pinning images by digest can really be, and the rule is that an absent field means
+ * the store is ON THE STREET (`bin/servable.mjs`). So every test below that expects doors to be opened is
+ * also grading that the legacy shape does not empty a box.
+ */
 const TENANT = 'forgeco';
 const STORES = [
   { id: 'sto_FORGE', handle: 'forge', name: 'Forge' },
@@ -34,14 +40,23 @@ const STORES = [
 
 /**
  * ★★ THE SECOND TENANT OF `seed/box.json`, AND IT IS THE WHOLE POINT OF THE pk19 TESTS BELOW. `forgecafe`
- * declares `cafe` (its bootstrap store) and `balcao` (`servable: false` — the totem). Until 2026-09-07 this
+ * declares `cafe` (its bootstrap store) and `balcao` — the counter the totem serves. Until 2026-09-07 this
  * step had never opened either of them in any run: it printed the café's NAME over the OTHER tenant's stores.
+ *
+ * ★★ pk21 — WHAT MAKES `balcao` SKIPPABLE IS THE PORT, NOT THE FILE. `read.internal.stores` publishes
+ * `storefront_enabled` (derived from the store's `status`), and `seed/box.json` no longer carries the
+ * hand-written `servable: false` that duplicated it. ⚠️ MEASURED ON THE LIVE BENCH 2026-09-07: the real port
+ * answers `true` for `balcao` — every store is `active` — so this fixture is the box of the day the counter's
+ * status is flipped, and `CAFE_ON_THE_STREET` is the box of today.
  */
 const CAFE_TENANT = 'forgecafe';
 const CAFE_STORES = [
-  { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café' },
-  { id: 'sto_BALCAO', handle: 'balcao', name: 'Balcão' },
+  { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café', storefront_enabled: true },
+  { id: 'sto_BALCAO', handle: 'balcao', name: 'Balcão', storefront_enabled: false },
 ];
+
+/** Today's real answer: every store of the tenant on the street. */
+const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: true }));
 
 /**
  * A box that answers.
@@ -106,8 +121,8 @@ function fakeBox({ shut = [], mislead = [], credentialTenant = TENANT, stores = 
   });
 }
 
-const step = (api, tenant = TENANT, exe = STEP) =>
-  run('node', [exe, '--tenant', tenant, '--api', api], {
+const step = (api, tenant = TENANT) =>
+  run('node', [STEP, '--tenant', tenant, '--api', api], {
     env: { ...process.env, FORGE_SEED_TOKEN: TOKEN },
   }).then(
     (r) => ({ code: 0, out: r.stdout }),
@@ -215,21 +230,35 @@ test('★★ THE CAFÉ, at last: its own credential opens `cafe` and NEVER `forg
   assert.doesNotMatch(out, /forge\/|outlet\//);
 });
 
-test('★★ `balcao` is skipped BY NAME with the reason — an absent store reads as a failed one', async () => {
+test('★★ a store the PORT says has no public page is skipped BY NAME with the reason — an absent store reads as a failed one', async () => {
   const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });
   const { code, out } = await step(box.api, CAFE_TENANT);
   await box.close();
   assert.equal(code, 0, out);
-  assert.match(out, /↷ balcao .*SKIPPED/);
-  // The reason is the box's own, not this test's — three long words of it, so the assertion cannot be
-  // satisfied by a generic apology.
+  const line = out.split('\n').find((l) => l.includes('balcao'));
+  assert.match(line ?? '', /↷ balcao .*SKIPPED/, `the counter is not skipped by name:\n${out}`);
+  // The reason names the PORT and the field that decided it, so a reader can go and ask the box the same
+  // question. ⛔ It is deliberately NOT a paragraph out of `seed/box.json`: that copy was the duplication.
+  assert.match(line, /storefront_enabled/, `the skip does not name the field that decided it: ${line}`);
+  assert.match(line, /read\.internal\.stores/, `the skip does not name the read that answered: ${line}`);
+  // And `seed/box.json` must stay out of it — `bin/servable.test.mjs` is the guard, this is why it matters.
   const declared = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'))
     .tenants.find((t) => t.id === CAFE_TENANT)
     .stores.find((s) => s.handle === 'balcao');
-  assert.equal(declared.servable, false, 'seed/box.json no longer marks balcao unservable');
-  for (const word of declared._servable_why.split(/[\s,.]+/).filter((w) => w.length > 6).slice(0, 3)) {
-    assert.match(out, new RegExp(word), `the skip does not carry the declared reason (${word})`);
-  }
+  assert.ok(!('servable' in declared), 'seed/box.json declares `servable` again — two truths about one store.');
+});
+
+test('★★★ …and TODAY the counter is on the street, so its doors ARE opened — measured, not preferred', async () => {
+  // ⛔ MEASURED ON THE LIVE BENCH 2026-09-07, `http://localhost:8200/s/sto_01M1Y6EFVT3DY88PGC51Y5Z2YH`:
+  //    `/` → 200 storefront · `/checkout` → 200 checkout · `/account` → 307 checkout · `/account/login` →
+  //    200 checkout. The counter's four doors answer exactly what this step demands, so deriving instead of
+  //    reading a hand-written flag does not turn the birth red — it opens four doors nobody had opened.
+  const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_ON_THE_STREET });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 0, out);
+  assert.match(out, /✓ balcao\/account\/login .* checkout/, out);
+  assert.doesNotMatch(out, /balcao .*SKIPPED/, `a store on the street was skipped:\n${out}`);
 });
 
 test('★★ SABOTAGE, THE VACUUM: the port holds NONE of the declared stores ⇒ red naming them, never an empty green', async () => {
@@ -251,42 +280,33 @@ test('a tenant `seed/box.json` does not declare ⇒ the run REFUSES; it has no d
   assert.match(out, /forgeco/, 'the refusal must name what the file DOES declare, or it is a dead end');
 });
 
-// ── ★ THE VACUUM THAT `seed/box.json` CANNOT EXPRESS ────────────────────────────────────────────────────
+// ── ★ THE PURE VACUUM, AND pk21 MOVED WHO CAN EXPRESS IT ────────────────────────────────────────────────
 //
-// "Every store this tenant holds is declared unservable" is a shape the real declaration has no tenant for,
-// and it is precisely the shape that would make this step print a green over ZERO opened doors. So the step
-// is COPIED into a scratch root with a declaration of its own — legitimate because `bin/prove-doors.mjs`
-// imports nothing but node builtins and locates its box relative to its OWN path, so a copy is the same
-// program reading a different declaration. ⚠️ The copy is taken from the real file at run time: this cannot
-// drift from what the birth runs.
-function scratchRoot(box) {
-  const dir = mkdtempSync(join(tmpdir(), 'forge-doors-'));
-  mkdirSync(join(dir, 'bin'));
-  mkdirSync(join(dir, 'seed'));
-  copyFileSync(STEP, join(dir, 'bin/prove-doors.mjs'));
-  writeFileSync(join(dir, 'seed/box.json'), JSON.stringify(box));
-  after(() => rmSync(dir, { recursive: true, force: true }));
-  return join(dir, 'bin/prove-doors.mjs');
-}
-
+// "Every store this tenant holds has no public page" used to be a shape `seed/box.json` had no tenant for,
+// so this file COPIED the step into a scratch root with a declaration of its own. It does not have to any
+// more: servability is DERIVED from `read.internal.stores[].storefront_enabled`, so the FAKE PORT can say it
+// — which is both simpler and more faithful, because it is the box that says it on a real run too. (The
+// scratch-root helper went with the declaration it existed to fake; the step now imports `./servable.mjs`,
+// so a bare copy of one file would not even load.)
+//
+// It is the shape that would make this step print a green over ZERO opened doors, which is what every way of
+// going blind decays into — hence the count is asserted directly rather than trusted to the reasons above.
 test('★★★ SABOTAGE, THE PURE VACUUM: zero doors opened is NOT a green, even with nothing missing and nothing shut', async () => {
   const box = await fakeBox({
-    credentialTenant: 'forgeghost',
-    stores: [{ id: 'sto_GHOST', handle: 'ghost', name: 'Ghost' }],
-  });
-  const exe = scratchRoot({
-    tenants: [
-      {
-        id: 'forgeghost',
-        stores: [{ handle: 'ghost', servable: false, _servable_why: 'declared unservable by this fixture' }],
-      },
+    credentialTenant: CAFE_TENANT,
+    stores: [
+      { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café', storefront_enabled: false },
+      { id: 'sto_BALCAO', handle: 'balcao', name: 'Balcão', storefront_enabled: false },
     ],
   });
-  const { code, out } = await step(box.api, 'forgeghost', exe);
+  const { code, out } = await step(box.api, CAFE_TENANT);
   await box.close();
-  // Nothing is missing (the box holds the one store the file declares) and nothing is shut (no door was
+  // Nothing is missing (the box holds both stores the file declares) and nothing is shut (no door was
   // asked). The old shape would have signed "every door opens" over an empty report.
   assert.equal(code, 1, out);
-  assert.match(out, /NO DOOR OF forgeghost WAS OPENED/);
+  assert.match(out, /NO DOOR OF forgecafe WAS OPENED/);
   assert.doesNotMatch(out, /VERDICT: every door/);
+  // …and both stores are still named, with the reason. A vacuum that is also silent is two defects.
+  assert.match(out, /↷ cafe .*SKIPPED/, out);
+  assert.match(out, /↷ balcao .*SKIPPED/, out);
 });

@@ -167,7 +167,7 @@ the map of how the box is born:
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
 | 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
-| 14 | **`warm-box.mjs` × tenant** | every **servable** store, warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
+| 14 | **`warm-box.mjs` × tenant** | every store the **port** says has a public page (`storefront_enabled`), warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
 | 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
@@ -220,9 +220,16 @@ box. They were the second.
 of the stores the **port reports**, so a store that was never created is a store neither of them asks about.
 `bin/reset-complete.guard.mjs` executes the real exit block and holds both halves in place.
 
-⚠️ **The counter is skipped, and the skip is ANNOUNCED.** `seed/box.json` marks `balcao` `servable: false`:
-the totem is a whole-host app with no store in its URLs, so there is no vitrine page to warm. A store simply
-missing from a warm report reads exactly like a store that failed.
+⚠️ **Which stores have a page is the PORT's answer, and a skip is ANNOUNCED.** The same read that lists the
+stores (`read.internal.stores`) publishes `storefront_enabled`, derived from each store's `status`, and
+`bin/servable.mjs` is the one place that reads it — steps 14 and 14-bis both import it. A store the port says
+has **no public page** is skipped **by name, with that reason**; a store simply missing from a report reads
+exactly like a store that failed. ★ **`seed/box.json` declares nothing about this any more** (pk21): it used
+to mark `balcao` `servable: false` by hand, which was a **second truth** about a store the same answer
+already described, with nothing to keep the two in agreement — which is exactly why both steps had had to
+learn the counter **by name**. ⚠️ **Measured 2026-09-07: the counter answers `storefront_enabled: true`**, so
+today it *is* warmed and its doors *are* opened. Taking it off the street is
+`tenant.store.update {"status":"private"}` through the port, and both steps follow with no edit here.
 
 ⚠️ **The run SAYS which URLs it warmed, and on this box that is not the shopper's.** One rule decides a
 store's addresses and the **port** answers it: does the origin's own host resolve to this store? Yes → clean

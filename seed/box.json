@@ -63,10 +63,13 @@
       "is a different thing — and does not fail the birth on it. ⛔ What it DOES still fail on is a store this",
       "file DECLARES and the box does not hold: that is not warmth, it is a birth that did not build something.",
       "",
-      "WHICH STORES: every store the PORT reports for the tenant, minus the ones this file marks",
-      "`servable: false`, and a skip is ANNOUNCED with the declared reason. The list is the box's, never this",
-      "field's: a store created tomorrow is warmed with no edit here, and a store this file does not mention is",
-      "warmed and NAMED as undeclared.",
+      "WHICH STORES: every store the PORT reports for the tenant, minus the ones the PORT itself says have no",
+      "public page (`storefront_enabled: false`, derived from the store's `status`) — and a skip is ANNOUNCED by",
+      "name, with that reason. ★ pk21: THIS FILE NO LONGER DECLARES SERVABILITY. It used to mark the counter",
+      "`servable: false` by hand, which was a second truth about a store the same read already answered, with",
+      "nothing to keep the two in agreement; the derivation lives in `bin/servable.mjs` and both steps read it.",
+      "The list is the box's, never this field's: a store created tomorrow is classified with no edit here, and a",
+      "store this file does not mention is warmed and NAMED as undeclared.",
       "",
       "⚠️ `threshold_ms` IS NULL AND THAT IS NOT AN OVERSIGHT. A latency ceiling nobody measured is an invented",
       "promise, and a run that fails a number nobody chose is exactly the prose-that-lies this repository keeps",
@@ -250,9 +253,8 @@
         {
           "handle": "balcao",
           "name": "Forge Café · Balcão",
-          "servable": false,
           "_checkout_posture_why": "⛔ THE COUNTER DECLARES NO POSTURE, AND THE MEASUREMENT IS WHY — A22's table reads «Café / Balcão: neither», and applying it here would BREAK THE TOTEM. `totem/src/lib/buyer.ts:70` sends `guest: true` on every counter order (a person at a kiosk typed a name, not an address), and `checkout.place_order` refuses a pure-guest cart with `forbidden · guest_disabled` when the store's flag is off (packages/core/src/commands/checkout.ts:787). So `guest_checkout_enabled: false` here is a counter that cannot sell coffee. The contrast A22 is built on is between the THREE SERVABLE SHOPS — Forge, Outlet, Café — and this fourth store is the totem's, not a shop a browser reaches. `masked_checkout_enabled` is already `false` here (the column's default) and is left unstated for the same reason it always was: a totem has no returning session to recognise.",
-          "_servable_why": "NOT SERVED BY A VITRINE, so there is nothing here to warm. The totem is a whole-host app of its own (caddy `:82`, no store in the URL) and this store never appears behind `/s/<id>` — a warm run pointed at it would fetch pages nobody opens and report them as this shop's. The flag exists so the warming step SKIPS it BY NAME: a store simply absent from a warm report is indistinguishable from one that failed, and this repository has already paid twice for a summary that was silent about what it did not do.",
+          "_servability_why": "★★ THIS STORE DECLARES NOTHING ABOUT BEING SERVED BY A VITRINE, AND THE ABSENCE IS THE DECISION (pk21). It used to carry a hand-written `servable: false`, with a paragraph saying the totem is a whole-host app (caddy `:82`, no store in the URL) and there is no vitrine page to warm. Every word of it was true, and it was a SECOND TRUTH: the kernel already publishes the fact, on the very read both steps already make — `read.internal.stores[].storefront_enabled`, derived from the store's own `status` (`storefrontIsEnabled`, packages/core/src/commands/store.ts:163). Nothing synchronised the two, which is why the warming step and the doors step each had to learn this store BY NAME. Servability is now DERIVED (`bin/servable.mjs`) and a skip is still announced by name, with the PORT's reason. ⚠️ MEASURED ON THE LIVE BENCH 2026-09-07: `read.internal.stores` answers `storefront_enabled: true` for this store, so today it is warmed and its doors are opened — the derivation says the truth of today, not the one we would prefer. Taking the counter off the street is `tenant.store.update {\"status\":\"private\"}` through the port, and both steps follow with no edit here.",
           "why": "The counter the totem serves. No `theme_key` on purpose: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps. Same tenant as `cafe` — one catalogue, two assortments."
         }
       ]

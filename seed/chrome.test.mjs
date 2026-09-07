@@ -141,7 +141,10 @@ test('★★ every store of the box is DECIDED — dressed, or explicitly null w
     );
   }
   assert.equal(DATA.stores.balcao, null);
-  assert.match(DATA._balcao_why.join(' '), /servable: false|whole-host app/);
+  // ⚠️ pk21 NARROWED THIS. It used to accept `servable: false` as an alternative, and that flag is gone —
+  // servability is derived from the port now (`bin/servable.mjs`). An expectation that a retired spelling
+  // can satisfy is an expectation about nothing, so only the reason that is still true is accepted.
+  assert.match(DATA._balcao_why.join(' '), /whole-host app/);
 });
 
 test('★★ a placement whose config still holds somebody’s test content is RE-ASSERTED, not left alone', () => {
