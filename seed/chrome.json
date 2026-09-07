@@ -73,7 +73,46 @@
     "are still exclusive: `extensions/chrome/brand.tsx:40-50` draws `logo.url ? <img> : (text + tail)`, so a",
     "logo in the shop's header would DELETE the wordmark the owner asked for in the same breath. The vitrine's",
     "mark is TEXT on purpose — it re-tints itself with the theme's accent (`.tail` is `var(--color-accent)`,",
-    "chrome.module.css:148) and a raster does not."
+    "chrome.module.css:148) and a raster does not.",
+    "",
+    "★★ pk21/D3 — THE FUNNEL'S FOOTER GETS A PICTURE, WHICH IS THE HALF OF THIS APP THE DEMO HAD NEVER SHOWN.",
+    "Verbatim, 07/09: «compra segura precisa usar o do app, precisa preencher pois quero mostrar isso na demo».",
+    "Until now every `<area>_image` in this file was empty and the three footer areas only ever carried WORDS —",
+    "so an operator reading the demo learnt that a block holds text, and never that it holds art.",
+    "",
+    "⚠️ AND THE PICTURE REPLACES THE WORD ON THE SCREEN, MEASURED — do not read `end_text` beside `end_image` as",
+    "two things drawn side by side. `footerArea` (extensions/chrome/logic.ts:53-61) returns",
+    "`{kind:'image', url, alt: text}` as soon as the image RESOLVED, and `footer-block.tsx:38-43` draws an",
+    "`<img alt=…>`: the area shows the padlock and «Compra Segura» becomes its DESCRIPTION. That is the app's",
+    "declared contract and it says so in the Compose hint an operator reads («A imagem vence o texto; o texto",
+    "passa a ser a descrição dela»). ⇒ the word STAYS in the declaration for two reasons and neither is",
+    "decoration: it is the picture's only accessible name, and a key this file drops is a key no birth ever",
+    "corrects (see the `sameConfig` note above).",
+    "",
+    "★★ AND THERE ARE TWO FILES BECAUSE THE INK IS THE THEME'S. The art is a stroke on a TRANSPARENT ground, so it",
+    "re-tints itself with nothing, while the footer's ink is `var(--color-chrome-muted, var(--color-muted))`",
+    "(chrome.module.css:98). MEASURED: the reference footer is #ffffff with #4b4d52 ink; the outlet's is #17181a",
+    "with #e4e6ea (themes/outlet/tokens.css:117-122). Hand one shop the other's file and the padlock is a dark",
+    "line on a dark ground — still 200, still present in the DOM, invisible. `bin/chrome-seal-ink.guard.mjs`",
+    "decodes the PNG's own pixels and compares them with the theme's token, so the tint is graded and not",
+    "trusted to a filename. ⛔ The café is NOT given one: it has a footer of its own and the owner did not name",
+    "it — and it is named in that guard's lists rather than left absent.",
+    "",
+    "★★ pk21/D3, THE OTHER HALF — THE MARK IS LOWERCASE WHERE IT STANDS ALONE AS A MARK; PROSE KEEPS PORTUGUESE",
+    "CAPITALISATION. pk20 lowercased the two shops' headers and left the footers of the same shops signing off",
+    "as «Forge Outlet» and «Forge · calçados e acessórios» — one shop, two spellings of one name, a click apart.",
+    "Those two `account_footer.end_text` are the footer's SIGNATURE and are now the mark itself",
+    "(`forge.outlet`, `forge.store · calçados e acessórios`), graded against the `brand` block rather than pinned",
+    "as literals. ⚠️ THE RÉGUA WAS READ OFF THE STORE THE OWNER SAID WAS ALREADY RIGHT: the café already signed",
+    "`forge.co · café de origem`.",
+    "",
+    "⛔ AND «Voltar ao Outlet» STAYS, JUDGED RATHER THAN SWEPT. It is a SENTENCE whose noun is the shop, not the",
+    "mark: «o Outlet» is a proper noun and takes a capital in Portuguese, lowercasing it would read as a typo,",
+    "and «Voltar ao forge.outlet» drops a domain-shaped token into a clause where it has no grammar. It is",
+    "pinned in `seed/chrome.test.mjs`'s dictation table so that staying is a decision and not a field nobody",
+    "looked at. ⚠️ The same régua also explains what this pass did NOT touch: `Forge Outlet` survives as the",
+    "store's registered NAME (seed/box.json:122, seed/catalog.json:55) and in ten CMS titles",
+    "(seed/outlet.json:410-453). Those are entity names and prose, never the mark."
   ],
   "app": "chrome",
   "slots": {
@@ -85,7 +124,7 @@
   },
   "stores": {
     "forge": {
-      "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing.",
+      "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing. ★ pk21/D3: the checkout footer's right-hand area is now the PADLOCK (`compra-segura-escuro.png`, drawn in this footer's ink — #4b4d52 on the vanilla theme's white), with «Compra Segura» kept as its description; and the account footer signs off with this shop's own mark instead of a capitalised one (`Forge · calçados e acessórios` → `forge.store · calçados e acessórios`).",
       "brand": {
         "text": "forge",
         "tail": ".store"
@@ -99,7 +138,8 @@
       "checkout_footer": {
         "start_text": "Pix · Cartão de crédito",
         "middle_text": "",
-        "end_text": "Compra Segura"
+        "end_text": "Compra Segura",
+        "end_image": "compra-segura-escuro.png"
       },
       "account_header": {
         "logo": "forge-store-logo.png",
@@ -110,11 +150,11 @@
       "account_footer": {
         "start_text": "(11) 4000-1000",
         "middle_text": "contato@forge.example",
-        "end_text": "Forge · calçados e acessórios"
+        "end_text": "forge.store · calçados e acessórios"
       }
     },
     "outlet": {
-      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back and the footer's right-hand mark.",
+      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back, which stays «Voltar ao Outlet» because it is a sentence about the SHOP and not the mark. ★★ pk21/D3 CORRECTED THE OTHER HALF OF THAT SENTENCE: the footer's right-hand mark was still `Forge Outlet`, the exact glued capital pk20 removed from the header of the same shop, and it is now `forge.outlet`. And the checkout footer gains the padlock in THIS theme's ink — `compra-segura-claro.png`, #e4e6ea, because the escuro file would be a dark line on this shop's #17181a footer.",
       "brand": {
         "text": "forge",
         "tail": ".outlet"
@@ -128,7 +168,8 @@
       "checkout_footer": {
         "start_text": "Pix · Cartão de crédito",
         "middle_text": "",
-        "end_text": "Compra Segura"
+        "end_text": "Compra Segura",
+        "end_image": "compra-segura-claro.png"
       },
       "account_header": {
         "logo": "forge-outlet-logo.png",
@@ -139,7 +180,7 @@
       "account_footer": {
         "start_text": "(11) 4000-2000",
         "middle_text": "contato@outlet.example",
-        "end_text": "Forge Outlet"
+        "end_text": "forge.outlet"
       }
     },
     "cafe": {

@@ -192,11 +192,21 @@ test('★ the café was the FIRST store dressed with a logo, and pk20 stopped it
 test('★★ the picture list is SCOPED to the tenant’s own stores — a library is a tenant’s', () => {
   // Deriving over the whole file would upload the coffee shop's logo into the shoe brand's library, where
   // nothing references it — and since pk20 it would ALSO put the two shoe marks into the café's, which is the
-  // same defect in the other direction. The shoe brand named no picture at all until this pass; it now names
-  // exactly its own two, and that is the assertion, not a count.
+  // same defect in the other direction. The shoe brand named no picture at all until pk20; it now names
+  // exactly its own four, and that is the assertion, not a count.
+  //
+  // ★ pk21/D3 ADDED THE TWO PADLOCKS TO THIS SAME LIST WITHOUT A LINE OF CODE, which is the whole point of
+  // `imagesOf` deriving: a second list would have been the place the seals were forgotten, and a config that
+  // kept the FILENAME renders nothing at all (`assetOf` needs the `<field>_url` the kernel stamps beside a
+  // ref it recognises — extensions/chrome/logic.ts:19-27).
   const shoe = BOX.tenants.find((t) => t.id === 'forgeco').stores.map((s) => s.handle);
   const coffee = BOX.tenants.find((t) => t.id === 'forgecafe').stores.map((s) => s.handle);
-  assert.deepEqual(imagesOf(DATA, shoe), ['forge-store-logo.png', 'forge-outlet-logo.png']);
+  assert.deepEqual(imagesOf(DATA, shoe), [
+    'forge-store-logo.png',
+    'compra-segura-escuro.png',
+    'forge-outlet-logo.png',
+    'compra-segura-claro.png',
+  ]);
   assert.deepEqual(imagesOf(DATA, coffee), ['forge-co-logo.png']);
 });
 
@@ -224,25 +234,37 @@ test('★★ the picture list is SCOPED to the tenant’s own stores — a libra
 const DICTATED = {
   forge: {
     brand: { text: 'forge', tail: '.store' },
-    checkout_header: { logo: 'forge-store-logo.png', seal: '' },
+    checkout_header: { logo: 'forge-store-logo.png', back: 'Voltar à loja', seal: '' },
     checkout_footer: {
       start_text: 'Pix · Cartão de crédito',
       middle_text: '',
       end_text: 'Compra Segura',
+      // ★ pk21/D3 — the padlock, in the ink of THIS footer. See `bin/chrome-seal-ink.guard.mjs`.
+      end_image: 'compra-segura-escuro.png',
     },
-    account_header: { logo: 'forge-store-logo.png', cart: 'Carrinho' },
-    account_footer: { start_text: '(11) 4000-1000', middle_text: 'contato@forge.example' },
+    account_header: { logo: 'forge-store-logo.png', back: 'Voltar à loja', cart: 'Carrinho' },
+    account_footer: {
+      start_text: '(11) 4000-1000',
+      middle_text: 'contato@forge.example',
+      end_text: 'forge.store · calçados e acessórios',
+    },
   },
   outlet: {
     brand: { text: 'forge', tail: '.outlet' },
-    checkout_header: { logo: 'forge-outlet-logo.png', seal: '' },
+    // ★★ pk21/D3 — «Voltar ao Outlet» STAYS, and the capital is the decision. See the régua below.
+    checkout_header: { logo: 'forge-outlet-logo.png', back: 'Voltar ao Outlet', seal: '' },
     checkout_footer: {
       start_text: 'Pix · Cartão de crédito',
       middle_text: '',
       end_text: 'Compra Segura',
+      end_image: 'compra-segura-claro.png',
     },
-    account_header: { logo: 'forge-outlet-logo.png', cart: 'Carrinho' },
-    account_footer: { start_text: '(11) 4000-2000', middle_text: 'contato@outlet.example' },
+    account_header: { logo: 'forge-outlet-logo.png', back: 'Voltar ao Outlet', cart: 'Carrinho' },
+    account_footer: {
+      start_text: '(11) 4000-2000',
+      middle_text: 'contato@outlet.example',
+      end_text: 'forge.outlet',
+    },
   },
   cafe: {
     // ★ THE STORE HE DID NOT TOUCH, pinned so that "já está certo" survives the next pass.
@@ -254,8 +276,14 @@ const DICTATED = {
       end_text: 'Compra Segura',
     },
     // ★ THE ONE STORE THAT KEEPS THE OLD WORD, and it is a quotation: «na de café deixa como está».
-    account_header: { logo: 'forge-co-logo.png', cart: 'Sacola' },
-    account_footer: { start_text: '(11) 4000-3000', middle_text: 'contato@cafe.example' },
+    account_header: { logo: 'forge-co-logo.png', back: 'Voltar à loja', cart: 'Sacola' },
+    account_footer: {
+      start_text: '(11) 4000-3000',
+      middle_text: 'contato@cafe.example',
+      // ★ pk21/D3 — this shop was already spelled the way the régua asks, and that is why the régua exists:
+      // the rule below was DERIVED from what the store the owner did not touch already said.
+      end_text: 'forge.co · café de origem',
+    },
   },
   balcao: null,
 };
@@ -536,13 +564,38 @@ test('★★ …and the declared FILENAME becomes an ASSET ID in the placement �
     });
 
   return run().then(() => {
-    // Only this tenant's two marks were uploaded — never the café's, whose library is another tenant's.
-    assert.deepEqual(uploaded, ['forge-store-logo.png', 'forge-outlet-logo.png']);
+    // Only this tenant's own pictures were uploaded — never the café's, whose library is another tenant's.
+    assert.deepEqual(uploaded, [
+      'forge-store-logo.png',
+      'compra-segura-escuro.png',
+      'forge-outlet-logo.png',
+      'compra-segura-claro.png',
+    ]);
     const config = (store, component) =>
       placed.find((p) => p.store === store && p.component === component)?.config;
+    // ★★ pk21/D3 — AND THE PADLOCK TRAVELS THE SAME CHAIN, asserted on the SAME placements. It is the
+    // second `type:'id'` field in this file and it fails the same way and in the same silence: the footer's
+    // `end` area draws the picture when the kernel stamped an `end_image_url`, and draws NOTHING when it
+    // could not resolve the ref (`footerArea` → `assetOf`; extensions/chrome/logic.test.ts:67 pins exactly
+    // that case). A filename stored here is a footer whose right-hand area is empty on a live box.
+    for (const [store, seal] of [
+      ['sto_forge', 'ast_2'],
+      ['sto_outlet', 'ast_4'],
+    ]) {
+      assert.equal(
+        config(store, 'checkout_footer')?.end_image,
+        seal,
+        `${store}/checkout_footer was placed with ${JSON.stringify(
+          config(store, 'checkout_footer')?.end_image,
+        )} — a filename is a ref the kernel cannot resolve, so no \`end_image_url\` is stamped and the ` +
+          'footer draws no seal at all.',
+      );
+      // ⛔ …and the word is still there beside it, because it is the picture's accessible name.
+      assert.equal(config(store, 'checkout_footer')?.end_text, 'Compra Segura');
+    }
     for (const [store, mark] of [
       ['sto_forge', 'ast_1'],
-      ['sto_outlet', 'ast_2'],
+      ['sto_outlet', 'ast_3'],
     ]) {
       for (const bar of ['checkout_header', 'account_header']) {
         assert.equal(
@@ -602,4 +655,98 @@ test('⛔ in `brand`, the picture and the words are EXCLUSIVE — so each shop d
       );
     }
   }
+});
+
+// ══ pk21/D3 — THE PADLOCK, AND THE SHOP'S NAME SPELLED ONE WAY ════════════════════════════════════════════
+//
+// Two owner's instructions of 07/09, and the rules they need are of different kinds:
+//   · *"compra segura precisa usar o do app, precisa preencher pois quero mostrar isso na demo"* — the
+//     `end_image` half of the footer area, which until this pass no store in this dataset used at all. The
+//     demo therefore demonstrated the words of a block and never its PICTURE. The ink of that picture is
+//     graded where it can be measured — `bin/chrome-seal-ink.guard.mjs`, off the PNG's own pixels;
+//   · the mark, minúsculo, everywhere it is a MARK. `pk20` lowercased the header (`forge.outlet`) and left
+//     the footer of the same shop reading `Forge Outlet` — one shop, two spellings of one name.
+//
+// ⚠️ AND THE SECOND RULE IS A RÉGUA, NOT A SEARCH-AND-REPLACE, because this dataset also writes `Forge
+// Outlet` in nine other places on purpose: the store's registered NAME (`seed/box.json:122`,
+// `seed/catalog.json:55`) and ten CMS titles («Sobre o Forge Outlet», `seed/outlet.json:410-453`). Those are
+// prose and entity names, not the mark. So the régua is:
+//
+//     THE MARK IS LOWERCASE WHERE IT STANDS ALONE AS A MARK; PROSE KEEPS PORTUGUESE CAPITALISATION.
+//
+// ⇒ `account_footer.end_text` is a mark standing alone (the footer's right-hand signature) and is graded
+//   against `brand`, below. ⇒ `back` — «Voltar ao Outlet» — is a SENTENCE whose noun is the shop, and «o
+//   Outlet» is a proper noun that takes a capital in Portuguese; lowercasing it there would read as a typo
+//   and «Voltar ao forge.outlet» puts a domain-shaped token inside a clause where it has no grammar. It
+//   STAYS, and it is pinned in `DICTATED` above so that staying is a decision somebody made and not a field
+//   nobody looked at.
+
+test('★★★ a picture in a footer area never travels alone — the word beside it is its only accessible name', () => {
+  // ⛔ THE MEASUREMENT THAT MAKES THIS A RULE AND NOT A PREFERENCE: an area carries both fields and the block
+  // CHOOSES — `footerArea` returns `{kind:'image', url, alt: text ?? ''}` when the image resolved
+  // (extensions/chrome/logic.ts:53-61), and `footer-block.tsx:38-43` renders `<img alt={area.alt}>`. So the
+  // word does NOT stand beside the picture on the screen: it BECOMES the picture's description, which the
+  // app's own Compose hint says out loud («A imagem vence o texto; o texto passa a ser a descrição dela»).
+  // Dropping `end_text` once `end_image` is set therefore costs nothing visible and ships `alt=""` — a
+  // padlock that a screen reader announces as nothing at all, in the one footer that exists to reassure.
+  let checked = 0;
+  for (const [handle, blocks] of Object.entries(DICTATED)) {
+    if (blocks === null) {
+      assert.equal(DATA.stores[handle], null, `"${handle}" is skipped by name here and must be null in the data`);
+      continue;
+    }
+    for (const block of blocksFor(DATA, handle)) {
+      if (!block.component.endsWith('_footer')) continue;
+      for (const area of ['start', 'middle', 'end']) {
+        const picture = block.config?.[`${area}_image`];
+        if (typeof picture !== 'string' || picture.trim().length === 0) continue;
+        const word = block.config?.[`${area}_text`];
+        assert.ok(
+          typeof word === 'string' && word.trim().length > 0,
+          `store "${handle}", block ${block.component}: "${area}_image" is set and "${area}_text" is ` +
+            `${JSON.stringify(word)}. The image WINS over the text and the text becomes its \`alt\` — so an ` +
+            'empty word here is not a tidier footer, it is an unnamed picture.',
+        );
+        checked += 1;
+      }
+    }
+  }
+  assert.equal(
+    checked,
+    2,
+    'two footer pictures were expected (the two shoe shops’ padlocks). A different number means a store ' +
+      'gained or lost one and this rule graded a set nobody decided.',
+  );
+});
+
+test('★★★ the shop signs its footer with its OWN mark, spelled the way its header spells it', () => {
+  // ★ THE RULE IS DERIVED FROM `brand` AND NOT TYPED TWICE. The header's mark is `text + tail`
+  // (`brand.tsx:46-49` concatenates them, and `wordOf` trims each), so the mark of a shop is a fact this file
+  // already holds. The footer's right-hand area is where the same shop signs its name — so it must START with
+  // that mark, and anything after it is the shop's own descriptor.
+  //
+  // ⚠️ IT WOULD HAVE GONE RED ON BOTH SHOE SHOPS BEFORE THIS PASS («Forge Outlet», «Forge · calçados e
+  // acessórios») AND GREEN ON THE CAFÉ («forge.co · café de origem») — the store the owner told us was
+  // already right. That is where the rule comes from: it was read off the shop nobody had to correct, not
+  // invented to justify an edit.
+  let signed = 0;
+  for (const [handle, blocks] of Object.entries(DICTATED)) {
+    if (blocks === null) {
+      assert.equal(DATA.stores[handle], null, `"${handle}" is skipped by name here and must be null in the data`);
+      continue;
+    }
+    const configs = Object.fromEntries(blocksFor(DATA, handle).map((b) => [b.component, b.config ?? {}]));
+    const brand = configs.brand ?? {};
+    const mark = `${(brand.text ?? '').trim()}${(brand.tail ?? '').trim()}`;
+    assert.ok(mark.length > 0, `store "${handle}" has no wordmark in \`brand\` to sign anything with`);
+    const signature = configs.account_footer?.end_text ?? '';
+    assert.ok(
+      signature === mark || signature.startsWith(`${mark} `),
+      `store "${handle}": the shop's header says "${mark}" and its account footer signs off as ` +
+        `"${signature}". One shop, one spelling — a shopper crosses from the header to the footer without ` +
+        'changing page. Write the mark exactly, optionally followed by this shop’s own descriptor.',
+    );
+    signed += 1;
+  }
+  assert.equal(signed, 3, 'three dressed shops sign their footers — a shorter loop is a shop that vanished');
 });
