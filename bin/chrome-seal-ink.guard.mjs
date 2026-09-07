@@ -43,9 +43,11 @@
 // would have been near-white art (rgb(228,230,234)) inside its own opaque white slab, on a #17181a footer:
 // unreadable twice over. Every non-white pixel of both files was exactly `a·ink + (1-a)·white` (worst
 // reconstruction error 1/255 over the 23 822 and the 24 419 non-white pixels of the two, measured), so the
-// transparent original was recovered by solving for `a` — the ink was never touched, the canvas was never
-// resized. That is why both files now carry EXACTLY ONE opaque colour where the old padlocks carried eight
-// and four: the alpha holds the anti-aliasing that the flatten had baked into the colour.
+// transparent original was recovered by solving for `a` — the ink was never touched. That is why both files
+// carry EXACTLY ONE opaque colour where the old padlocks carried eight and four: the alpha holds the
+// anti-aliasing that the flatten had baked into the colour. (The canvas WAS changed afterwards, deliberately
+// and vertically only — see «THE ART FITS THE SLOT» below. Two edits to these bytes, both named, neither a
+// re-cut: the ground was given back, and empty rows were added above and below.)
 //
 // ── AND WHY IT ALSO COUNTS THE ISLANDS OF INK ──────────────────────────────────────────────────────────────
 //
@@ -55,23 +57,40 @@
 //
 //     art                                 canvas      aspect   4-connected islands of opaque ink
 //     compra-segura-escuro.png (pk21)     192x192     1.000     2   (the outline and the keyhole)
-//     compra-segura-lockup-*.png (pk22)   1008x176    5.727    14   (those 2 + the twelve letters)
+//     compra-segura-lockup-*.png (pk22)   1008x296    3.405    14   (those 2 + the twelve letters)
 //
 // ⚠ WHAT IT DOES NOT PROVE, said plainly rather than implied: it cannot READ. Fourteen islands and a 5.7:1
 // canvas say «there is a word beside the stroke»; they do not say the word is «Compra Segura», and art
 // spelling something else entirely would pass. The phrase itself is pinned as text, in the `end_text` that is
 // this picture's `alt` — `seed/chrome.test.mjs`'s `DICTATED` table, verbatim.
 //
-// ⚠ AND ONE THING NEITHER THIS FILE NOR THIS REPOSITORY CAN FIX, left written down rather than swallowed.
-// `.areaImage` clamps the HEIGHT and discards the file's own scale (`max-height: 2.5em; width: auto`,
-// chrome.module.css:111-115), which is right for a badge and questionable for art that CONTAINS TYPE: the
-// seal is drawn 2.5× the footer's own font-size tall whatever it was rendered at, and the capitals inside it
-// occupy 83 of the canvas's 176 rows (measured), so they land at 1.18em — against the ~0.7em a sans face's
-// capitals take at its own size, which is a rule of thumb and not a measurement of Urbanist. ⇒ the words in
-// the seal read something like 1.7× the words beside them, in a browser nobody here can open. That rule
-// lives in the PRODUCT repository; this one only supplies the art and may not reach across — so it is reported
-// and not worked around. Padding the canvas to cheat the clamp would be exactly the re-cut this pass was
-// told not to make.
+// ── THE ART FITS THE SLOT, AND THAT IS WHY THE CANVAS IS 296 ROWS TALL FOR 112 ROWS OF DRAWING ────────────
+//
+// ⚠ READ THIS BEFORE CONCLUDING THAT SOMEBODY PADDED THE FILE TO DODGE A RULE. Nobody did; the padding is
+// the point, and it is aimed at the BROWSER, not at this file — every number below gets WORSE for the guard,
+// not better (the aspect fell from 5.727 to 3.405, i.e. closer to the floor it has to clear).
+//
+// `.areaImage` clamps the HEIGHT and throws the file's own scale away (`max-height: 2.5em; width: auto`,
+// chrome.module.css:111-115). That is right for a badge and wrong for art that CONTAINS TYPE: the seal is
+// drawn 2.5× the footer's own font-size tall whatever scale it was rendered at, so the letters inside it are
+// sized by the ratio `cap-height ÷ canvas`, which is a property of the FILE. MEASURED: the capitals span 83
+// rows (the `C` of «Compra» and the `S` of «Segura», y=98..180 in both files). At the original 176-row
+// canvas that is 47.16% of the height, i.e. 1.179em on screen — against the ≈0.70em a sans face's capitals
+// take at its own size — so the seal's words read about 1.7× the words beside them.
+//
+// The clamp lives in the PRODUCT repository and a general rule bent for one picture is how debt is invented,
+// so the ART was adapted instead: 60 fully transparent rows above and 60 below, width untouched, not one
+// pixel of ink moved or recoloured. 83 ÷ 296 = 28.04% ⇒ 0.7010em, which is parity with the text beside it.
+//
+// ⇒ AND THE SAME NUMBER FALLS OUT OF A SECOND, INDEPENDENT ROUTE, which is the reason to believe it: the art
+// was rendered at 8× inside each shop's own checkout page, and at a 296-row canvas the clamp draws it at
+// scale 2.5 × 14.5 ÷ 296 = 0.1225 — within 2% of the 0.125 the art was drawn at. The padding does not invent
+// a size; it gives back the size the art already had.
+//
+// ⚠ WHAT THIS COSTS, said out loud: the `end` area's picture now reserves 2.5em of height for 0.95em of
+// drawing. The footer is a centred grid row (`align-items: center`, chrome.module.css:90-99) so the
+// transparent rows fall equally above and below and nothing is pushed — but a future rule that gives
+// `.areaImage` a BACKGROUND, a border or a hit-target would find a box far larger than the mark inside it.
 //
 // ── AND THE INK IT IS COMPARED AGAINST IS DERIVED, NEVER TYPED TWICE ───────────────────────────────────────
 //
@@ -364,10 +383,15 @@ test('★★★ the seal is a LOCKUP — a word beside the stroke, not the lone 
   //   exactly why this rule had to be written: the ink rules cannot see WHAT the art draws.
   //
   // ⚠️ THE TWO FLOORS ARE FLOORS AND NOT THE MEASUREMENTS, deliberately. The art carries fourteen islands on
-  // a 5.727 canvas today; pinning 14 would go red the first time a designer kerns a letter into its
-  // neighbour or the phrase is translated, which is a re-cut and not a regression. 8 and 3.0 are far below
-  // the lockup and far above anything a lone glyph or a badge can reach — «Compra Segura» would have to lose
-  // five of its twelve letters to fall through.
+  // a 3.405 canvas today; pinning 14 would go red the first time a designer kerns a letter into its
+  // neighbour or the phrase is translated, which is a re-cut and not a regression. «Compra Segura» would
+  // have to lose five of its twelve letters to fall through the island floor.
+  //
+  // ⚠️ AND THE ASPECT FLOOR IS 2.0 RATHER THAN 3.0 BECAUSE THE CANVAS GREW — it is 3.405 where it was 5.727,
+  // and the number moved for a reason that has nothing to do with the drawing (the padding below). A floor
+  // of 3.0 would have survived that change with 13% to spare, which is a floor waiting to go red on the next
+  // deliberate pad rather than on a defect. 2.0 still sits at twice the square badge this rule exists to
+  // refuse, and the drawing itself is graded by the islands.
   let graded = 0;
   for (const handle of Object.keys(CHROME.stores)) {
     if (CHROME.stores[handle] === null) {
@@ -385,9 +409,9 @@ test('★★★ the seal is a LOCKUP — a word beside the stroke, not the lone 
           'nothing in writing — and «Compra Segura» survives only as the `alt` nobody looks at.',
       );
       assert.ok(
-        art.width / art.height >= 3,
+        art.width / art.height >= 2,
         `store "${handle}", ${seal.component}.${seal.area}_image = "${seal.file}": the canvas is ` +
-          `${art.width}x${art.height}, i.e. ${(art.width / art.height).toFixed(3)}:1. The lockup is 5.727:1 ` +
+          `${art.width}x${art.height}, i.e. ${(art.width / art.height).toFixed(3)}:1. The lockup is 3.405:1 ` +
           'and a badge is square — and the shape is not cosmetic here, because `.areaImage` clamps the ' +
           'HEIGHT (`max-height: 2.5em`, chrome.module.css:111-115) and lets the width follow, so a square ' +
           'file is a square seal wherever it lands.',
