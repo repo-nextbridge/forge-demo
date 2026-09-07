@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { resolveMediaFile } from './forge.mjs';
 import {
+  bannerKeys,
   brl,
   freeShippingFloor,
   planPlacements,
@@ -162,30 +163,54 @@ const manifest = {
   icons: {},
   products: {},
 };
-const where = { namespace: 'demo', manifest, artDir: '/ds/assets/catalog', photoDir: '/photos' };
+const where = { manifest, artDir: '/ds/assets/catalog', photoDir: '/photos' };
 
 test('a home banner resolves into the SHARED art, desktop and mobile as separate files', () => {
   assert.equal(
-    resolveMediaFile('demo/banner-grande-jordan.jpg', where),
+    resolveMediaFile('banner-grande-jordan.jpg', where),
     '/ds/assets/banners/banner-grande-jordan.jpg',
   );
   assert.equal(
-    resolveMediaFile('demo/banner-grande-jordan-M.jpg', where),
+    resolveMediaFile('banner-grande-jordan-M.jpg', where),
     '/ds/assets/banners/banner-grande-jordan-M.jpg',
   );
 });
 
 test('a `-M` the curator did not ship is NULL, never the desktop file wearing the phone\'s name', () => {
-  // ⚠️ THE COINCIDENCE. Seven of the dataset's banners have a `-M`; three do not, and the block's contract is
-  // that a blank mobile ref means "use the desktop art at narrow widths". Falling back HERE instead — handing
+  // ⚠️ THE COINCIDENCE. The dataset declares seven banners and only THREE have a `-M`; four do not — counted
+  // in the photo manifest on 2026-09-06, where this line and the two comments it mirrors had all had the
+  // number the wrong way round. The block's contract is that a blank mobile ref means "use the desktop art
+  // at narrow widths". Falling back HERE instead — handing
   // the desktop path back for a `-M` key — uploads the same 1600px frame a second time under a phone's name,
   // so the block stops falling back and starts serving the wide art deliberately. Null lets the caller decide
   // (this one simply omits `asset_id_mobile`), which is the contract the block already has.
-  assert.equal(resolveMediaFile('demo/banner-sportswear-M.jpg', where), null);
-  assert.equal(resolveMediaFile('demo/banner-sportswear.jpg', where), '/ds/assets/banners/banner-sportswear.jpg');
+  assert.equal(resolveMediaFile('banner-sportswear-M.jpg', where), null);
+  assert.equal(resolveMediaFile('banner-sportswear.jpg', where), '/ds/assets/banners/banner-sportswear.jpg');
   // A name the manifest does not carry at all — the caller refuses BY NAME rather than publishing a ref to
   // nothing, which is the whole reason this function answers null instead of throwing.
-  assert.equal(resolveMediaFile('demo/banner-nao-existe.jpg', where), null);
+  assert.equal(resolveMediaFile('banner-nao-existe.jpg', where), null);
+});
+
+test('★ the key the WINDOW composes is a key the RESOLVER places — the round trip, not two halves', () => {
+  // ⚠️ THE GAP THIS CLOSES, and it was open until pk18/d1. `placeBanners` spelled the banner key inline
+  // (`${data.dataset}/banner-<name>.jpg`) and nothing exercised that string: every test in this file called
+  // `resolveMediaFile` with a key it typed itself, so the composition and the resolver were proven
+  // SEPARATELY and could disagree freely. When the platform took the namespace out of the catalog, the two
+  // template strings in `placeBanners` were the only thing in this repository that had to move with it —
+  // and leaving them alone would have kept this suite green while the seed refused all seven banners on the
+  // box, by name, at step 9. So the key is composed by the same function the seed uses.
+  const key = bannerKeys('grande-jordan');
+  assert.equal(resolveMediaFile(key.desktop, where), '/ds/assets/banners/banner-grande-jordan.jpg');
+  assert.equal(resolveMediaFile(key.mobile, where), '/ds/assets/banners/banner-grande-jordan-M.jpg');
+
+  // ★ AND NO NAMESPACE — the fact the whole slice is about, asserted where it is written rather than
+  // inferred from the resolver being happy.
+  assert.ok(!key.desktop.includes('/'), `a catalog key carries no namespace: "${key.desktop}"`);
+  assert.ok(!key.mobile.includes('/'), `a catalog key carries no namespace: "${key.mobile}"`);
+
+  // The `-M` half stays honest: a banner the curator shipped no phone frame for still composes a key, and
+  // the resolver still answers null for it. Composition is not a promise that the file exists.
+  assert.equal(resolveMediaFile(bannerKeys('sportswear').mobile, where), null);
 });
 
 test('a CATEGORY strip is still a category strip — the two `banner-` vocabularies do not collide', () => {
@@ -193,7 +218,7 @@ test('a CATEGORY strip is still a category strip — the two `banner-` vocabular
   // and the second pattern was added after the first. A regex that matched `banner-` anywhere in the key
   // would answer the strip out of `manifest.banners`, where it is not, and the seed would refuse art it has.
   assert.equal(
-    resolveMediaFile('demo/category-banner-corrida.jpg', where),
+    resolveMediaFile('category-banner-corrida.jpg', where),
     '/ds/assets/banners/banner-strip-corrida-1200x150.jpg',
   );
 });

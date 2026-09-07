@@ -1048,6 +1048,18 @@ Measured on this box: **18 582 photos / 3.5 GB in 319 seconds.**
 icons, the strips). That asymmetry is the platform's and it is deliberate — pointing the override at a shared
 photo mount and expecting the icons to follow is a documented way to break the seed.
 
+⚠️ **A DATASET FROM BEFORE 2026-09-06 IS REFUSED, BY NAME, BEFORE THE FIRST WRITE.** The catalog's media keys
+used to carry the dataset's namespace (`demo/<handle>-cover.jpg`); the platform took it out — the demo's
+`catalog.json` was writing the word `demo/` 52 669 times, and deriving a second dataset from it rewrote all
+52 669 — so the namespace is now stated **once**, by `forge-seed-dataset.json`'s `id`, and a key is
+`<handle>-cover.jpg`. `seed/forge.mjs` grades the whole catalog the moment it reads it and stops with the
+offending keys and the keys they should be, rather than spending 2790 refusals saying *"the photo manifest
+does not place it"* about photographs that are on disk. The fix is upstream and mechanical: re-run
+`pnpm pack:dataset` in the monorepo and mount the directory again.
+
+★ Nothing the byte store already holds moved. This box publishes under the key `media.request_upload`
+**minted**, never the dataset's own, so the change is entirely about which file a key names on disk.
+
 ### ⚠️ The fronts do not notice a theme or a placement on their own
 
 Two ways to spend half an hour deciding a feature is broken when it is not, both measured on this box:

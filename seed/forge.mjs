@@ -109,19 +109,27 @@ export function mimeOf(filename) {
 /**
  * The FILE a declared media key names, resolved through the manifest — never by scanning a directory.
  *
- * The dataset declares opaque keys (`demo/<handle>-cover.jpg`, `demo/category-tenis-icon.png`); the manifest
- * declares which file is behind each. This is the only place the two vocabularies meet, and a key it cannot
- * place returns null so the caller can refuse by NAME instead of uploading nothing and publishing a ref.
+ * The dataset declares opaque keys (`<handle>-cover.jpg`, `category-tenis-icon.png`); the manifest declares
+ * which file is behind each. This is the only place the two vocabularies meet, and a key it cannot place
+ * returns null so the caller can refuse by NAME instead of uploading nothing and publishing a ref.
+ *
+ * ★ THE KEY ARRIVES WITHOUT A NAMESPACE, and it used to arrive with one. Until pk18 the catalog wrote
+ * `demo/<handle>-cover.jpg` into every media field and this function's first act was to demand that prefix.
+ * The platform took it out (`packages/seed-dataset/src/keys.ts` — the demo's catalog.json carried the word
+ * `demo/` 52 669 times, and deriving a second dataset from it rewrote all 52 669), so the namespace is now
+ * stated ONCE, by the pointer, and composed on read by whoever needs the full key. ⚠️ NOBODY IN THIS REPO
+ * DOES: the key a media row here carries is the one `media.request_upload` MINTED (see seedCategories'
+ * header), never the dataset's own. So the namespace is not glued back on anywhere below — this file resolves
+ * a key to a FILE, and the file is all it ever wanted.
+ *
+ * A key that still carries a namespace is refused, by name and early, by `mediaKeyFormat` below — not here,
+ * where it would only be one null among thousands and would read as "the manifest does not place it".
  *
  * @returns an absolute path, or null when the manifest does not name a file for this key.
  */
-export function resolveMediaFile(key, { namespace, manifest, artDir, photoDir, hint }) {
-  const prefix = `${namespace}/`;
-  if (!key.startsWith(prefix)) return null;
-  const rest = key.slice(prefix.length);
-
+export function resolveMediaFile(key, { manifest, artDir, photoDir, hint }) {
   // A root category's bespoke icon — `category-<handle>-icon.png`, listed under `icons` by handle.
-  const icon = /^category-(.+)-icon\.png$/.exec(rest);
+  const icon = /^category-(.+)-icon\.png$/.exec(key);
   if (icon) {
     const rel = manifest.icons?.[icon[1]];
     return rel ? join(artDir, rel) : null;
@@ -131,7 +139,7 @@ export function resolveMediaFile(key, { namespace, manifest, artDir, photoDir, h
   // the word `banner` and the same folder on disk. This one is a CATEGORY page's strip; the next one is the
   // home's campaign art. Matching `banner-` loosely would answer a strip out of `manifest.banners`, where it
   // is not, and the seed would refuse art it is holding.
-  const strip = /^category-banner-(.+)\.[a-z]+$/.exec(rest);
+  const strip = /^category-banner-(.+)\.[a-z]+$/.exec(key);
   if (strip) {
     const rel = manifest.categoryBanners?.[strip[1]];
     return rel ? join(artDir, rel) : null;
@@ -143,9 +151,10 @@ export function resolveMediaFile(key, { namespace, manifest, artDir, photoDir, h
   // ⚠️ A `-M` THE CURATOR DID NOT SHIP ANSWERS NULL, and falling back to the desktop file here would be the
   // wrong kindness. The banner block's own contract is that a BLANK mobile ref means "use the desktop art at
   // narrow widths"; handing the desktop path back under the phone's name uploads the same 1600px frame twice
-  // and makes the block stop falling back and start serving the wide art deliberately. Three of this dataset's
-  // seven banners ship no `-M`, so this is the ordinary case and not the edge.
-  const banner = /^banner-(.+)\.[a-z]+$/.exec(rest);
+  // and makes the block stop falling back and start serving the wide art deliberately. FOUR of this dataset's
+  // seven banners ship no `-M` — counted in the photo manifest on 2026-09-06, where this comment and the two
+  // that mirror it had all said three — so this is the ordinary case and not the edge.
+  const banner = /^banner-(.+)\.[a-z]+$/.exec(key);
   if (banner) {
     const mobile = banner[1].endsWith('-M');
     const entry = manifest.banners?.[mobile ? banner[1].slice(0, -2) : banner[1]];
@@ -171,18 +180,110 @@ export function resolveMediaFile(key, { namespace, manifest, artDir, photoDir, h
     const files = [entry.cover, ...(entry.gallery ?? []), ...Object.values(entry.colors ?? {}).flat()];
     return files.includes(file) ? join(photoDir, handle, file) : null;
   };
-  if (hint && rest.startsWith(`${hint}-`)) {
-    const placed = place(hint, rest.slice(hint.length + 1));
+  if (hint && key.startsWith(`${hint}-`)) {
+    const placed = place(hint, key.slice(hint.length + 1));
     if (placed) return placed;
   }
   const candidates = Object.keys(manifest.products ?? {})
-    .filter((handle) => rest.startsWith(`${handle}-`))
+    .filter((handle) => key.startsWith(`${handle}-`))
     .sort((a, b) => b.length - a.length);
   for (const handle of candidates) {
-    const placed = place(handle, rest.slice(handle.length + 1));
+    const placed = place(handle, key.slice(handle.length + 1));
     if (placed) return placed;
   }
   return null;
+}
+
+/**
+ * Whether a key the catalog carries still has a namespace glued on — i.e. the OLD format.
+ *
+ * A catalog key is namespace-free by definition and no part of one contains a slash (a handle, a colour slug
+ * and a file name are all slug-shaped), so a `/` in one can only be that. This is a deliberate MIRROR of
+ * `hasNamespace` in `packages/seed-dataset/src/keys.ts`, copied for the same reason `photoTreeDir` above is:
+ * this repository has no package manager and cannot import from the platform. One rule, two spellings.
+ */
+export function hasNamespace(catalogKey) {
+  return catalogKey.includes('/');
+}
+
+/**
+ * Every media key a catalog DECLARES, from all four places one can appear. The order is the file's.
+ *
+ * ⓘ DEDUPED PER PRODUCT, because `mediaKeysOf` is (the same photo rides several SKUs). So this counts 18 590
+ * on the demo dataset where the platform's own note counts 52 669 — two right answers to two questions:
+ * "how many distinct files does this catalog name" against "how many times was the word `demo/` written into
+ * the file". Both measured on `instances/demo/dataset/catalog.json`, 2026-09-06.
+ */
+export function declaredMediaKeys(catalog) {
+  const keys = [];
+  for (const cat of catalog.categories ?? []) {
+    for (const field of ['icon_provider_key', 'banner_provider_key']) {
+      if (typeof cat?.[field] !== 'string') continue;
+      keys.push({ where: `categories.${cat.path ?? cat.handle}.${field}`, key: cat[field] });
+    }
+  }
+  for (const brand of catalog.brands ?? []) {
+    if (typeof brand?.logo_media !== 'string') continue;
+    keys.push({ where: `brands.${brand.slug}.logo_media`, key: brand.logo_media });
+  }
+  for (const product of catalog.products ?? []) {
+    for (const key of mediaKeysOf(product)) keys.push({ where: `products.${product.handle}`, key });
+  }
+  return keys;
+}
+
+/** How many media keys this catalog declares and which of them are in the OLD, namespaced format. */
+export function mediaKeyFormat(catalog) {
+  const declared = declaredMediaKeys(catalog);
+  return { inspected: declared.length, namespaced: declared.filter((d) => hasNamespace(d.key)) };
+}
+
+/** How many offending keys a refusal spells out before it starts counting. */
+const NAMED_OFFENDERS = 5;
+
+/**
+ * THE FORMAT GATE — the catalog's media keys are read once, before a single write, and the run stops here if
+ * they are not the format this seed reads.
+ *
+ * It refuses TWO things, and the second one is the point:
+ *
+ *  · a key that still carries a namespace (`demo/x-cover.jpg`). The platform stopped writing one in pk18;
+ *    a catalog that still does is a stale mount, and letting it through would spend 2790 refusals saying
+ *    "the photo manifest does not place it" about photographs that are on disk. It is named ONCE instead,
+ *    with the key the file should carry.
+ *
+ *  · ⚠️ A CATALOG THAT DECLARES NO MEDIA AT ALL, which is this rule refusing to pass on an empty room. Every
+ *    assertion the first half makes is vacuously true of a catalog with zero keys — a truncated file, a
+ *    conversion that dropped the media, a `catalog.json` from some other tool — and the run would go on to
+ *    create 2790 products with no pictures and report success. A rule that cannot say what it graded has not
+ *    graded anything, so it accuses itself.
+ *
+ * @returns null when the catalog is readable, or the refusal message.
+ */
+export function mediaFormatRefusal(catalog) {
+  const { inspected, namespaced } = mediaKeyFormat(catalog);
+  if (inspected === 0) {
+    return (
+      'the mounted catalog.json declares NO media key at all — not a product photo, not a category icon.\n' +
+      '  This seed publishes a catalogue WITH its photographs, and every check below it is vacuously true of\n' +
+      '  a catalog with none. Refusing rather than creating a picture-less store and calling it a success.'
+    );
+  }
+  if (namespaced.length === 0) return null;
+  const named = namespaced
+    .slice(0, NAMED_OFFENDERS)
+    .map(({ where, key }) => `    ${where}: "${key}" — write "${key.slice(key.indexOf('/') + 1)}"`)
+    .join('\n');
+  const more =
+    namespaced.length > NAMED_OFFENDERS ? `\n    …and ${namespaced.length - NAMED_OFFENDERS} more.` : '';
+  return (
+    `${namespaced.length} of the catalog's ${inspected} media key(s) still carry a dataset namespace, and ` +
+    'the catalog does not write one.\n' +
+    "  The namespace is stated ONCE, by forge-seed-dataset.json's `id`; a key is `<handle>-cover.jpg`.\n" +
+    '  This mount predates the platform change that took it out — re-pack the dataset (`pnpm pack:dataset`\n' +
+    '  in the monorepo) and mount it again.\n' +
+    `${named}${more}`
+  );
 }
 
 /** Categories, parents before children — `path` is an ltree and a child written first is a child of nothing. */
@@ -254,6 +355,11 @@ export async function seedForge(port) {
   const catalog = JSON.parse(readFileSync(join(dir, 'catalog.json'), 'utf8'));
   const fields = JSON.parse(readFileSync(join(dir, 'custom-fields.json'), 'utf8'));
 
+  // The format gate, BEFORE the first write — see `mediaFormatRefusal`. A stale mount is refused by name
+  // here rather than as thousands of "the manifest does not place it" a third of the way through a run.
+  const refusal = mediaFormatRefusal(catalog);
+  if (refusal) fail(`${join(dir, 'catalog.json')}: ${refusal}`);
+
   const store = rows(await read('stores')).find((s) => s.handle === data.store);
   if (!store) fail(`the store "${data.store}" does not exist — it is created by bin/seed.mjs's stores().`);
   log(
@@ -266,7 +372,7 @@ export async function seedForge(port) {
   );
 
   const resolve = (key, hint) =>
-    resolveMediaFile(key, { namespace: pointer.id, manifest, artDir, photoDir, hint });
+    resolveMediaFile(key, { manifest, artDir, photoDir, hint });
 
   await declareFields(port, fields);
   const categoryIdByPath = await seedCategories(port, catalog, resolve);
@@ -307,8 +413,9 @@ async function declareFields({ command, read, rows, log }, fields) {
 // ── 2. the categories ──────────────────────────────────────────────────────────────────────────────────
 // Two commands each, because the kernel splits them: `create` takes the path/handle/name, and the RICH half
 // (description, SEO, the icon and the strip) lives on `update`. The art is uploaded first and the key the
-// kernel MINTED is what the update carries — never the dataset's own `demo/...` key, which is namespaced to
-// the dataset and not to this tenant, and which no object on this box would answer.
+// kernel MINTED is what the update carries — never the dataset's own key, which names a FILE in the mounted
+// dataset and no object on this box. (Since pk18 the dataset's key is not even namespaced any more, which
+// makes the distinction easier to lose sight of and no less absolute.)
 async function seedCategories({ command, readAll, log, fail, upload }, catalog, resolve) {
   // The whole row, not just the id: the art below has to know whether this category ALREADY carries a key.
   const existing = new Map(
@@ -384,7 +491,7 @@ async function seedCategories({ command, readAll, log, fail, upload }, catalog, 
 
 // ── 3. the brands ──────────────────────────────────────────────────────────────────────────────────────
 // 351 of them, and no logos: the dataset's photo manifest declares `brands: {}`, so there is no file behind
-// a `demo/brand-<slug>.png` key. Uploading nothing and writing the ref anyway is exactly the orphan-ref
+// a `brand-<slug>.png` key. Uploading nothing and writing the ref anyway is exactly the orphan-ref
 // failure the platform's own seeder records from Staging — so the logos are simply not set, and the slice
 // report says so rather than this file pretending otherwise.
 async function seedBrands({ command, readAll, log }, catalog) {

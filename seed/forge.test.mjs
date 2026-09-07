@@ -17,6 +17,9 @@ import { test } from 'node:test';
 import {
   awaitQuietCatalogue,
   categoriesByDepth,
+  hasNamespace,
+  mediaFormatRefusal,
+  mediaKeyFormat,
   mediaKeysOf,
   mimeOf,
   planProducts,
@@ -141,21 +144,21 @@ const manifest = {
     },
   },
 };
-const where = { namespace: 'demo', manifest, artDir: '/ds/assets/catalog', photoDir: '/photos' };
+const where = { manifest, artDir: '/ds/assets/catalog', photoDir: '/photos' };
 
 test('a product photo key resolves into the PHOTO tree, a category icon into the SHARED art', () => {
   assert.equal(
-    resolveMediaFile('demo/adidas-golf-braided-stretch-belt-cover.jpg', where),
+    resolveMediaFile('adidas-golf-braided-stretch-belt-cover.jpg', where),
     '/photos/adidas-golf-braided-stretch-belt/cover.jpg',
   );
   assert.equal(
-    resolveMediaFile('demo/adidas-golf-braided-stretch-belt-color-marinho-1.jpg', where),
+    resolveMediaFile('adidas-golf-braided-stretch-belt-color-marinho-1.jpg', where),
     '/photos/adidas-golf-braided-stretch-belt/color-marinho-1.jpg',
   );
   // ★ The split the platform's photos.ts header records: the override moves the tree, NEVER the shared art.
-  assert.equal(resolveMediaFile('demo/category-tenis-icon.png', where), '/ds/assets/categories/icon-tenis.png');
+  assert.equal(resolveMediaFile('category-tenis-icon.png', where), '/ds/assets/categories/icon-tenis.png');
   assert.equal(
-    resolveMediaFile('demo/category-banner-corrida.jpg', where),
+    resolveMediaFile('category-banner-corrida.jpg', where),
     '/ds/assets/banners/banner-strip-corrida-1200x150.jpg',
   );
 });
@@ -173,30 +176,129 @@ test('a handle that is a PREFIX of another does not steal its photos — 99 pair
       'bed-stu-aiken-9554019': { cover: 'cover.jpg', gallery: ['gallery-2.jpg'] },
     },
   };
-  const w = { namespace: 'demo', manifest: twins, artDir: '/ds/assets/catalog', photoDir: '/photos' };
+  const w = { manifest: twins, artDir: '/ds/assets/catalog', photoDir: '/photos' };
 
-  assert.equal(resolveMediaFile('demo/bed-stu-aiken-cover.jpg', w), '/photos/bed-stu-aiken/cover.jpg');
+  assert.equal(resolveMediaFile('bed-stu-aiken-cover.jpg', w), '/photos/bed-stu-aiken/cover.jpg');
   assert.equal(
-    resolveMediaFile('demo/bed-stu-aiken-9554019-cover.jpg', w),
+    resolveMediaFile('bed-stu-aiken-9554019-cover.jpg', w),
     '/photos/bed-stu-aiken-9554019/cover.jpg',
   );
   assert.equal(
-    resolveMediaFile('demo/bed-stu-aiken-9554019-gallery-2.jpg', w),
+    resolveMediaFile('bed-stu-aiken-9554019-gallery-2.jpg', w),
     '/photos/bed-stu-aiken-9554019/gallery-2.jpg',
   );
   // The caller's own handle is the exact answer and never has to guess.
   assert.equal(
-    resolveMediaFile('demo/bed-stu-aiken-9554019-cover.jpg', { ...w, hint: 'bed-stu-aiken-9554019' }),
+    resolveMediaFile('bed-stu-aiken-9554019-cover.jpg', { ...w, hint: 'bed-stu-aiken-9554019' }),
     '/photos/bed-stu-aiken-9554019/cover.jpg',
   );
 });
 
 test('a key the manifest does not place resolves to NULL — the caller refuses instead of writing an orphan ref', () => {
-  assert.equal(resolveMediaFile('demo/adidas-golf-braided-stretch-belt-gallery-9.jpg', where), null);
-  assert.equal(resolveMediaFile('demo/never-heard-of-it-cover.jpg', where), null);
-  assert.equal(resolveMediaFile('demo/category-sandalias-icon.png', where), null);
-  // Another dataset's namespace is not ours to place.
+  assert.equal(resolveMediaFile('adidas-golf-braided-stretch-belt-gallery-9.jpg', where), null);
+  assert.equal(resolveMediaFile('never-heard-of-it-cover.jpg', where), null);
+  assert.equal(resolveMediaFile('category-sandalias-icon.png', where), null);
+  // ★ AND A KEY IN THE OLD, NAMESPACED FORMAT IS ONE OF THEM — no handle, icon or banner pattern contains a
+  // slash, so `demo/<handle>-cover.jpg` places nothing even though the file is right there. That is exactly
+  // why the format is graded ONCE, up front, by `mediaFormatRefusal`: this null is correct and useless, and
+  // 52 669 of them would say "the manifest does not place it" about photographs that are on disk.
+  assert.equal(resolveMediaFile('demo/adidas-golf-braided-stretch-belt-cover.jpg', where), null);
   assert.equal(resolveMediaFile('outra/adidas-golf-braided-stretch-belt-cover.jpg', where), null);
+});
+
+// ── the format of the keys the catalog carries ─────────────────────────────────────────────────────────
+// ★ pk18 — the platform stopped writing the dataset's namespace into every media key
+// (`packages/seed-dataset/src/keys.ts`), so a mount that still carries one is a STALE mount, and the whole
+// point of grading it here is that the failure it causes downstream is unreadable: `resolveMediaFile` places
+// nothing (asserted above), and the seed would spend 2790 refusals saying "the photo manifest does not place
+// it" about photographs that are sitting on disk.
+
+/** A catalog in the format the platform writes today: not one key carries a namespace. */
+const catalogNow = () => ({
+  categories: [
+    { path: 'tenis', handle: 'tenis', icon_provider_key: 'category-tenis-icon.png' },
+    { path: 'tenis.corrida', handle: 'corrida', banner_provider_key: 'category-banner-corrida.jpg' },
+  ],
+  brands: [{ slug: 'adidas', name: 'Adidas' }],
+  products: [
+    {
+      handle: 'p',
+      media: [{ provider_key: 'p-cover.jpg' }],
+      skus: [{ media: [{ provider_key: 'p-color-preto-1.jpg' }] }],
+    },
+  ],
+});
+
+test('a catalog in today\'s format passes, and the gate says HOW MANY keys it read', () => {
+  const catalog = catalogNow();
+  assert.equal(mediaFormatRefusal(catalog), null);
+  // The count is the anti-vacuity handle: a rule that grades 0 keys and answers "fine" has graded nothing.
+  assert.deepEqual(mediaKeyFormat(catalog), { inspected: 4, namespaced: [] });
+});
+
+test('the gate reads ALL FOUR places a key can appear — a brand logo is one of them', () => {
+  // `brands: {}` in this dataset's manifest, so no brand carries a logo TODAY. A gate that only walked
+  // products would pass a stale brand logo silently the day one is curated, and the whole file would be
+  // one format while a single field stayed the other.
+  const catalog = catalogNow();
+  catalog.brands[0].logo_media = 'demo/brand-adidas.png';
+  const refusal = mediaFormatRefusal(catalog);
+  assert.match(refusal, /brands\.adidas\.logo_media/);
+  assert.match(refusal, /write "brand-adidas\.png"/);
+});
+
+test('★ a key that still carries a namespace is refused BY NAME, with the key it should have', () => {
+  const catalog = catalogNow();
+  catalog.products[0].media[0].provider_key = 'demo/p-cover.jpg';
+  catalog.categories[0].icon_provider_key = 'demo/category-tenis-icon.png';
+  const refusal = mediaFormatRefusal(catalog);
+  assert.match(refusal, /2 of the catalog's 4 media key/);
+  assert.match(refusal, /categories\.tenis\.icon_provider_key/);
+  assert.match(refusal, /products\.p/);
+  // The refusal is only useful if it says what to write instead.
+  assert.match(refusal, /write "category-tenis-icon\.png"/);
+  assert.match(refusal, /write "p-cover\.jpg"/);
+  // And it names the gesture that fixes the mount, not just the symptom.
+  assert.match(refusal, /pack:dataset/);
+});
+
+test('a refusal NAMES a handful and COUNTS the rest — 52 669 lines is not a message', () => {
+  const catalog = catalogNow();
+  catalog.products = Array.from({ length: 40 }, (_, i) => ({
+    handle: `p${i}`,
+    media: [{ provider_key: `demo/p${i}-cover.jpg` }],
+  }));
+  const refusal = mediaFormatRefusal(catalog);
+  assert.equal((refusal.match(/ — write "/g) ?? []).length, 5);
+  assert.match(refusal, /…and 35 more\./);
+});
+
+test('⚠️ ANTI-VACUITY — a catalog with NO media at all ACCUSES ITSELF instead of passing', () => {
+  // Every assertion above is vacuously true of a catalog with zero keys, so this is the rule refusing to
+  // grade an empty room: a truncated file, a conversion that dropped the media, a catalog.json from some
+  // other tool. Passing here means creating 2790 products with no pictures and reporting success.
+  const empty = { categories: [], brands: [], products: [] };
+  assert.deepEqual(mediaKeyFormat(empty), { inspected: 0, namespaced: [] });
+  const refusal = mediaFormatRefusal(empty);
+  assert.match(refusal, /NO media key at all/);
+
+  // And the same for a catalog that HAS content but declares no art for any of it — the shape a dropped
+  // media field actually produces, which an `empty products` check would wave through.
+  const artless = {
+    categories: [{ path: 'tenis', handle: 'tenis' }],
+    brands: [],
+    products: [{ handle: 'p', skus: [{}] }],
+  };
+  assert.match(mediaFormatRefusal(artless), /NO media key at all/);
+});
+
+test('hasNamespace answers the one question the catalog format asks', () => {
+  assert.equal(hasNamespace('p-cover.jpg'), false);
+  assert.equal(hasNamespace('category-tenis-icon.png'), false);
+  assert.equal(hasNamespace('demo/p-cover.jpg'), true);
+  // The mirror it is a copy of: packages/seed-dataset/src/keys.ts. A slug never contains a slash, so a
+  // slash in a catalog key can only be a namespace.
+  assert.equal(hasNamespace('reference/p-cover.jpg'), true);
 });
 
 // ── the category order ─────────────────────────────────────────────────────────────────────────────────
@@ -221,14 +323,14 @@ test('categories come out parents-first — an ltree child written first is a ch
 
 test('mediaKeysOf collects product and SKU media, and uploads a shared photo once', () => {
   const keys = mediaKeysOf({
-    media: [{ provider_key: 'demo/p-cover.jpg' }, { provider_key: 'demo/p-gallery-2.jpg' }],
+    media: [{ provider_key: 'p-cover.jpg' }, { provider_key: 'p-gallery-2.jpg' }],
     skus: [
-      { media: [{ provider_key: 'demo/p-color-preto-1.jpg' }] },
-      { media: [{ provider_key: 'demo/p-color-preto-1.jpg' }] }, // the same file on two SKUs
+      { media: [{ provider_key: 'p-color-preto-1.jpg' }] },
+      { media: [{ provider_key: 'p-color-preto-1.jpg' }] }, // the same file on two SKUs
       {}, // a SKU with no photo of its own — 4171 of them in the dataset
     ],
   });
-  assert.deepEqual(keys, ['demo/p-cover.jpg', 'demo/p-gallery-2.jpg', 'demo/p-color-preto-1.jpg']);
+  assert.deepEqual(keys, ['p-cover.jpg', 'p-gallery-2.jpg', 'p-color-preto-1.jpg']);
 });
 
 // ── whose product is it ────────────────────────────────────────────────────────────────────────────────

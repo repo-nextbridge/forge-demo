@@ -75,8 +75,10 @@ export async function seedVitrine(port) {
   if (!store) fail(`the store "${data.store}" does not exist — it is created by bin/seed.mjs's stores().`);
   log(`vitrine — store ${store.handle} (${store.id}); window from ${windowPath}`);
 
-  const resolve = (key) =>
-    port.resolveMedia(key, { namespace: pointer.id, manifest, artDir, photoDir: artDir });
+  // ★ NO NAMESPACE. Since pk18 the dataset's media keys are namespace-free (the platform stopped writing
+  // `demo/` into all 52 669 of them — packages/seed-dataset/src/keys.ts), and the banner names below are
+  // composed the same way the catalog would spell them: `banner-<name>.jpg`, no prefix.
+  const resolve = (key) => port.resolveMedia(key, { manifest, artDir, photoDir: artDir });
 
   await installApps(port);
   const assets = await placeBanners(port, declared, resolve);
@@ -114,6 +116,23 @@ async function installApps({ command, read, rows, log }) {
 
 // ── 2. the art ─────────────────────────────────────────────────────────────────────────────────────────
 /**
+ * The two CATALOG keys a banner name spells — the desktop frame and the narrow one.
+ *
+ * ★ IT IS A FUNCTION, AND IT IS EXPORTED, BECAUSE IT IS THE ONE PLACE THIS FILE SPEAKS THE CATALOG'S KEY
+ * VOCABULARY. It used to write `${data.dataset}/banner-<name>.jpg` inline, twice — the dataset's namespace
+ * glued on by hand, in a file that has nothing to do with namespaces. pk18 took the namespace out of the
+ * catalog (`packages/seed-dataset/src/keys.ts`) and those two template strings were the only thing in this
+ * repository outside `resolveMediaFile` that had to change with it — and nothing tested them, so getting it
+ * wrong meant a green suite and a seed that refuses all seven banners on the box. Now it is one function and
+ * `seed/vitrine.test.mjs` drives it through the resolver against a manifest.
+ *
+ * The `-M` may legitimately not exist: see the caller and `resolveMediaFile`'s S4 note.
+ */
+export function bannerKeys(name) {
+  return { desktop: `banner-${name}.jpg`, mobile: `banner-${name}-M.jpg` };
+}
+
+/**
  * The library assets the window's banners reference, by the dataset's own NAME for each.
  *
  * A banner block's media row is an asset REF (`type: 'id'`) — the kernel resolves it to a url at read time
@@ -140,7 +159,8 @@ async function placeBanners(port, declared, resolve) {
   const wanted = new Map(); // name -> { desktop: <file>, mobile?: <file> }
   for (const name of names) {
     if (wanted.has(name)) continue;
-    const desktop = resolve(`${data.dataset}/banner-${name}.jpg`);
+    const key = bannerKeys(name);
+    const desktop = resolve(key.desktop);
     if (!desktop) {
       fail(
         `the window references a banner named "${name}", which the dataset's photo manifest does not place.\n` +
@@ -148,8 +168,10 @@ async function placeBanners(port, declared, resolve) {
       );
     }
     // Absent is the block's own contract, not an error: a blank `asset_id_mobile` means the desktop art is
-    // used at narrow widths. Three of this dataset's seven banners ship no `-M`.
-    wanted.set(name, { desktop, mobile: resolve(`${data.dataset}/banner-${name}-M.jpg`) });
+    // used at narrow widths. FOUR of this dataset's seven banners ship no `-M` (`sportswear`, `bota`,
+    // `shelf-aventura`, `shelf-aventura-kids` — counted in the photo manifest, 2026-09-06; the number said
+    // three here and in two other comments, and it was never three).
+    wanted.set(name, { desktop, mobile: resolve(key.mobile) });
   }
 
   const byFilename = (list) => new Map(list.filter((a) => a.filename).map((a) => [a.filename, a]));
