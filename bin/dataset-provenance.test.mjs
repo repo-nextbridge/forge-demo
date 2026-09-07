@@ -51,7 +51,13 @@ function scratchDir() {
 }
 
 /** The two catalogue hashes as they were measured on the night of the defect. The byte counts are the real
- *  ones' shape at a size a test can write (41 552 643 against 41 549 350 — a 3 293-byte difference). */
+ *  ones' shape at a size a test can write (41 552 643 against 41 549 350 — a 3 293-byte difference).
+ *
+ *  ⚠️ THESE ARE SYNTHETIC FIXTURE VALUES AND ARE MEANT TO BE STALE. They are frozen at that night's pair on
+ *  purpose — this file writes its own datasets and grades the refusal, so it never reads this box's real
+ *  stamp and must never be "corrected" to it. The demo's actual `catalog.version` moved on (`pk18/p1`) and
+ *  lives in `forge.lock` → `dataset.catalog.version`; `README.md`'s example prints the same frozen pair for
+ *  the same reason. Two places showing `81bd9fb7658719db` are one story, not a disagreement. */
 const BAKED = { catalog: '81bd9fb7658719db', bytes: 4123 };
 const MOUNTED = { catalog: 'c51b5e4b49324fa9', bytes: 4118 };
 const PHOTOS = '9aa8af0d782b82ec';

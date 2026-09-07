@@ -651,6 +651,14 @@ is.)
 | `bin/build-local.sh` | copies the dataset's own content stamp (`forge-seed-dataset.json`, written by `pnpm pack:dataset`) into `forge.lock` → `dataset` as it bakes the images |
 | `bin/box-up.sh` step **0c** | compares that record against the pointer of the directory this box mounts, **before a single container starts**, and refuses **naming both stamps** |
 
+⚠️ **The block below is the TRANSCRIPT of the refusal that bought this check, on the night it was written —
+not this box's numbers.** Both stamps are that night's pair and neither has been current since; `pk18/p1`
+alone moved the catalogue. It is kept verbatim because what it shows is the *shape* of the refusal (two
+stamps, both named), and because the same pair is the fixture `bin/dataset-provenance.test.mjs` reproduces the
+night with. **For what this box carries today, read `forge.lock` → `dataset`, or ask: `node
+bin/dataset-provenance.mjs`.** A number restated in prose ages in silence — the same reason the node floor is
+pointed at here rather than spelled out.
+
 ```
      the IMAGES   v0.3.0-pre.cb2154ef7 · pk6/integra@cb2154ef7
                   were built with  demo · catalog 81bd9fb7658719db · photos 9aa8af0d782b82ec
