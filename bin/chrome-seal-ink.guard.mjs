@@ -2,11 +2,19 @@
 //
 //   node --test bin/chrome-seal-ink.guard.mjs        (or: bash bin/test.sh)
 //
-// ── WHAT THIS GUARD PROVES, SO THE NEXT PERSON KNOWS WHAT BROKE WHEN IT BREAKS ────────────────────────────
+// ── WHAT THIS GUARD PROVES, SO THE NEXT PERSON KNOWS WHAT BROKE WHEN IT BREAKS ─────────────────────────────
 //
-// `seed/chrome.json` gives the two shoe shops a padlock in the RIGHT area of the checkout footer
-// (`checkout_footer.end_image`). The art is a stroke on a TRANSPARENT ground — it carries its own ink and
-// re-tints itself with nothing. The footer's ground and the footer's ink, however, are the STORE'S THEME:
+// `seed/chrome.json` gives the two shoe shops a SEAL in the RIGHT area of the checkout footer
+// (`checkout_footer.end_image`). Since pk22/D4 that seal is a LOCKUP — the padlock AND the words
+// «Compra Segura» in one piece of art — and the reason is the app's contract, not taste: the picture
+// REPLACES the word on screen (`extensions/chrome/logic.ts:53-61` returns `{kind:'image', url, alt: text}`
+// as soon as the image resolved, and `footer-block.tsx:38-43` draws `<img alt=…>`), so a lone padlock meant
+// the shopper saw no word at all. The owner chose that shape out of three on 07/09: «b está bom».
+// `end_text` stays «Compra Segura» and is now the picture's accessible name — the ONE place the phrase is
+// still spelled out, and `seed/chrome.test.mjs`'s dictation table is what pins the spelling.
+//
+// The art is a stroke and letters on a TRANSPARENT ground — it carries its own ink and re-tints itself with
+// nothing. The footer's ground and the footer's ink, however, are the STORE'S THEME:
 //
 //     extensions/chrome/chrome.module.css:90-99   background: var(--color-chrome-canvas, var(--color-canvas))
 //                                                 color:      var(--color-chrome-muted, var(--color-muted))
@@ -18,20 +26,54 @@
 //     outlet   themes/outlet    #17181a  rgb(23,24,26)     #e4e6ea  rgb(228,230,234)
 //
 // ⇒ THE FAILURE THIS EXISTS TO CATCH IS NOT AN EXCEPTION AND NOT A BLANK SCREEN. Hand the outlet the file cut
-// for the white footer and the padlock is rgb(75,77,82) on rgb(23,24,26): a dark line on a dark ground, still
-// there, still 200 OK, invisible to a shopper and to every other test in this repository. The two files are
-// four kilobytes apart and one character apart in `chrome.json`.
+// for the white footer and the lockup is rgb(75,77,82) on rgb(23,24,26): dark art on a dark ground, still
+// there, still 200 OK, invisible to a shopper and to every other test in this repository. The two files sit
+// in the same directory and their names differ in one word.
 //
-// ── WHY IT DECODES THE PNG INSTEAD OF TRUSTING THE FILENAME ───────────────────────────────────────────────
+// ── WHY IT DECODES THE PNG INSTEAD OF TRUSTING THE FILENAME ────────────────────────────────────────────────
 //
-// `compra-segura-escuro.png` is a NAME. A guard that graded names would grade the label on the tin and stay
-// green through a re-cut that changed the bytes, which is the likelier accident of the two: the art is
-// rasterised from an SVG whose `stroke` is a literal colour, and re-exporting it with the other stroke is one
-// undo away. So this file inflates the IDAT, un-filters the scanlines and TALLIES THE OPAQUE PIXELS. The ink
-// is the colour more than 90% of them carry (the rest is the anti-aliased fringe of a 1.9px stroke rasterised
-// at 8×: 7 614 opaque pixels, 7 529 of them exactly on the nominal colour, measured 2026-09-07).
+// `compra-segura-lockup-escuro.png` is a NAME. A guard that graded names would grade the label on the tin and
+// stay green through a re-cut that changed the bytes, which is the likelier accident of the two: this art is
+// rendered inside each shop's own checkout page, and rendering it in the wrong shop is one tab away. So this
+// file inflates the IDAT, un-filters the scanlines and TALLIES THE OPAQUE PIXELS.
 //
-// ── AND THE INK IT IS COMPARED AGAINST IS DERIVED, NEVER TYPED TWICE ──────────────────────────────────────
+// ⚠ AND THAT RULE HAS ALREADY PAID FOR ITSELF ONCE, on the very hand-off it was written for. The two lockups
+// arrived FLATTENED ONTO WHITE — PNG colour type 2, no alpha channel at all — and this guard went red naming
+// the forge and «its commonest opaque colour is only 86.6% of 177 408 opaque pixels». On the outlet that file
+// would have been near-white art (rgb(228,230,234)) inside its own opaque white slab, on a #17181a footer:
+// unreadable twice over. Every non-white pixel of both files was exactly `a·ink + (1-a)·white` (worst
+// reconstruction error 1/255 over the 23 822 and the 24 419 non-white pixels of the two, measured), so the
+// transparent original was recovered by solving for `a` — the ink was never touched, the canvas was never
+// resized. That is why both files now carry EXACTLY ONE opaque colour where the old padlocks carried eight
+// and four: the alpha holds the anti-aliasing that the flatten had baked into the colour.
+//
+// ── AND WHY IT ALSO COUNTS THE ISLANDS OF INK ──────────────────────────────────────────────────────────────
+//
+// The ink rules above are blind to WHAT the art draws: the lone padlock pk21/D3 shipped passes every one of
+// them, and putting it back would silently undo pk22/D4 and leave the funnel wordless again. So the shape is
+// graded too, by two numbers that separate a lockup from a badge without pretending to read:
+//
+//     art                                 canvas      aspect   4-connected islands of opaque ink
+//     compra-segura-escuro.png (pk21)     192x192     1.000     2   (the outline and the keyhole)
+//     compra-segura-lockup-*.png (pk22)   1008x176    5.727    14   (those 2 + the twelve letters)
+//
+// ⚠ WHAT IT DOES NOT PROVE, said plainly rather than implied: it cannot READ. Fourteen islands and a 5.7:1
+// canvas say «there is a word beside the stroke»; they do not say the word is «Compra Segura», and art
+// spelling something else entirely would pass. The phrase itself is pinned as text, in the `end_text` that is
+// this picture's `alt` — `seed/chrome.test.mjs`'s `DICTATED` table, verbatim.
+//
+// ⚠ AND ONE THING NEITHER THIS FILE NOR THIS REPOSITORY CAN FIX, left written down rather than swallowed.
+// `.areaImage` clamps the HEIGHT and discards the file's own scale (`max-height: 2.5em; width: auto`,
+// chrome.module.css:111-115), which is right for a badge and questionable for art that CONTAINS TYPE: the
+// seal is drawn 2.5× the footer's own font-size tall whatever it was rendered at, and the capitals inside it
+// occupy 83 of the canvas's 176 rows (measured), so they land at 1.18em — against the ~0.7em a sans face's
+// capitals take at its own size, which is a rule of thumb and not a measurement of Urbanist. ⇒ the words in
+// the seal read something like 1.7× the words beside them, in a browser nobody here can open. That rule
+// lives in the PRODUCT repository; this one only supplies the art and may not reach across — so it is reported
+// and not worked around. Padding the canvas to cheat the clamp would be exactly the re-cut this pass was
+// told not to make.
+//
+// ── AND THE INK IT IS COMPARED AGAINST IS DERIVED, NEVER TYPED TWICE ───────────────────────────────────────
 //
 // The store's theme comes from `seed/catalog.json` (`theme_key`), and the ink comes out of that theme's own
 // `themes/<key>/tokens.css`. One exception, and it is the same one `seed/chrome.test.mjs` already carries for
@@ -40,7 +82,7 @@
 // `--ink-700: #4b4d52` at :38). Nothing crosses the two repos, so that one value is transcribed below with
 // its `file:line` — and it going red because the reference theme moved IS the report we want.
 //
-// ── THE VÁCUO ────────────────────────────────────────────────────────────────────────────────────────────
+// ── THE VÁCUO ──────────────────────────────────────────────────────────────────────────────────────────────
 //
 // Every store of the box is decided here, by name: `balcao` has no chrome at all (`null` in chrome.json) and
 // is skipped with its `null` asserted; `cafe` wears chrome but no seal and is named in a list this file
@@ -111,7 +153,8 @@ function footerInk(handle) {
   };
 }
 
-/** The colour of the opaque pixels of an 8-bit PNG, and how large a share of them carry it.
+/** The colour of the opaque pixels of an 8-bit PNG, how large a share of them carry it, the canvas, and how
+ *  many separate ISLANDS of opaque ink the art is made of.
  *  No decoder, no dependency: this repository has neither (`seed/media.test.mjs:149` reads IHDR the same way,
  *  and stops there because it only ever needed the size). */
 export function inkOf(path) {
@@ -168,6 +211,7 @@ export function inkOf(path) {
   // NOT the ink — averaging it in would answer a colour that is in no pixel of the file.
   const alphaAt = head.color === 6 || head.color === 4 ? channels - 1 : null;
   const tally = new Map();
+  const solid = new Uint8Array(head.width * head.height);
   let opaque = 0;
   for (let i = 0; i < head.width * head.height; i++) {
     const o = i * channels;
@@ -175,11 +219,60 @@ export function inkOf(path) {
     const rgb = head.color === 0 || head.color === 4 ? [out[o], out[o], out[o]] : [out[o], out[o + 1], out[o + 2]];
     const key = rgb.join(',');
     tally.set(key, (tally.get(key) ?? 0) + 1);
+    solid[i] = 1;
     opaque += 1;
   }
   assert.ok(opaque > 0, `${path} has no fully opaque pixel — there is no ink to measure`);
   const [top, count] = [...tally].sort((x, y) => y[1] - x[1])[0];
-  return { rgb: top.split(',').map(Number), share: count / opaque, opaque };
+  return {
+    rgb: top.split(',').map(Number),
+    share: count / opaque,
+    opaque,
+    width: head.width,
+    height: head.height,
+    islands: islandsOf(solid, head.width, head.height),
+  };
+}
+
+/** How many separate 4-connected runs of opaque ink the mask holds — a flood fill over an explicit stack,
+ *  whose depth is the size of an island and not something this file gets to bound.
+ *
+ *  ★ 4-CONNECTED, AND OVER THE OPAQUE PIXELS ONLY — both halves are the same decision. Letters fuse where
+ *  their edges brush, and the edge of a glyph is its anti-aliased fringe; fuse two and the count sags with
+ *  the kerning of whatever face the shop happens to wear. And the two shops DO wear different faces:
+ *  `themes/outlet/tokens.css:103` sets `--font-sans` to Figtree where the reference theme sets Urbanist, the
+ *  art is rendered inside each shop's own checkout page, and no glyph of one file holds the same pixel count
+ *  as any glyph of the other. MEASURED, over the four combinations: 4-connected opaque counts 14 and 14,
+ *  8-connected opaque counts 14 and 14, 4-connected over the whole fringe counts 14 and 14 — and 8-connected
+ *  over the whole fringe counts 13 and 14, i.e. the forge's lockup ALREADY loses a letter to its neighbour
+ *  the moment both allowances are given at once. The pair chosen is the one furthest from that edge. */
+function islandsOf(solid, width, height) {
+  const seen = new Uint8Array(solid.length);
+  const stack = [];
+  let islands = 0;
+  for (let start = 0; start < solid.length; start++) {
+    if (!solid[start] || seen[start]) continue;
+    islands += 1;
+    seen[start] = 1;
+    stack.push(start);
+    while (stack.length > 0) {
+      const i = stack.pop();
+      const x = i % width;
+      const y = (i / width) | 0;
+      const neighbours = [];
+      if (x > 0) neighbours.push(i - 1);
+      if (x < width - 1) neighbours.push(i + 1);
+      if (y > 0) neighbours.push(i - width);
+      if (y < height - 1) neighbours.push(i + width);
+      for (const n of neighbours) {
+        if (solid[n] && !seen[n]) {
+          seen[n] = 1;
+          stack.push(n);
+        }
+      }
+    }
+  }
+  return islands;
 }
 
 /** Every `<area>_image` the declaration gives a store, as `{component, area, file}`. */
@@ -213,7 +306,7 @@ test('★★ every store of the box is DECIDED here — dressed with a seal, dre
     ['forge', 'outlet'],
     'the two shoe shops are the ones the owner asked to fill in on 07/09 ("compra segura precisa usar o do ' +
       'app, precisa preencher pois quero mostrar isso na demo"). A shop leaving this list has lost its ' +
-      'padlock, and every ink rule below would then pass by iterating over one store less.',
+      'seal, and every ink and shape rule below would then pass by iterating over one store less.',
   );
   assert.deepEqual(
     withoutSeal.sort(),
@@ -225,7 +318,7 @@ test('★★ every store of the box is DECIDED here — dressed with a seal, dre
   assert.deepEqual(noChrome, ['balcao'], 'the counter has no chrome at all — see `_balcao_why`');
 });
 
-test('★★★ the padlock is drawn in the ink of the footer it lands in — measured off the PNG, not the name', () => {
+test('★★★ the seal is drawn in the ink of the footer it lands in — measured off the PNG, not the name', () => {
   // ⇒ SABOTAGE: swap the two files in `seed/chrome.json` and this names the store, the file, the ink the
   // bytes carry and the ink the theme draws in.
   let graded = 0;
@@ -244,23 +337,65 @@ test('★★★ the padlock is drawn in the ink of the footer it lands in — me
       assert.ok(
         got.share > 0.9,
         `store "${handle}": seed/photos/${seal.file} has no single ink — its commonest opaque colour is only ` +
-          `${(got.share * 100).toFixed(1)}% of ${got.opaque} opaque pixels. This art is a stroke on a ` +
-          'transparent ground; a photograph or a filled badge cannot be graded this way and must not be ' +
-          'dropped in here without deciding what "its ink" means.',
+          `${(got.share * 100).toFixed(1)}% of ${got.opaque} opaque pixels. This art is a stroke and ` +
+          'letters on a transparent ground, so every opaque pixel of it carries one colour (measured: 100.0% ' +
+          'of 18 792 and of 19 891). A photograph, a filled badge, or art FLATTENED ONTO A GROUND cannot be ' +
+          'graded this way — the last is not hypothetical, it is how these two files were first handed over ' +
+          '— and none may be dropped in here without deciding what "its ink" means.',
       );
       assert.deepEqual(
         got.rgb,
         want.rgb,
         `store "${handle}", ${seal.component}.${seal.area}_image = "${seal.file}": the art is drawn in ` +
           `rgb(${got.rgb.join(',')}) and that footer's ink is rgb(${want.rgb.join(',')}) ` +
-          `(${want.source}). The padlock has a transparent ground and re-tints itself with NOTHING, so this ` +
-          'is a line the shopper cannot see against the footer it sits on — and no exception, no 4xx and no ' +
+          `(${want.source}). The lockup has a transparent ground and re-tints itself with NOTHING, so this ` +
+          'is art the shopper cannot see against the footer it sits on — and no exception, no 4xx and no ' +
           'other test in this repository would say so. Each shop takes the file cut for ITS ink.',
       );
       graded += 1;
     }
   }
-  assert.equal(graded, 2, 'two shops, one padlock each — a smaller number is this rule grading less than it claims');
+  assert.equal(graded, 2, 'two shops, one seal each — a smaller number is this rule grading less than it claims');
+});
+
+test('★★★ the seal is a LOCKUP — a word beside the stroke, not the lone padlock pk21 shipped', () => {
+  // ⇒ SABOTAGE: put `compra-segura-escuro.png` back and this goes red twice — 2 islands where 8 are the
+  //   floor, on a 1.000 canvas where 3.0 is the floor. That file passed every ink rule above, which is
+  //   exactly why this rule had to be written: the ink rules cannot see WHAT the art draws.
+  //
+  // ⚠️ THE TWO FLOORS ARE FLOORS AND NOT THE MEASUREMENTS, deliberately. The art carries fourteen islands on
+  // a 5.727 canvas today; pinning 14 would go red the first time a designer kerns a letter into its
+  // neighbour or the phrase is translated, which is a re-cut and not a regression. 8 and 3.0 are far below
+  // the lockup and far above anything a lone glyph or a badge can reach — «Compra Segura» would have to lose
+  // five of its twelve letters to fall through.
+  let graded = 0;
+  for (const handle of Object.keys(CHROME.stores)) {
+    if (CHROME.stores[handle] === null) {
+      assert.equal(CHROME.stores[handle], null, `"${handle}" is skipped here and chrome.json must say null`);
+      continue;
+    }
+    for (const seal of sealsOf(handle)) {
+      const art = inkOf(join(ROOT, 'seed/photos', seal.file));
+      assert.ok(
+        art.islands >= 8,
+        `store "${handle}", ${seal.component}.${seal.area}_image = "${seal.file}": the art is ` +
+          `${art.islands} separate island(s) of opaque ink. A lockup is a stroke PLUS twelve letters and ` +
+          'counts fourteen; the lone padlock this replaced counts two. The picture REPLACES the word on ' +
+          'screen (extensions/chrome/logic.ts:53-61), so wordless art is a funnel whose footer promises ' +
+          'nothing in writing — and «Compra Segura» survives only as the `alt` nobody looks at.',
+      );
+      assert.ok(
+        art.width / art.height >= 3,
+        `store "${handle}", ${seal.component}.${seal.area}_image = "${seal.file}": the canvas is ` +
+          `${art.width}x${art.height}, i.e. ${(art.width / art.height).toFixed(3)}:1. The lockup is 5.727:1 ` +
+          'and a badge is square — and the shape is not cosmetic here, because `.areaImage` clamps the ' +
+          'HEIGHT (`max-height: 2.5em`, chrome.module.css:111-115) and lets the width follow, so a square ' +
+          'file is a square seal wherever it lands.',
+      );
+      graded += 1;
+    }
+  }
+  assert.equal(graded, 2, 'two shops, one lockup each — a smaller number is this rule grading less than it claims');
 });
 
 test('★ the two inks are DIFFERENT, which is the only reason there are two files', () => {
