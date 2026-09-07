@@ -18,11 +18,16 @@
 //
 // Three measurements, all of them from real births on the promoted bench, say this one was always red:
 //
-//   1 · RED BY CONSTRUCTION. The plan is not made of pages: ~420 pages plus ~20 400 IMAGE derivatives found in
-//       each HTML's `srcset` — `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cuts it
-//       is the VITRINE's own ceiling, `DEFAULT_MAX_DURATION_MS = 15 * 60_000`
-//       (`apps/storefront/src/lib/warm/warm.ts:51`, in the product), which this script does not override — the
-//       `--deadline-ms` below is a different number, the wait for an answer. EVERY run ends this way.
+//   1 · RED BY CONSTRUCTION — ★ AND THIS ONE IS FIXED (pk21/d2, see §3b). The plan is not made of pages:
+//       ~420 pages plus ~20 400 IMAGE derivatives found in each HTML's `srcset` — `planned=20822`,
+//       `warmed=4964`, `15865 urls were never visited`. What cut it is the VITRINE's own DEFAULT,
+//       `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, in the product).
+//       ⚠️ THIS FILE USED TO SAY THAT DEFAULT COULD NOT BE OVERRIDDEN. It was wrong, and one look at the
+//       route settles it: `/api/warm?max_duration_ms=` overrides it
+//       (`apps/storefront/src/app/api/warm/route.ts:183`). Since pk21 a run that is CUT is re-run under a
+//       ceiling DERIVED from the plan it just measured (Renan, 07/09: *"deriva do plano"*), so the step is
+//       no longer red by construction. The `--deadline-ms` below is still a different number: the wait for
+//       an answer, and it derives from the ceiling rather than being a constant.
 //   2 · AND IT INVENTS RED. `failed=198` and `failed=189` on two births — and the very same brands and
 //       collections answer 200 on the idle box, with this same step reporting `failed=0`. Those failures are
 //       the load the warmer imposes on a box that is still settling; it is the last step of the birth and it
@@ -121,8 +126,14 @@ const WARM = BOX.warm ?? {};
 //   a run that fails a number nobody chose is an invented promise. `null` here means "assert nothing about
 //   latency", and the run SAYS that rather than printing a green that reads like a measurement.
 const thresholdMs = argOf('--threshold-ms') !== undefined ? intArg('--threshold-ms', 0) : (WARM.threshold_ms ?? null);
-const deadlineMs = intArg('--deadline-ms', 20 * 60_000);
+/** How long THIS SCRIPT waits for an answer — a different number from the run's own ceiling, which is
+ *  derived per run below. Absent ⇒ derived too; given ⇒ it wins for every run, which is how the tests pin it. */
+const deadlineArg = argOf('--deadline-ms') !== undefined ? intArg('--deadline-ms', 0) : null;
 const pollMs = intArg('--poll-ms', 3_000);
+/** ⚠️ THE SABOTAGE SWITCH, MADE PERMANENT. With it the step reports the cut and derives NOTHING — which is
+ *  exactly the pre-pk21 behaviour, and is how `bin/warm-box.test.mjs` proves the derivation is what repairs
+ *  the box rather than something else that changed at the same time. Nothing in the birth passes it. */
+const noDerive = process.argv.includes('--no-derive');
 
 const out = [];
 const say = (line = '') => out.push(line);
@@ -191,22 +202,56 @@ if (!secret) {
 say(`WARMING ${tenant} at ${api}`);
 say();
 
-// ── 1 · the stores this box really has ───────────────────────────────────────────────────────────────────
-let rows;
-try {
-  const res = await fetch(`${api}/v1/read/internal/stores`, {
-    headers: { authorization: `Bearer ${token}`, 'x-forge-tenant': tenant },
-  });
+// ── 1 · WHOSE CREDENTIAL IS THIS, AND THEN WHICH STORES ──────────────────────────────────────────────────
+//
+// ★★★ THE HOLE THIS CLOSES (§B5 of the pk18 notebook; found by `pk19/portas` on 2026-09-07 and left here).
+// Until pk21 this step sent `x-forge-tenant: <tenant>` on the read below and asked nothing else. THAT HEADER
+// IS A NO-OP ON THIS FACE: `read.internal.stores` resolves the tenant from the CREDENTIAL
+// (`docs/reference/read.internal.stores.md`: «The tenant is resolved from the CALLER's identity»). So
+// `--tenant` was never a filter — it was a LABEL printed over whatever list the token owned, and with the
+// wrong token in the shell (`source env-source.sh` exports the FIRST tenant's as the unsuffixed one) this
+// step read another tenant's stores, found none of the ones `seed/box.json` declares, and EXITED 3:
+// «the birth did not build it». It accused an innocent tenant and sent the operator to re-provision it —
+// which is literally the damage written up at `bin/seed-box.mjs:346`.
+//
+// ★ THE FIX IS AN ASSERTION, NOT AN ORDERING. `whoami` on this same face answers the tenant the CREDENTIAL
+// belongs to, and a token cannot be answered with anybody else's identity — the response IS the proof, so it
+// holds whatever order the birth runs its steps in. The shape is `bin/seed-box.mjs:358`'s and
+// `bin/prove-doors.mjs`'s; this is the third copy, and the last of the three that needed it.
+const internalRead = async (name) => {
+  let res;
+  try {
+    // ⛔ NO `x-forge-tenant`. The tenant travelled in the token and question 1 is what proved which one; a
+    //    header suggesting the question carried it is how the next reader concludes the list was filtered.
+    res = await fetch(`${api}/v1/read/internal/${name}`, { headers: { authorization: `Bearer ${token}` } });
+  } catch (error) {
+    wrongQuestion(`read.internal.${name} could not be reached at ${api}: ${error.message}`);
+  }
   if (!res.ok) {
     wrongQuestion(
-      `read.internal.stores answered ${res.status} for ${tenant} — this step cannot know which stores to warm. ` +
-        'The token must be that tenant\'s own and carry `tenant.settings.read`.',
+      `read.internal.${name} answered ${res.status} for the credential this run was given — this step cannot ` +
+        `know whose stores it would be warming. The token must be ${tenant}'s own and carry \`tenant.settings.read\`.`,
     );
   }
-  rows = await res.json();
-} catch (error) {
-  wrongQuestion(`read.internal.stores could not be reached at ${api}: ${error.message}`);
+  return res.json();
+};
+
+const who = await internalRead('whoami');
+const credentialTenant = who?.tenant_id ?? null;
+if (credentialTenant !== tenant) {
+  wrongQuestion(
+    `THIS CREDENTIAL BELONGS TO "${credentialTenant ?? '(unknown)'}", NOT "${tenant}". Nothing was warmed. ` +
+      'The internal read face resolves the tenant from the CREDENTIAL and IGNORES `x-forge-tenant`, so ' +
+      `continuing would read "${credentialTenant ?? 'another tenant'}"'s stores, find none of the stores ` +
+      `seed/box.json declares for "${tenant}", and report that the birth never built them — an innocent ` +
+      'tenant accused, which is what this step did until 2026-09-07. Each tenant has its own token: ' +
+      'forgeco → forge-seed-token ($FORGE_SEED_TOKEN), forgecafe → forge-seed-token-forgecafe ' +
+      '($FORGE_SEED_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the unsuffixed ' +
+      'one, which is the shell this defect was found in.',
+  );
 }
+
+const rows = await internalRead('stores');
 if (!Array.isArray(rows)) wrongQuestion(`read.internal.stores answered ${typeof rows}, not an array of stores.`);
 
 // ── 2 · the declaration, and the three ways the two lists can disagree ───────────────────────────────────
@@ -310,75 +355,202 @@ if (rootStore && toWarm.some((s) => s.id === rootStore)) {
 }
 
 // ── 3 · the run ──────────────────────────────────────────────────────────────────────────────────────────
-const params = new URLSearchParams();
-for (const s of toWarm) params.append('store', s.id);
-params.set('depth', WARM.depth ?? 'products');
-if (WARM.products !== undefined) params.set('products', String(WARM.products));
-// ★ The endpoint is TOLD the ceiling as well as this script grading it, so the run's own `reasons` name the
-//   breach in the box's words rather than only in ours.
-if (thresholdMs !== null) params.set('threshold_ms', String(thresholdMs));
-
 const headers = { 'x-revalidate-secret': secret };
-let started;
-try {
-  started = await fetch(`${api}/api/warm?${params}`, { method: 'POST', headers });
-} catch (error) {
-  wrongQuestion(`the vitrine's warmer could not be reached at ${api}/api/warm: ${error.message}`);
-}
 /** The run cannot even begin. Still the whole truth on the screen — and still not an exit code. */
 const stop = (label, detail) => {
   cold(label, detail);
   finish();
 };
 
-if (started.status === 404) {
-  // ⛔ THE ONE FAILURE AN OPERATOR CANNOT DIAGNOSE FROM THE STATUS ALONE, so it names the cause. This box
-  // pins its fronts BY DIGEST; an image baked before the warmer existed simply has no such route, and the
-  // pin is where that is written down. Measured on the bench of 04/09: `GET /api/warm` → 404 while
-  // `/api/revalidate` → 405, on `forge-demo-storefront@sha256:561f9c3c…`.
-  stop(
-    'the warmer',
-    `${api}/api/warm → 404: the vitrine of this box publishes no warmer, so nothing can warm it. Its image ` +
-      'predates the route — ' +
-      `forge.lock pins ${LOCK?.forgeVersion ?? 'this release'}` +
-      `${LOCK?.provenance?.built_from ? ` (built from ${LOCK.provenance.built_from})` : ''}. ` +
-      'Rebake the fronts with `bash bin/build-local.sh <forge checkout>`, which rewrites forge.lock.',
-  );
-}
-if (started.status === 401) {
-  stop(
-    'the warmer',
-    `${api}/api/warm → 401: this host's FORGE_REVALIDATE_SECRET is not the one the storefront container holds. ` +
-      'The variable is read once at boot, so a value written after `dc up` is a value the running process does ' +
-      'not have — recreate the front, or re-run `bash bin/box-up.sh`.',
-  );
-}
-if (!started.ok && started.status !== 202) {
-  const body = await started.text().catch(() => '');
-  stop('the warmer', `${api}/api/warm → ${started.status}: ${body.slice(0, 300)}`);
-}
-const startedBody = await started.json().catch(() => ({}));
-if (startedBody.started === false) {
-  // Not an error: single-flight, and the caller gets the flying run. It is said out loud because the numbers
-  // below then belong to a run THIS script did not start, over a plan it did not choose.
-  noted('the run', `one was already flying (${startedBody.run?.id ?? '?'}) — the numbers below are ITS, not this call's`);
-}
+/**
+ * One warm run, from POST to settled — under `maxDurationMs`, or under the VITRINE's own default when that
+ * is `null`. Returns the last snapshot the poll saw; a run still `running` when `waitMs` expires comes back
+ * as it is, because a birth may not hang on a poll.
+ */
+const warmRun = async (maxDurationMs, waitMs) => {
+  const params = new URLSearchParams();
+  for (const s of toWarm) params.append('store', s.id);
+  params.set('depth', WARM.depth ?? 'products');
+  if (WARM.products !== undefined) params.set('products', String(WARM.products));
+  // ★ The endpoint is TOLD the ceiling as well as this script grading it, so the run's own `reasons` name the
+  //   breach in the box's words rather than only in ours.
+  if (thresholdMs !== null) params.set('threshold_ms', String(thresholdMs));
+  if (maxDurationMs !== null) params.set('max_duration_ms', String(maxDurationMs));
 
-const runId = startedBody.run?.id;
-const until = Date.now() + deadlineMs;
-let run = startedBody.run ?? null;
-while (run && run.state === 'running') {
-  if (Date.now() >= until) break;
-  await new Promise((r) => setTimeout(r, pollMs));
-  let res;
+  let started;
   try {
-    res = await fetch(`${api}/api/warm`, { headers });
+    started = await fetch(`${api}/api/warm?${params}`, { method: 'POST', headers });
   } catch (error) {
-    wrongQuestion(`the warm run could not be polled: ${error.message}`);
+    wrongQuestion(`the vitrine's warmer could not be reached at ${api}/api/warm: ${error.message}`);
   }
-  if (!res.ok) wrongQuestion(`GET ${api}/api/warm → ${res.status} while polling run ${runId}.`);
-  const body = await res.json().catch(() => ({}));
-  run = body.run ?? run;
+
+  if (started.status === 404) {
+    // ⛔ THE ONE FAILURE AN OPERATOR CANNOT DIAGNOSE FROM THE STATUS ALONE, so it names the cause. This box
+    // pins its fronts BY DIGEST; an image baked before the warmer existed simply has no such route, and the
+    // pin is where that is written down. Measured on the bench of 04/09: `GET /api/warm` → 404 while
+    // `/api/revalidate` → 405, on `forge-demo-storefront@sha256:561f9c3c…`.
+    stop(
+      'the warmer',
+      `${api}/api/warm → 404: the vitrine of this box publishes no warmer, so nothing can warm it. Its image ` +
+        'predates the route — ' +
+        `forge.lock pins ${LOCK?.forgeVersion ?? 'this release'}` +
+        `${LOCK?.provenance?.built_from ? ` (built from ${LOCK.provenance.built_from})` : ''}. ` +
+        'Rebake the fronts with `bash bin/build-local.sh <forge checkout>`, which rewrites forge.lock.',
+    );
+  }
+  if (started.status === 401) {
+    stop(
+      'the warmer',
+      `${api}/api/warm → 401: this host's FORGE_REVALIDATE_SECRET is not the one the storefront container holds. ` +
+        'The variable is read once at boot, so a value written after `dc up` is a value the running process does ' +
+        'not have — recreate the front, or re-run `bash bin/box-up.sh`.',
+    );
+  }
+  if (!started.ok && started.status !== 202) {
+    const body = await started.text().catch(() => '');
+    stop('the warmer', `${api}/api/warm → ${started.status}: ${body.slice(0, 300)}`);
+  }
+  const startedBody = await started.json().catch(() => ({}));
+  if (startedBody.started === false) {
+    // Not an error: single-flight, and the caller gets the flying run. It is said out loud because the
+    // numbers below then belong to a run THIS script did not start, over a plan — and under a CEILING — it
+    // did not choose.
+    noted('the run', `one was already flying (${startedBody.run?.id ?? '?'}) — the numbers below are ITS, not this call's`);
+  }
+
+  const runId = startedBody.run?.id;
+  const until = Date.now() + waitMs;
+  let run = startedBody.run ?? null;
+  while (run && run.state === 'running') {
+    if (Date.now() >= until) break;
+    await new Promise((r) => setTimeout(r, pollMs));
+    let res;
+    try {
+      res = await fetch(`${api}/api/warm`, { headers });
+    } catch (error) {
+      wrongQuestion(`the warm run could not be polled: ${error.message}`);
+    }
+    if (!res.ok) wrongQuestion(`GET ${api}/api/warm → ${res.status} while polling run ${runId}.`);
+    const body = await res.json().catch(() => ({}));
+    run = body.run ?? run;
+  }
+  return run;
+};
+
+// ── ★★★ 3b · THE PRAZO DERIVES FROM THE PLAN ────────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED ON FOUR BIRTHS (three in the 05/09 notebook, again on 07/09). The plan of this box
+// is not a page count: ~420 pages plus the ~20 400 IMAGE derivatives those pages declare in their `srcset`.
+// `planned=20822 warmed=4964`, `15865 urls were never visited` (05/09, and the birth of 07/09 was cut the
+// same way), EVERY RUN — because the run was cut by a ceiling of 900 000 ms that has nothing to do with this
+// box's plan. ⚠️ The 07/09 note in the pack brief reads `planned=20738 · warmed=4964 · 7700 never visited`;
+// that triple does not add up (20738 − 4964 is ~15 800, not 7 700) and the bench could not be re-measured
+// from this slice, so the reconcilable pair above is the one cited here. ★ A STEP THAT IS ALWAYS RED IS A STEP
+// PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
+//
+// ⚠️ AND THIS FILE USED TO SAY THE BOX "CANNOT RAISE" THAT CEILING. That was FALSE, and checking it is what
+// this slice did first: `DEFAULT_MAX_DURATION_MS` (`apps/storefront/src/lib/warm/warm.ts:51`) is a DEFAULT,
+// and `/api/warm?max_duration_ms=` overrides it — `apps/storefront/src/app/api/warm/route.ts:183`. The
+// product had always exposed exactly what this box needed. What was missing was a number to send.
+//
+// ★★ AND THE NUMBER IS DERIVED, NEVER CHOSEN (Renan, 07/09: *"deriva do plano"*). A bigger constant is the
+// same trap one house further along: it fits today's catalogue and lies again the day the catalogue grows,
+// silently, in the direction of "never visited". So:
+//
+//     ceiling = (urls the run PLANNED + the urls its verify pass revisits) × (ms per url it MEASURED)
+//
+// Both factors come from the run that was cut — the plan it enumerated from the port, and the wall clock it
+// spent divided by the urls it actually warmed. Nothing here is a constant, which is why a plan 2× bigger
+// gets a ceiling 2× bigger with no edit anywhere.
+//
+// ── WHY THE FIRST RUN STILL USES THE PRODUCT'S DEFAULT, and it is not an oversight ───────────────────────
+// The plan CANNOT be known before the run: the pages come from the port's enumeration and the images come
+// from the BYTES those pages serve (`imageUrlsFrom` reads each `srcset`), so nothing outside the run can
+// count them. A box that guessed would be inventing the very number this slice removes. So the first run is
+// the OBSERVATION — it runs under the product's own default, which is not a promise but a first probe — and
+// the second run is this box correcting it with what the first one measured. On a box whose plan already
+// fits, the first run is not cut and there IS no second: the cost is paid only where the defect is.
+//
+// ⚠️ ONE derived re-run, not a loop. If the plan grew again under the bigger ceiling (a run cut inside the
+// PAGES pass never sees the images those pages would have declared, so its `planned` is a FLOOR), that is
+// said with both numbers rather than chased — a step that keeps re-running until it fits has no bound at all.
+//
+// 📌 WHAT THIS DOES **NOT** REPAIR, said plainly: the FALSE red (`failed=189`/`failed=198` on two births, and
+// the same urls answering 200 on the idle box minutes later — the load the warmer imposes on a box still
+// settling). Nothing here treats that. The only effect is incidental and is not claimed as a fix: the
+// derived re-run is a SECOND visit, made later, and the report printed is the LAST run's — so a url that
+// failed only because of the birth's tail has another chance to answer. A url that is really broken fails
+// twice.
+
+/** URLs a settled run never TRIED, across every pass of every store. Non-zero ⇔ a ceiling cut it. */
+const cutUrls = (report) =>
+  (report?.stores ?? []).reduce(
+    (n, s) => n + (s.pages?.skipped ?? 0) + (s.images?.skipped ?? 0) + (s.verify?.skipped ?? 0),
+    0,
+  );
+
+/**
+ * What the observation run measured, or `null` when it measured nothing to derive from.
+ *
+ * `plan` counts the verify pass because the ceiling does: `report.planned` is the FETCHING plan (pages +
+ * images) and the second visit revisits every page under the same deadline. Leaving it out would derive a
+ * ceiling that cuts the last pass of every run.
+ */
+const measure = (run) => {
+  const report = run?.report;
+  if (!report) return null;
+  const elapsed = Date.parse(run.finishedAt) - Date.parse(run.startedAt);
+  const verifyUrls = (report.stores ?? []).reduce((n, s) => n + (s.verify ? (s.pages?.planned ?? 0) : 0), 0);
+  const plan = (report.planned ?? 0) + verifyUrls;
+  const warmed = report.warmed ?? 0;
+  return {
+    skipped: cutUrls(report),
+    planned: report.planned ?? 0,
+    plan,
+    warmed,
+    elapsed,
+    // ⚠️ GUARDED, because both of these are real: a run cut before it warmed a single url (`warmed = 0`) and
+    //    a clock that did not move. Dividing there produces `Infinity`/`NaN`, and this step would then put
+    //    that in a query string and call it a derivation.
+    msPerUrl: warmed > 0 && Number.isFinite(elapsed) && elapsed > 0 ? elapsed / warmed : null,
+  };
+};
+
+const FIRST_WAIT_MS = 20 * 60_000;
+/** The poll always outlasts the ceiling: the ceiling bounds the FETCHING, and the enumeration is outside it.
+ *  The third is the ratio this file already carried (20 min of waiting for a 15-minute ceiling). */
+const waitFor = (ceilingMs) => deadlineArg ?? Math.ceil((ceilingMs * 4) / 3);
+
+let run = await warmRun(null, deadlineArg ?? FIRST_WAIT_MS);
+const observed = measure(run);
+
+if (observed && observed.skipped > 0) {
+  const cut =
+    `the run was CUT: ${observed.skipped} url(s) were never TRIED. It warmed ${observed.warmed} url(s) in ` +
+    `${observed.elapsed}ms` +
+    (observed.msPerUrl === null
+      ? ' and warmed no url under a clock that moved, so there is NO OBSERVED COST to derive a ceiling from'
+      : ` (${observed.msPerUrl.toFixed(1)} ms/url), and the plan is ${observed.plan} url(s) — ` +
+        `${Math.ceil(observed.plan * observed.msPerUrl)}ms at that cost`);
+  if (observed.msPerUrl === null) {
+    noted('the ceiling', `${cut}. Nothing was re-run; read the ✗/⚠ lines for why nothing answered.`);
+  } else if (noDerive) {
+    noted('the ceiling', `${cut}. \`--no-derive\` was given, so the ceiling was NOT derived and the run stands as it is.`);
+  } else {
+    const ceiling = Math.ceil(observed.plan * observed.msPerUrl);
+    noted('the ceiling', `${cut}. ↻ re-running under a ceiling DERIVED from that plan: ${ceiling}ms.`);
+    run = await warmRun(ceiling, waitFor(ceiling));
+    const again = measure(run);
+    if (again && again.skipped > 0) {
+      noted(
+        'the ceiling',
+        `the derived run was cut TOO: ${again.skipped} url(s) never tried under ${ceiling}ms. The plan the ` +
+          `first run could see was ${observed.plan} url(s) and this one enumerated ${again.plan} — a run cut ` +
+          'inside the PAGES pass never sees the images those pages would have declared, so the first number ' +
+          'was a floor. This step derives ONCE and reports; it does not chase.',
+      );
+    }
+  }
 }
 
 // ── 4 · THE REPORT ───────────────────────────────────────────────────────────────────────────────────────
@@ -436,7 +608,7 @@ if (!run) {
   const p = run.progress ?? {};
   cold(
     'the run',
-    `still running after the ${Math.round(deadlineMs / 1000)}s deadline — ${p.warmed ?? 0} warmed, ` +
+    `still running after this step's deadline — ${p.warmed ?? 0} warmed, ` +
       `${p.failed ?? 0} failed of ${p.planned ?? 0} planned so far. A birth may not hang on a poll; the run ` +
       `itself carries on and \`GET ${api}/api/warm\` still answers for it.`,
   );
@@ -446,7 +618,19 @@ if (!run) {
 } else {
   const r = run.report ?? {};
   const line = `planned=${r.planned ?? 0} warmed=${r.warmed ?? 0} failed=${r.failed ?? 0} p95=${r.p95 ?? 0}ms (${r.p95Pass ?? '?'} pass) · ${names}`;
-  if (run.state === 'ok') ok('the stores', line);
+  if ((r.planned ?? 0) === 0) {
+    // ⚠️ THE VACUUM, AND IT WAS GREEN UNTIL pk21. A run that finished `ok` having planned NOTHING printed
+    //    `✓ the stores — planned=0 warmed=0` and `VERDICT: warm`, exit 0 — a box that warmed nothing reading
+    //    exactly like a box that warmed everything. It is not a hypothetical shape: the vitrine answers it
+    //    whenever no store claims the origin and none was named, and it is also what any derivation here
+    //    would divide by. An empty plan is a REPORT ABOUT NOTHING, and it has to say so.
+    cold(
+      'the stores',
+      `the run finished having planned NO url at all (${line}). ${toWarm.length} store(s) were named to the ` +
+        'warmer and it enumerated nothing, so NOTHING about this box was warmed and nothing about it was ' +
+        'measured — read this as "the warmer could not build a plan", never as "warm".',
+    );
+  } else if (run.state === 'ok') ok('the stores', line);
   else cold('the stores', `${line}${(r.reasons ?? []).length ? ` — ${r.reasons.join(' · ')}` : ''}`);
 
   // ★ THE BREAKDOWN, per store and per pass. It is printed on a GREEN run too: an operator who only ever sees

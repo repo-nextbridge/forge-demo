@@ -188,10 +188,15 @@ test('★★ a birth with nothing wrong exits 0 — the control, without which e
 //
 // Renan, 05/09: *"D1 - Pode ser só relatório"*. The step used to be in the conjunction below and it was red on
 // EVERY birth of this box by construction: the warmer plans ~420 pages plus ~20 400 image derivatives found in
-// the pages' `srcset`, against the VITRINE's own 15-minute ceiling (`DEFAULT_MAX_DURATION_MS`, in the product,
-// which this box neither sets nor can raise), so every run ends `15865 urls were never visited`. It also
-// produced FALSE red — `failed=198` during a birth, `failed=0` for the same URLs on the idle box minutes
-// later, because it is the last step of the birth and races the tail of the seed.
+// the pages' `srcset`, against the VITRINE's own 15-minute DEFAULT (`DEFAULT_MAX_DURATION_MS`, in the
+// product), so every run ended `15865 urls were never visited`. It also produced FALSE red — `failed=198`
+// during a birth, `failed=0` for the same URLs on the idle box minutes later, because it is the last step of
+// the birth and races the tail of the seed.
+//
+// ⚠️ HALF OF THAT WAS REPAIRED IN pk21/d2 AND THIS TEST STAYS ANYWAY. The ceiling is no longer a constant —
+// `bin/warm-box.mjs` re-runs a cut run under a ceiling DERIVED from the plan it measured, so "red by
+// construction" is gone. The FALSE red is not, and neither is a cold box on a day the vitrine misbehaves;
+// warmth is still a report, and these two tests are what stop it drifting back.
 //
 // ★ A step that is ALWAYS red is a step people learn to skip, and then it is worth nothing on the day it is
 // right. So warmth is printed and not counted — and these two tests are what stops it drifting back, in EITHER

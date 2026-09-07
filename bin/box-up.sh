@@ -1493,11 +1493,18 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 #
 # ⚠️ BUT WARMTH STOPPED DECIDING THIS SCRIPT'S EXIT CODE (Renan, 05/09: *"D1 - Pode ser só relatório"*), and
 # the reason is that it was ALWAYS red. The plan is ~420 pages plus ~20 400 image derivatives found in each
-# HTML's `srcset`, against the VITRINE's own 15-minute ceiling that this box does not set and cannot raise
-# (`apps/storefront/src/lib/warm/warm.ts`, in the product): every run ends `15865 urls were never visited`. It
-# also invented red — `failed=198` on a birth, `failed=0` for the same URLs on the idle box minutes later,
-# because the warmer is the last step of the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS
-# RED IS A STEP PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
+# HTML's `srcset`, against the VITRINE's own 15-minute DEFAULT (`apps/storefront/src/lib/warm/warm.ts:51`, in
+# the product): every run ended `15865 urls were never visited`. It also invented red — `failed=198` on a
+# birth, `failed=0` for the same URLs on the idle box minutes later, because the warmer is the last step of
+# the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS RED IS A STEP PEOPLE LEARN TO SKIP, and
+# then it is worth nothing on the day it is right.
+#
+# ★★ pk21 — AND THE FIRST OF THOSE TWO IS NOW GONE (Renan, 07/09: *"deriva do plano"*). The ceiling was never
+# unraisable: `/api/warm?max_duration_ms=` overrides that default (`.../api/warm/route.ts:183`), and this
+# script's own note used to claim otherwise. Step 14 now re-runs a CUT run under a ceiling DERIVED from the
+# plan it measured — planned urls × the ms-per-url that run observed — so the step is no longer red by
+# construction, and this box's warm step takes as long as ITS plan needs rather than as long as a constant
+# allows. Warmth stays a REPORT: the false red of `failed=198` is untouched, and so is the reasoning above.
 #
 # ⛔ IT WAS NOT DELETED, SILENCED OR `|| true`d. It runs, and it now says MORE than it did: which URLs did not
 # answer BY NAME, and which were never VISITED — a different thing, and a different repair.
@@ -1638,10 +1645,12 @@ printf '\n' >&2
 # on, which is exactly what the old always-red step had become.
 if [ -n "${COLD:-}" ]; then
   printf '[box-up] ⚠️  REPORT — THE BOX IS UP AND%s DID NOT COME OUT FULLY WARM. This does NOT make the birth
-         red, and step 14 says why (the warmer plans ~20 400 image derivatives against a 15-minute ceiling
-         this box does not own, so it was ALWAYS red — and a step that is always red is a step people learn
-         to skip). What it DOES say is in the report above, by name: which urls did not answer, and which
-         were never visited. Read them; the first is a page, the second is a ceiling.
+         red, and step 14 says why (warmth races the tail of the seed and invents red: `failed=198` on a
+         birth against `failed=0` for the same urls on the idle box minutes later — and a step that is
+         always red is a step people learn to skip). What it DOES say is in the report above, by name:
+         which urls did not answer, and which were never visited. Read them; the first is a page, the
+         second is a ceiling — and since pk21 a ceiling that was cut is RE-DERIVED from the plan, so a
+         "never visited" here means the derived one did not fit either, which the report states.
 
 ' "$COLD" >&2
 fi
