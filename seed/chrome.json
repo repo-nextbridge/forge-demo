@@ -83,19 +83,48 @@
     "⚠️ AND THE PICTURE REPLACES THE WORD ON THE SCREEN, MEASURED — do not read `end_text` beside `end_image` as",
     "two things drawn side by side. `footerArea` (extensions/chrome/logic.ts:53-61) returns",
     "`{kind:'image', url, alt: text}` as soon as the image RESOLVED, and `footer-block.tsx:38-43` draws an",
-    "`<img alt=…>`: the area shows the padlock and «Compra Segura» becomes its DESCRIPTION. That is the app's",
+    "`<img alt=…>`: the area shows the picture and «Compra Segura» becomes its DESCRIPTION. That is the app's",
     "declared contract and it says so in the Compose hint an operator reads («A imagem vence o texto; o texto",
     "passa a ser a descrição dela»). ⇒ the word STAYS in the declaration for two reasons and neither is",
     "decoration: it is the picture's only accessible name, and a key this file drops is a key no birth ever",
     "corrects (see the `sameConfig` note above).",
     "",
-    "★★ AND THERE ARE TWO FILES BECAUSE THE INK IS THE THEME'S. The art is a stroke on a TRANSPARENT ground, so it",
-    "re-tints itself with nothing, while the footer's ink is `var(--color-chrome-muted, var(--color-muted))`",
-    "(chrome.module.css:98). MEASURED: the reference footer is #ffffff with #4b4d52 ink; the outlet's is #17181a",
-    "with #e4e6ea (themes/outlet/tokens.css:117-122). Hand one shop the other's file and the padlock is a dark",
-    "line on a dark ground — still 200, still present in the DOM, invisible. `bin/chrome-seal-ink.guard.mjs`",
-    "decodes the PNG's own pixels and compares them with the theme's token, so the tint is graded and not",
-    "trusted to a filename. ⛔ The café is NOT given one: it has a footer of its own and the owner did not name",
+    "★★ pk22/D4 — AND THAT CONTRACT IS WHY THE SEAL IS NOW A LOCKUP: THE PADLOCK AND THE WORDS IN ONE ART.",
+    "pk21/D3 shipped the padlock alone and reported the consequence — image wins, so the shopper saw a stroke",
+    "and no promise in writing. The three ways out (only the icon · icon + word in one piece · the two side by",
+    "side, which the contract forbids in one area) went to the owner on 07/09 and he chose: «b está bom». The",
+    "two files are `compra-segura-lockup-escuro.png` (forge) and `compra-segura-lockup-claro.png` (outlet),",
+    "rendered INSIDE each shop's own checkout page, so each carries that shop's face — the reference theme's",
+    "Urbanist and the outlet's Figtree (themes/outlet/tokens.css:103) — at that page's real size. They are used",
+    "as delivered: not re-tinted, not resized, not standardised into one file.",
+    "",
+    "⚠️ ONE THING WAS CHANGED IN THE BYTES AND IT IS NOT A RE-CUT: the two lockups arrived FLATTENED ONTO WHITE",
+    "(PNG colour type 2, no alpha), which `bin/chrome-seal-ink.guard.mjs` caught on the spot — «its commonest",
+    "opaque colour is only 86.6% of 177 408 opaque pixels». On the outlet that file would have been near-white",
+    "art inside its own opaque white slab on a #17181a footer. Every non-white pixel was exactly `a·ink +",
+    "(1-a)·white` (worst reconstruction error 1/255, measured), so the transparent original was recovered by",
+    "solving for the alpha: same ink, ground given back.",
+    "",
+    "⚠️ AND THE CANVAS WAS THEN GROWN ON PURPOSE — 60 transparent rows above and 60 below, width untouched, no",
+    "pixel of ink moved. `.areaImage` clamps the HEIGHT and throws the file's own scale away (`max-height:",
+    "2.5em`, chrome.module.css:111-115), so the letters inside art like this are sized by `cap-height ÷ canvas`",
+    "— a property of the FILE. MEASURED: the capitals span 83 rows, which on the delivered 176-row canvas was",
+    "47.16% ⇒ 1.179em on screen, about 1.7× the words beside them. At 296 rows it is 28.04% ⇒ 0.7010em, parity",
+    "with the footer's own text — and, by a second and independent route, the scale the art was rendered at",
+    "(2.5 × 14.5 ÷ 296 = 0.1225 against the 0.125 of an 8× render). The clamp lives in the PRODUCT repository",
+    "and bending a general rule for one picture is how debt is invented, so the ART was fitted to the slot",
+    "instead. ⛔ It is NOT a dodge of `bin/chrome-seal-ink.guard.mjs`: every number the guard reads got worse,",
+    "not better — the aspect fell from 5.727 to 3.405, closer to the floor it has to clear.",
+    "",
+    "★★ AND THERE ARE TWO FILES BECAUSE THE INK IS THE THEME'S. The art is a stroke and letters on a TRANSPARENT",
+    "ground, so it re-tints itself with nothing, while the footer's ink is",
+    "`var(--color-chrome-muted, var(--color-muted))` (chrome.module.css:98). MEASURED: the reference footer is",
+    "#ffffff with #4b4d52 ink; the outlet's is #17181a with #e4e6ea (themes/outlet/tokens.css:117-122). Hand one",
+    "shop the other's file and the lockup is dark art on a dark ground — still 200, still present in the DOM,",
+    "invisible. `bin/chrome-seal-ink.guard.mjs` decodes the PNG's own pixels and compares them with the theme's",
+    "token, so the tint is graded and not trusted to a filename; since pk22/D4 it also counts the ISLANDS of ink",
+    "(14 — the padlock's two plus twelve letters), which is what stops the lone padlock coming back unnoticed.",
+    "⛔ The café is NOT given one: it has a footer of its own and the owner did not name",
     "it — and it is named in that guard's lists rather than left absent.",
     "",
     "★★ pk21/D3, THE OTHER HALF — THE MARK IS LOWERCASE WHERE IT STANDS ALONE AS A MARK; PROSE KEEPS PORTUGUESE",
@@ -124,7 +153,7 @@
   },
   "stores": {
     "forge": {
-      "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing. ★ pk21/D3: the checkout footer's right-hand area is now the PADLOCK (`compra-segura-escuro.png`, drawn in this footer's ink — #4b4d52 on the vanilla theme's white), with «Compra Segura» kept as its description; and the account footer signs off with this shop's own mark instead of a capitalised one (`Forge · calçados e acessórios` → `forge.store · calçados e acessórios`).",
+      "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing. ★ pk21/D3: the checkout footer's right-hand area is now a PICTURE, drawn in this footer's ink — #4b4d52 on the vanilla theme's white — with «Compra Segura» kept as its description; ★★ pk22/D4 REPLACED that picture with the LOCKUP (`compra-segura-lockup-escuro.png`: the padlock AND the words, in this shop's Urbanist at the checkout page's own size), because the image WINS the text and the padlock alone left the funnel with no promise in writing — the owner picked that shape out of three on 07/09 («b está bom»); and the account footer signs off with this shop's own mark instead of a capitalised one (`Forge · calçados e acessórios` → `forge.store · calçados e acessórios`).",
       "brand": {
         "text": "forge",
         "tail": ".store"
@@ -139,7 +168,7 @@
         "start_text": "Pix · Cartão de crédito",
         "middle_text": "",
         "end_text": "Compra Segura",
-        "end_image": "compra-segura-escuro.png"
+        "end_image": "compra-segura-lockup-escuro.png"
       },
       "account_header": {
         "logo": "forge-store-logo.png",
@@ -154,7 +183,7 @@
       }
     },
     "outlet": {
-      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back, which stays «Voltar ao Outlet» because it is a sentence about the SHOP and not the mark. ★★ pk21/D3 CORRECTED THE OTHER HALF OF THAT SENTENCE: the footer's right-hand mark was still `Forge Outlet`, the exact glued capital pk20 removed from the header of the same shop, and it is now `forge.outlet`. And the checkout footer gains the padlock in THIS theme's ink — `compra-segura-claro.png`, #e4e6ea, because the escuro file would be a dark line on this shop's #17181a footer.",
+      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back, which stays «Voltar ao Outlet» because it is a sentence about the SHOP and not the mark. ★★ pk21/D3 CORRECTED THE OTHER HALF OF THAT SENTENCE: the footer's right-hand mark was still `Forge Outlet`, the exact glued capital pk20 removed from the header of the same shop, and it is now `forge.outlet`. And the checkout footer gains the seal in THIS theme's ink — #e4e6ea, because the escuro file would be dark art on this shop's #17181a footer. ★★ pk22/D4 made that seal the LOCKUP (`compra-segura-lockup-claro.png`), and it is a SECOND file rather than the forge's because it carries this shop's own face too: `themes/outlet/tokens.css:103` sets `--font-sans` to Figtree where the reference theme sets Urbanist, and the art was rendered inside this shop's checkout page.",
       "brand": {
         "text": "forge",
         "tail": ".outlet"
@@ -169,7 +198,7 @@
         "start_text": "Pix · Cartão de crédito",
         "middle_text": "",
         "end_text": "Compra Segura",
-        "end_image": "compra-segura-claro.png"
+        "end_image": "compra-segura-lockup-claro.png"
       },
       "account_header": {
         "logo": "forge-outlet-logo.png",

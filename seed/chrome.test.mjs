@@ -206,9 +206,9 @@ test('★★ the picture list is SCOPED to the tenant’s own stores — a libra
   const coffee = BOX.tenants.find((t) => t.id === 'forgecafe').stores.map((s) => s.handle);
   assert.deepEqual(imagesOf(DATA, shoe), [
     'forge-store-logo.png',
-    'compra-segura-escuro.png',
+    'compra-segura-lockup-escuro.png',
     'forge-outlet-logo.png',
-    'compra-segura-claro.png',
+    'compra-segura-lockup-claro.png',
   ]);
   assert.deepEqual(imagesOf(DATA, coffee), ['forge-co-logo.png']);
 });
@@ -242,8 +242,9 @@ const DICTATED = {
       start_text: 'Pix · Cartão de crédito',
       middle_text: '',
       end_text: 'Compra Segura',
-      // ★ pk21/D3 — the padlock, in the ink of THIS footer. See `bin/chrome-seal-ink.guard.mjs`.
-      end_image: 'compra-segura-escuro.png',
+      // ★ pk21/D3 — the seal, in the ink of THIS footer. ★★ pk22/D4 made it the LOCKUP: the padlock AND the
+      // words in one art, because the image wins the text. See `bin/chrome-seal-ink.guard.mjs`.
+      end_image: 'compra-segura-lockup-escuro.png',
     },
     account_header: { logo: 'forge-store-logo.png', back: 'Voltar à loja', cart: 'Carrinho' },
     account_footer: {
@@ -260,7 +261,7 @@ const DICTATED = {
       start_text: 'Pix · Cartão de crédito',
       middle_text: '',
       end_text: 'Compra Segura',
-      end_image: 'compra-segura-claro.png',
+      end_image: 'compra-segura-lockup-claro.png',
     },
     account_header: { logo: 'forge-outlet-logo.png', back: 'Voltar ao Outlet', cart: 'Carrinho' },
     account_footer: {
@@ -570,9 +571,9 @@ test('★★ …and the declared FILENAME becomes an ASSET ID in the placement �
     // Only this tenant's own pictures were uploaded — never the café's, whose library is another tenant's.
     assert.deepEqual(uploaded, [
       'forge-store-logo.png',
-      'compra-segura-escuro.png',
+      'compra-segura-lockup-escuro.png',
       'forge-outlet-logo.png',
-      'compra-segura-claro.png',
+      'compra-segura-lockup-claro.png',
     ]);
     const config = (store, component) =>
       placed.find((p) => p.store === store && p.component === component)?.config;
@@ -660,7 +661,7 @@ test('⛔ in `brand`, the picture and the words are EXCLUSIVE — so each shop d
   }
 });
 
-// ══ pk21/D3 — THE PADLOCK, AND THE SHOP'S NAME SPELLED ONE WAY ════════════════════════════════════════════
+// ══ pk21/D3 — THE SEAL, AND THE SHOP'S NAME SPELLED ONE WAY ══════════════════════════════════════════════
 //
 // Two owner's instructions of 07/09, and the rules they need are of different kinds:
 //   · *"compra segura precisa usar o do app, precisa preencher pois quero mostrar isso na demo"* — the
@@ -691,7 +692,12 @@ test('★★★ a picture in a footer area never travels alone — the word besi
   // word does NOT stand beside the picture on the screen: it BECOMES the picture's description, which the
   // app's own Compose hint says out loud («A imagem vence o texto; o texto passa a ser a descrição dela»).
   // Dropping `end_text` once `end_image` is set therefore costs nothing visible and ships `alt=""` — a
-  // padlock that a screen reader announces as nothing at all, in the one footer that exists to reassure.
+  // picture that a screen reader announces as nothing at all, in the one footer that exists to reassure.
+  //
+  // ⚠️ pk22/D4 DID NOT MAKE THIS RULE REDUNDANT, it made it the last line of defence. The art now SPELLS
+  // «Compra Segura», so the sighted shopper reads it — which is exactly the argument somebody will use for
+  // dropping the `end_text` as a duplicate. It is not one: those letters are pixels. Drop the word and the
+  // phrase leaves the DOM entirely, and the only reader who loses it is the one who most needs it.
   let checked = 0;
   for (const [handle, blocks] of Object.entries(DICTATED)) {
     if (blocks === null) {
@@ -717,7 +723,7 @@ test('★★★ a picture in a footer area never travels alone — the word besi
   assert.equal(
     checked,
     2,
-    'two footer pictures were expected (the two shoe shops’ padlocks). A different number means a store ' +
+    'two footer pictures were expected (the two shoe shops’ lockups). A different number means a store ' +
       'gained or lost one and this rule graded a set nobody decided.',
   );
 });
