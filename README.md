@@ -194,11 +194,11 @@ admin already uses to invalidate). One call warms three containers, because the 
 
 Renan, 05/09: *"D1 - Pode ser só relatório"*. Three measurements, all from real births of this box:
 
-1. **Red by construction.** The plan is not made of pages: ~420 pages plus ~20 400 **image derivatives**
-   discovered in each HTML's `srcset` — `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What
-   cuts it is the **vitrine's** own ceiling (`DEFAULT_MAX_DURATION_MS = 15 * 60_000`, in the product), which
-   this box neither sets nor can raise. ⚠️ Not the same number as this box's `--deadline-ms` (20 min), which
-   is only how long it waits for an answer. **Every** run ends this way.
+1. **Red by construction** — ★ **and this one was repaired in pk21**, see below. The plan is not made of
+   pages: ~420 pages plus ~20 400 **image derivatives** discovered in each HTML's `srcset` —
+   `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cut it is the **vitrine's** own
+   *default* (`DEFAULT_MAX_DURATION_MS = 15 * 60_000`, in the product). ⚠️ Not the same number as this box's
+   `--deadline-ms`, which is only how long it waits for an answer. **Every** run ended this way.
 2. **And it invented red.** `failed=198` and `failed=189` on two births — and the same brands and collections
    answered **200** on the idle box, with this same step reporting **`failed=0`**. Those are the load the
    warmer imposes on a box that is still settling: it is the last step of the birth and it races the tail of
@@ -213,6 +213,33 @@ by name (with the status or timeout it gave), and every URL that was **never vis
 fact and a different repair. The old report said `198 of 419 pages did not answer` and named **none** of them,
 so nobody reading a birth could check whether the pages were broken or the warmer had overloaded a settling
 box. They were the second.
+
+### ★★★ The run's ceiling DERIVES FROM THE PLAN (pk21)
+
+Renan, 07/09: *"deriva do plano"*. Measurement 1 above was not a fact about the box, it was a fact about a
+**constant**: 20 800 planned URLs against 900 000 ms. ⚠️ And the note that this box "cannot raise" that
+ceiling was simply **false** — `/api/warm?max_duration_ms=` overrides the vitrine's default
+(`apps/storefront/src/app/api/warm/route.ts:183`); the product had always exposed it. What was missing was a
+number to send, and the only honest one is derived:
+
+```
+ceiling = (urls the run PLANNED + the urls its verify pass revisits) × (ms per url it MEASURED)
+```
+
+Both factors come from a run of **this** box: the plan it enumerated from the port, and its wall clock over
+the URLs it warmed. So a catalogue twice the size gets a ceiling twice as large with **no edit anywhere** —
+which a bigger constant could never do, and that is why none was chosen.
+
+**The plan cannot be known before the run**: the pages come from the port's enumeration and the images come
+from the **bytes** those pages serve (each `srcset`). So the **first** run is the *observation* — it runs
+under the product's default, which is a first probe rather than a promise — and the **second** runs under the
+ceiling derived from what the first one measured. On a box whose plan already fits, the first run is not cut
+and **there is no second**. It derives **once** and reports; it does not chase.
+
+📌 **What this does NOT repair, said plainly:** the **false** red of measurement 2. The only effect is
+incidental and is not claimed as a fix — the derived re-run is a second visit made later, and the report
+printed is the **last** run's, so a URL that failed only because of the birth's tail gets another chance to
+answer. A URL that is really broken fails twice.
 
 ⛔ **One half of step 14 still fails the birth: a store `seed/box.json` DECLARES and the box does not hold**
 (`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it" — and step 14 is the

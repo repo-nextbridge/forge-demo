@@ -248,11 +248,25 @@ rede continua sendo gesto do operador.
 só relatório"*. Ele **não** faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo
 nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
 do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
-HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que corta é o da
-**vitrine**, `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, no produto),
-que `bin/warm-box.mjs` não sobrescreve.
-⚠️ Não confunda com o `--deadline-ms` **desta caixa** (20 min, em `bin/warm-box.mjs`): esse é o prazo de
-**espera pela resposta**, outro número.
+HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que cortava é o **default** da
+**vitrine**, `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, no produto).
+⚠️ Não confunda com o `--deadline-ms` **desta caixa**: esse é o prazo de **espera pela resposta**, outro
+número.
+
+**★★ E desde a pk21 esse teto DERIVA DO PLANO — decisão do Renan em 07/09:** *"deriva do plano"*. A prosa
+acima dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a rota para ver:
+`/api/warm?max_duration_ms=` sobrescreve o default (`apps/storefront/src/app/api/warm/route.ts:183`). O que
+faltava era um **número para mandar**, e o único honesto é derivado:
+`teto = (urls PLANEJADAS + as que o passo de verify revisita) × (ms por url que a corrida MEDIU)`.
+Os dois fatores saem da corrida que foi cortada — o plano que ela enumerou pela porta, e o relógio dela
+dividido pelas urls que aqueceu. Como **o plano não é conhecível antes da corrida** (as páginas vêm da porta e
+as imagens vêm dos **bytes** que essas páginas servem), a **primeira** corrida é a *observação* — roda no
+default do produto, que passa a ser uma sondagem e não uma promessa — e a **segunda** roda no teto derivado.
+Numa caixa cujo plano já cabe, a primeira não é cortada e **não existe segunda**. Deriva **uma vez** e
+relata; não fica perseguindo.
+📌 **O que isso NÃO conserta:** o vermelho **falso** do parágrafo seguinte. O único efeito é incidental e não
+é vendido como conserto — a corrida derivada é uma **segunda visita**, feita depois, e o relatório impresso é
+o da **última** corrida.
 E ele também **inventava** vermelho: `failed=198` num nascimento contra `failed=0` para as mesmas urls na
 caixa **ociosa** minutos depois — é a carga que o próprio aquecedor impõe a uma caixa que ainda está
 assentando. ★ **Um passo sempre vermelho é um passo que as pessoas aprendem a pular**, e aí ele deixa de

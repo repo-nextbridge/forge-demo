@@ -60,26 +60,109 @@ const pass = ({ planned, done, failed = [], skipped = 0, p95 = 120 }) => ({
 });
 
 /**
+ * ★★★ A BOX WHOSE PLAN IS BIGGER THAN THE CEILING IT IS GIVEN — which is this box's every real birth.
+ *
+ * `warm: 'plan'` models the ONE arithmetic that produced `15865 urls were never visited` on every run: a warm
+ * run fetches `ceiling ÷ msPerUrl` urls, in plan order, and never TRIES the rest. The ceiling is whatever the
+ * caller sent as `max_duration_ms`, or the vitrine's own default when the caller sent none — so this fixture
+ * answers a step that derives a ceiling differently from one that does not, which is exactly the difference
+ * being graded. Nothing else here models the vitrine; the passes are the product's own shapes.
+ *
+ * ⚠️ IT REPORTS A DURATION, and that is not decoration: the step derives the ms-per-url from `finishedAt −
+ * startedAt` over the urls the run WARMED. A fixture that answered instantly would hand the step a cost of
+ * zero and the derivation would look right while deriving nothing.
+ */
+const VITRINE_DEFAULT_MAX_DURATION_MS = 15 * 60_000; // apps/storefront/src/lib/warm/warm.ts:51 (the product's)
+
+function planReport({ pages, images, msPerUrl, ceilingMs, p95 }) {
+  let budget = Math.floor(ceilingMs / msPerUrl);
+  const take = (n) => {
+    const done = Math.max(0, Math.min(n, budget));
+    budget -= done;
+    return { done, skipped: n - done };
+  };
+  // The order the product runs them in: every page, then the images those pages declared, then the verify
+  // pass. Images are only DECLARED by pages that actually served, so a run cut in the pages pass plans none.
+  const p = take(pages);
+  const declaredImages = p.skipped === 0 ? images : 0;
+  const i = take(declaredImages);
+  const v = take(pages);
+  const store = {
+    store: 'sto_CAFE',
+    url: 'http://127.0.0.1/s/sto_CAFE/',
+    planned: pages,
+    sections: {},
+    short: [],
+    pages: pass({ planned: pages, done: p.done, skipped: p.skipped, p95 }),
+    images: {
+      ...pass({ planned: declaredImages, done: i.done, skipped: i.skipped, p95 }),
+      foreignHosts: [],
+      declared: declaredImages,
+      cut: false,
+    },
+    verify: pass({ planned: pages, done: v.done, skipped: v.skipped, p95 }),
+  };
+  const skipped = p.skipped + i.skipped + v.skipped;
+  const reasons = skipped
+    ? [`sto_CAFE: ${skipped} urls were never visited: the run hit its ceiling of ${ceilingMs}ms`]
+    : [];
+  return {
+    elapsedMs: (p.done + i.done + v.done) * msPerUrl,
+    report: {
+      planned: pages + declaredImages,
+      warmed: p.done + i.done,
+      failed: 0,
+      p95,
+      p95Pass: 'verify',
+      thresholdMs: null,
+      stores: [store],
+      reasons,
+      ok: reasons.length === 0,
+    },
+  };
+}
+
+/**
  * A box that answers.
  *
  * `warm` decides what the vitrine does with a POST:
  *   'ok'         a run that finishes green
  *   'incomplete' a run that finishes with reasons — the shape of "some pages did not warm"
- *   'cut'        a run the CEILING cut: urls that were never TRIED, which is this box's every real birth
+ *   'cut'        a run the CEILING cut: urls that were never TRIED — a FIXED shape, blind to the ceiling
+ *   'plan'       a box that OBEYS the ceiling it is given: it fetches `ceiling ÷ msPerUrl` urls and no more
+ *   'empty'      a run that finished `ok` having planned NOTHING (the vacuum)
  *   'failed'     a run with NO report at all (the origin could not even be planned)
  *   'absent'     the route is not there: an image built before the warmer existed
  *   'unauth'     the secret does not match
  *   'running'    a run that never finishes, for the deadline
  */
-async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, p95 = 120, directory = {} } = {}) {
-  const asked = { posts: [], gets: 0 };
+async function fakeBox({
+  warm = 'ok',
+  stores = CAFE_STORES,
+  storesStatus = 200,
+  p95 = 120,
+  directory = {},
+  credentialTenant = 'forgecafe',
+  whoamiStatus = 200,
+  plan = { pages: 400, images: 20_000, msPerUrl: 100 },
+} = {}) {
+  const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
+    // Recorded rather than honoured: this face ignores the header, and the point is that nothing sends it.
+    if (req.headers['x-forge-tenant']) asked.tenantHeaders.push(`${req.method} ${url.pathname}`);
     const json = (code, body) => {
       res.writeHead(code, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body));
     };
+    // ★ WHOSE TOKEN IS THIS. The internal read face resolves the tenant from the CREDENTIAL and ignores
+    // `x-forge-tenant`, so a token can only ever be answered with its OWN tenant — `credentialTenant` and
+    // `stores` move together for that reason, as they do in `bin/prove-doors.test.mjs`.
+    if (url.pathname === '/v1/read/internal/whoami') {
+      if (whoamiStatus !== 200) return json(whoamiStatus, { error: { kind: 'forbidden' } });
+      return json(200, { actor_id: 'act_test', tenant_id: credentialTenant, scopes: [] });
+    }
     if (url.pathname === '/v1/read/store.by_host') {
       // The real capability tries the exact host WITH its port first and falls back to the bare host
       // (`requestHostKeys`), which is what lets a fixture name `127.0.0.1` for a server on a random port.
@@ -98,7 +181,10 @@ async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, 
       }
       if (req.method === 'POST') {
         asked.posts.push(url.searchParams.getAll('store'));
+        asked.calls.push(url.searchParams);
         const planned = url.searchParams.getAll('store').length * 10;
+        // The ceiling this call is being run under: what the caller asked for, else the product's default.
+        const ceilingMs = Number(url.searchParams.get('max_duration_ms') ?? VITRINE_DEFAULT_MAX_DURATION_MS);
         run = {
           id: 'warm_test',
           state: 'running',
@@ -206,7 +292,35 @@ async function fakeBox({ warm = 'ok', stores = CAFE_STORES, storesStatus = 200, 
                           ok: false,
                         },
                       }
-                    : { state: 'failed', report: null, error: 'no store claims the host "127.0.0.1"' },
+                    : warm === 'plan'
+                      ? (() => {
+                          const { report, elapsedMs } = planReport({ ...plan, ceilingMs, p95 });
+                          return {
+                            state: report.ok ? 'ok' : 'incomplete',
+                            report,
+                            // Backdated so the step can measure a COST — see planReport's header.
+                            startedAt: new Date(Date.now() - elapsedMs).toISOString(),
+                          };
+                        })()
+                      : warm === 'empty'
+                        ? {
+                            // ⚠️ THE VACUUM: a run that finished, said `ok`, and planned NOTHING. The
+                            // vitrine reports this when no store claims the origin and none was named — and
+                            // reading it as "warm" is how a box that warmed zero pages ships green.
+                            state: 'ok',
+                            report: {
+                              planned: 0,
+                              warmed: 0,
+                              failed: 0,
+                              p95: 0,
+                              p95Pass: 'warm',
+                              thresholdMs: null,
+                              stores: [],
+                              reasons: [],
+                              ok: true,
+                            },
+                          }
+                        : { state: 'failed', report: null, error: 'no store claims the host "127.0.0.1"' },
           };
         }
         return json(202, { ok: true, started: true, run: { ...run, settleTo: undefined } });
@@ -538,6 +652,173 @@ test('★★ …and when a store DOES claim the origin, that is said too — the
       !/path-scoped/i.test(stdout),
       `the run still warns about path-scoped URLs on a box whose directory answers:\n${stdout}`,
     );
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ THE DEADLINE DERIVES FROM THE PLAN (pk21/d2, Renan 07/09: *"deriva do plano"*) ────────────────────
+//
+// ⛔ THE DEFECT, MEASURED ON THREE BIRTHS AND AGAIN ON 07/09. The plan of this box is ~420 pages plus the
+// ~20 400 IMAGE derivatives those pages declare in their `srcset`, against a ceiling of 900 000 ms that is
+// not the box's — it is `DEFAULT_MAX_DURATION_MS` in the product (`apps/storefront/src/lib/warm/warm.ts:51`).
+// `planned=20822 warmed=4964`, `15865 never visited`, EVERY run, by construction.
+//
+// ★ AND THE PRODUCT ALREADY EXPOSES THE FIX: `/api/warm?max_duration_ms=` overrides that default
+// (`apps/storefront/src/app/api/warm/route.ts:183`). It was never true that this box "cannot raise" the
+// ceiling — the file said so, and the file was wrong. What was missing is a NUMBER TO RAISE IT TO, and the
+// only honest one is derived: how many urls the plan holds × what a url cost on this box, both MEASURED by
+// the run that was cut. A bigger fixed number would be the same trap one house further along, which is why
+// nothing below asserts a constant.
+
+/** The `max_duration_ms` of each POST, in order. `null` for a call that sent none. */
+const ceilings = (box) => box.asked.calls.map((p) => (p.has('max_duration_ms') ? Number(p.get('max_duration_ms')) : null));
+
+test('★★★ a plan that does not fit the ceiling is RE-RUN under one DERIVED from it, and the box comes out WARM', async () => {
+  // 400 pages + 20 000 images at 100 ms/url = 2 080 000 ms of work against the product's 900 000 default:
+  // the first run is cut at 9 000 urls, exactly the shape of every birth of this box.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(ceilings(box).length, 2, `the step did not re-run under a derived ceiling:\n${stdout}`);
+    const [first, second] = ceilings(box);
+    assert.equal(first, null, 'the OBSERVATION run must use the product\'s own default, not a number this box chose');
+    // The plan is 20 400 fetched urls plus the 400 the verify pass revisits, at the ~100 ms/url the cut run
+    // measured. Asserted as a floor, never as an equality: the observed cost is a measurement.
+    assert.ok(second >= 20_800 * 100, `the derived ceiling ${second}ms does not fit the plan it measured:\n${stdout}`);
+    // ★ AND THE POINT OF THE WHOLE SLICE: the step is no longer red by construction.
+    assert.equal(status, 0, `a box whose plan needs a derived ceiling did not come out warm:\n${stdout}`);
+    assert.match(stdout, /VERDICT: warm/, stdout);
+    assert.doesNotMatch(stdout, /never visited: \d/, `urls were still left unvisited:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ THE DEADLINE MOVES WITH THE PLAN — two plans, two ceilings, and the bigger plan gets the bigger one', async () => {
+  // ⛔ THIS IS THE ASSERTION A FIXED NUMBER CANNOT PASS, whatever number is chosen. Same box, same cost per
+  //    url, two catalogues: if the ceiling does not move, it is not derived from the plan.
+  const small = await fakeBox({ warm: 'plan', plan: { pages: 200, images: 9_000, msPerUrl: 100 } });
+  const big = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const a = await runStep({ box: small });
+    const b = await runStep({ box: big });
+    const [, ceilingSmall] = ceilings(small);
+    const [, ceilingBig] = ceilings(big);
+    assert.ok(ceilingSmall, `the small plan never derived a ceiling:\n${a.stdout}`);
+    assert.ok(ceilingBig, `the big plan never derived a ceiling:\n${b.stdout}`);
+    assert.ok(
+      ceilingBig > ceilingSmall,
+      `a plan 2.2× bigger got a ceiling of ${ceilingBig}ms against ${ceilingSmall}ms — the number is not derived from the plan`,
+    );
+    // Each fits ITS OWN plan: (pages + images + verify pages) × the cost that run measured.
+    assert.ok(ceilingSmall >= 9_400 * 100, `${ceilingSmall}ms does not fit a 9 400-url plan:\n${a.stdout}`);
+    assert.ok(ceilingBig >= 20_800 * 100, `${ceilingBig}ms does not fit a 20 800-url plan:\n${b.stdout}`);
+  } finally {
+    small.close();
+    big.close();
+  }
+});
+
+test('★★★ a run that was CUT names the PLAN that did not fit the ceiling — a number alone is not actionable', async () => {
+  // The re-run is what repairs it; this is what the OPERATOR reads. `--no-derive` is the sabotage switch made
+  // permanent: it is how this file proves the derivation is what moves the ceiling and not something else.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const { stdout, status } = await runStep({ box, extra: ['--no-derive'] });
+    assert.equal(ceilings(box).length, 1, 'the sabotage switch did not stop the re-run — it grades nothing');
+    assert.equal(status, 1, `a cut run was not reported:\n${stdout}`);
+    // The three facts an operator needs, and none of them is "it did not work": how big the plan is, what a
+    // url cost, and how many urls the ceiling it ran under could ever have bought.
+    assert.match(stdout, /20[\s.,]?800 url/, `the plan is not named:\n${stdout}`);
+    assert.match(stdout, /ms\/url|ms per url/, `the measured cost per url is not printed:\n${stdout}`);
+    assert.match(stdout, /derive/i, `nothing says the ceiling could have been derived:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ THE VACUUM: a run that finished having planned ZERO urls ACCUSES, never "warm"', async () => {
+  // ⛔ MEASURED AGAINST THE PRE-pk21 FILE: `state: ok` with `planned=0` printed `✓ the stores — planned=0
+  //    warmed=0` and `VERDICT: warm`, exit 0. A box that warmed nothing read exactly like a box that warmed
+  //    everything, and a derivation over that plan would divide by it.
+  const box = await fakeBox({ warm: 'empty' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 1, `a run that planned nothing was called warm:\n${stdout}`);
+    assert.doesNotMatch(stdout, /VERDICT: warm/, stdout);
+    assert.match(stdout, /planned (NO|no|0 )/, `the verdict does not say the plan was empty:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ a cut run that warmed NOTHING has no cost to derive from, and says that rather than inventing one', async () => {
+  // A ceiling below the price of a single url. There is no ms-per-url to measure, so there is no derivation
+  // to make — and a step that divided by zero here would send a birth off with `Infinity` in a query string.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 10_000_000 } });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(ceilings(box).length, 1, `a run that measured no cost was re-run anyway:\n${stdout}`);
+    assert.equal(status, 1, stdout);
+    assert.doesNotMatch(stdout, /Infinity|NaN/, `an unmeasurable cost reached the report as a number:\n${stdout}`);
+    assert.match(stdout, /warmed no url|no observed cost/i, `the step does not say why it did not derive:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ WHOSE CREDENTIAL IS THIS (§B5 of the pk18 notebook) ──────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, found by `pk19/portas` on 2026-09-07 and left unrepaired here: this step sent a
+// `x-forge-tenant` header that the internal read face IGNORES (it resolves the tenant from the CREDENTIAL —
+// `docs/reference/read.internal.stores.md`), and never asked `whoami`. So with the wrong token in the shell
+// it read ANOTHER tenant's stores, found none of the ones `seed/box.json` declares, and exited 3 —
+// «the birth did not build it» — sending the operator to re-provision a perfectly healthy tenant. That is
+// literally the damage written up at `bin/seed-box.mjs:346`. Three copies of this assertion now exist:
+// `seed-box.mjs`, `prove-doors.mjs` (pk19) and this one.
+
+test('★★★ a credential from ANOTHER tenant ⇒ "this step could not ask" (2), never "the birth did not build it" (3)', async () => {
+  // The box is the CAFÉ's — its token, its identity, its stores — and the run asks for `forgeco`, whose two
+  // stores it will not find. Before pk21 that was exit 3 with `forge` and `outlet` named as never built.
+  const box = await fakeBox({ warm: 'ok', credentialTenant: 'forgecafe', stores: CAFE_STORES });
+  try {
+    const { stdout, status } = await runStep({ box, tenant: 'forgeco' });
+    assert.equal(status, 2, `a swapped token accused the box instead of the question:\n${stdout}`);
+    assert.match(stdout, /THIS CREDENTIAL BELONGS TO "forgecafe", NOT "forgeco"/, stdout);
+    assert.doesNotMatch(stdout, /the birth did not create it/, `the innocent tenant is still accused:\n${stdout}`);
+    assert.match(stdout, /Nothing above is a claim about forgeco/, stdout);
+    // And nothing was warmed under the wrong name.
+    assert.equal(box.asked.posts.length, 0, 'the step warmed a tenant it could not identify');
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ the no-op `x-forge-tenant` header is gone — a header that decides nothing reads like one that does', async () => {
+  // ⚠️ ASSERTED ON THE WIRE, not on the source: the point is what the FACE receives. The tenant travels in
+  //    the token, and `whoami` is what proves which one — a header suggesting otherwise is how the next
+  //    reader concludes the list was filtered.
+  const box = await fakeBox({ warm: 'ok' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.deepEqual(
+      box.asked.tenantHeaders,
+      [],
+      'the step still sends `x-forge-tenant`, which this face ignores',
+    );
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ a whoami the face refuses is THIS STEP\'s question failing — exit 2, and it names the read', async () => {
+  const box = await fakeBox({ warm: 'ok', whoamiStatus: 401 });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 2, stdout);
+    assert.match(stdout, /read\.internal\.whoami answered 401/, `the refusal does not name the read:\n${stdout}`);
   } finally {
     box.close();
   }
