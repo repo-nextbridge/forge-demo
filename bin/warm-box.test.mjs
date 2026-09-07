@@ -42,17 +42,18 @@ const TOKEN = 'fot_test';
  * `seed/box.json` used to carry a hand-written `servable: false` beside it, which was a second truth about
  * one store with nothing to keep the two in agreement.
  *
- * ⚠️ THE COUNTER IS `false` HERE AND `true` ON THE REAL BOX — MEASURED 2026-09-07 on the live bench:
- * `read.internal.stores` answers `storefront_enabled: true` for `balcao`, because all four stores are
- * `active`. So this fixture is the box of the day the counter's status is flipped, which is what these tests
- * are for; `CAFE_ON_THE_STREET` below is the box of today, and it warms the counter on purpose.
+ * ★★★ pk22 — AND THIS FIXTURE IS NOW THE REAL BOX. It used to be the box of a hypothetical day: measured on
+ * 2026-09-07 the live port answered `storefront_enabled: true` for `balcao`, because all four stores were
+ * `active`. `seed/box.json` now declares `status: "private"` on the counter — its front is the totem — and
+ * `bin/seed-box.mjs` writes it through `tenant.store.update`, so `false` here is what the port answers after
+ * a birth. `CAFE_ON_THE_STREET` below stopped being «today» and became the counter PUT BACK on the street.
  */
 const CAFE_STORES = [
   { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café', storefront_enabled: true },
   { id: 'sto_BALCAO', handle: 'balcao', name: 'Forge Café · Balcão', storefront_enabled: false },
 ];
 
-/** Today's real answer: every store of the tenant on the street. */
+/** The counter put back on the street (`status: "active"`) — no longer this box's state; see above. */
 const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: true }));
 
 /**
@@ -429,12 +430,14 @@ test('★★★ the store the PORT says has no public page is skipped — and th
   }
 });
 
-test('★★★ …and TODAY the counter is on the street, so it IS warmed — the derivation says what is, not what we want', async () => {
-  // ⛔ MEASURED ON THE LIVE BENCH 2026-09-07: `read.internal.stores` answers `storefront_enabled: true` for
-  //    `balcao` — the four stores are all `active`. Under the hand-written flag this box skipped it anyway,
-  //    which is precisely the second truth: the file said one thing and the port said another. The day
-  //    `tenant.store.update {"status":"private"}` runs against the counter, the test above is the box and
-  //    this one stops being; nothing here changes.
+test('★★★ …and a counter PUT BACK on the street is warmed again, with no edit here — the derivation says what IS', async () => {
+  // ⛔ THE WHOLE VALUE OF DERIVING, IN ONE TEST. Measured on the live bench 2026-09-07 the port answered
+  //    `storefront_enabled: true` for `balcao` and this step warmed it; pk22 declared the counter `private`
+  //    and it stopped, with no edit in this file, in `bin/warm-box.mjs` or in `bin/servable.mjs`. Send
+  //    `tenant.store.update {"status":"active"}` and it starts again, the same way. Under the hand-written
+  //    `servable: false` this box skipped the counter whatever the port said — the file said one thing and
+  //    the port said another, and nothing reconciled them. THIS is the test that would go red if a list ever
+  //    came back.
   const box = await fakeBox({ warm: 'ok', stores: CAFE_ON_THE_STREET });
   try {
     const { stdout, status } = await runStep({ box });
