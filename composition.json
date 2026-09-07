@@ -54,7 +54,15 @@
     "symptom of forgetting is an image baked from a list this box never asked for. THE ORDER OF THE ARRAY IS",
     "PART OF THE COMPARISON (`bin/build-local.sh` compares the two as sequences, not as sets), so copy it",
     "verbatim. `bin/composition.guard.mjs` says so before the build does, when a checkout is at hand;",
-    "`bin/verify-composition.sh` is what catches it on the box, after the fact."
+    "`bin/verify-composition.sh` is what catches it on the box, after the fact.",
+    "",
+    "★ `demo-data` (the Seeder) MOVED from `notComposed` to `apps` on 2026-09-07. Its excuse there was that the",
+    "kernel imported its three actions by hand — SOLDERED, in every image whether a list named it or not. `pk18/p2`",
+    "ended that: the app is OOTB now, and an image carries it only if a list asks for it. This was measured, not",
+    "reasoned: with the Seeder still excused, `box-up` step 9 refused with «this image carries no \"demo-data\" app,",
+    "so there is nothing here that knows how to seed» and the box could not be born. The copy of this list in the",
+    "monorepo (`infra/fleet/lists/demo-instance.json`) moved in the same hour — nothing mechanical keeps the two in",
+    "step, which is why both edits are named here."
   ],
   "version": 1,
   "apps": [
@@ -77,6 +85,10 @@
     {
       "id": "chrome",
       "package": "@forgecommerce/ext-chrome"
+    },
+    {
+      "id": "demo-data",
+      "package": "@forge/ext-demo-data"
     },
     {
       "id": "feed",
@@ -141,8 +153,7 @@
     "Keyed by the app's DIRECTORY name under `extensions/`, which is what the guard walks."
   ],
   "notComposed": {
-    "admin-dashboard": "SOLDERED, not optional. `apps/admin` imports it directly (a non-generated source under apps/*/src), so composing it from a list would register it twice — the oven refuses it by name with rule `hand-welded`. It is in every image already, including this box's; being off this list is the opposite of being absent.",
-    "demo-data": "SOLDERED, same rule and same proof: `apps/api/src/action-registry.ts` imports its populate/wipe/adopt-legacy by hand. It is also `surface: 'platform'` — a system app the tenant does not operate — and it is what drives this box's own seeding. Off the list, in the image."
+    "admin-dashboard": "SOLDERED, not optional. `apps/admin` imports it directly (a non-generated source under apps/*/src), so composing it from a list would register it twice — the oven refuses it by name with rule `hand-welded`. It is in every image already, including this box's; being off this list is the opposite of being absent."
   },
   "instanceApps": [
     {
