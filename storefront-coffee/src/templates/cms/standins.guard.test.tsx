@@ -30,6 +30,8 @@
 
 import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
 import { renderToString } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import { OWN, type PageTemplate, SHARED } from './registry';
 
@@ -53,6 +55,33 @@ const STAND_INS: [RegExp, string][] = [
   [/\bTODO\b|\bTBD\b|\bXXX+\b|\bPREENCHER\b/, 'scaffolding left in the copy'],
 ];
 
+/**
+ * ★★ THE ONE THING A STAND-IN SHAPE CANNOT TELL APART, AND WHY THIS FUNCTION EXISTS.
+ *
+ * A reserved `.example` address IS the shape of scaffolding, and the list above is right to hunt it: a shopper
+ * reading `@cafe.example` reads a blank somebody forgot to fill. But this box ALSO has the opposite rule, and
+ * it is not a preference — `bin/fork-contact.guard.mjs` refuses any contact detail that could belong to a real
+ * stranger, because this dataset shipped the owner's own address once, in fifteen files. The two rules met on
+ * this page during the pk21 merge and neither is wrong.
+ *
+ * What tells the two cases apart is not the SHAPE of the address, it is whether anybody DECLARED it. An
+ * address the dataset publishes for this very shop (`seed/chrome.json`, the account footer the shopper reaches
+ * from here in one click) is a decision; the same string written by nobody is scaffolding. So the exception is
+ * DERIVED from the declaration, never an allow-list: change the dataset and this guard moves with it; write
+ * `@whatever.example` here without declaring it and it is still caught.
+ */
+function declaredByTheShop(found: string): boolean {
+  const declared = new Set<string>();
+  const chrome = JSON.parse(
+    readFileSync(join(import.meta.dirname, '../../../../seed/chrome.json'), 'utf8'),
+  ) as { stores?: Record<string, Record<string, Record<string, unknown>>> };
+  for (const blocks of Object.values(chrome.stores ?? {}))
+    for (const config of Object.values(blocks ?? {}))
+      for (const value of Object.values(config ?? {}))
+        if (typeof value === 'string' && value.trim()) declared.add(value.trim());
+  return [...declared].some((d) => d.includes(found));
+}
+
 const page = (key: string): PageDoc => ({
   slug: key,
   title: 'Página',
@@ -67,7 +96,7 @@ test('★★ every registered institutional template renders copy a shop could h
     const html = renderToString(<Template page={page(key)} />);
     for (const [pattern, what] of STAND_INS) {
       const hit = html.match(pattern);
-      if (hit) offenders.push(`${key}: ${what} — "${hit[0]}"`);
+      if (hit && !declaredByTheShop(hit[0])) offenders.push(`${key}: ${what} — "${hit[0]}"`);
     }
   }
   expect(
