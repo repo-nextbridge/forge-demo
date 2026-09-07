@@ -51,6 +51,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { servability } from './servable.mjs';
+
 const HERE = dirname(dirname(fileURLToPath(import.meta.url)));
 const argOf = (name) => {
   const i = process.argv.indexOf(name);
@@ -92,7 +94,7 @@ let BOX = {};
 try {
   BOX = JSON.parse(readFileSync(join(HERE, 'seed/box.json'), 'utf8'));
 } catch (error) {
-  wrongQuestion(`seed/box.json could not be read (${error.message}) — there is no declaration of which stores are servable.`);
+  wrongQuestion(`seed/box.json could not be read (${error.message}) — there is no declaration of which tenant this is, or of which stores it must hold.`);
 }
 
 // ── 1 · IS THIS TENANT DECLARED? ────────────────────────────────────────────────────────────────────────
@@ -176,20 +178,19 @@ say();
 let opened = 0;
 
 for (const row of rows) {
-  const decl = declared.get(row.handle);
-  if (!decl) {
-    // Probed anyway — a store the box holds is a store a visitor can reach — and NAMED, because a store no
-    // declaration mentions is a fact about this box somebody has to see. (Same rule as `bin/warm-box.mjs`.)
-    noted(row.handle, `not declared in seed/box.json — its doors are opened anyway (${row.id})`);
-  } else if (decl.servable === false) {
-    // ⚠️ SKIPPED BY NAME, WITH THE REASON, because a store simply ABSENT from a report is indistinguishable
-    // from one that failed — this repository has paid for that silence twice. The flag is the BOX's
-    // declaration of servability, not this step's opinion: if it is wrong, `seed/box.json` is where it is
-    // wrong. (Today it skips exactly one store: `balcao`, the totem.)
-    skipped(
-      row.handle,
-      `seed/box.json declares it \`servable: false\`, so this run asked NOTHING about its doors — ${decl._servable_why ?? 'and gives no reason'}`,
-    );
+  // Probed anyway — a store the box holds is a store a visitor can reach — and NAMED, because a store no
+  // declaration mentions is a fact about this box somebody has to see. (Same rule as `bin/warm-box.mjs`.)
+  if (!declared.has(row.handle)) {
+    noted(row.handle, `not declared in seed/box.json (${row.id}) — this box holds a store nothing there mentions`);
+  }
+  // ⚠️ SKIPPED BY NAME, WITH THE REASON, because a store simply ABSENT from a report is indistinguishable
+  // from one that failed — this repository has paid for that silence twice. ★ pk21: THE REASON IS THE PORT'S.
+  // `seed/box.json` used to carry a hand-written `servable: false` for the counter — a second truth about a
+  // store the very read below already described — so this step had to learn that store BY NAME. It reads
+  // `storefront_enabled` off the row now (`bin/servable.mjs`), which is why the skip needs no list here.
+  const { servable, reason } = servability(row);
+  if (!servable) {
+    skipped(row.handle, `this run asked NOTHING about its doors — ${reason}`);
     continue;
   }
   const base = `${api}/s/${row.id}`;
@@ -225,8 +226,10 @@ for (const row of rows) {
 //
 // The other half of "which doors are these": question 2 proved the list belongs to the right tenant, and
 // this proves the list is not SHORT. Without it, a port that hands back an empty array — or a birth that
-// built one store of two — is a run with fewer ✓ lines and the same green verdict. (`bin/warm-box.mjs:228`
-// grades the same disagreement; it is stated in both because neither runs the other.)
+// built one store of two — is a run with fewer ✓ lines and the same green verdict. (`bin/warm-box.mjs` grades
+// the same disagreement, in the loop after the one that classifies rows; it is stated in both because neither
+// runs the other. ⚠️ Named rather than cited by line: this file used to point at a line number, and pk21
+// moved it.)
 for (const [handle, decl] of declared) {
   if (rows.some((r) => r.handle === handle)) continue;
   bad(

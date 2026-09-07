@@ -34,11 +34,26 @@ const BOX = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
 const SECRET = 'test-secret';
 const TOKEN = 'fot_test';
 
-/** The stores the fake port reports for the coffee tenant — the counter among them, as the real one does. */
+/**
+ * The stores the fake port reports for the coffee tenant — the counter among them, as the real one does.
+ *
+ * ★★ pk21 — `storefront_enabled` IS THE FIELD THAT DECIDES, and it is the PORT's. `read.internal.stores`
+ * publishes it (packages/core/src/read/internal-capabilities.ts:796) derived from the store's `status`;
+ * `seed/box.json` used to carry a hand-written `servable: false` beside it, which was a second truth about
+ * one store with nothing to keep the two in agreement.
+ *
+ * ⚠️ THE COUNTER IS `false` HERE AND `true` ON THE REAL BOX — MEASURED 2026-09-07 on the live bench:
+ * `read.internal.stores` answers `storefront_enabled: true` for `balcao`, because all four stores are
+ * `active`. So this fixture is the box of the day the counter's status is flipped, which is what these tests
+ * are for; `CAFE_ON_THE_STREET` below is the box of today, and it warms the counter on purpose.
+ */
 const CAFE_STORES = [
-  { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café' },
-  { id: 'sto_BALCAO', handle: 'balcao', name: 'Forge Café · Balcão' },
+  { id: 'sto_CAFE', handle: 'cafe', name: 'Forge Café', storefront_enabled: true },
+  { id: 'sto_BALCAO', handle: 'balcao', name: 'Forge Café · Balcão', storefront_enabled: false },
 ];
+
+/** Today's real answer: every store of the tenant on the street. */
+const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: true }));
 
 /**
  * ★ THE PER-STORE BODY THE VITRINE REALLY SENDS, and this fixture is a copy of the product's own types
@@ -272,7 +287,7 @@ test('★★ a birth that warms every servable store finishes green, with number
   }
 });
 
-test('★★★ the store this box declares NOT servable is skipped — and the skip is ANNOUNCED with its reason', async () => {
+test('★★★ the store the PORT says has no public page is skipped — and the skip is ANNOUNCED with its reason', async () => {
   const box = await fakeBox({ warm: 'ok' });
   try {
     const { stdout, status } = await runStep({ box });
@@ -284,16 +299,65 @@ test('★★★ the store this box declares NOT servable is skipped — and the 
     assert.match(stdout, /balcao/, `the skipped store is not named at all:\n${stdout}`);
     const line = stdout.split('\n').find((l) => l.includes('balcao'));
     assert.match(line, /skip/i, `the counter's line does not say it was skipped: ${line}`);
-    // 3 · with the reason the DECLARATION gives, never one this file invented.
-    const declared = BOX.tenants
-      .flatMap((t) => t.stores)
-      .find((s) => s.handle === 'balcao');
-    assert.equal(declared.servable, false, 'seed/box.json no longer marks the counter unservable');
-    const words = declared._servable_why.split(/[\s,.]+/).filter((w) => w.length > 6).slice(0, 3);
+    // 3 · with a reason that names the PORT and the field, so a reader can go and ask the box the same
+    //     question — never a paragraph in a file that can disagree with the box it describes.
+    assert.match(line, /storefront_enabled/, `the skip line does not name the field that decided it: ${line}`);
+    assert.match(line, /read\.internal\.stores/, `the skip line does not name the read that answered: ${line}`);
+    // 4 · ⛔ AND NOTHING IN `seed/box.json` MAY SAY IT. That file's copy of this fact is the duplication the
+    //     slice removed; `bin/servable.test.mjs` is the guard, and this line is why it matters HERE.
+    const declared = BOX.tenants.flatMap((t) => t.stores).find((s) => s.handle === 'balcao');
     assert.ok(
-      words.some((w) => stdout.includes(w)),
-      `the skip line carries none of the declared reason (${words.join(', ')}):\n${stdout}`,
+      !('servable' in declared),
+      'seed/box.json declares `servable` again — two truths about one store, and this step reads the port.',
     );
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and TODAY the counter is on the street, so it IS warmed — the derivation says what is, not what we want', async () => {
+  // ⛔ MEASURED ON THE LIVE BENCH 2026-09-07: `read.internal.stores` answers `storefront_enabled: true` for
+  //    `balcao` — the four stores are all `active`. Under the hand-written flag this box skipped it anyway,
+  //    which is precisely the second truth: the file said one thing and the port said another. The day
+  //    `tenant.store.update {"status":"private"}` runs against the counter, the test above is the box and
+  //    this one stops being; nothing here changes.
+  const box = await fakeBox({ warm: 'ok', stores: CAFE_ON_THE_STREET });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.deepEqual(box.asked.posts, [['sto_CAFE', 'sto_BALCAO']], `the counter was not warmed:\n${stdout}`);
+    assert.doesNotMatch(stdout, /balcao.*SKIPPED/, `a store on the street was skipped:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ a kernel that does not publish the field at all ⇒ every store is ON THE STREET, never a silent nothing', async () => {
+  // ⛔ THE SABOTAGE THIS IS AGAINST: `!row.storefront_enabled` instead of `=== false`. This box pins its
+  //    images BY DIGEST (`forge.lock`), so a kernel older than the capability is a real configuration, and
+  //    against one every row arrives WITHOUT the field. A truthiness test would skip EVERY store, warm
+  //    nothing, and print a verdict over an empty report. The product's own consumer takes the same care:
+  //    `apps/storefront/src/app/sitemap.ts:35` reads `?.storefront_enabled === false`.
+  const legacy = CAFE_STORES.map(({ storefront_enabled: _drop, ...rest }) => rest);
+  const box = await fakeBox({ warm: 'ok', stores: legacy });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.deepEqual(box.asked.posts, [['sto_CAFE', 'sto_BALCAO']], `an older kernel emptied the box:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ THE VACUUM: a port that reports NO STORE is accused, never "nothing to warm, all fine"', async () => {
+  // Every way this step can go blind ends in an empty report under a verdict that reads like a measurement.
+  // `bin/prove-doors.mjs` asserts its own count for the same reason; neither runs the other, so both do it.
+  const box = await fakeBox({ warm: 'ok', stores: [] });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.notEqual(status, 0, `an empty store list was reported as a warm box:\n${stdout}`);
+    assert.match(stdout, /NO STORE OF forgecafe WAS READ/, stdout);
+    assert.doesNotMatch(stdout, /VERDICT: warm/, `a run that read nothing signed a warm box:\n${stdout}`);
   } finally {
     box.close();
   }

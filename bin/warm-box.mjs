@@ -55,15 +55,18 @@
 // ── ★★ WHICH STORES: THE PORT SAYS, THE DECLARATION FILTERS, AND NEITHER IS SILENT ───────────────────────
 //
 // The list of stores is READ FROM THE BOX (`read.internal.stores`), never typed here — a store created
-// tomorrow is warmed with no edit. `seed/box.json` may mark one `servable: false`, and the counter is:
-// it is served by the totem, a whole-host app with no store in its URLs, so there is no vitrine page to warm.
+// tomorrow is warmed with no edit. ★ pk21: WHICH OF THEM HAS A PAGE IS READ FROM THE SAME ANSWER. That read
+// already carries `storefront_enabled` (derived from the store's `status`), so `bin/servable.mjs` classifies
+// the rows and `seed/box.json` declares nothing about it. It used to: a hand-written `servable: false` on the
+// counter, a second truth about a store the port was already describing, which is exactly why this step and
+// `bin/prove-doors.mjs` each had to learn that store BY NAME.
 //
 // ⚠️ EVERY STORE GETS A LINE, INCLUDING THE ONES THAT DID NOTHING. A store absent from a warm report reads
 // exactly like a store that failed, and this repository has already paid three times for a summary that was
 // silent about what it did not do (the totem announced without starting, two admin doors announced with one
-// claimed, a verifier's ✓ printed without a row being read). So: a skip is announced WITH THE DECLARED
-// REASON, a store the port holds and the file does not mention is warmed AND named as undeclared, and a
-// store the file declares and the box does not hold is RED.
+// claimed, a verifier's ✓ printed without a row being read). So: a skip is announced WITH THE REASON THE PORT
+// GAVE, a store the port holds and the file does not mention is NAMED as undeclared, and a store the file
+// declares and the box does not hold is RED.
 //
 // ── EXIT CODES, and the interesting one is the one that is NOT here ──────────────────────────────────────
 //   0  EVERY SERVABLE STORE CAME OUT WARM.
@@ -75,12 +78,14 @@
 //   2  THIS STEP COULD NOT ASK — no credential, no tenant, a read face that refused, a port that did not
 //      answer. Nothing was learned about the box, and reporting that as a defect is how an operator ends up
 //      hunting one that does not exist. The split is `bin/verify-seed.mjs`'s, for the same reason.
-//   3  THE BOX DOES NOT HOLD A STORE `seed/box.json` DECLARES. The birth did not build it; see above for why
-//      this one, and only this one, still fails.
+//   3  THE BOX DOES NOT HOLD A STORE `seed/box.json` DECLARES — or the port reported no store at all. The
+//      birth did not build it; see above for why this one, and only this one, still fails.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { servability } from './servable.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BOX = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
@@ -211,16 +216,18 @@ const declared = new Map((spec.stores ?? []).map((s) => [s.handle, s]));
 
 const toWarm = [];
 for (const row of rows) {
-  const decl = declared.get(row.handle);
-  if (!decl) {
-    // Warmed, because a store the box holds is a store a visitor can reach — and NAMED, because a store
-    // nothing declares is a fact about this box that somebody has to see.
-    noted(row.handle, `not declared in seed/box.json — warmed anyway (${row.id})`);
-    toWarm.push(row);
-    continue;
+  // ⚠️ BOTH FACTS, AND IN THIS ORDER. "Nothing declares this store" and "the port says it has no page" are
+  // independent, and folding them would let one hide the other: an undeclared store that is also off the
+  // street would be skipped in silence, and a store nothing mentions is a fact about this box regardless of
+  // whether there was anything to warm in it.
+  if (!declared.has(row.handle)) {
+    noted(row.handle, `not declared in seed/box.json (${row.id}) — this box holds a store nothing here mentions`);
   }
-  if (decl.servable === false) {
-    skipped(row.handle, decl._servable_why ?? 'seed/box.json marks it `servable: false` and gives no reason');
+  const { servable, reason } = servability(row);
+  if (!servable) {
+    // Skipped BY NAME with the reason, because a store simply absent from a report is indistinguishable from
+    // one that failed. The reason is the PORT's now, not a paragraph in a file that can go stale against it.
+    skipped(row.handle, reason);
     continue;
   }
   toWarm.push(row);
@@ -233,9 +240,28 @@ for (const [handle, decl] of declared) {
   );
 }
 
+// ── ★★★ THE VACUUM: a read that came back EMPTY is not a box with nothing to warm ───────────────────────
+//
+// Every way this step can go blind ends in the same shape — an empty report under a verdict that reads like
+// a measurement. `bin/prove-doors.mjs` asserts its own count for the same reason and says so there; neither
+// step runs the other, so both state it. ⚠️ It is `rows.length`, not `toWarm.length`: a box whose stores are
+// all genuinely off the street warmed nothing CORRECTLY, and the ↷ lines above name every one of them with
+// the port's reason. A port that reported NO STORE AT ALL is a different sentence.
+if (rows.length === 0) {
+  bad(
+    `NO STORE OF ${tenant} WAS READ`,
+    'read.internal.stores answered an EMPTY list, so this run warmed nothing and knows nothing. "Nothing to ' +
+      'warm" over a port that reported no store is a green that means "not asked".',
+  );
+}
 if (toWarm.length === 0) {
   say();
-  say(`Nothing to warm for ${tenant} — every store it holds is declared unservable.`);
+  if (rows.length > 0) {
+    say(
+      `Nothing to warm for ${tenant} — the port reports ${rows.length} store(s) and says none of them has a ` +
+        'public page. Each is named above with the reason it gave.',
+    );
+  }
   finish();
 }
 

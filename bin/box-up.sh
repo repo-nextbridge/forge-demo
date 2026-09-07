@@ -29,7 +29,7 @@
 #  12. verify-seed   × TENANT   the verdict over the DATA — does the box HOLD what this repository declares?
 #  13. online-only               the edge and the bucket: what only exists online. AFTER the rebirth (13–15
 #                                are the reset's own tail, and purging BEFORE it refills from a dying origin)
-#  14. warm-box      × TENANT    every SERVABLE store, warmed and MEASURED. ★ A REPORT, not a gate: warmth
+#  14. warm-box      × TENANT    every store the PORT says has a public page, warmed and MEASURED. ★ A REPORT, not a gate: warmth
 #                                does not decide the exit code (it was red on every run by construction —
 #                                see the step). A store DECLARED and not built still does.
 #  14b. prove-doors   × TENANT    every DOOR of every store, opened anonymously — vitrine, checkout,
@@ -1507,10 +1507,15 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # both walk the stores the PORT reports, so a store that is not there is a store they never ask about.
 #
 # ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
-# that lists a tenant's stores resolves the tenant from the CREDENTIAL. The store this box declares
-# `servable: false` — the counter, served by the totem, which has no store in its URLs — is SKIPPED and the
-# skip is announced with its declared reason.
-say '14 · warming every servable store, and REPORTING what came back (warmth does not grade the birth)'
+# that lists a tenant's stores resolves the tenant from the CREDENTIAL.
+#
+# ★ pk21 — WHICH STORES HAVE A PAGE IS THE PORT'S ANSWER, NOT A LIST IN THIS REPOSITORY. The same read
+# already carries `storefront_enabled` (derived from the store's `status`), and `seed/box.json` used to
+# carry a hand-written `servable: false` beside it — two truths about one store with nothing to keep them
+# in agreement. A store the port says has NO public page is SKIPPED, by name, with that reason; a store on
+# the street is warmed. ⚠️ MEASURED 2026-09-07: the counter answers `storefront_enabled: true` today, so it
+# is warmed and its doors are opened — taking it off the street is `tenant.store.update` through the port.
+say '14 · warming every store the port says has a public page, and REPORTING what came back (warmth does not grade the birth)'
 COLD=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
