@@ -44,14 +44,24 @@
 //   1. does `seed/box.json` DECLARE this tenant?   (no declaration ⇒ nothing to grade against)
 //   2. does the CREDENTIAL belong to it?           (`whoami` — the response IS the proof; see below)
 //   3. does the box HOLD the stores it declares?   (a declared store the port does not list is a ✗)
-// and it refuses to call a run that opened ZERO doors a green, because that is the shape all three of those
+//   4. ★ pk22: does the port SAY WHAT THE BOX DECLARED?  (`seed/box.json` states `status` for a store whose
+//      front is not the vitrine — the counter, whose front is the totem — and a store that is back on the
+//      street with that word still written in the file is a ✗ that names it)
+// and it refuses to call a run that graded ZERO doors a green, because that is the shape all of those
 // failures decay into.
+//
+// ★★ pk22 — AND IT NO LONGER SKIPS A WHOLE STORE FOR THE SAKE OF ONE DOOR. `storefront_enabled: false` says
+// the reference VITRINE has no page for the store; it says nothing about the checkout, the account or the
+// LOGIN, which are a different deployable (`apps/checkout`, which mounts `requireStore` and never
+// `requirePublicStorefront`). Until this slice the counter's three checkout doors were opened by nothing at
+// all the moment it left the street — silently, on the very birth that took it off. Now the vitrine page is
+// demanded SHUT (⊘, a graded green) and the other three are demanded OPEN.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { servability } from './servable.mjs';
+import { OFF_THE_STREET, servability } from './servable.mjs';
 
 const HERE = dirname(dirname(fileURLToPath(import.meta.url)));
 const argOf = (name) => {
@@ -68,9 +78,12 @@ let failures = 0;
 const say = (s = '') => out.push(s);
 const ok = (what, why) => say(`  ✓ ${what} — ${why}`);
 const bad = (what, why) => { failures++; say(`  ✗ ${what} — ${why}`); };
-const skipped = (what, why) => say(`  ↷ ${what} — SKIPPED: ${why}`);
 /** Held by the box and declared by nobody: probed anyway, and NAMED — see the loop for why. */
 const noted = (what, why) => say(`  ⓘ ${what} — ${why}`);
+/** ★★ pk22 — A DOOR THAT WAS PROVED **SHUT**, which is a GREEN and has to look different from a green that
+ *  was proved open. The counter's vitrine page must 404: that is what its merchant asked for. Rendering it
+ *  as a ✓ would make «every door opens» mean two opposite things in one report. */
+const closed = (what, why) => say(`  ⊘ ${what} — ${why}`);
 const finish = (verdict) => {
   say();
   say(verdict);
@@ -162,9 +175,38 @@ const declared = new Map((spec.stores ?? []).map((s) => [s.handle, s]));
  * hostname and its doors sit at the ROOT (`/checkout`, `/account/login`); here one origin serves four
  * stores, so the store can only come from the path. Those are two different sets of routes and the edge
  * needs a rule for each — which is exactly the rule that was wrong.
+ *
+ * ★★★ pk22 — AND ONE OF THESE FOUR IS THE VITRINE'S AND THE OTHER THREE ARE NOT, which is the whole reason
+ * this step no longer skips a store wholesale.
+ *
+ * `storefront_enabled: false` says ONE thing: the reference vitrine has no page for this store. It does not
+ * say the store is off. Measured by pk21/p1 with a store `private`: the port answers 200 for `read.products`,
+ * `product.by_handle`, `search`, `categories`, `availability`, `store.by_host`, `cart` and `checkout`, and
+ * `cart.create` + `add_line` still work — and the CHECKOUT deployable, which serves the three doors below,
+ * mounts `requireStore` and never `requirePublicStorefront` (`apps/checkout/src/app/s/[store]/layout.tsx`).
+ * So a counter whose front is a totem still has a checkout, still has an account, and above all still has the
+ * LOGIN and the ORDER STATUS page the person who just paid at the till follows a link to.
+ *
+ * ⛔ UNTIL THIS SLICE THIS STEP SKIPPED THE WHOLE STORE, and the day the counter went `private` those three
+ * doors would have stopped being opened by anything — silently, on the very birth that took it off the
+ * street, which is the moment the risk appears. `page: true` marks the one door servability governs.
  */
 const DOORS = [
-  { path: '', expect: [200], by: null, what: 'vitrine' },
+  {
+    path: '',
+    expect: [200],
+    by: null,
+    what: 'vitrine',
+    page: true,
+    // ⚠️ 404 AND NOTHING ELSE, on purpose. A store with no public page answers the vitrine's own 404
+    // (`requirePublicStorefront` → `notFound()`), UNLESS it declares a public address, in which case
+    // pk21/p1 sends a 307 to it. THIS BOX DECLARES NONE and the reason is measured — see
+    // `_public_url_why` on the counter in `seed/box.json`. Widening this to accept a redirect would let a
+    // 307 to nowhere pass as a proof.
+    shutExpect: [404],
+    shutBy: 'storefront',
+    shutWhat: 'vitrine REFUSES it, which is exactly what «no public page» has to mean',
+  },
   { path: '/checkout', expect: [200], by: 'checkout', what: 'checkout' },
   { path: '/account', expect: [307, 302], by: 'checkout', what: 'conta (redirects an anonymous shopper to the login)' },
   { path: '/account/login', expect: [200], by: 'checkout', what: '★ LOGIN — the door that was shut' },
@@ -183,18 +225,24 @@ for (const row of rows) {
   if (!declared.has(row.handle)) {
     noted(row.handle, `not declared in seed/box.json (${row.id}) — this box holds a store nothing there mentions`);
   }
-  // ⚠️ SKIPPED BY NAME, WITH THE REASON, because a store simply ABSENT from a report is indistinguishable
+  // ⚠️ ANNOUNCED BY NAME, WITH THE REASON, because a store simply ABSENT from a report is indistinguishable
   // from one that failed — this repository has paid for that silence twice. ★ pk21: THE REASON IS THE PORT'S.
   // `seed/box.json` used to carry a hand-written `servable: false` for the counter — a second truth about a
   // store the very read below already described — so this step had to learn that store BY NAME. It reads
-  // `storefront_enabled` off the row now (`bin/servable.mjs`), which is why the skip needs no list here.
+  // `storefront_enabled` off the row now (`bin/servable.mjs`), which is why nothing here needs a list.
+  //
+  // ★★ pk22 — AND WHAT IT GOVERNS IS ONE DOOR, NOT THE STORE. See the DOORS table: the vitrine's page is the
+  // only thing a merchant switched off; the checkout, the account and the LOGIN are a different deployable
+  // and must keep answering, or the person who paid at the counter cannot open the order they just paid for.
   const { servable, reason } = servability(row);
-  if (!servable) {
-    skipped(row.handle, `this run asked NOTHING about its doors — ${reason}`);
-    continue;
-  }
   const base = `${api}/s/${row.id}`;
   for (const door of DOORS) {
+    // The one door servability moves. Everything else about the probe is identical: same request, same
+    // header check — only the answer being demanded is the opposite one.
+    const shut = !servable && door.page === true;
+    const expect = shut ? door.shutExpect : door.expect;
+    const expectedBy = shut ? door.shutBy : door.by;
+    const what = shut ? door.shutWhat : door.what;
     let code = 0;
     let servedBy = '';
     try {
@@ -206,18 +254,44 @@ for (const row of rows) {
       continue;
     }
     const label = `${row.handle}${door.path || '/'}`;
-    if (!door.expect.includes(code)) {
-      bad(label, `${door.what} answered ${code}, and this door has to answer ${door.expect.join(' or ')}${servedBy ? ` (served by ${servedBy})` : ''}`);
+    if (!expect.includes(code)) {
+      bad(
+        label,
+        shut
+          ? // ⛔ THE ONE THIS SENTENCE IS FOR: the store is off the street and its page is STILL being served.
+            `${what} — but it answered ${code}${servedBy ? ` (served by ${servedBy})` : ''}, so the vitrine is ` +
+              `still serving a store the port says has no public page. ${reason}`
+          : // ⛔ AND THE OPPOSITE ONE, which is the leak this slice exists to catch: the refusal of the PAGE
+            // reaching a door that is not the page's.
+            `${what} answered ${code}, and this door has to answer ${expect.join(' or ')}${servedBy ? ` (served by ${servedBy})` : ''}${
+              servable
+                ? ''
+                : ' — ⛔ THIS DOOR IS NOT THE VITRINE\'S PAGE AND MUST NOT CLOSE WITH IT. A store with no ' +
+                  'public page keeps its catalogue, its cart, its orders and its sign-in: the totem sells ' +
+                  'through the port and the buyer follows a link to the order they just paid for. If this ' +
+                  'went red the day the counter left the street, the refusal leaked out of the vitrine into ' +
+                  'the deployable that holds the money and the session.'
+            }`,
+      );
       continue;
     }
     // ★ THE CONTAINER, NOT ONLY THE CODE. The vitrine answers 200 for paths it does not own; only the
-    // header proves the edge chose the front that holds the money and the session.
-    if (door.by && servedBy && servedBy !== door.by) {
-      bad(label, `${door.what} answered ${code} but was served by "${servedBy}", not "${door.by}" — the edge sent it to the wrong front`);
+    // header proves the edge chose the front that holds the money and the session. It is also what tells a
+    // 404 that the VITRINE decided from a 404 the edge produced by sending the request somewhere else.
+    if (expectedBy && servedBy && servedBy !== expectedBy) {
+      bad(label, `${what} answered ${code} but was served by "${servedBy}", not "${expectedBy}" — the edge sent it to the wrong front`);
       continue;
     }
+    // A door proved SHUT is a graded door: it counts, so «this run asked nothing» stays the only meaning of
+    // zero, and it prints as ⊘ so nobody reads it as a page that opened.
     opened++;
-    ok(label, `${door.what} → ${code}${servedBy ? ` · ${servedBy}` : ''}`);
+    // ⚠️ THE REASON RIDES ON THE ⊘ LINE AND NOWHERE ELSE. It used to be a second, separate «SKIPPED» line for
+    // the same door, from the days the whole store was skipped — two lines saying one thing, and the reader
+    // had to reconcile them. One door, one line, and the line carries the PORT's words.
+    (shut ? closed : ok)(
+      label,
+      `${what} → ${code}${servedBy ? ` · ${servedBy}` : ''}${shut ? ` — ${reason}` : ''}`,
+    );
   }
   say();
 }
@@ -231,10 +305,42 @@ for (const row of rows) {
 // runs the other. ⚠️ Named rather than cited by line: this file used to point at a line number, and pk21
 // moved it.)
 for (const [handle, decl] of declared) {
-  if (rows.some((r) => r.handle === handle)) continue;
+  const row = rows.find((r) => r.handle === handle);
+  if (!row) {
+    bad(
+      handle,
+      `declared in seed/box.json and NOT in this box, so none of its doors could be opened${decl.bootstrap ? " (it is the tenant's bootstrap store; `provision-ref` owns it)" : ''}`,
+    );
+    continue;
+  }
+  // ── ★★★ pk22 · THE DECLARATION AND THE PORT, ASKED AGAINST EACH OTHER ─────────────────────────────────
+  //
+  // The loop above graded whatever the port said. This asks the other question, and it is the one nothing on
+  // this box could ask before: does the port say what the BOX DECLARED? `seed/box.json` states `status` for
+  // a store whose front is not the vitrine (the counter, whose front is the totem), `bin/seed-box.mjs`
+  // writes it through `tenant.store.update`, and the kernel derives `storefront_enabled` from it. Three
+  // links, and any of them failing quietly puts a shop back on the street with a full green underneath:
+  // a re-provision that reset the column, a birth where step 6 never ran, an edit that dropped the word.
+  //
+  // ⚠️ ASKED ONLY WHERE THE FILE SAYS SOMETHING. An undeclared status is «this box has no opinion», exactly
+  // as it is for the checkout flags, so a store this file is silent about is never graded on it.
+  if (decl.status === undefined) continue;
+  const declaredOffTheStreet = decl.status === OFF_THE_STREET;
+  const portOffTheStreet = !servability(row).servable;
+  if (declaredOffTheStreet === portOffTheStreet) continue;
   bad(
     handle,
-    `declared in seed/box.json and NOT in this box, so none of its doors could be opened${decl.bootstrap ? " (it is the tenant's bootstrap store; `provision-ref` owns it)" : ''}`,
+    declaredOffTheStreet
+      ? `⛔ IS BACK ON THE VITRINE. seed/box.json declares this store \`status: "${decl.status}"\` — it has a ` +
+          'front of its own and the reference vitrine must not serve it — and `read.internal.stores` answers ' +
+          '`storefront_enabled: true` for it, so the page IS being served. The word is written through the ' +
+          'port by `bin/seed-box.mjs` (step 6 of the birth) and nowhere else: either that step did not run ' +
+          'for this tenant, or something put the store back with `tenant.store.update {"status":"active"}`. ' +
+          `Nothing else on this box will say so — every other step reads the port and would grade "${handle}" ` +
+          'as an ordinary shop.'
+      : `seed/box.json declares this store \`status: "${decl.status}"\`, so it must have a public page, and ` +
+          '`read.internal.stores` answers `storefront_enabled: false` for it — the vitrine is 404ing a store ' +
+          'this box says is on the street, and no visitor reaches it.',
   );
 }
 
@@ -252,10 +358,13 @@ if (opened === 0) {
 
 finish(
   failures === 0
-    ? `VERDICT: every door of ${tenant} opens (${opened}), and each one was opened by the front that owns it.`
+    ? // ★ pk22 — «answers as it must», not «opens»: one of the doors this step grades is one that has to be
+      // SHUT (the vitrine page of a store whose front is somebody else's), and a verdict that says «opens»
+      // over a ⊘ line is a report that contradicts itself in two lines.
+      `VERDICT: every door of ${tenant} answers as it must (${opened}), each one from the front that owns it.`
     : opened === 0
       ? // ⚠️ NOT "N doors do not open" — this run never opened one, and a count of failures over an empty
         // report would read as a partial success. The ✗ lines above say what it could not reach.
         `VERDICT: NOT ONE door of ${tenant} was opened by this run, so it proves nothing about this tenant. Read the ✗ lines above.`
-      : `VERDICT: ${failures} door(s) of ${tenant} do NOT open. Read the ✗ lines above.`,
+      : `VERDICT: ${failures} door(s) of ${tenant} do NOT answer as they must. Read the ✗ lines above.`,
 );

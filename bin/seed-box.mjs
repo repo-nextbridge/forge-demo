@@ -30,6 +30,10 @@ import { fileURLToPath } from 'node:url';
 // would be overwritten in silence. In a module of its own because this file seeds on import, so nothing can
 // import it to check its reasoning — the same argument `seed/media.mjs` makes about its own pair.
 import { CHECKOUT_FLAGS, bootstrapFlagConflicts, checkoutFlagPatch } from '../seed/posture.mjs';
+// pk22 — IS THIS STORE ON THE STREET? The declaration's half of a fact whose reading half already lived in
+// `bin/servable.mjs`, and it lives THERE rather than here so the box has one file that both writes the word
+// and reads the boolean the port derives from it. See that file for why idempotency cannot compare words.
+import { statusPatch } from './servable.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -115,6 +119,11 @@ async function storesByHandle() {
 }
 
 async function stores() {
+  // ⛔ EVERY DECLARED STATUS IS A REAL WORD, ASKED BEFORE THE FIRST WRITE. `statusPatch` refuses an unknown
+  // one by name (see `bin/servable.mjs` for why silence there is a typo that reads as a decision); asking it
+  // here rather than inside the loop is the difference between "nothing was written" and a run that created
+  // two stores and then stopped on the third.
+  for (const store of spec.stores) statusPatch(store, undefined);
   const existing = await storesByHandle();
   for (const store of spec.stores) {
     const found = existing.get(store.handle);
@@ -128,6 +137,11 @@ async function stores() {
       // to state them, and re-asserting them every birth is the point — a re-provision resets the store to the
       // defaults. WHICH stores may be stated here is `bootstrapFlagConflicts`' subject; see `assertOneOwner`.
       const patch = checkoutFlagPatch(store, found);
+      // ★ pk22 — AND THE COLUMN THAT DECIDES WHETHER A VITRINE SERVES THIS STORE AT ALL. Same rule as the
+      // flags: idempotent by value, so a converged box spends no command — except that the port never answers
+      // the WORD (`read.internal.stores` publishes the derived boolean and drops `status`), which is why the
+      // comparison lives in `bin/servable.mjs` instead of being spelled here.
+      Object.assign(patch, statusPatch(store, found));
       if (store.theme_key && found.theme_key !== store.theme_key) patch.theme_key = store.theme_key;
       if (Object.keys(patch).length > 0) {
         await command('tenant.store.update', { id: found.id, ...patch });
@@ -151,10 +165,16 @@ async function stores() {
           '  first — see README, "The bench".',
       );
     }
+    // ★★ pk22 — `status` RIDES ON THE CREATE, AND THAT IS THE ONE COLUMN THAT MUST. The checkout flags below
+    // are a second command because `tenant.store.create` does not take them; `status` it DOES take, and the
+    // kernel put it there for exactly this case (pk13/C6): created without it, a counter is a store WITH a
+    // public page for the window between the two commands — public at the moment nobody has checked it yet.
+    // An unknown word never reaches here: `statusPatch` refuses it by name before the first request.
     const out = await command('tenant.store.create', {
       handle: store.handle,
       name: store.name,
       ...(store.theme_key ? { theme_key: store.theme_key } : {}),
+      ...statusPatch(store, undefined),
     });
     const id = out.store_id ?? out.id;
     log(`store ${store.handle} — created (${id ?? '?'})`);

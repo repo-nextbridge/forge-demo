@@ -251,12 +251,25 @@ of the stores the **port reports**, so a store that was never created is a store
 stores (`read.internal.stores`) publishes `storefront_enabled`, derived from each store's `status`, and
 `bin/servable.mjs` is the one place that reads it — steps 14 and 14-bis both import it. A store the port says
 has **no public page** is skipped **by name, with that reason**; a store simply missing from a report reads
-exactly like a store that failed. ★ **`seed/box.json` declares nothing about this any more** (pk21): it used
+exactly like a store that failed. ★ **`seed/box.json` declares no `servable` flag** (pk21): it used
 to mark `balcao` `servable: false` by hand, which was a **second truth** about a store the same answer
 already described, with nothing to keep the two in agreement — which is exactly why both steps had had to
-learn the counter **by name**. ⚠️ **Measured 2026-09-07: the counter answers `storefront_enabled: true`**, so
-today it *is* warmed and its doors *are* opened. Taking it off the street is
-`tenant.store.update {"status":"private"}` through the port, and both steps follow with no edit here.
+learn the counter **by name**.
+
+★★★ **The counter is OFF THE STREET, and that is a decision this box makes through the port** (pk22).
+`seed/box.json` declares `status: "private"` on `balcao` — its front is the **totem**, so the reference
+vitrine has no business serving it — and `bin/seed-box.mjs` writes it with `tenant.store.create` /
+`tenant.store.update` at step 6. Everything else follows with **no list anywhere**: the kernel derives
+`storefront_enabled: false` from that word, step 14 does not warm the counter's pages and step 14-bis
+demands its `/s/<balcao>` **404**. ⚠️ **`private` is not «off»**: `/s/<balcao>/checkout`,
+`/s/<balcao>/account` and `/s/<balcao>/account/login` are the **checkout** deployable and keep answering —
+step 14-bis opens all three, by name — the port answers for the store exactly as before, and the totem keeps
+selling. Put the counter back on the street with `"status": "active"` in that file; removing the key does
+**not** leave it undecided (an undeclared status is «no opinion» and the column keeps `active`).
+⛔ **The counter declares no Public URL**, and the measurement is in `_public_url_why` in `seed/box.json`:
+`public_url` **is** the `host` column, which the kernel also turns into the order link in transactional
+messages — declaring the totem's address there would put an «Acompanhar o pedido» button on every counter
+receipt pointing at a route the totem does not serve.
 
 ⚠️ **The run SAYS which URLs it warmed, and on this box that is not the shopper's.** One rule decides a
 store's addresses and the **port** answers it: does the origin's own host resolve to this store? Yes → clean
@@ -722,12 +735,20 @@ a check people route around.
 | totem (the counter) | `http://localhost:8203` | store `balcao` |
 | https (edge) | `8243` | |
 
-### ★ Two tenants, four stores, ONE admin container
+### ★ Two tenants, four stores — and only THREE of them on the street
 
-| tenant | stores | theme |
-|---|---|---|
-| `forgeco` | `forge` (bootstrap) · `outlet` | — · `outlet` |
-| `forgecafe` | `cafe` (bootstrap) · `balcao` | `coffee-store` · — |
+| tenant | store | theme | on the reference vitrine? |
+|---|---|---|---|
+| `forgeco` | `forge` (bootstrap) | — | yes |
+| `forgeco` | `outlet` | `outlet` | yes |
+| `forgecafe` | `cafe` (bootstrap) | `coffee-store` | yes, on its **fork** |
+| `forgecafe` | `balcao` | — | **no** — `status: "private"`; its front is the **totem** |
+
+⚠️ **The fourth store is not «off».** `balcao` keeps its catalogue, its prices, its stock, its cart and its
+orders through the port — that is how the totem sells for it — and `/s/balcao/checkout`,
+`/s/balcao/account` and `/s/balcao/account/login` keep answering, because those are the **checkout**
+deployable and not the vitrine. What `private` switches off is one thing: the vitrine's page, which answers
+**404**. It is declared in `seed/box.json` and written through the port; see the paragraph on step 14 above.
 
 **A second tenant does NOT need a second admin.** With `FORGE_ADMIN_TENANT` **empty** the admin runs in HOST
 mode: it asks the kernel which tenant the request's `Host` belongs to (`read.admin.by_host`) and mints a
