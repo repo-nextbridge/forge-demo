@@ -32,7 +32,36 @@
     "",
     "⚠️ `brand` REPLACES THE THEME'S WORDMARK rather than standing beside it (the kit's header cedes the mark",
     "when something is placed in that slot). So a `brand` block with an empty config would DELETE the mark",
-    "from every page of the shop. Each entry below therefore carries either a logo or a word — never neither."
+    "from every page of the shop. Each entry below therefore carries either a logo or a word — never neither.",
+    "",
+    "★★ pk19/D1 — THE WORDS THEMSELVES, REWRITTEN TO THE OWNER'S DICTATION (07/09). Everything above is about",
+    "the app being born placed; this pass is about what it SAYS. Four instructions, verbatim: the checkout",
+    "footer carries the payment methods on the left and a security line on the right; the account footer carries",
+    "a phone on the left and a contact e-mail in the middle; the account header says CARRINHO in the two shoe",
+    "stores and stays SACOLA in the café; and the checkout header is logo + step on the left with the way back",
+    "on the right.",
+    "",
+    "⛔ AND THE EMPTIED FIELD IS DECLARED EMPTY, NEVER OMITTED. `planChrome`/`sameConfig` ask «is every key THIS",
+    "FILE states already stored with that value?» — a key the declaration drops is a key the comparison never",
+    "looks at, so deleting `middle_text` here would leave «Trocas e devoluções em até 30 dias» on an existing",
+    "box FOREVER and no birth would ever mention it. `\"\"` is therefore an instruction and not a placeholder:",
+    "`wordOf` trims, so the area renders exactly as it would if the key were absent, and the difference is that",
+    "the seed now ASSERTS the absence. `seed/chrome.test.mjs` proves the omitted-key hole is real by driving",
+    "the plan over it.",
+    "",
+    "⚠️ THE SHOE STORES SAID TWO WORDS FOR ONE THING, MEASURED: `seed/catalog.json` leaves `forge` and `outlet`",
+    "with an empty `vocabulary`, so their vitrine draws the kit's default — `Carrinho`",
+    "(packages/storefront-kit/src/vocabulary/vocabulary-keys.ts:52) — while this file wrote `Sacola` over the",
+    "account header of the same store. The café is the store that actually renamed the thing (`vocabulary.cart",
+    "= Sacola`) and is the one the owner told us to leave alone. So the instruction and the defect are the same",
+    "line, and the guard now ties the two files together instead of pinning a word.",
+    "",
+    "⛔ STILL NO LOGO FOR `forge` AND `outlet`, AND NOW FOR A SECOND REASON. The first is unchanged: this",
+    "repository has no mark for them (`seed/photos/` holds `forge-co-logo.png` and its negative, and nothing",
+    "else that is a logo). The second is the component: `extensions/chrome/checkout-header.tsx:43-51` draws the",
+    "logo and the `back` word as ONE element — `{logo.url ? <img …/> : back}` — so configuring a logo TODAY",
+    "would DELETE «Voltar à loja» from the funnel. The header the owner described (logo+step left, way back",
+    "right) needs three positions where the block has two; that is the monorepo's half of R4."
   ],
   "app": "chrome",
   "slots": {
@@ -44,58 +73,75 @@
   },
   "stores": {
     "forge": {
-      "_why": "The reference shoe store. TEXT ONLY, and the absence of a logo is a measurement rather than a shortcut: this tenant's asset library has no mark in it (04/09 — 18 582 catalogue photographs and seven banner tiles, no logo file anywhere in `seed/`). Inventing one would be art this repository does not have; the app's other road — a base word plus an accent-painted tail — is exactly the shape the theme's own wordmark has, so the store keeps a mark that reads like its own.",
-      "brand": { "text": "Forge", "tail": ".store" },
+      "_why": "The reference shoe store. TEXT ONLY, and the absence of a logo is a measurement rather than a shortcut: this tenant's asset library has no mark in it (04/09 — 18 582 catalogue photographs and seven banner tiles, no logo file anywhere in `seed/`), and pk19 added a second reason — the block draws `logo` and `back` as the same element, so a logo here would delete the way out of the funnel. The app's other road — a base word plus an accent-painted tail — is exactly the shape the theme's own wordmark has, so the store keeps a mark that reads like its own. ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing.",
+      "brand": {
+        "text": "Forge",
+        "tail": ".store"
+      },
       "checkout_header": {
         "back": "Voltar à loja",
         "title": "Checkout",
-        "seal": "Ambiente seguro · seus dados trafegam criptografados"
+        "seal": ""
       },
       "checkout_footer": {
-        "start_text": "Dúvidas? Fale com a gente pelo chat da loja",
-        "middle_text": "Trocas e devoluções em até 30 dias",
-        "end_text": "Forge · calçados e acessórios"
+        "start_text": "Pix · Cartão de crédito",
+        "middle_text": "",
+        "end_text": "Compra Segura"
       },
-      "account_header": { "back": "Voltar à loja", "account": "Minha conta", "cart": "Sacola" },
+      "account_header": {
+        "back": "Voltar à loja",
+        "account": "Minha conta",
+        "cart": "Carrinho"
+      },
       "account_footer": {
-        "start_text": "Precisa de ajuda com um pedido?",
-        "middle_text": "Acompanhe a entrega pela página do pedido",
+        "start_text": "(11) 4000-1000",
+        "middle_text": "contato@forge.example",
         "end_text": "Forge · calçados e acessórios"
       }
     },
     "outlet": {
-      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. The seal is the outlet's own promise and not a copy of the shop's — a claim only that store can make is the app's own hint for this field.",
-      "brand": { "text": "Forge", "tail": " Outlet" },
+      "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back and the footer's right-hand mark.",
+      "brand": {
+        "text": "Forge",
+        "tail": " Outlet"
+      },
       "checkout_header": {
         "back": "Voltar ao Outlet",
         "title": "Checkout",
-        "seal": "Outlet oficial · produtos originais com nota fiscal"
+        "seal": ""
       },
       "checkout_footer": {
-        "start_text": "Peças de ponta de estoque, com garantia de fábrica",
-        "middle_text": "Trocas em até 7 dias para itens de outlet",
-        "end_text": "Forge Outlet"
+        "start_text": "Pix · Cartão de crédito",
+        "middle_text": "",
+        "end_text": "Compra Segura"
       },
-      "account_header": { "back": "Voltar ao Outlet", "account": "Minha conta", "cart": "Sacola" },
+      "account_header": {
+        "back": "Voltar ao Outlet",
+        "account": "Minha conta",
+        "cart": "Carrinho"
+      },
       "account_footer": {
-        "start_text": "Seus pedidos do Outlet ficam aqui",
-        "middle_text": "Trocas em até 7 dias para itens de outlet",
+        "start_text": "(11) 4000-2000",
+        "middle_text": "contato@outlet.example",
         "end_text": "Forge Outlet"
       }
     },
     "cafe": {
-      "_why": "★ THE STORE THIS ITEM WAS REALLY ABOUT. Its vitrine is a FORK and wears its own chrome; its CHECKOUT and its ACCOUNT screens are ours, hosted, and until this file they wore the reference mark — the café's buyers reached the payment step under somebody else's wordmark. This is the one entry with a LOGO, because it is the one store whose logo this repository actually has: `seed/photos/forge-co-logo.png`, the same mark the forked storefront imports as a bundled file (storefront-coffee/src/components/coffee/CoffeeChrome.tsx). The fork owns its copy; the hosted funnel needs it as an ASSET, which is what `logo` is — a `type:'id'` reference the kernel resolves to a url at read time.",
-      "brand": { "logo": "forge-co-logo.png", "text": "forge.co" },
+      "_why": "★ THE STORE THIS ITEM WAS REALLY ABOUT. Its vitrine is a FORK and wears its own chrome; its CHECKOUT and its ACCOUNT screens are ours, hosted, and until this file they wore the reference mark — the café's buyers reached the payment step under somebody else's wordmark. This is the one entry with a LOGO, because it is the one store whose logo this repository actually has: `seed/photos/forge-co-logo.png`, the same mark the forked storefront imports as a bundled file (storefront-coffee/src/components/coffee/CoffeeChrome.tsx). The fork owns its copy; the hosted funnel needs it as an ASSET, which is what `logo` is — a `type:'id'` reference the kernel resolves to a url at read time. ★ pk19: the one store whose `cart` STAYS `Sacola` — the owner named it («na de café deixa como está») and the dataset agrees with him: `cafe` is the only store that declares `vocabulary.cart = Sacola` in seed/catalog.json, so here the account header and the vitrine already said the same word.",
+      "brand": {
+        "logo": "forge-co-logo.png",
+        "text": "forge.co"
+      },
       "checkout_header": {
         "logo": "forge-co-logo.png",
         "back": "Voltar à loja",
         "title": "Finalizar pedido",
-        "seal": "Pagamento seguro · Pix e cartão"
+        "seal": ""
       },
       "checkout_footer": {
-        "start_text": "Torrefação própria em São Paulo",
-        "middle_text": "Assinaturas podem ser pausadas quando você quiser",
-        "end_text": "forge.co · café de origem"
+        "start_text": "Pix · Cartão de crédito",
+        "middle_text": "",
+        "end_text": "Compra Segura"
       },
       "account_header": {
         "logo": "forge-co-logo.png",
@@ -104,8 +150,8 @@
         "cart": "Sacola"
       },
       "account_footer": {
-        "start_text": "Sua assinatura e seus pedidos ficam aqui",
-        "middle_text": "Dúvidas sobre um pedido? Fale com a torrefação",
+        "start_text": "(11) 4000-3000",
+        "middle_text": "contato@cafe.example",
         "end_text": "forge.co · café de origem"
       }
     },
