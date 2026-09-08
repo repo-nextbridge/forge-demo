@@ -40,6 +40,12 @@ lock="$here/forge.lock"
 . "$here/bin/require-node.sh"
 require_node || exit 1
 
+# ★ pk24/D2 — and the oven's own patience, for the same reason the node floor is read before anything: a
+# bake that dies on somebody else's registry is not a fact about this tree. See `bin/docker-retry.sh`; the
+# refusal below (`build()`, the stamp read back out of the image) is untouched by it.
+# shellcheck source=bin/docker-retry.sh
+. "$here/bin/docker-retry.sh"
+
 command -v jq >/dev/null || {
   echo '[build-local] `jq` is required to write the lock as valid JSON.' >&2
   exit 1
@@ -216,7 +222,7 @@ echo >&2
 build() { # <lock key> <image name> <dockerfile>
   local key="$1" name="$2" dockerfile="$3"
   echo "[build-local] building $name …" >&2
-  docker build \
+  docker_build_retry \
     -f "$forge/$dockerfile" \
     --build-arg "FORGE_COMPOSITION=$composition_arg" \
     --build-arg "FORGE_COMPOSITION_ID=$composition_id" \

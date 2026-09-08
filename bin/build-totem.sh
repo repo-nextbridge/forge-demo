@@ -36,6 +36,11 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=bin/require-node.sh
 . "$here/bin/require-node.sh"
 require_node || exit 1
+
+# ★ pk24/D2 — the oven's patience. This script's `docker build` pulls a base image like every other one, and
+# a registry that answers 5xx for a minute is not a fact about this fork. See `bin/docker-retry.sh`.
+# shellcheck source=bin/docker-retry.sh
+. "$here/bin/docker-retry.sh"
 app="$here/totem"
 # The tag compose.override.yml pins this service to. One name, two files, and a grep finds both.
 image="forge-demo-totem:local"
@@ -73,6 +78,6 @@ bash "$here/bin/install-storefront.sh" totem
 # interpolates the WHOLE merged file before building anything, so asking it for this one service still
 # demands every required variable of every other one, and this script would need the box's SECRETS sourced
 # just to compile a front that has none.
-( cd "$app" && docker build -t "$image" . )
+( cd "$app" && docker_build_retry -t "$image" . )
 
 echo "[totem] built $image — \`docker compose up -d\` will now start it."

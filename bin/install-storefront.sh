@@ -17,6 +17,27 @@
 # uses paths RELATIVE to that file, so it is the same on any clone of this repository and describes a real
 # state of the world: this project installs Forge packages from a directory because no registry serves them
 # yet. It leaves at the same moment the tarballs do.
+#
+# ── ★★ pk24/D2 — AND IT EVICTS THE VENDORED ENTRIES FROM THE LOCK BEFORE INSTALLING. MEASURED, 2026-09-08 ─
+#
+# A tarball's PATH does not change when it is re-vendored — `vendor/forgecommerce-contracts-0.3.0.tgz` is
+# the same string every time — so `npm install` sees a lock entry it already satisfies and resolves it BY
+# INTEGRITY out of its content-addressed cache. It never opens the file that was just rewritten. On a clean
+# worktree, right after a full re-vendor from `v03/integra@217734df8`:
+#
+#     the tarball on disk    dist/index.js  9ca046c7…   1462 lines   ← what the release packs
+#     what npm installed     dist/index.js  5967a83c…   1288 lines   ← last week's, out of the cache
+#     the committed lock     sha512-SvMA4i7B…                        ← the OLD tarball's hash, unmoved
+#
+# 174 lines of the release's `@forgecommerce/contracts` were missing from the fork, `npm install` printed
+# nothing, and the lock stayed stale — so the next `npm ci` in a pipeline would fail EINTEGRITY against a
+# tarball nobody could tell had changed. The DIRECT packages escape this only because they arrive as install
+# TARGETS (`npm install ./vendor/x.tgz` does re-read the file); every `overrides` entry — which is where
+# `contracts`, `sdk`, `cli` and `ext-chrome` live — was silently frozen.
+#
+# So the entries resolved from `file:vendor/` are DELETED from `package-lock.json` first. npm then has no
+# choice but to re-resolve them from the bytes on disk and write the hash of what it actually installed.
+# Deleting is safe by construction: an absent entry is the one thing npm cannot satisfy from a lock.
 
 set -euo pipefail
 
@@ -37,7 +58,7 @@ app="$here/$app_dir"
 # The split, decided from the manifest rather than from a list somebody keeps: a Forge package the manifest
 # NAMES is direct, and every other tarball is something one of them pulls in.
 targets="$(node -e '
-const { readFileSync, writeFileSync, readdirSync } = require("node:fs");
+const { existsSync, readFileSync, writeFileSync, readdirSync } = require("node:fs");
 const { join } = require("node:path");
 const app = process.argv[1];
 const manifestPath = join(app, "package.json");
@@ -60,6 +81,21 @@ if (targets.length === 0) throw new Error("no tarball matches a dependency of th
 
 manifest.overrides = overrides;
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+
+// The eviction. See the note above the `set -euo pipefail`: without it npm reinstalls the cached copy of a
+// tarball that has been rewritten under the same path, and says nothing.
+const lockPath = join(app, "package-lock.json");
+if (existsSync(lockPath)) {
+  const lock = JSON.parse(readFileSync(lockPath, "utf8"));
+  const evicted = Object.keys(lock.packages ?? {}).filter((key) =>
+    typeof lock.packages[key]?.resolved === "string" && lock.packages[key].resolved.startsWith("file:vendor/"),
+  );
+  for (const key of evicted) delete lock.packages[key];
+  if (evicted.length > 0) {
+    writeFileSync(lockPath, JSON.stringify(lock, null, 2) + "\n");
+    process.stderr.write(`[install] evicted ${evicted.length} vendored entr(ies) from package-lock.json so npm re-reads the tarballs\n`);
+  }
+}
 process.stdout.write(targets.join("\n"));
 ' "$app")"
 

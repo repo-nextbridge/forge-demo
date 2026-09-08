@@ -40,6 +40,11 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=bin/require-node.sh
 . "$here/bin/require-node.sh"
 require_node || exit 1
+
+# ★ pk24/D2 — the oven's patience. This script's `docker build` pulls a base image like every other one, and
+# a registry that answers 5xx for a minute is not a fact about this fork. See `bin/docker-retry.sh`.
+# shellcheck source=bin/docker-retry.sh
+. "$here/bin/docker-retry.sh"
 app="$here/storefront-coffee"
 # The tag compose.override.yml pins this service to. One name, two files, and a grep finds both.
 image="forge-demo-storefront-coffee:local"
@@ -75,6 +80,6 @@ bash "$here/bin/install-storefront.sh"
 #
 # — and this script would then need the box's SECRETS sourced just to compile a front that has none. Built
 # directly, it needs nothing but the source, which is also what lets it run in CI one day.
-( cd "$app" && docker build -t "$image" . )
+( cd "$app" && docker_build_retry -t "$image" . )
 
 echo "[coffee] built $image — \`docker compose up -d\` will now start it."
