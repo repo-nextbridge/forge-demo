@@ -20,7 +20,8 @@
 
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -364,7 +365,34 @@ async function fakeBox({
 // accepting and the suite hangs instead of failing. Measured: the first version of this file timed out at
 // 60 s on a test whose step exits in three.
 const run_ = promisify(execFile);
-async function runStep({ box, tenant = 'forgecafe', secret = SECRET, token = TOKEN, extra = [], env = {} }) {
+
+/**
+ * ★ EVERY RUN IS GIVEN A DECLARATION, because a real one always has one: `bin/box-up.sh` calls this step
+ * from the repository whose `.env` it just wrote. The default is the honest empty case — this origin is
+ * declared, and NO store is claimed at its root — which is what makes every test below about warmth rather
+ * than about a box whose host map nobody can read. `storeHosts` sets that map; `noDeclaration: true` is the
+ * blind box, and it is a test of its own.
+ */
+function declarationFor(box, storeHosts) {
+  const dir = mkdtempSync(join(tmpdir(), 'forge-warm-env-'));
+  const file = join(dir, '.env');
+  writeFileSync(
+    file,
+    `FORGE_PUBLIC_ORIGIN=${box.origin}\nFORGE_STORE_HOSTS='${JSON.stringify(storeHosts)}'\n`,
+  );
+  return { file, clean: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+async function runStep({
+  box,
+  tenant = 'forgecafe',
+  secret = SECRET,
+  token = TOKEN,
+  extra = [],
+  env = {},
+  storeHosts = {},
+  noDeclaration = false,
+}) {
   const options = {
     encoding: 'utf8',
     env: {
@@ -374,11 +402,16 @@ async function runStep({ box, tenant = 'forgecafe', secret = SECRET, token = TOK
       ...env,
     },
   };
+  const declaration = noDeclaration || extra.includes('--env') ? null : declarationFor(box, storeHosts);
+  const args = [STEP, '--tenant', tenant, '--api', box.origin, ...poll(extra)];
+  if (declaration) args.push('--env', declaration.file);
   try {
-    const { stdout, stderr } = await run_('node', [STEP, '--tenant', tenant, '--api', box.origin, ...poll(extra)], options);
+    const { stdout, stderr } = await run_('node', args, options);
     return { stdout: `${stdout}${stderr}`, status: 0 };
   } catch (error) {
     return { stdout: `${error.stdout ?? ''}${error.stderr ?? ''}`, status: error.code ?? -1 };
+  } finally {
+    declaration?.clean();
   }
 }
 
@@ -720,6 +753,115 @@ test('★★ …and when a store DOES claim the origin, that is said too — the
       `the run still warns about path-scoped URLs on a box whose directory answers:\n${stdout}`,
     );
   } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ pk25/d1 — AND THE OVERRIDE IS THE OTHER SOURCE, SO THE REPORT STOPS SAYING «warm» ────────────────
+//
+// ⛔ THE DEFECT: on this box the two facts above are BOTH true at once — `read.store.by_host` claims nobody,
+// and `FORGE_STORE_HOSTS` serves one store at the root of the very origin being warmed. The step used to
+// print the `⚠` line and then `VERDICT: warm`, exit 0. So every birth reported a warm shop while the pages
+// it warmed (`/s/<id>/botas/chelsea`) were not the pages a visitor opens (`/botas/chelsea`): two route-cache
+// trees, and the summary named the wrong one. The declaration is read now, and a run that warmed the tree
+// nobody browses is a SHORTFALL — still not a gate, but no longer called warm.
+
+test('★★★ a store this box SERVES at the root, warmed path-scoped, costs the verdict its «warm»', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  try {
+    // The bench, exactly: the directory is empty and the host map claims the origin for the shop.
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 1, `a box warmed on the wrong address space came out warm:\n${stdout}`);
+    assert.ok(!/VERDICT: warm\b/.test(stdout), `the verdict still calls this box warm:\n${stdout}`);
+    assert.match(stdout, /did NOT come out fully warm/, stdout);
+    // Named: the store, both trees, and the read that was blind to the override.
+    assert.match(stdout, /sto_CAFE/, `the store at the root is not named:\n${stdout}`);
+    assert.match(stdout, /path-scoped/i, `the tree that WAS warmed is not named:\n${stdout}`);
+    assert.match(stdout, /ROOT/, `the tree that was NOT warmed is not named:\n${stdout}`);
+    assert.match(stdout, /store\.by_host/, `the read that decided it is not named:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ …and a root store that is NOT this tenant\'s is not this run\'s gap — green, and still said', async () => {
+  // The bench again, seen from the OTHER tenant: the origin's root belongs to the shop, and every store this
+  // run warms really is path-scoped. Reporting a shortfall here would be a red nobody can act on.
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_SOMEBODY_ELSE' } });
+    assert.equal(status, 0, `another tenant's root store was charged to this run:\n${stdout}`);
+    assert.match(stdout, /VERDICT: warm/, stdout);
+    assert.match(stdout, /sto_SOMEBODY_ELSE/, `the store that owns the root is not named:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ the directory and the override naming DIFFERENT stores is worse than cold, and it is named', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: { '127.0.0.1': 'sto_CAFE' }, stores: CAFE_ON_THE_STREET });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_BALCAO' } });
+    assert.equal(status, 1, `the two sources disagreeing about the root came out warm:\n${stdout}`);
+    assert.match(stdout, /sto_CAFE/, stdout);
+    assert.match(stdout, /sto_BALCAO/, stdout);
+    assert.match(stdout, /resolve-store|override/i, `the report does not say which of the two the FRONT obeys:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ THE VACUUM: a run with no declaration to read says it DOES NOT KNOW, never «warm»', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  try {
+    const { stdout, status } = await runStep({ box, noDeclaration: true, extra: ['--env', '/nonexistent/.env'] });
+    assert.equal(status, 1, `a run that could not learn the box's own routing reported warmth:\n${stdout}`);
+    assert.match(stdout, /does not know/i, `the run does not say it could not tell:\n${stdout}`);
+    assert.match(stdout, /--root-store|--env/, `the run does not say what would let it know:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ --root-store is that same answer named by hand — the URL inventory\'s flag, same name', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  try {
+    const { stdout, status } = await runStep({
+      box,
+      noDeclaration: true,
+      extra: ['--env', '/nonexistent/.env', '--root-store', 'sto_CAFE'],
+    });
+    // It knows now — and what it knows is the gap, not a green.
+    assert.equal(status, 1, stdout);
+    assert.ok(!/does not know/i.test(stdout), `the flag was ignored:\n${stdout}`);
+    assert.match(stdout, /--root-store/, `the report does not say where the answer came from:\n${stdout}`);
+    assert.match(stdout, /sto_CAFE/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ a declaration that describes ANOTHER box is refused, not read — no fact is invented about it', async () => {
+  const box = await fakeBox({ warm: 'ok', directory: {} });
+  const dir = mkdtempSync(join(tmpdir(), 'forge-warm-other-'));
+  const file = join(dir, '.env');
+  // A laptop's own `.env`, while the operator warms the STAGING origin by hand. Its host map is a fact about
+  // the laptop; reading this origin out of it would be a claim about a box this file has never seen.
+  writeFileSync(
+    file,
+    `FORGE_PUBLIC_ORIGIN=https://some-other-box.example.test\nFORGE_STORE_HOSTS='${JSON.stringify({ '127.0.0.1': 'sto_CAFE' })}'\n`,
+  );
+  try {
+    const { stdout, status } = await runStep({ box, noDeclaration: true, extra: ['--env', file] });
+    assert.equal(status, 1, stdout);
+    assert.match(stdout, /does not know/i, `the mismatched declaration was read anyway:\n${stdout}`);
+    assert.match(stdout, /some-other-box\.example\.test/, `the report does not say which box the file describes:\n${stdout}`);
+    assert.ok(
+      !/sto_CAFE .{0,80}ROOT|ROOT.{0,80}sto_CAFE/.test(stdout),
+      `a store was declared to be at the root of a box whose declaration this was not:\n${stdout}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
     box.close();
   }
 });
