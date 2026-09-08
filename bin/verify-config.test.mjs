@@ -15,6 +15,7 @@
 
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
+import { createServer as createTlsServer } from 'node:https';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -40,8 +41,10 @@ const NET = 'box.example.test';
  *                answers rather than how `.env` describes it.
  * `adminDoors` — `authority → tenant`, i.e. what `forge_control.admin_directory` really holds.
  */
-async function fakeBox({ storeHosts = [], adminDoors = {} } = {}) {
-  const server = createServer((req, res) => {
+async function fakeBox({ storeHosts = [], adminDoors = {}, https = false } = {}) {
+  /** What the TLS handshakes carried, so a test can assert the CLAIMED name never reached one. */
+  const sni = [];
+  const handler = (req, res) => {
     const url = new URL(req.url, 'http://x');
     const json = (code, body) => {
       res.writeHead(code, { 'content-type': 'application/json' });
@@ -62,11 +65,60 @@ async function fakeBox({ storeHosts = [], adminDoors = {} } = {}) {
     }
     res.writeHead(404, { 'content-type': 'text/html' });
     res.end('<html>404</html>');
-  });
+  };
+  // ★★★ AN EDGE THAT HOLDS A CERTIFICATE FOR ITS OWN NAME AND NOTHING ELSE — which is every box published
+  // online, and is what the SNICallback below models: a handshake asking for any other name DIES, exactly
+  // as `tailscale serve` does (measured EPROTO on the live bench, 2026-09-08). That is the whole reason a
+  // probe deriving its ServerName from the `Host:` header it is testing reported the shop as answering
+  // NOTHING at five of eight addresses it answers 200 at.
+  const server = https
+    ? createTlsServer(
+        {
+          key: TLS_KEY,
+          cert: TLS_CERT,
+          SNICallback: (name, cb) => {
+            sni.push(name);
+            cb(new Error(`this edge holds no certificate for "${name}"`));
+          },
+        },
+        handler,
+      )
+    : createServer(handler);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   server.unref();
-  return { origin: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
+  return {
+    origin: `${https ? 'https' : 'http'}://127.0.0.1:${server.address().port}`,
+    https,
+    sni,
+    close: () => server.close(),
+  };
 }
+
+// ── the certificate the https fake presents ───────────────────────────────────────────────────────────────
+//
+// ⚠️ A FIXTURE, NOT A SECRET: a P-256 self-signed pair for `IP:127.0.0.1` and nothing else, generated once
+// for this file and valid until 2126 so no run of this suite ever fails on a date. It is deliberately NOT
+// valid for `localhost` — if it were, the broken probe would pass and this file would prove nothing. The
+// child process is told to trust it through `NODE_EXTRA_CA_CERTS`, which is how the assertions can be about
+// the ServerName rather than about certificate validation.
+const TLS_KEY = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQge4BTh9jeTNNn9g0d
+D4Ns1N7FCZ5kAGxm+W03C5wqqQOhRANCAAR0CZMjfZ9dVlPmoXw2ZFcwvEyId089
+Hg7OK8s7eKJUZoTN4CT5p+82tyFy7hH40miBddakCt6mHU3Ti/JXlZ2Z
+-----END PRIVATE KEY-----
+`;
+const TLS_CERT = `-----BEGIN CERTIFICATE-----
+MIIBkDCCATagAwIBAgIUTjxeaBX9d4pCfgzpjPFTbRVCkBIwCgYIKoZIzj0EAwIw
+FDESMBAGA1UEAwwJMTI3LjAuMC4xMCAXDTI2MDkwODIxNDUxNloYDzIxMjYwODE1
+MjE0NTE2WjAUMRIwEAYDVQQDDAkxMjcuMC4wLjEwWTATBgcqhkjOPQIBBggqhkjO
+PQMBBwNCAAR0CZMjfZ9dVlPmoXw2ZFcwvEyId089Hg7OK8s7eKJUZoTN4CT5p+82
+tyFy7hH40miBddakCt6mHU3Ti/JXlZ2Zo2QwYjAdBgNVHQ4EFgQUpXEjyhIaS8xJ
+j+XOVBzRwi6lSVwwHwYDVR0jBBgwFoAUpXEjyhIaS8xJj+XOVBzRwi6lSVwwDwYD
+VR0TAQH/BAUwAwEB/zAPBgNVHREECDAGhwR/AAABMAoGCCqGSM49BAMCA0gAMEUC
+IQDDcWQb7xcirW1hqfeGWPXHY0HDS5s5w9QdbZXlMDOKDwIgEQKjxtXIR0BBi+xV
+aQJk3CySZNbXSDezFCGh/Kq6D+E=
+-----END CERTIFICATE-----
+`;
 
 /** The four values a promotion writes, in the two spellings this box is ever in. */
 function envFor(mode, overrides = {}) {
@@ -103,8 +155,16 @@ async function runVerdict({ box, env, apiOverride }) {
   );
   try {
     const args = [STEP, '--env', file, '--api', apiOverride ?? box.origin];
+    // The fake edge's own certificate is the trust anchor, so what fails on an https box fails for the
+    // reason this file is about (the ServerName) and never because a self-signed chain was rejected.
+    const childEnv = { PATH: process.env.PATH };
+    if (box.https) {
+      const ca = join(dir, 'fake-edge.pem');
+      writeFileSync(ca, TLS_CERT);
+      childEnv.NODE_EXTRA_CA_CERTS = ca;
+    }
     try {
-      const { stdout, stderr } = await run_('node', args, { encoding: 'utf8', env: { PATH: process.env.PATH } });
+      const { stdout, stderr } = await run_('node', args, { encoding: 'utf8', env: childEnv });
       return { stdout: `${stdout}${stderr}`, status: 0 };
     } catch (error) {
       return { stdout: `${error.stdout ?? ''}${error.stderr ?? ''}`, status: error.code ?? -1 };
@@ -286,6 +346,64 @@ test('★★ the verdict covers the facilities that only exist online, one line 
     for (const facility of BOX.online_only ?? []) {
       assert.match(stdout, new RegExp(facility.id), `${facility.id} is not in the configuration verdict:\n${stdout}`);
     }
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ THE STEP OVER TLS, WHICH IS EVERY BOX ONLINE (pk25/d1) ───────────────────────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED ON THE LIVE https BENCH 2026-09-08: this verdict refused FIVE of the eight names
+// its own `.env` claims — «claimed for sto_… and the shop answers nothing there» — while
+// `curl -H "Host: <each of the eight>" https://<origin>/` answered 200 for all eight. The box was right and
+// the probe was wrong: Node derives the TLS ServerName from the `Host` HEADER when none is given, so the
+// probe negotiated the handshake as «localhost» against an edge holding a certificate for its own name, the
+// handshake died, and `req.on('error')` became «answers nothing». It was written and measured on 04/09
+// against an http origin, where there is no TLS to get wrong, and has been wrong on https ever since.
+//
+// ★ WHY IT MATTERS MORE THAN A WRONG LINE: online the origin is https BY DEFINITION, so the last step of
+// every birth — the verdict over the configuration — would be red on every box, for a reason that has
+// nothing to do with the box. A gate that cries wolf at every deploy is a gate the team learns to skip.
+
+test('★★★ over TLS the eight names the map claims are graded by the SHOP, not by the handshake', async () => {
+  const box = await fakeBox({ ...wholeTailnet, https: true });
+  try {
+    const { stdout, status } = await runVerdict({ box, env: envFor('tailnet') });
+    assert.equal(status, 0, `an https box whose shop answers every claimed name was refused:\n${stdout}`);
+    assert.match(stdout, /VERDICT: settled/, stdout);
+    // …and the claimed names really were probed one by one, not skipped.
+    for (const host of wholeTailnet.storeHosts) {
+      assert.match(stdout, new RegExp(`✓ ${host.replace(/\./g, '\\.')}`), `${host} was never graded:\n${stdout}`);
+    }
+    // ★ THE MECHANISM, ASSERTED: the name under test travels in the HEADER and NEVER in the handshake. This
+    //   edge refuses any ServerName but its own, so a single entry here would be a probe about to be red.
+    assert.deepEqual(box.sni, [], `the claimed name was sent as the TLS ServerName: ${JSON.stringify(box.sni)}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and the negative control SURVIVES it: over TLS a name the shop does not serve is still RED', async () => {
+  // The one thing a `servername` fix must not buy: a green that means "the handshake worked". The map
+  // claims a fifth name here and the shop answers 404 for it, exactly as the live edge does for a name it
+  // does not route — so the verdict has to keep refusing it, over TLS, by name.
+  const box = await fakeBox({ ...wholeTailnet, https: true });
+  try {
+    const env = envFor('tailnet', {
+      FORGE_STORE_HOSTS: `'${JSON.stringify({
+        localhost: 'sto_ROOT',
+        'localhost:8200': 'sto_ROOT',
+        [NET]: 'sto_ROOT',
+        [`${NET}:8200`]: 'sto_ROOT',
+        'never-declared.example.test': 'sto_ROOT',
+      })}'`,
+    });
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, `an undeclared hostname came out settled over TLS:\n${stdout}`);
+    assert.match(stdout, /✗ never-declared\.example\.test/, `the undeclared name is not refused by name:\n${stdout}`);
+    // …and it is refused for what the SHOP answered (404), never for a dead handshake.
+    const line = stdout.split('\n').find((l) => l.includes('never-declared.example.test'));
+    assert.match(line, /answers 404/, `the refusal is not the shop's answer: ${line}`);
   } finally {
     box.close();
   }
