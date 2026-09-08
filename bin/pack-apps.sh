@@ -77,6 +77,13 @@ packed=0
 for source in "$here"/apps/*/; do
   id="$(basename "$source")"
   [ -f "$source/package.json" ] || continue
+  # ⚠️ AND THE APP-LOCAL SHADOW OF THAT LINK IS REMOVED FIRST. `bin/instance-app.guard.mjs` (pk24/D3) puts
+  # the app's declared dependencies in `apps/<id>/node_modules/`, contracts among them, out of whatever Forge
+  # checkout it could find. Node resolves upward, so that copy would WIN over the one just written above —
+  # and if the two checkouts differ, the manifest would be validated against a `@forgecommerce/contracts`
+  # this pack is not producing for. One link, the one named on this command line. The guard rewrites its own
+  # every run, so nothing is broken by taking it away.
+  rm -rf "$source/node_modules/@forgecommerce/contracts"
   out="$here/extensions/$id"
   echo "[pack-apps] $id → extensions/$id" >&2
   # The producer takes the extension as INPUT and names none of its own — it is run from the monorepo (its

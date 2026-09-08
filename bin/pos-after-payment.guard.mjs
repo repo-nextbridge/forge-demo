@@ -30,12 +30,18 @@
 //
 // ── WHAT THIS FILE PROVES, AND WHY IT IS HERE RATHER THAN IN THE APP ─────────────────────────────────────
 //
-// `apps/payment-pos/` carries a vitest suite (`manifest.test.ts`, `provider.test.ts`) that NOTHING in this
-// repository runs — measured: `bash bin/test.sh` collects `bin/` and `seed/` `.mjs` only (bin/test.sh:26),
-// `bin/fork-suite.guard.mjs` and `bin/fork-typecheck.guard.mjs` both enumerate through `bin/forks.mjs`, which
-// requires a dependency on the storefront kit that this app does not have, and the app cannot install a
-// `node_modules` outside the monorepo anyway (its contracts dependency is `workspace:*`). So a rule written
-// there is a rule that runs only inside a `docker build`, weeks later, if at all.
+// ⚠️ THE SENTENCE THAT USED TO BE HERE IS NO LONGER TRUE, and it is left standing because it is the reason
+// this file has the shape it has. Until pk24/d3 it read: `apps/payment-pos/` carries a vitest suite
+// (`manifest.test.ts`, `provider.test.ts`) that NOTHING in this repository runs — `bash bin/test.sh` collects
+// `bin/` and `seed/` `.mjs` only (bin/test.sh:33), and `bin/fork-suite.guard.mjs` / `bin/fork-typecheck.guard.mjs`
+// both enumerate through `bin/forks.mjs`, which requires a dependency on the storefront kit that this app does
+// not have. That was measured and it was correct: a rule written there ran only inside a `docker build`, weeks
+// later, if at all.
+//
+// `bin/instance-app.guard.mjs` now runs both suites (23 tests) and compiles the app, out of the same
+// `bash bin/test.sh`. ⇒ THE CONSTRAINT THIS FILE WAS DESIGNED AROUND IS GONE, and what remains is a
+// DECISION nobody has taken: whether the rule below belongs beside the code it grades. It is not taken here
+// because moving it is a different diff from the one that made moving it possible.
 //
 // That is why the DECISION lives in `apps/payment-pos/after-payment-notice.ts`, JSX-free, and this guard
 // imports and RUNS it: Node strips types from a `.ts` on import and refuses JSX outright. The product's own

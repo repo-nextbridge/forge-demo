@@ -3,7 +3,7 @@
 // `storefront-coffee/` and `totem/` each carry a vitest suite of their own: 774 and 171 tests on the day this
 // was written. Measured on 2026-09-05, on this branch, before this guard existed:
 //
-//     bash bin/test.sh          runs bin/ and seed/ only — `find bin seed …` (bin/test.sh:18)
+//     bash bin/test.sh          runs bin/ and seed/ only — `find bin seed …` (bin/test.sh:33)
 //     bin/build-coffee.sh       vendors, installs, `npm run build`, `docker build` — no `npm test`
 //     bin/build-totem.sh        same shape, same absence
 //     storefront-coffee/Dockerfile   copies `.next/standalone`; the image never runs a test

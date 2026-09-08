@@ -14,6 +14,13 @@
 # is picked up by the same `find`. So THE ANSWER TO "who runs the fork's tests" IS THIS COMMAND. A fork whose
 # `node_modules` is absent is reported NOT CHECKED, never quietly passed; see that file for the measured cost
 # (~5.6 s of work, which the parallelism below mostly absorbs) and for what the first run found.
+#
+# ★ pk24/D3 — AND IT REACHES THE APPS THIS BOX WRITES ITSELF, for the same reason and by the same trick.
+# `apps/payment-pos/` and `apps/demo-gate/` are loaded BY THE KERNEL, and until 2026-09-08 nothing compiled or
+# ran them either: not this script, not `bin/pack-apps.sh`, not `bin/build-local.sh`, and there is still no CI.
+# `bin/instance-app.guard.mjs` is that loop — 35 tests and two typechecks, ~2.8 s of work — and the first run
+# found that NEITHER app could even be loaded here: both configs pointed at files of the Forge monorepo. Same
+# posture as above: a machine with no Forge checkout is told NOT CHECKED, never quietly passed.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
