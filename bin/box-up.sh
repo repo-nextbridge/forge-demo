@@ -1,12 +1,29 @@
 #!/usr/bin/env bash
 # ★★ THE ONE COMMAND — a virgin box becomes this demo's bench. EXECUTE it; do not source it.
 #
-#   bash bin/box-up.sh                birth: the fifteen steps below, on `localhost`
-#   bash bin/box-up.sh --tailnet      PROMOTION: point the born box at this machine's tailnet (A15)
-#   bash bin/box-up.sh --localhost    the promotion, undone
+#   bash bin/box-up.sh                     birth: the fifteen steps below, on `localhost`
+#   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14 (see below — a cron warms later)
+#   bash bin/box-up.sh --plan [--no-warm]  print the roteiro this invocation would run, and do nothing
+#   bash bin/box-up.sh --promote <where>   PROMOTION: point the born box at an address (A15, §B5)
+#                                          <where> = `tailnet` · `localhost` (the way back) · a hostname
+#   bash bin/box-up.sh --tailnet           the alias kept: `--promote tailnet`
+#   bash bin/box-up.sh --localhost         the alias kept: `--promote localhost`
 #
-# The two modes are not steps of the birth and section 0b says at length why: the box is born on `localhost`
-# by Renan's decision, and the addresses of a private network may not live in a versioned file.
+# The promotion is not a step of the birth and section 0b says at length why: the box is born on `localhost`
+# by Renan's decision, and the addresses of a private network may not live in a versioned file. ★ pk24/§B5 —
+# but it IS a NAMED STEP of the pipeline rather than a mode of this bench: a CI that has never heard of a
+# tailnet promotes with `--promote demo.example.com`, and the tailnet is one DESTINATION among them.
+#
+# ★★ pk24/§B1 — AND THE BIRTH CAN BE ASKED NOT TO WARM. Step 14 used to run unconditionally, so a birth in a
+# pipeline burned ~1h10 of warming it did not ask for (Renan, 07/09: *"online será rodado somente de
+# madrugada no cron"*). `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
+# proving the box is standing is not warmth (it exists because sign-in was dead on three of four shops while
+# every other step was green). The warmer stays callable on its own, exactly as it always was:
+# `FORGE_SEED_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>`.
+#
+# ★ AND THE RUN SAYS WHICH STEPS IT RAN AND WHICH IT SKIPPED, BY NAME AND WITH THE REASON — see `BIRTH_STEPS`
+# below and `bin/roteiro.mjs`. A step that is skipped and not mentioned is a new lie in the summary; a step
+# that stops running and is not mentioned is the same lie by accident. Both are RED.
 #
 # WHAT "ONE COMMAND" PROMISES, AND WHAT IT DOES NOT. It promises that a human types ONE thing and gets a
 # working bench — not that there is only one step underneath. There are fifteen, they are listed below in the
@@ -32,7 +49,7 @@
 #  14. warm-box      × TENANT    every store the PORT says has a public page, warmed and MEASURED. ★ A REPORT, not a gate: warmth
 #                                does not decide the exit code (it was red on every run by construction —
 #                                see the step). A store DECLARED and not built still does.
-#  14b. prove-doors   × TENANT    every DOOR of every store, opened anonymously — vitrine, checkout,
+#  14-bis prove-doors × TENANT    every DOOR of every store, opened anonymously — vitrine, checkout,
 #                                conta and LOGIN. The catalogue is warm; nothing else ever opened these.
 #  15. verify-config             the verdict over the CONFIGURATION — is the box WHAT it declares? This is
 #                                the one a rebirth eats: it comes back half promoted and used to exit 0.
@@ -70,17 +87,88 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
 
-# ── THE ONE ARGUMENT, AND IT SELECTS A MODE RATHER THAN A STEP ──────────────────────────────────────────────
-# No argument = birth, which is everything below. `--tailnet` / `--localhost` run the PROMOTION block and
-# nothing else; it lives just after step 0 (it needs the environment sourced and the topology read) and exits
-# there. See its own header for why promotion is not a step of the birth.
+# ── THE ARGUMENTS: ONE MODE, AND TWO THINGS THE BIRTH CAN BE ASKED ──────────────────────────────────────────
+#
+# No argument = birth, which is everything below. `--promote <where>` runs the PROMOTION block and nothing
+# else; it lives just after step 0 (it needs the environment sourced and the topology read) and exits there.
+# See its own header for why the promotion is not a step of the birth — and §B5 for why it is nonetheless a
+# NAMED step of the pipeline, invocable by something that has never heard of a tailnet.
+#
+# ⚠️ EVERY ONE OF THESE DECLARES ITSELF OR REFUSES OUT LOUD. The ruler of this sprint (Renan, 08/09): a step
+# that only works because somebody knew which variable to export is not ready. So `--promote` with no
+# destination is a refusal that NAMES the destinations, not a fall-through to a default.
+USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan]
+         bash bin/box-up.sh --promote <tailnet|localhost|hostname>
+         bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)'
 MODE=birth
-case "${1:-}" in
-  '')          ;;
-  --tailnet)   MODE=tailnet ;;
-  --localhost) MODE=localhost ;;
-  *) printf '\n[box-up] unknown argument "%s".\n  usage: bash bin/box-up.sh [--tailnet|--localhost]\n\n' "$1" >&2; exit 1 ;;
-esac
+PROMOTE_TO=''
+WARM=1
+PLAN_ONLY=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --promote)
+      MODE=promote
+      PROMOTE_TO="${2:-}"
+      case "$PROMOTE_TO" in
+        ''|--*)
+          printf '\n[box-up] --promote needs a DESTINATION, and it will not guess one.\n  tailnet     this machine on its tailnet (reads `tailscale serve`; needs FORGE_TAILNET_HOST)\n  localhost   the promotion undone — the box back on the laptop\n  <hostname>  any address this box is really reachable at, e.g. demo.example.com\n\n%s\n\n' "$USAGE" >&2
+          exit 1 ;;
+      esac
+      shift 2 ;;
+    --tailnet)   MODE=promote; PROMOTE_TO=tailnet;   shift ;;
+    --localhost) MODE=promote; PROMOTE_TO=localhost; shift ;;
+    --no-warm)   WARM=0; shift ;;
+    --plan)      PLAN_ONLY=1; shift ;;
+    *) printf '\n[box-up] unknown argument "%s".\n  %s\n\n' "$1" "$USAGE" >&2; exit 1 ;;
+  esac
+done
+if [ "$MODE" = promote ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
+  # Both flags are about the BIRTH's step list, and the promotion has no step list. Accepting them silently
+  # would answer a question nobody asked — the operator asked for something this invocation cannot do.
+  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote runs the promotion and nothing else.\n  %s\n\n' "$USAGE" >&2
+  exit 1
+fi
+
+# ── ★★ THE STEPS THIS BIRTH IS MADE OF, AS DATA — because a list that only exists in a comment cannot grade
+# ── anything, and the summary is where this box keeps getting caught (pk24/§B1) ─────────────────────────────
+#
+# `<id>|<title>`, in the order they happen. The id is the token each step's own `say` line already opens with,
+# and `say` STAMPS it as it runs (see below): so what the roteiro prints at the end is what the run DID, never
+# what this file says it meant to do. `bin/birth-roteiro.guard.mjs` grades this list against the `say` calls
+# in both directions and against the map in this file's header — a step deleted from one of the three is red.
+BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
+1|postgres + redis
+2|migrate
+3|provision-ref, once per tenant
+3b|the host → store map (the root of the shop)
+3c|the coffee fork edge rule
+3d|the admin sibling switcher
+4|admin-platform-token (the box credential that serves every tenant)
+5|kernel + edge + fronts
+6|seed-box (stores + settings), once per tenant
+7|the totem (needs the counter store id step 6 resolved)
+8|the curated data, once per tenant
+9|seed-demo (the massive catalogue), once per DATASET tenant
+10|the past (seed-history — 180 days), once per tenant
+10b|waiting for the dispatcher to drain
+11|the shop window (--phase window), once per tenant
+12|the verdict over the DATA (verify-seed), once per tenant
+13|the edge and the bucket (what only exists online)
+14|warming every store the port says has a public page
+14-bis|opening every door of every store
+15|the verdict over the CONFIGURATION (verify-config)'
+
+# ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
+# string, so a plan cannot promise a reason the run does not give.
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later, unchanged: `FORGE_SEED_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
+#
+# ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
+# a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
+# allowed to read it — a plan may speak before anything has happened; a summary may not.
+STEPS_SKIPPED=''
+STEPS_RAN=''
+PLANNED_SKIPS=''
+[ "$WARM" = 1 ] || PLANNED_SKIPS="14=$WARM_SKIP_WHY"
 
 : "${COMPOSE_PROJECT_NAME:=forge-preseed}"
 export COMPOSE_PROJECT_NAME
@@ -167,9 +255,35 @@ host_node() { # <script> [args…]
 # `say` also REMEMBERS which step is running, and that is not decoration: it is what names the post-mortem
 # directory below. `postmortem/2026-09-05T04-01-44Z__8-the-curated-data-once-per-tenant/` answers "which step
 # died" from the directory listing, which is where somebody looks first and the only place they look fast.
+#
+# ★★ AND IT STAMPS THE STEP AS HAVING RUN, WHICH IS WHAT MAKES THE ROTEIRO A RESULT (pk24/§B1). The id is the
+# token the message already opens with — `say '10b · waiting…'` stamps `10b` — so nothing has to be kept in
+# agreement by hand, and a step that stops being reached simply never stamps. Lines that are not steps — the
+# bench block, the promotion — do not begin with a digit and stamp nothing.
+#
+# ⚠️ AND THIS COMMENT DELIBERATELY DOES NOT SPELL THOSE TWO CALLS OUT: two guards find the closing block with
+# a plain `indexOf("say 'the ben" + "ch'")`, so a comment quoting it verbatim ABOVE the real line silently
+# re-points them at four hundred lines of this file. Measured here, in this slice: one guard went red naming
+# an order that had not changed, and the other stayed green over a block that was no longer the block.
 STEP_NOW=''
-say() { STEP_NOW="$*"; printf '\n\033[1m── %s\033[0m\n' "$*" >&2; }
+say() {
+  STEP_NOW="$*"
+  case "${1%% ·*}" in
+    [0-9]*) STEPS_RAN="$STEPS_RAN ${1%% ·*}" ;;
+  esac
+  printf '\n\033[1m── %s\033[0m\n' "$*" >&2
+}
 note() { printf '   %s\n' "$*" >&2; }
+# ⛔ THE ONLY OTHER HONEST ENDING FOR A STEP, AND IT COSTS A REASON. `skip` is the one way past a step, and it
+# refuses to be called without saying why: the roteiro prints the reason, and `bin/roteiro.mjs` reds on an
+# empty one. A step dropped with an `if` and no `skip` is what the roteiro's "NEITHER RAN NOR WAS DECLARED
+# SKIPPED" line is for.
+skip() { # <step id> <why>
+  STEPS_SKIPPED="$STEPS_SKIPPED$1=$2
+"
+  printf '\n\033[1m── %s · SKIPPED\033[0m\n' "$1" >&2
+  note "why: $2"
+}
 
 # ── ★★ A RED RUN COPIES ITS OWN WITNESS OUT BEFORE ANYTHING CAN RECREATE IT (pk14·D2) ───────────────────────
 #
@@ -210,6 +324,22 @@ die() { printf '\n[box-up] %s\n' "$*" >&2; capture_evidence "die-${STEP_NOW:-ear
 # shellcheck source=bin/require-node.sh
 . "$HERE/bin/require-node.sh"
 require_node || exit 1
+
+# ── ★ `--plan` · THE ROTEIRO WITHOUT THE BIRTH (pk24/§B1) ───────────────────────────────────────────────────
+#
+# It answers "what would this command do?" in milliseconds, where the answer used to cost ~19 minutes or a
+# reading of this file. That is the whole of the ruler for this sprint: the pipeline has to be describable —
+# bake → be born → seed → prove — without a sentence that starts with "and then I…".
+#
+# ⚠️ IT IS LABELLED A PLAN IN ITS OWN OUTPUT, and `bin/roteiro.mjs` is what makes that distinction impossible
+# to lose: intent and result are different sentences, and this house has been caught four times printing the
+# first while meaning the second. It reads nothing and starts nothing — placed here it is AFTER the node
+# floor (which must stay this script's first act) and BEFORE the first thing that touches this machine.
+if [ "$PLAN_ONLY" = 1 ]; then
+  node "$HERE/bin/roteiro.mjs" --mode plan --steps "$BIRTH_STEPS" --skipped "$PLANNED_SKIPS" || exit 1
+  printf '\n   Not a step of the birth, and invocable on its own:\n     bash bin/box-up.sh --promote <tailnet|localhost|hostname>   the address this box publishes itself at\n\n'
+  exit 0
+fi
 
 command -v jq >/dev/null || die 'jq is required.'
 [ -f "$HERE/.env" ] || die 'no .env — copy .env.example to .env first.'
@@ -407,6 +537,39 @@ origin_for() { # <host> <published-scheme> <published-port> <fallback-port>
   printf '%s://%s' "${2:-http}" "$(authority_for "$1" "$2" "$3" "$4")"
 }
 
+# ── ★ WHERE THIS BOX WAS PROMOTED TO, READ OFF THE BOX (pk24/§B5) ───────────────────────────────────────────
+#
+# The way BACK has to NAME the hostnames it releases, and until pk24 the only name it could reach was
+# `FORGE_TAILNET_HOST` — so a box promoted to a public address could not be put back by anything that had not
+# been told which address that was. The host → store map is the record the promotion itself wrote, so the
+# answer is derived from it: every key that is not this machine's own name. The two tailnet variables are
+# still read, because a box promoted by the older script has them and its map may not carry the IP.
+#
+# ⚠️ THE KEYS CARRY A PORT (`host:8200`) AND A DOOR IS CLAIMED BY HOSTNAME — so the port is stripped and the
+# names are de-duplicated. IPv6 is not a spelling this box ever writes into that map (step 3b and the
+# promotion both compose `"<name>":` / `"<name>:<port>":` from hostnames), so a `[::1]:8200` key here would
+# be one nobody put there.
+promoted_hosts() {
+  { printf '%s\n' "${FORGE_TAILNET_HOST:-}" "${FORGE_TAILNET_IP:-}"
+    python3 - "$HERE/.env" <<'PYSTOREHOSTS'
+import json, sys
+raw = ''
+for line in open(sys.argv[1], encoding='utf-8'):
+    if line.startswith('FORGE_STORE_HOSTS='):
+        raw = line.split('=', 1)[1].strip().strip("'")
+try:
+    mapping = json.loads(raw) if raw else {}
+except ValueError:
+    mapping = {}
+for key in mapping:
+    print(key.rsplit(':', 1)[0] if ':' in key else key)
+PYSTOREHOSTS
+  } | awk -v self="$(hostname 2>/dev/null)" '
+      $0 == "" || $0 == "localhost" || $0 == "127.0.0.1" || $0 == self { next }
+      !seen[$0]++ { printf "%s%s", (n++ ? " " : ""), $0 }
+    '
+}
+
 # ── 0 · the environment ─────────────────────────────────────────────────────────────────────────────────────
 # ⚠️ BEFORE STEP 1, AND THE VIRGIN-BOX TEST IS WHAT PUT IT HERE. This was sourced at step 5, on the reasoning
 # that the tokens it exports are only minted at step 3 — and the very first `docker compose` call died on
@@ -469,27 +632,85 @@ set +a
 # store map is rebuilt from scratch each run rather than added to, so running it three times leaves what
 # running it once leaves. REVERSIBLE: `--localhost` writes the same three values back and releases the
 # hostnames it claimed. Neither direction touches a store, a product or an order.
-if [ "$MODE" != birth ]; then
-  say "promotion · $MODE"
+if [ "$MODE" = promote ]; then
+  say "promotion · $PROMOTE_TO"
+
+  # ★★ pk24/§B5 — THE DESTINATION IS AN ARGUMENT, AND THE TAILNET IS ONE OF THEM. This block used to BE the
+  # tailnet: the mode was called `--tailnet`, the hostname could only come from `FORGE_TAILNET_HOST` and the
+  # published ports could only come from `tailscale serve`. Online there is no tailnet — and what the box
+  # needs there is the SAME thing: the address it publishes itself at, the host → store map, and each
+  # tenant's admin door claimed through the port. So the destination is now NAMED on the command line and the
+  # tailnet is one possible answer; `--tailnet` / `--localhost` remain as aliases of it.
+  #
+  # ⚠️ `public_url` IS NOT A LABEL. `store.host` is what ROUTES: a hostname this box does not hold is a 404
+  # with nothing saying why, and an admin door left unclaimed answers `unknown_admin_host` after a login page
+  # that looked fine. That is why this is a step with a verdict and not a convenience.
+  case "$PROMOTE_TO" in
+    localhost) PROMOTE_DIR=back ;;
+    *)         PROMOTE_DIR=out ;;
+  esac
 
   # THE HOSTNAMES, and the refusal is the first thing that happens. A run with nothing to promote to would
   # otherwise write `http://:8200` into the origin every front derives its image URLs from.
-  # ⚠️ BOTH DIRECTIONS NEED THE NAMES, and `--localhost` needs them for the less obvious reason: releasing a
+  #
+  # ⚠️ BOTH DIRECTIONS NEED THE NAMES, and the way BACK needs them for the less obvious reason: releasing a
   # hostname means naming it. A reverse that could run without them would leave the admin directory holding
   # claims for a network the box no longer serves — a stale front door is worse than no front door.
-  [ -n "${FORGE_TAILNET_HOST:-}" ] || die "FORGE_TAILNET_HOST is unset, so this run has no hostname to $([ "$MODE" = tailnet ] && echo 'claim' || echo 'release').
-     Put this machine's tailnet name in .env (or export it for this run) — it is deliberately not in the repository."
-  net_hosts="$FORGE_TAILNET_HOST"
-  [ -n "${FORGE_TAILNET_IP:-}" ] && net_hosts="$net_hosts $FORGE_TAILNET_IP"
+  #
+  # ★ SO THE WAY BACK READS THEM OFF THE BOX ITSELF, and that is a repair §B5 forced. Until pk24 the only
+  # source was `FORGE_TAILNET_HOST`, so a box promoted to a public hostname could not be demoted by anything
+  # that had not been told which hostname that was. The host → store map IS the record — the promotion
+  # rewrote it on the way out — so the names come from there, with the two tailnet variables kept as a
+  # source because a box promoted by the older script has those and nothing else.
+  case "$PROMOTE_DIR" in
+    out)
+      case "$PROMOTE_TO" in
+        tailnet)
+          [ -n "${FORGE_TAILNET_HOST:-}" ] || die "FORGE_TAILNET_HOST is unset, so this run has no hostname to claim.
+     Put this machine's tailnet name in .env (or export it for this run) — it is deliberately not in the
+     repository. A destination that is NOT a tailnet is named on the command line instead:
+     \`bash bin/box-up.sh --promote demo.example.com\`."
+          PROMOTE_HOST="$FORGE_TAILNET_HOST"
+          net_hosts="$FORGE_TAILNET_HOST"
+          [ -n "${FORGE_TAILNET_IP:-}" ] && net_hosts="$net_hosts $FORGE_TAILNET_IP"
+          ;;
+        *)
+          PROMOTE_HOST="$PROMOTE_TO"
+          net_hosts="$PROMOTE_TO"
+          ;;
+      esac ;;
+    back)
+      PROMOTE_HOST=''
+      net_hosts="$(promoted_hosts)"
+      [ -n "$net_hosts" ] || die "this box does not look promoted: its host → store map names no address but this
+     machine's own, and FORGE_TAILNET_HOST is unset — so there is no hostname to release. Nothing was
+     written. If you know the address this box was promoted to, name it: \`--promote <that hostname>\`
+     re-points the box there, and this command then puts it back."
+      note "releasing the doors of:$(printf ' %s' $net_hosts)" ;;
+  esac
 
   # ── WHAT THIS MACHINE PUBLISHES, READ ONCE ──────────────────────────────────────────────────────────────
   # BOTH directions need it, and `--localhost` for the sharper reason: releasing a door means naming it, and
   # after this change the name of a tenant's tailnet door is the PUBLISHED port. A reverse that could not
   # read the table would leave exactly the claim it exists to remove.
-  serve_table="$(tailnet_published_ports "$FORGE_TAILNET_HOST")"
+  #
+  # ⚠️ AND IT IS ASKED ONLY OF A TAILNET, which is the honest half of §B5: `tailscale serve` is the one
+  # publisher this box can interrogate. A destination reached through anything else (a load balancer, an
+  # ingress, a CDN) publishes a table nothing here can read, so those doors are the box's OWN ports — and the
+  # run SAYS so rather than implying it read something.
+  serve_host=''
+  case "$PROMOTE_TO" in
+    tailnet)   serve_host="$PROMOTE_HOST" ;;
+    localhost) serve_host="${FORGE_TAILNET_HOST:-}" ;;
+    *)         note "nothing here can read what publishes \"$PROMOTE_TO\" (only a tailnet answers a table this
+     box can ask), so every door below is the port this box itself listens on. If something in front of it
+     publishes another one, promote to THAT address." ;;
+  esac
+  serve_table=''
+  [ -n "$serve_host" ] && serve_table="$(tailnet_published_ports "$serve_host")"
   if [ -n "$serve_table" ]; then
     note "read from tailscale serve: $(printf '%s\n' "$serve_table" | wc -l) published door(s) on this machine — this box's addresses derive from them"
-  else
+  elif [ -n "$serve_host" ]; then
     note '⚠️ tailscale publishes nothing for this host (or is not readable here) — falling back to the direct ports'
   fi
 
@@ -519,7 +740,7 @@ PYEOF
   store_port="$(serve_field "$serve_table" "$hport" 2)"
 
   hosts="localhost 127.0.0.1 $(hostname 2>/dev/null)"
-  [ "$MODE" = tailnet ] && hosts="$hosts $net_hosts"
+  [ "$PROMOTE_DIR" = out ] && hosts="$hosts $net_hosts"
   map=''
   for h in $hosts; do
     [ -n "$h" ] || continue
@@ -528,7 +749,7 @@ PYEOF
     # this bench, and a browser sends the bare host for 443 — already a key above. It is added anyway because
     # the operator chooses those ports, and a vitrine published on `:8446` would otherwise resolve to no
     # store and 404 with nothing saying why. Extra keys cost nothing: every one of them really reaches here.
-    if [ "$MODE" = tailnet ]; then
+    if [ "$PROMOTE_DIR" = out ]; then
       case " $net_hosts " in
         *" $h "*)
           pub="$(authority_for "$h" "$store_scheme" "$store_port" "$hport")"
@@ -583,12 +804,12 @@ PYEOF
 "
   done
 
-  if [ "$MODE" = tailnet ]; then
+  if [ "$PROMOTE_DIR" = out ]; then
     if [ -n "$store_port" ]; then
-      origin="$(origin_for "$FORGE_TAILNET_HOST" "$store_scheme" "$store_port" "$hport")"
+      origin="$(origin_for "$PROMOTE_HOST" "$store_scheme" "$store_port" "$hport")"
       note "the vitrine is published as $origin (images follow the page's scheme)"
     else
-      origin="$(probe_origin "$FORGE_TAILNET_HOST")"
+      origin="$(probe_origin "$PROMOTE_HOST")"
       note "nothing publishes :$hport — probed instead, and the origin is $origin"
     fi
     # ★ THE GATE'S LINK TO THE ADMIN IS THE FIRST TENANT'S DOOR, spelled the way a browser opens it.
@@ -598,13 +819,13 @@ PYEOF
       [ -n "${t:-}" ] || continue
       [ "$sch" = '-' ] && sch=''
       [ "$prt" = '-' ] && prt=''
-      door="$(origin_for "$FORGE_TAILNET_HOST" "$sch" "$prt" "$lport")"
+      door="$(origin_for "$PROMOTE_HOST" "$sch" "$prt" "$lport")"
       sib_overrides="$(printf '%s' "$sib_overrides" | jq -c --arg t "$t" --arg u "$door" '. + {($t): $u}')"
       [ -n "$gate_admin" ] || gate_admin="$door"
     done <<EOF
 $admin_doors
 EOF
-    sib_host="$FORGE_TAILNET_HOST"
+    sib_host="$PROMOTE_HOST"
   else
     origin="http://localhost:${FORGE_HTTP_PORT:-8200}"
     gate_admin=''
@@ -655,13 +876,13 @@ EOF
       keep="$(authority_for "$h" "$sch" "$prt" "$lport")"
       doors="$keep"
       [ "$keep" = "$h:$lport" ] || doors="$doors $h:$lport"
-      if [ "$MODE" = tailnet ]; then
+      if [ "$PROMOTE_DIR" = out ]; then
         expected=$((expected + 1))
         if dc run --rm kernel node dist/admin-host.js set "$keep" "$t" >/dev/null 2>&1; then
           claimed=$((claimed + 1))
           # Only the hostname is printed below: the tailnet IP is the same door by another name, and a
           # second line for it would read as a second admin.
-          if [ "$h" = "$FORGE_TAILNET_HOST" ]; then
+          if [ "$h" = "$PROMOTE_HOST" ]; then
             claimed_doors="$claimed_doors$t $(origin_for "$h" "$sch" "$prt" "$lport")
 "
           fi
@@ -682,7 +903,7 @@ EOF
   done <<EOF
 $admin_doors
 EOF
-  if [ "$MODE" = tailnet ]; then
+  if [ "$PROMOTE_DIR" = out ]; then
     # ⚠️ "OF $expected" IS THE WHOLE REPAIR OF THE COUNT. `1 claim(s) set` and `2 claim(s) set` read the same
     # to a human scrolling past; a number is only gradeable next to the number it was supposed to be.
     note "admin directory · $claimed of $expected claim(s) set · $released released"
@@ -696,7 +917,7 @@ EOF
   # health check — would go on describing a box that is not there, and `edge → 200` only proves the KERNEL is
   # up, which it is on a box with no tenants at all. That green is what sent an operator away believing the
   # promotion happened.
-  if [ "$MODE" = tailnet ] && [ "$expected" -gt 0 ] && [ "$claimed" -eq 0 ]; then
+  if [ "$PROMOTE_DIR" = out ] && [ "$expected" -gt 0 ] && [ "$claimed" -eq 0 ]; then
     die "not one of the $expected admin door(s) could be claimed — this box has not been born yet.
      Run \`bash bin/box-up.sh\` first, then promote it with \`bash bin/box-up.sh --tailnet\`.
      (The tenant names this script knows come from seed/box.json, which is what the box is MEANT to hold.
@@ -725,7 +946,7 @@ EOF
   # A door in this list is a promise that a browser opening it reaches an admin that will hold a session; the
   # only thing that can make that promise true is the claim having been accepted, so the claim is what speaks.
   promotion_status=0
-  if [ "$MODE" = tailnet ]; then
+  if [ "$PROMOTE_DIR" = out ]; then
     say 'the doors, as a browser opens them'
     note "vitrine   $origin"
     while read -r t door; do
@@ -736,7 +957,7 @@ $claimed_doors
 EOF
     tsch="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 1)"
     tprt="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 2)"
-    note "totem     $(origin_for "$FORGE_TAILNET_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
+    note "totem     $(origin_for "$PROMOTE_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
 
     # ── ★★ AND WHAT IS MISSING FROM THAT LIST IS SAID OUT LOUD (F7) ───────────────────────────────────────
     # A tenant simply absent from the block above is not a message: nobody counts admins in a terminal. The
@@ -767,7 +988,7 @@ EOF
   # stop recreating. `|| true` is inside `capture_evidence`: a promotion never goes red over its post-mortem.
   say 'saving the logs of the services about to be recreated'
   BOX_TOUCHED=1
-  capture_evidence "before-recreate-${MODE}"
+  capture_evidence "before-recreate-promote-${PROMOTE_TO}"
   say 'recreating the services that read the environment'
   dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem >/dev/null 2>&1 \
     || note '⚠️ some service did not come back — `docker compose ps`'
@@ -1510,8 +1731,17 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # answer BY NAME, and which were never VISITED — a different thing, and a different repair.
 #
 # ⛔ AND ONE THING IT REPORTS IS STILL A RED: exit 3, "the box does not hold a store `seed/box.json` declares".
-# That is not warmth, it is "the birth did not build it", and no other step can see it — steps 12 and 14-bis
-# both walk the stores the PORT reports, so a store that is not there is a store they never ask about.
+# That is not warmth, it is "the birth did not build it", so it keeps an exit code of its own.
+#
+# ⚠️ THIS PARAGRAPH USED TO NAME BOTH 12 AND 14-bis AS BLIND TO IT, on the grounds that they walk the stores
+# the PORT reports. TRUE OF 12, FALSE OF 14-bis SINCE 2026-09-07, and nobody updated it: `b72eca4` gave
+# `bin/prove-doors.mjs` a loop over the SAME two sources (this tenant's stores in `seed/box.json` against the
+# handles `read.internal.stores` answers) which `bad`s a declared store the port does not list — a non-zero
+# exit there too, covered by its own suite. Step 12 (`verify-seed`) really is blind to it: it compares handles
+# only to catch a WRONG CREDENTIAL, so one missing store out of two passes it in silence.
+# ⇒ pk24: this matters because `--no-warm` exists now. What the operator gives up by skipping step 14 is the
+# WARMTH REPORT, not this question — and `$WARM_SKIP_WHY` says exactly that. `bin/birth-roteiro.guard.mjs`
+# keeps the two sentences from drifting apart again.
 #
 # ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
 # that lists a tenant's stores resolves the tenant from the CREDENTIAL.
@@ -1522,10 +1752,18 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # in agreement. A store the port says has NO public page is SKIPPED, by name, with that reason; a store on
 # the street is warmed. ⚠️ MEASURED 2026-09-07: the counter answers `storefront_enabled: true` today, so it
 # is warmed and its doors are opened — taking it off the street is `tenant.store.update` through the port.
-say '14 · warming every store the port says has a public page, and REPORTING what came back (warmth does not grade the birth)'
 COLD=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
+# ★★ pk24/§B1 — AND THIS IS THE ONE STEP THE BIRTH CAN BE ASKED TO LEAVE OUT, for the reason the header gives:
+# it costs ~1h10 and it grades nothing (Renan, 05/09: *"D1 - Pode ser só relatório"*), so a pipeline that is
+# born at 03:00 and warmed by a cron at 04:00 should not pay for it twice. ⛔ THE SKIP IS DECLARED, NOT
+# SILENT: `skip` puts it in the roteiro with its reason, and the roteiro reds on a step that simply vanishes.
+# ⛔ AND 14-bis IS NOT SKIPPED WITH IT — proving the doors open is a fact about the box, not about heat.
+if [ "$WARM" != 1 ]; then
+  skip 14 "$WARM_SKIP_WHY"
+else
+say '14 · warming every store the port says has a public page, and REPORTING what came back (warmth does not grade the birth)'
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
@@ -1552,6 +1790,7 @@ for t in $TENANTS; do
       note "⚠ the warming step itself ended with a status it does not define — nothing was learned about $t." ;;
   esac
 done
+fi
 
 # ── 14-bis · ★★★ EVERY DOOR OF EVERY STORE, OPENED ──────────────────────────────────────────────────────────
 #
@@ -1610,6 +1849,26 @@ say '15 · the verdict over the configuration (verify-config)'
 MISCONFIGURED=''
 host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" || MISCONFIGURED=1
 
+# ── ★★ THE ROTEIRO — WHAT THIS RUN RAN, WHAT IT SKIPPED, AND WHY (pk24/§B1) ─────────────────────────────────
+#
+# ⛔ IT IS DERIVED FROM RESULT, NOT FROM THIS FILE'S INTENT, and that is the whole point: `$STEPS_RAN` was
+# stamped by each step's own `say` as it happened, `$STEPS_SKIPPED` by each `skip` that was actually reached.
+# `bin/bench-summary.guard.mjs` names the shape this repository keeps paying for — a summary that describes
+# what the box was ASKED to become instead of what it became — and this block is the same discipline applied
+# to the step list itself.
+#
+# ⛔ AND A STEP THAT NEITHER RAN NOR WAS DECLARED SKIPPED IS A RED. It is exactly the accident this box has
+# no other detector for: an `if` added around a step, a `say` deleted in a refactor, a loop that never
+# entered. The birth would finish, the bench block would print addresses, and nothing would say that a step
+# of the roteiro never happened.
+say 'the roteiro (which steps this birth ran, which it skipped, and why)'
+ROTEIRO_INCOMPLETE=''
+node "$HERE/bin/roteiro.mjs" --mode result --steps "$BIRTH_STEPS" --ran "$STEPS_RAN" --skipped "$STEPS_SKIPPED" >&2 \
+  || ROTEIRO_INCOMPLETE=1
+note ''
+note 'not a step of the birth (the box is born on localhost, on purpose) and invocable on its own:'
+note '  bash bin/box-up.sh --promote <tailnet|localhost|hostname>   ← the address this box publishes itself at'
+
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
@@ -1629,7 +1888,9 @@ else
   UNSETTLED_EXTRA='the totem'
 fi
 note ''
-note 'off the laptop: set FORGE_TAILNET_HOST (and FORGE_TAILNET_IP) in .env, then `bash bin/box-up.sh --tailnet`.'
+note 'off the laptop, the promotion is its own step and it takes the destination:'
+note '  bash bin/box-up.sh --promote tailnet            (needs FORGE_TAILNET_HOST in .env)'
+note '  bash bin/box-up.sh --promote <hostname>         any address this box really answers at'
 printf '\n' >&2
 
 # ⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE. A birth that leaves a tenant holding another brand's catalogue
@@ -1662,8 +1923,8 @@ if [ -n "${WARM_UNKNOWN:-}" ]; then
 fi
 if [ -n "${MISSING_STORE:-}" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s IS MISSING A STORE THIS REPOSITORY DECLARES. The birth did not build
-         it — that is not warmth, and step 14 is the only step that can see it: 12 and 14-bis both walk the
-         stores the PORT reports, so a store that is not there is a store they never ask about.
+         it — that is not warmth. Step 14-bis asks the same question and names the store too; step 12 does
+         NOT (it compares handles only to catch a wrong credential, so one missing store of two passes it).
 
 ' "$MISSING_STORE" >&2
 fi
@@ -1693,6 +1954,14 @@ if [ -n "${ONLINE_ONLY_FAILED:-}" ]; then
 
 ' >&2
 fi
+if [ -n "${ROTEIRO_INCOMPLETE:-}" ]; then
+  printf '[box-up] ⛔ THIS RUN CANNOT ACCOUNT FOR EVERY STEP IT DECLARES. The roteiro above names the step and
+         what is wrong with it: one that neither ran nor was declared skipped, one that did both, or one
+         nothing declares. Everything else may be standing — what is not standing is the SUMMARY, and a
+         summary that omits a step is how a birth quietly stops doing something and nobody notices.
+
+' >&2
+fi
 if [ -n "${UNSETTLED_EXTRA:-}" ] && [ -z "$UNSETTLED" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND %s IS NOT. The summary above says so where the address would be;\n         this line is here because an exit code is what a script downstream reads.\n\n' "$UNSETTLED_EXTRA" >&2
   exit 1
@@ -1711,6 +1980,6 @@ fi
 # warming step was red on EVERY run of this box by construction, so it graded nothing and taught people to
 # skip a red. `MISSING_STORE` is the half of it that still grades, and it is deliberately its own variable so
 # that this line cannot lose it by accident.
-if [ -n "${SHUT:-}" ] || [ -n "${DOORS_UNKNOWN:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ]; then
+if [ -n "${SHUT:-}" ] || [ -n "${DOORS_UNKNOWN:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ] || [ -n "${ROTEIRO_INCOMPLETE:-}" ]; then
   exit 1
 fi

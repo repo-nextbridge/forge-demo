@@ -12,7 +12,7 @@
 //   node --test bin/box-config.guard.mjs        (or: bash bin/test.sh)
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,9 +88,13 @@ test('★ A44 — and .env.example names the variable, so a human copying the fi
 
 // ── A15 · THE TAILNET, AS A PROMOTION ─────────────────────────────────────────────────────────────────────
 
-test('★★ A15 — the promotion exists, is opt-in, and refuses to run without being told WHERE', () => {
-  assert.match(BOX_UP, /--tailnet\)\s*MODE=tailnet/, 'bin/box-up.sh has no --tailnet mode.');
-  assert.match(BOX_UP, /--localhost\)\s*MODE=localhost/, 'the promotion has no way back; A15 asks for reversible.');
+test('★★ A15/§B5 — the promotion is a NAMED step with a destination, and the two old modes still work', () => {
+  // ★ pk24/§B5 — the destination stopped being the name of the mode. `--tailnet` used to BE the promotion;
+  //   online there is no tailnet and the box needs the same thing, so the address is now an argument and the
+  //   tailnet is one of its values. The two aliases stay: every runbook, comment and script here types them.
+  assert.match(BOX_UP, /--promote\)/, 'bin/box-up.sh has no --promote step; §B5 asks for one a CI can invoke.');
+  assert.match(BOX_UP, /--tailnet\)\s*MODE=promote; PROMOTE_TO=tailnet/, 'the --tailnet alias is gone.');
+  assert.match(BOX_UP, /--localhost\)\s*MODE=promote; PROMOTE_TO=localhost/, 'the promotion has no way back; A15 asks for reversible.');
   assert.match(
     BOX_UP,
     /FORGE_TAILNET_HOST:-\}"?\s*\]\s*\|\|\s*die/,
@@ -102,7 +106,7 @@ test('★★ A15 — the promotion exists, is opt-in, and refuses to run without
 test('★★ A15 — the promotion is idempotent: every .env value is REWRITTEN, never appended', () => {
   // The block ends at its own `exit`, whatever that exit now carries — pk7·D1 made it a variable, because a
   // promotion that claimed one door of two must not exit 0.
-  const block = BOX_UP.match(/if \[ "\$MODE" != birth \]; then([\s\S]*?)\n  exit [^\n]+\nfi/);
+  const block = BOX_UP.match(/if \[ "\$MODE" = promote \]; then([\s\S]*?)\n  exit [^\n]+\nfi/);
   assert.ok(block, 'the promotion block moved — re-read this guard before believing it.');
   // Anti-vacuity: the block has to be the real thing, not an empty branch.
   assert.ok(block[1].length > 1000, `the promotion block parsed to ${block[1].length} characters.`);
@@ -288,7 +292,17 @@ const SERVE_NOTHING = JSON.stringify({ TCP: {}, Web: {} });
  *  `setFails` holds shell glob patterns matched against the whole compose command line; `['*']` fails them
  *  all, `['*forgecafe*']` fails one tenant's.
  */
-function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFails = [], expectStatus = 0 }) {
+function runPromotion({
+  mode,
+  args = [`--${mode}`],
+  serve,
+  httpsProbeOk = false,
+  withIp = true,
+  withTailnetHost = true,
+  storeHosts = `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
+  setFails = [],
+  expectStatus = 0,
+}) {
   const dir = mkdtempSync(join(tmpdir(), 'forge-promotion-'));
   const stub = join(dir, 'stub');
   const log = join(dir, 'docker.log');
@@ -316,9 +330,11 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFai
       'FORGE_ADMIN_HTTP_PORT=8201',
       'FORGE_ADMIN2_HTTP_PORT=8202',
       'FORGE_PUBLIC_ORIGIN=http://localhost:8200',
-      `FORGE_STORE_HOSTS='{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
-      `FORGE_TAILNET_HOST=${FAKE_TAILNET_HOST}`,
-      withIp ? `FORGE_TAILNET_IP=${FAKE_TAILNET_IP}` : 'FORGE_TAILNET_IP=',
+      `FORGE_STORE_HOSTS=${storeHosts}`,
+      // ★ pk24/§B5 — a box promoted to a PUBLIC hostname has neither of these, and it still has to be
+      //   demotable. `withTailnetHost: false` is that box.
+      withTailnetHost ? `FORGE_TAILNET_HOST=${FAKE_TAILNET_HOST}` : 'FORGE_TAILNET_HOST=',
+      withIp && withTailnetHost ? `FORGE_TAILNET_IP=${FAKE_TAILNET_IP}` : 'FORGE_TAILNET_IP=',
       '',
     ].join('\n'),
   );
@@ -352,9 +368,13 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFai
   let status = 0;
   try {
     // `2>&1` on purpose: `note`/`say` write to stderr, and what the operator READS is one stream.
-    stdout = execFileSync('bash', ['-c', `bash ${JSON.stringify(join(dir, 'bin/box-up.sh'))} --${mode} 2>&1`], {
+    stdout = execFileSync('bash', ['-c', `bash ${JSON.stringify(join(dir, 'bin/box-up.sh'))} ${args.join(' ')} 2>&1`], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      // ⚠️ A CEILING, because a promotion that HANGS must be red rather than a suite that never ends —
+      //    measured while sabotaging pk24/§B5: an argument loop that stopped refusing spun forever on
+      //    `--promote` with no destination, and this file sat there for 130 s instead of failing.
+      timeout: 60_000,
       env: {
         ...process.env,
         PATH: `${stub}:${process.env.PATH}`,
@@ -383,7 +403,10 @@ function runPromotion({ mode, serve, httpsProbeOk = false, withIp = true, setFai
       .filter((l) => l.includes('='))
       .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
   );
-  const calls = readFileSync(log, 'utf8')
+  // ⚠️ THE LOG ONLY EXISTS ONCE THE STUB HAS BEEN RUN, and a run that REFUSES before it touches the box
+  //    never runs it — which is exactly the case pk24/§B5 measures ("no destination", "nothing to release").
+  //    Reading it unconditionally turned those into an ENOENT instead of the empty call list they are.
+  const calls = (existsSync(log) ? readFileSync(log, 'utf8') : '')
     .split('\n')
     .filter((l) => l.includes('admin-host.js'))
     .map((l) => l.slice(l.indexOf('admin-host.js') + 'admin-host.js'.length).trim());
@@ -478,6 +501,96 @@ test('★★ pk6·D2 — `--localhost` releases BOTH spellings and puts the box 
   assert.equal(env.FORGE_GATE_ADMIN_URL, '');
   const siblings = JSON.parse(env.FORGE_ADMIN_SIBLINGS.replace(/^'|'$/g, ''));
   assert.deepEqual(siblings.map((s) => s.url).sort(), ['http://localhost:8201', 'http://localhost:8202']);
+});
+
+// ── pk24·§B5 · THE PROMOTION IS A NAMED STEP WITH A DESTINATION, AND THE TAILNET IS ONE OF THEM ───────────
+//
+// ⛔ WHAT WAS WRONG. `bash bin/box-up.sh --tailnet` was a MODE of this bench, so the only address this box
+// could be pointed at was a private network read out of `tailscale serve`. Online there is no tailnet — and
+// the thing that has to happen there is the SAME thing: the origin every front mints image URLs from, the
+// host → store map, and each tenant's admin door claimed through the port. That was the last piece of the
+// pipeline that only existed as a gesture somebody remembered to make.
+//
+// ★ SO THE DESTINATION IS AN ARGUMENT. These two tests run the promotion for real against a destination that
+// is NOT a tailnet — the tailscale stub is never asked, because nothing here can read what publishes a
+// public hostname — and then put the box back with no tailnet variable in `.env` at all.
+
+const FAKE_PUBLIC_HOST = 'demo.example.test';
+
+test('★★★ pk24·§B5 — `--promote <hostname>` points the box at a public address, with no tailnet anywhere', () => {
+  const { env, calls, stdout } = runPromotion({
+    args: ['--promote', FAKE_PUBLIC_HOST],
+    serve: SERVE_PUBLISHING, // published, and DELIBERATELY irrelevant: this destination is not the tailnet
+    withTailnetHost: false,
+  });
+
+  // 1 · each tenant's admin door, claimed on the port this box itself listens on. Nothing here can read what
+  //     publishes a public hostname, so the honest door is the box's own — and the run says so out loud.
+  assert.ok(
+    calls.includes(`set ${FAKE_PUBLIC_HOST}:8201 forgeco`) && calls.includes(`set ${FAKE_PUBLIC_HOST}:8202 forgecafe`),
+    `the public destination's admin doors were not claimed. Calls:\n  ${calls.join('\n  ')}`,
+  );
+  // 2 · and NOT on the tailnet's published ports: this run never asked tailscale anything.
+  assert.ok(
+    !calls.some((c) => c.includes(FAKE_TAILNET_HOST) || c.includes('8443') || c.includes('8444')),
+    `the promotion used the tailnet table for a destination that is not the tailnet:\n  ${calls.join('\n  ')}`,
+  );
+  // 3 · the three values a front reads at boot, pointed at the public address.
+  assert.equal(env.FORGE_PUBLIC_ORIGIN, `http://${FAKE_PUBLIC_HOST}:8200`, 'the kernel would keep minting image URLs at localhost.');
+  assert.equal(env.FORGE_GATE_ADMIN_URL, `http://${FAKE_PUBLIC_HOST}:8201`);
+  const map = JSON.parse(env.FORGE_STORE_HOSTS.replace(/^'|'$/g, ''));
+  assert.ok(map[FAKE_PUBLIC_HOST], '`store.host` is what ROUTES — a hostname the box does not hold is a 404 with nothing saying why.');
+  assert.ok(map.localhost, 'localhost lost its store; the laptop is how this box is worked on.');
+  // 4 · …and the laptop's own admin claims are untouched, exactly as with the tailnet.
+  assert.ok(
+    !calls.some((c) => /\blocalhost\b|\b127\.0\.0\.1\b/.test(c)),
+    `the promotion touched a local claim:\n  ${calls.join('\n  ')}`,
+  );
+  assert.match(stdout, new RegExp(`admin\\s+http://${FAKE_PUBLIC_HOST}:8201`), `the promotion never printed the admin's address:\n${stdout}`);
+});
+
+test('★★★ pk24·§B5 — the way BACK reads the addresses off the BOX, not out of FORGE_TAILNET_HOST', () => {
+  // The box this describes was promoted to a public hostname: `.env` holds the map that promotion wrote and
+  // NO tailnet variable. Before pk24 the reverse refused here — it could only release a name it was told —
+  // so a box promoted by a pipeline could not be put back by one.
+  const { env, calls } = runPromotion({
+    args: ['--promote', 'localhost'],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+    storeHosts: `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST","${FAKE_PUBLIC_HOST}":"sto_01TEST","${FAKE_PUBLIC_HOST}:8200":"sto_01TEST"}'`,
+  });
+
+  for (const door of [`${FAKE_PUBLIC_HOST}:8201`, `${FAKE_PUBLIC_HOST}:8202`]) {
+    assert.ok(
+      calls.includes(`remove ${door}`),
+      `the reverse leaves \`${door}\` claimed for an address the box no longer serves. Calls:\n  ${calls.join('\n  ')}`,
+    );
+  }
+  assert.ok(!calls.some((c) => c.startsWith('set ')), 'the reverse claimed something.');
+  assert.equal(env.FORGE_PUBLIC_ORIGIN, 'http://localhost:8200');
+  const map = JSON.parse(env.FORGE_STORE_HOSTS.replace(/^'|'$/g, ''));
+  assert.ok(!map[FAKE_PUBLIC_HOST], 'the host → store map still routes the public hostname the box was just taken off.');
+});
+
+test('★★ pk24·§B5 — a box that was never promoted has nothing to release, and says so instead of guessing', () => {
+  // ⚠️ THE VACUUM CASE. With no tailnet variable and a map holding only this machine, there is no hostname to
+  //    release — and "released 0" printed cheerfully is the shape of a green that proves nothing.
+  const { stdout } = runPromotion({
+    args: ['--promote', 'localhost'],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+    expectStatus: 1,
+  });
+  assert.match(stdout, /does not look promoted/i, `the refusal does not say what is wrong:\n${stdout}`);
+});
+
+test('★★ pk24·§B5 — `--promote` with no destination REFUSES and names the destinations', () => {
+  // The ruler of this sprint: a step that works only because somebody knew what to type is not ready. A
+  // missing destination must not fall through to "the tailnet", which is what a default would mean.
+  const { stdout, calls } = runPromotion({ args: ['--promote'], serve: SERVE_NOTHING, expectStatus: 1 });
+  assert.match(stdout, /needs a DESTINATION/, `the refusal does not name what is missing:\n${stdout}`);
+  assert.match(stdout, /tailnet/, `the refusal does not name the destinations it accepts:\n${stdout}`);
+  assert.equal(calls.length, 0, 'a refused invocation still talked to the box.');
 });
 
 // ── pk7·D1 · THE SUMMARY IS DERIVED FROM WHAT WAS DONE, NEVER FROM WHAT WAS ASKED ─────────────────────────

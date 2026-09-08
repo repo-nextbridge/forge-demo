@@ -5,8 +5,8 @@
 // BEFORE this slice moved them:
 //
 //   .env.example:231          FORGE_TOTEM_HTTP_PORT=8203        the declaration
-//   bin/box-up.sh:737-739     ${FORGE_TOTEM_HTTP_PORT:-8203}    the tailnet lookup
-//   bin/box-up.sh:1626        ${FORGE_TOTEM_HTTP_PORT:-8203}    the bench summary the operator reads
+//   bin/box-up.sh:958-960     ${FORGE_TOTEM_HTTP_PORT:-8203}    the promotion's published-port lookup
+//   bin/box-up.sh:1876        ${FORGE_TOTEM_HTTP_PORT:-8203}    the bench summary the operator reads
 //   README.md:735             http://localhost:8203             the bench's address table
 //   compose.override.yml:166  ${FORGE_TOTEM_HTTP_PORT:-8102}    ⇐ WHAT ACTUALLY PUBLISHES
 //   README.md:1306/1320       8102                              ⇐ and a second half of the README

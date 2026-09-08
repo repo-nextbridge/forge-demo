@@ -182,6 +182,19 @@ declaring a floor of its own.
 It is one command to TYPE, not one step. Fifteen, and each needs what the one before it produced — this is
 the map of how the box is born:
 
+```bash
+bash bin/box-up.sh                     # the birth, on localhost
+bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14 (a cron warms later)
+bash bin/box-up.sh --plan [--no-warm]  # print the roteiro this invocation would run, and do nothing
+```
+
+★ **The run says which steps it RAN and which it SKIPPED, with the reason** — `BIRTH_STEPS` declares them,
+each step's own `say` stamps itself as it happens, and `bin/roteiro.mjs` prints and grades the ledger at the
+end. ⛔ **A step that neither ran nor was declared skipped makes the birth exit non-zero**: a summary that
+omits a step is how a birth quietly stops doing something and nobody notices. `bin/birth-roteiro.guard.mjs`
+proves all of it — including that `--no-warm` drops step 14 and **not** 14-bis, because warmth is a report
+and whether every shop can be signed in to is not.
+
 | # | step | why it is where it is |
 |---|---|---|
 | 1 | `postgres` + `redis` | somewhere to put a schema before migrating one |
@@ -435,8 +448,16 @@ that is a **promotion**, and it is one command:
 FORGE_TAILNET_HOST=<this machine's MagicDNS name>
 FORGE_TAILNET_IP=<its tailnet address>      # optional: the safety net for a device with MagicDNS off
 
-bash bin/box-up.sh --tailnet        # and `--localhost` puts it back
+bash bin/box-up.sh --promote tailnet        # and `--promote localhost` puts it back
 ```
+
+★ **pk24/§B5 — and the tailnet is one DESTINATION of that step, not its definition.** Online there is no
+tailnet and the box needs the same thing, so the address is an argument: `--promote <hostname>` points this
+box at any address it really answers at, `--promote localhost` undoes it (reading the names to release off
+the box's own host → store map, so a box promoted by a pipeline can be demoted by one), and `--tailnet` /
+`--localhost` remain as aliases. `--promote` with no destination **refuses and names the destinations** —
+it never falls through to a default. ⚠️ Only a tailnet publishes a table this box can read, so for any other
+destination the doors are the box's own ports, and the run says so rather than implying it read something.
 
 It rebuilds the host → store map, re-points `FORGE_PUBLIC_ORIGIN` (**not cosmetic** — the kernel mints every
 product-image URL from it, so a box reached over the tailnet with `localhost` here serves a catalogue of

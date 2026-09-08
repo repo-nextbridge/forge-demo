@@ -143,7 +143,7 @@ caixa do modo em que ela roda. Nesse modo quem serve o login é a credencial de 
 ### 3.2 Os segredos que **a própria caixa** cria
 
 Nem todo segredo é seu para criar. Estes o `box-up` **minta e arquiva** via `put_secret`
-(`bin/box-up.sh:214` — na bancada, no `.secrets`; online, no backend que você implementou):
+(`bin/box-up.sh:377` — na bancada, no `.secrets`; online, no backend que você implementou):
 
 | segredo | quem cria | passo |
 |---|---|---|
@@ -181,7 +181,7 @@ interpola o arquivo **inteiro** a cada comando. ⇒ numa caixa virgem, `cp .env.
 `bash bin/box-up.sh` **morre no passo 1** (`postgres` + `redis`), reclamando de uma variável do **totem**,
 que só é conhecível no passo 6 — o id da loja do balcão é um ULID que nasce naquele momento.
 **O que fazer:** antes do primeiro `box-up`, escreva o sentinela que o script já conhece —
-`FORGE_TOTEM_STORE_ID=sto_PENDING_SEED`. `bin/box-up.sh:1044` o trata como "ainda não", o passo 6 resolve o
+`FORGE_TOTEM_STORE_ID=sto_PENDING_SEED`. `bin/box-up.sh:1322` o trata como "ainda não", o passo 6 resolve o
 id de verdade e **reescreve o `.env`** (`:1018`), e o passo 7 sobe o totem.
 ⚠️⚠️ **ESSA ⚠️ ESTAVA VENCIDA E FOI MEDIDA EM 05/09.** Ela dizia *"nenhum arquivo desta caixa escreve esse
 sentinela — ele só é lido"*; o `.env.example` **já o escreve** (`FORGE_TOTEM_STORE_ID=sto_PENDING_SEED`, e o
@@ -233,12 +233,12 @@ a face que recusou. O seed avisa em voz alta se achar a variável setada.
 |---|---|---|
 | Node abaixo do piso do release | `bin/require-node.sh`, **antes de tudo** | uma caixa verde nascida em node não suportado — aconteceu, três vezes, e ninguém percebeu |
 | `forge.lock` com imagem por **tag** | `bin/images-from-lock.sh` | o dono da tag repontar os bytes debaixo da sua instância |
-| semear de um dataset que **não é o das imagens** | passo 0c, `bin/box-up.sh:750` | 2 790 produtos de um checkout velho, caixa verde, painel de estoque nascido vazio |
-| promover sem dizer **para onde** | `bin/box-up.sh:447` | `FORGE_PUBLIC_ORIGIN=http://:8200`, que é a origem de toda URL de imagem |
+| semear de um dataset que **não é o das imagens** | passo 0c, `bin/box-up.sh:1029` | 2 790 produtos de um checkout velho, caixa verde, painel de estoque nascido vazio |
+| promover sem dizer **para onde** | `bin/box-up.sh:114` (o destino) e `:669` (o tailnet sem nome) | `FORGE_PUBLIC_ORIGIN=http://:8200`, que é a origem de toda URL de imagem |
 
 **O que a caixa PUBLICA ≠ o que ela escuta.** Quando a Demo está atrás de um `tailscale serve` (ou de
 qualquer terminador de TLS), a porta que o navegador digita **não** é a porta do container. `box-up`
-**lê** o que está publicado (`tailscale serve status --json`, `bin/box-up.sh:294-353`) em vez de supor.
+**lê** o que está publicado (`tailscale serve status --json`, `bin/box-up.sh:487-518`) em vez de supor.
 Medido em 03/09, antes disso: o diretório tinha reivindicação para `<tailnet>:8201` (a porta interna) e
 **404** para `<tailnet>:8443` (a porta que o navegador usa) — o login abria a tela e recusava o POST com
 `unknown_admin_host`. **Ler nunca é configurar**: o script jamais roda `tailscale up` ou `serve`; entrar na
@@ -341,16 +341,30 @@ recusam** com `validation_failed` (todos os que mintam segredo), e este seed cha
 ## 5. O reset (passo 6) — e a promoção **entra no mesmo laço**
 
 ```bash
-bash bin/box-down.sh          # estado morre, o cache de 3,6 GB de fotos vive
-bash bin/box-up.sh --tailnet  # ← --tailnet, e a §5 inteira é sobre esse argumento
+bash bin/box-down.sh                    # estado morre, o cache de 3,6 GB de fotos vive
+bash bin/box-up.sh                      # o nascimento (localhost) — `--no-warm` se um cron for aquecer
+bash bin/box-up.sh --promote tailnet    # ← a PROMOÇÃO, e a §5 inteira é sobre ela
 ```
 
-⚠️ **E aqui está uma fronteira, medida, que este runbook não pode esconder.** A única promoção que este
-repositório implementa hoje é a do **tailnet**: `bin/box-up.sh:447` **morre** se `FORGE_TAILNET_HOST` estiver
-vazio, nas duas direções, e todo o bloco 0b deriva os endereços de `tailscale serve status --json`. Uma Demo
-num **nome de DNS de verdade** precisa desse mesmo bloco aceitando o hostname público — o mecanismo existe e
-o modo não. Enquanto isso for verdade, a caixa online ou fica no tailnet, ou promove à mão o que o passo 3b
-reescreve, que é exatamente o trabalho que o bloco 0b existe para não se perder.
+★ **pk24/§B5 — a promoção deixou de ser um modo da bancada e virou um PASSO NOMEADO, com destino.** Até aqui
+a única promoção que este repositório implementava era a do **tailnet**: o argumento se chamava `--tailnet`,
+o hostname só podia vir de `FORGE_TAILNET_HOST` e as portas publicadas só podiam vir de
+`tailscale serve status --json`. **Online não há tailnet** — e o que a caixa precisa lá é a mesma coisa: a
+origem de onde todo front deriva URL de imagem, o mapa host→loja e a porta de admin de cada tenant
+reivindicada **pela porta**. Então o destino agora é argumento:
+
+| invocação | destino |
+|---|---|
+| `bash bin/box-up.sh --promote tailnet` | esta máquina no tailnet (lê `tailscale serve`; exige `FORGE_TAILNET_HOST`) |
+| `bash bin/box-up.sh --promote demo.exemplo.com` | **qualquer endereço** em que esta caixa responda de verdade |
+| `bash bin/box-up.sh --promote localhost` | a promoção desfeita — e ela **lê da própria caixa** quais nomes soltar (o mapa host→loja é o registro que a ida escreveu), então uma caixa promovida por um pipeline pode ser despromovida por um |
+| `--tailnet` / `--localhost` | apelidos, mantidos: são o que todo runbook e comentário daqui digita |
+
+⚠️ **`--promote` sem destino RECUSA e nomeia os destinos** — nunca cai num default. Um passo que só funciona
+porque alguém sabia qual variável exportar não é um passo pronto.
+⚠️ **O que continua sendo fronteira, e a corrida diz em voz alta:** só o **tailnet** publica uma tabela que
+esta caixa consegue ler. Num destino atrás de um balanceador/ingress/CDN as portas anunciadas são as **da
+própria caixa** — se quem está na frente publica outra, é **aquele** endereço que tem de ser promovido.
 
 ⛔ **UM NASCIMENTO DES-PROMOVE O ADMIN.** Depois de `box-down` + `box-up` sem argumento, a caixa volta
 **meio promovida**, e cada metade disso é código deliberado:
@@ -366,8 +380,9 @@ reescreve, que é exatamente o trabalho que o bloco 0b existe para não se perde
 ⇒ **a loja abre no endereço público e o admin recusa o login com `unknown_admin_host`.**
 
 O passo 15 (`bin/verify-config.mjs`) **acusa** isso e o `box-up` sai **vermelho** nomeando o tenant e o
-hostname. O conserto é rodar de novo **com `--tailnet`** — e é por isso que a linha do reset semanal tem de
-carregar o argumento. **Um reset agendado sem ele perde o admin toda madrugada de domingo.**
+hostname. O conserto é rodar a **promoção** de novo — e é por isso que a linha do reset semanal tem de
+carregar `bash bin/box-up.sh --promote <destino>` depois do nascimento. **Um reset agendado sem ela perde o
+admin toda madrugada de domingo.**
 
 **A ordem do fim é `renascer → purgar a borda → aquecer → conferir`, e a intuitiva é a errada.** Uma CDN
 purgada **antes** do teardown passa os ~17 minutos do nascimento se reenchendo da origem que está sendo
@@ -385,17 +400,26 @@ driver for `none`, o passo 13 imprime um no-op que **diz** que é no-op — e o 
 
 ⛔ **`0 4 * * 0 bash bin/box-up.sh` ingênuo destrói o banco e morre em seguida.**
 
+★ **pk24/§B1 — e o nascimento agendado não precisa mais pagar o aquecimento.** `bash bin/box-up.sh --no-warm`
+tira o **passo 14** e **só** ele: o 14-bis (abrir toda porta de toda loja) continua rodando, porque provar que
+a caixa está de pé não é calor. O aquecedor continua chamável sozinho, que é exatamente o que um segundo cron
+faz: `FORGE_SEED_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> --api <origem>`.
+⚠️ **O que se perde ao pular:** o passo 14 é o **único** que enxerga uma loja que `seed/box.json` declara e a
+caixa não tem (12 e 14-bis andam pelas lojas que a **porta** reporta). A corrida diz isso no roteiro dela.
+
 1. **Cron não tem `node`.** `env -i` com `PATH` mínimo não acha `node` nem `pnpm`; só o diretório do nvm tem
    o par compatível. Metade do nascimento são processos de host (`seed.mjs`, `verify-seed.mjs`,
    `warm-box.mjs`, `verify-config.mjs`), então a unidade **tem** de receber esse diretório no `PATH`. A
    recusa por versão de Node existe por causa desse caso: sem ela, a unidade morreria **depois** de o
    `box-down` já ter destruído o banco.
-2. **Use `--tailnet`** (ou o modo que promove esta caixa). Ver §5.
-3. **`jq` também.** `bin/box-up.sh:181` exige — e note que `bin/require-node.sh` roda **antes** desse check e
+2. **Promova depois de nascer.** `bash bin/box-up.sh --promote <tailnet|localhost|hostname>` — a linha do
+   cron carrega o destino, não a memória de quem escreveu o cron. Ver §5.
+3. **`jq` também.** `bin/box-up.sh:344` exige — e note que `bin/require-node.sh` roda **antes** desse check e
    já depende de `jq`: numa máquina sem ele, a recusa fala de node nomeando jq.
 4. **Sourceie os segredos.** A unidade precisa do mesmo `env-source.sh` (ou do backend real) exportado antes
    do `box-up`; sem `DATABASE_URL` o passo 0 morre pelo nome, que é o comportamento certo.
-5. **Janela.** ~19 min de nascimento + o teto de 15 min do aquecimento. Madrugada, como o dono decidiu.
+5. **Janela.** ~19 min de nascimento + o teto de 15 min do aquecimento — ou ~19 min secos com `--no-warm`,
+   e o aquecimento numa segunda entrada de cron. Madrugada, como o dono decidiu.
 
 ---
 

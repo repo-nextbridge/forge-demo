@@ -6,7 +6,7 @@
 //     seed/box.json     forgeco → `forge`   (bootstrap: true)  · forgecafe → `cafe`
 //     seed/catalog.json forgeco → `outlet`  (bootstrap: true)  · forgecafe → `cafe`
 //     .env.example:34   FORGE_REF_STORE_HANDLE=forge
-//     bin/box-up.sh:194 `jq … select(.bootstrap) | .handle` — from box.json, NEVER from catalog.json
+//     bin/box-up.sh:1057 `jq … select(.bootstrap) | .handle` — from box.json, NEVER from catalog.json
 //
 // So `box.json` is what the box is actually built from, and `catalog.json` is wrong about `forgeco`.
 //
