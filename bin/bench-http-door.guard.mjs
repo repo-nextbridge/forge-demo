@@ -263,7 +263,13 @@ test('★★ with the doors on loopback, the promotion refuses to hand out a pla
       'into `.env` during a promotion is an address; without this derivation it cannot tell a door from a ' +
       'dead port, which is what it could not tell before pk24/d4.',
   );
-  const promotion = BOX_UP.match(/if \[ "\$MODE" != birth \]; then([\s\S]*?)\n  exit [^\n]+\nfi/);
+  // ⚠️ pk24 INTEGRATION — THIS ANCHOR WAS REWRITTEN BY THE MERGE, and that is worth saying because a guard
+  // that cannot find its subject does not fail, it stops asking. `pk24/d4` wrote it against `$MODE != birth`;
+  // `pk24/d1` landed in the same file and turned the promotion into a NAMED step with a destination
+  // (`--promote <tailnet|localhost|hostname>`, `MODE=promote`), so the old spelling matched nothing and this
+  // test went red with "the promotion block moved" — which is exactly the sentence it was written to print.
+  // It is anchored on the new opening. The `--tailnet`/`--localhost` aliases both set `MODE=promote`.
+  const promotion = BOX_UP.match(/if \[ "\$MODE" = promote \]; then([\s\S]*?)\n  exit [^\n]+\nfi/);
   assert.ok(promotion, 'the promotion block moved — re-read this guard before believing it.');
   assert.ok(promotion[1].length > 1000, `the promotion block parsed to ${promotion[1].length} characters.`);
   assert.match(
