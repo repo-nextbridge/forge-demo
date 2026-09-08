@@ -476,8 +476,16 @@ was the published one is what made the admin unreachable from anywhere but the l
 **silently in both directions**: over `http://<tailnet>:8201` the admin's session cookie is `Secure`, a
 browser stores no `Secure` cookie over plain http outside `localhost`, so the login "works" and the next
 click bounces back to `/login`; over `https://<tailnet>:8443` — the address `serve` really answers on — the
-admin directory held no claim, so the login refused with `unknown_admin_host`. Publish nothing (or run this
-where `tailscale` cannot be read) and it falls back to the direct ports, which is what it always did.
+admin directory held no claim, so the login refused with `unknown_admin_host`.
+
+⛔ **And since pk24/d4 it REFUSES rather than falling back to the direct ports.** That fallback was the whole
+trap written down — `http://<tailnet>:8201` is exactly the address whose login "works" and then bounces — and
+now that the doors are published on `127.0.0.1` (`FORGE_BENCH_BIND`, see "The bench's addresses") it is not
+even reachable: the port refuses to connect. So `--tailnet` with nothing published stops before its first
+`.env` write, names the host it could not promote to, and says what to do (publish with `tailscale serve`, or
+set `FORGE_BENCH_BIND=` empty on purpose and read what that costs). A **partial** publication — `serve`
+fronting the shop and both admins but not the counter — is not a refusal: those doors are real. The one that
+is not gets its own `UNREACHABLE` line and the run exits non-zero, like every other half-promotion here.
 
 ⚠️ **It refuses on a box that was never born, and it announces only the doors it really claimed.** `--tailnet`
 is a promotion, not a step of the birth, so it is easy to run first — and it used to print the whole green
@@ -786,6 +794,19 @@ a check people route around.
 | **admin · T2** | `http://localhost:8202` | tenant `forgecafe` |
 | totem (the counter) | `http://localhost:8203` | store `balcao` |
 | https (edge) | `8243` | |
+
+⚠️ **All five are published on `127.0.0.1` and nothing else** — `FORGE_BENCH_BIND`, which `.env.example`
+ships. `localhost` is a **secure context**, so every address above keeps working over plain http exactly as
+it always did; any OTHER plain-http origin is the trap this bind removes. Every door here is plain http and
+every front runs `NODE_ENV=production`, so the cookies are `Secure` and a browser silently refuses them off
+`localhost`: measured 2026-09-08, `http://<magicdns>:8200/health`, `:8201/login`, `:8202/login` and `:8203/`
+all answered **200** from another machine, and each of them then dropped the cart or the admin session with
+nothing on screen saying why. Off this laptop the box is reached through `tailscale serve`, over **https** —
+it terminates TLS and proxies to `http://127.0.0.1:<port>`, so loopback costs the tailnet nothing.
+The variable is DEMANDED, not defaulted (`${FORGE_BENCH_BIND?…}`, no colon): an empty value is the legal
+answer "every interface" — what a deployment says, and byte-for-byte what this box published before — while
+saying nothing at all stops `docker compose` by name before the first container.
+`bin/bench-http-door.guard.mjs` grades the interface; `bin/bench-ports.guard.mjs` grades the numbers.
 
 ### ★ Two tenants, four stores — and only THREE of them on the street
 

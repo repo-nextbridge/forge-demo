@@ -592,6 +592,23 @@ set +a
 [ -n "${DATABASE_URL:-}" ] || die 'env-source.sh exported no DATABASE_URL — is .secrets missing forge-postgres-password?'
 [ -n "${FORGE_PUBLIC_ORIGIN:-}" ] || die 'no FORGE_PUBLIC_ORIGIN in .env — this script would otherwise probe a default port that may belong to another box.'
 
+# ── ★★ WHO CAN REACH THIS BOX'S DOORS, READ FROM THE SAME `.env` COMPOSE READS (pk24/d4) ────────────────────
+#
+# `FORGE_BENCH_BIND` is the host interface `compose.yml` publishes every door on. It is DEMANDED there
+# (`${FORGE_BENCH_BIND?…}`, no colon), so compose itself refuses a box that never decided; what this script
+# needs is the CONSEQUENCE of the decision, because it is this script that hands addresses out.
+#
+# Loopback ⇒ the only plain-http doors are `localhost` ones (a secure context: the cookies are kept), and the
+# tailnet reaches the box exclusively through `tailscale serve`, which terminates TLS and proxies to
+# `http://127.0.0.1:<port>`. Anything else ⇒ the doors are open to the network as plain http, which answers
+# 200 and then drops every `Secure` cookie the fronts set — see `.env.example` for the measurement.
+bench_bind_is_loopback() {
+  case "${FORGE_BENCH_BIND:-}" in
+    127.0.0.1|127.*|::1|'[::1]'|localhost) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # ── 0b · THE PROMOTION: THIS BOX ON THE TAILNET, AND WHY IT IS NOT A STEP OF THE BIRTH (A15) ────────────────
 #
 # ★★ THE BOX IS BORN ON `localhost`. Renan decided it, in those words: *"faz sentido nascer localhost sim e
@@ -711,7 +728,29 @@ if [ "$MODE" = promote ]; then
   if [ -n "$serve_table" ]; then
     note "read from tailscale serve: $(printf '%s\n' "$serve_table" | wc -l) published door(s) on this machine — this box's addresses derive from them"
   elif [ -n "$serve_host" ]; then
+    # ★★★ pk24/d4 — AND WITH THE DOORS ON LOOPBACK, "THE DIRECT PORTS" ARE NOT A FALLBACK ANY MORE.
+    #
+    # This branch used to glue the tailnet name onto the port this box listens on and carry on. That address
+    # was always a trap — the very defect the block above this function records, measured in a browser on
+    # `http://<tailnet>:8201` — and since `FORGE_BENCH_BIND` puts the doors on `127.0.0.1` it is not even
+    # reachable: the port refuses to connect. Writing it into `FORGE_PUBLIC_ORIGIN` and claiming it in the
+    # admin directory would leave the box pointed at addresses nothing answers, and exit 0.
+    #
+    # ⚠️ THE REFUSAL IS ATOMIC AND THAT IS WHY IT IS HERE. Everything above this point is a read; the first
+    # `.env` write is ~150 lines down. A box refused here is byte-for-byte the box that ran the command.
+    if bench_bind_is_loopback; then
+      die "tailscale publishes nothing for $FORGE_TAILNET_HOST (or \`tailscale serve status\` is not readable here),
+     and this box's doors are bound to ${FORGE_BENCH_BIND:-127.0.0.1} — so there is no address on that host to promote to.
+     \`http://$FORGE_TAILNET_HOST:${FORGE_HTTP_PORT:-8200}\` would refuse to connect, which is the point: over plain http
+     off \`localhost\` a browser drops every \`Secure\` cookie these fronts set, so that door used to answer
+     200 and lose the cart (and the admin session) with nothing on screen saying why.
+     Either publish the box with \`tailscale serve\` (then re-run this), or decide to expose the plain-http
+     doors on purpose with FORGE_BENCH_BIND= (empty) in .env and read the paragraph in .env.example first.
+     Nothing was written: this box's .env is exactly as it was before this command."
+    fi
     note '⚠️ tailscale publishes nothing for this host (or is not readable here) — falling back to the direct ports'
+    note '⚠️ tailscale publishes nothing for this host (or is not readable here) — falling back to the direct ports'
+    note "⚠️ FORGE_BENCH_BIND is \"${FORGE_BENCH_BIND:-}\", so those ports really are on the network — and over plain http a browser keeps none of the Secure cookies these fronts set"
   fi
 
   # ── the host → store map ────────────────────────────────────────────────────────────────────────────────
@@ -957,7 +996,44 @@ $claimed_doors
 EOF
     tsch="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 1)"
     tprt="$(serve_field "$serve_table" "${FORGE_TOTEM_HTTP_PORT:-8203}" 2)"
-    note "totem     $(origin_for "$PROMOTE_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
+    totem_door="$(origin_for "$PROMOTE_HOST" "$tsch" "$tprt" "${FORGE_TOTEM_HTTP_PORT:-8203}")"
+    note "totem     $totem_door"
+
+    # ── ★★★ pk24/d4 · NOT ONE OF THOSE ADDRESSES MAY BE PLAIN http ON THE TAILNET HOST ────────────────────
+    #
+    # The refusal further up covers the case where `tailscale serve` publishes NOTHING. This covers the
+    # partial one, which is the quiet half: `serve` fronts the vitrine and not the counter, one admin and not
+    # the other, and every door it does not front falls back through `origin_for` to `http://<host>:<port>`.
+    # With the doors on loopback that address refuses to connect; with the doors on the network it answers
+    # 200 and keeps no cookie. Either way it is not a door, and a list of doors that contains one is worse
+    # than a short list.
+    #
+    # ★ IT GRADES THE LINES THAT WERE JUST PRINTED, not the branches that could have produced them, so a
+    # fifth door added tomorrow is graded the day it is added. `$origin` is included because it is also
+    # written to `.env` as FORGE_PUBLIC_ORIGIN — the value every product-image URL is minted from.
+    if [ -n "$serve_host" ] && bench_bind_is_loopback; then
+      unreachable=''
+      while read -r label door; do
+        [ -n "${door:-}" ] || continue
+        case "$door" in "http://$PROMOTE_HOST"|"http://$PROMOTE_HOST:"*) unreachable="$unreachable$label $door
+" ;; esac
+      done <<EOF
+vitrine $origin
+totem $totem_door
+$(printf '%s' "$claimed_doors")
+EOF
+      if [ -n "$unreachable" ]; then
+        promotion_status=1
+        say '⚠️ INCOMPLETE — door(s) with no `tailscale serve` publication'
+        while read -r label door; do
+          [ -n "${door:-}" ] || continue
+          note "UNREACHABLE $door   ($label) — plain http off \`localhost\`, and this box publishes on ${FORGE_BENCH_BIND:-127.0.0.1}: nothing answers there"
+        done <<EOF
+$unreachable
+EOF
+        note 'Publish those ports with `tailscale serve`, or expose the plain-http doors on purpose with FORGE_BENCH_BIND= (empty) — .env.example says what that costs.'
+      fi
+    fi
 
     # ── ★★ AND WHAT IS MISSING FROM THAT LIST IS SAID OUT LOUD (F7) ───────────────────────────────────────
     # A tenant simply absent from the block above is not a message: nobody counts admins in a terminal. The
@@ -1888,6 +1964,15 @@ else
   UNSETTLED_EXTRA='the totem'
 fi
 note ''
+# ★ pk24/d4 — AND THE SUMMARY SAYS WHO CAN REACH THOSE ADDRESSES, because every one of them is `localhost`
+# and that is not an accident. `localhost` is a secure context; the same doors on any other plain-http origin
+# answer 200 and drop every `Secure` cookie the fronts set. The line is DERIVED from the value compose really
+# published on, so a box whose `.env` says something else says so here instead of looking identical.
+if bench_bind_is_loopback; then
+  note "these doors are published on ${FORGE_BENCH_BIND:-127.0.0.1} only (FORGE_BENCH_BIND) — off this machine the box is reached through \`tailscale serve\`, over https."
+else
+  note "⚠️ FORGE_BENCH_BIND is \"${FORGE_BENCH_BIND:-}\", so these doors are on the NETWORK as plain http: a browser off \`localhost\` keeps none of the Secure cookies these fronts set — the cart and the admin session evaporate. See .env.example."
+fi
 note 'off the laptop, the promotion is its own step and it takes the destination:'
 note '  bash bin/box-up.sh --promote tailnet            (needs FORGE_TAILNET_HOST in .env)'
 note '  bash bin/box-up.sh --promote <hostname>         any address this box really answers at'

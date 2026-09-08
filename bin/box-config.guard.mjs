@@ -291,6 +291,11 @@ const SERVE_NOTHING = JSON.stringify({ TCP: {}, Web: {} });
  *
  *  `setFails` holds shell glob patterns matched against the whole compose command line; `['*']` fails them
  *  all, `['*forgecafe*']` fails one tenant's.
+ *
+ *  ★ pk24/d4 — `benchBind` is the host interface `compose.yml` publishes this box's doors on. The DEFAULT
+ *  here is absent, which is the box these tests were written against: doors on every interface, so the
+ *  fallback to the direct ports really is reachable. Pass `'127.0.0.1'` for the box `.env.example` now ships,
+ *  where that fallback is a port that refuses to connect.
  */
 function runPromotion({
   mode,
@@ -301,6 +306,7 @@ function runPromotion({
   withTailnetHost = true,
   storeHosts = `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
   setFails = [],
+  benchBind = null,
   expectStatus = 0,
 }) {
   const dir = mkdtempSync(join(tmpdir(), 'forge-promotion-'));
@@ -335,6 +341,7 @@ function runPromotion({
       //   demotable. `withTailnetHost: false` is that box.
       withTailnetHost ? `FORGE_TAILNET_HOST=${FAKE_TAILNET_HOST}` : 'FORGE_TAILNET_HOST=',
       withIp && withTailnetHost ? `FORGE_TAILNET_IP=${FAKE_TAILNET_IP}` : 'FORGE_TAILNET_IP=',
+      ...(benchBind === null ? [] : [`FORGE_BENCH_BIND=${benchBind}`]),
       '',
     ].join('\n'),
   );
@@ -406,6 +413,9 @@ function runPromotion({
   // ⚠️ THE LOG ONLY EXISTS ONCE THE STUB HAS BEEN RUN, and a run that REFUSES before it touches the box
   //    never runs it — which is exactly the case pk24/§B5 measures ("no destination", "nothing to release").
   //    Reading it unconditionally turned those into an ENOENT instead of the empty call list they are.
+  // ★ pk24/d4 — AN ABSENT LOG IS A RESULT, NOT A CRASH. A run that refuses before it reaches the first
+  // `docker compose` never touches the stub, so the file is not there at all — which is itself the strongest
+  // form of "it wrote nothing", and the tests that assert `calls` is empty depend on being able to see it.
   const calls = (existsSync(log) ? readFileSync(log, 'utf8') : '')
     .split('\n')
     .filter((l) => l.includes('admin-host.js'))
@@ -477,14 +487,97 @@ test('★★★ pk6·D2 — `--tailnet` claims the PUBLISHED door, not the inter
   );
 });
 
-test('★★ pk6·D2 — with nothing published, the promotion behaves exactly as it always did', () => {
+test('★★ pk6·D2 — with nothing published AND the doors on the network, the promotion behaves as it always did', () => {
   // The operator who never ran `tailscale serve` (or a box where `tailscale` cannot be read) must not get a
   // WORSE box than before this change: the direct ports really are reachable over a tailnet.
+  //
+  // ⚠️ pk24/d4 NARROWED THE CONDITION OF THAT SENTENCE, and this test is what says so. "The direct ports
+  // really are reachable" is true only of a box that publishes them on the network — `FORGE_BENCH_BIND`
+  // absent or empty. The box `.env.example` now ships binds them to `127.0.0.1`, and there the same fallback
+  // is a port that refuses to connect; the two tests below own that case. The fixture leaves the variable
+  // out on purpose, so this one keeps grading the configuration it was written for.
   const { env, calls } = runPromotion({ mode: 'tailnet', serve: SERVE_NOTHING });
   assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8201 forgeco`), `the fallback stopped claiming the direct port. Calls:\n  ${calls.join('\n  ')}`);
   assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8202 forgecafe`), `the fallback stopped claiming the direct port. Calls:\n  ${calls.join('\n  ')}`);
   assert.equal(env.FORGE_PUBLIC_ORIGIN, `http://${FAKE_TAILNET_HOST}:8200`, 'with no published door and no TLS on 443, the origin is the port this box listens on.');
   assert.equal(env.FORGE_GATE_ADMIN_URL, `http://${FAKE_TAILNET_HOST}:8201`);
+});
+
+// ── pk24/d4 · A PROMOTION TO AN ADDRESS NOTHING ANSWERS IS NOT A PROMOTION ────────────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED 2026-09-08. Every door of this box is plain http and every front runs
+// `NODE_ENV=production`, so the cookies are `Secure` and a browser refuses them on any plain-http origin but
+// `localhost` — the shop loses the cart, the admin loses the session, both in silence. `compose.yml` now
+// publishes all five doors on `${FORGE_BENCH_BIND?…}` and `.env.example` ships `127.0.0.1`, so the plain-http
+// tailnet address is not merely a trap any more: nothing answers on it at all.
+//
+// The promotion is the one thing on this box that HANDS ADDRESSES OUT — it prints them, claims them in the
+// admin directory, and writes three of them into `.env`. So it is the place that must not offer one.
+
+test('★★★ pk24/d4 — nothing published + doors on loopback ⇒ the promotion REFUSES, and writes nothing', () => {
+  const { env, calls, stdout } = runPromotion({
+    mode: 'tailnet',
+    serve: SERVE_NOTHING,
+    benchBind: '127.0.0.1',
+    expectStatus: 1,
+  });
+  assert.match(
+    stdout,
+    /tailscale publishes nothing for box\.example\.test/,
+    `the refusal does not name the host it could not promote to:\n${stdout}`,
+  );
+  assert.match(
+    stdout,
+    /would refuse to connect/,
+    `the refusal does not say WHY the fallback address is not an address any more:\n${stdout}`,
+  );
+  assert.match(
+    stdout,
+    /FORGE_BENCH_BIND=/,
+    `the refusal does not name the one variable that changes the answer, so an operator with a real reason ` +
+      `(a LAN device, no tailnet) is told to stop and not how to proceed:\n${stdout}`,
+  );
+  // ★★ ATOMIC, and this is the half that matters more than the message. The refusal lands BEFORE the first
+  // `.env` write: a box refused here is byte-for-byte the box that ran the command. Half a promotion leaves
+  // FORGE_STORE_HOSTS pointing at a network while FORGE_PUBLIC_ORIGIN mints image URLs somewhere else.
+  assert.equal(env.FORGE_PUBLIC_ORIGIN, 'http://localhost:8200', 'the refusal rewrote FORGE_PUBLIC_ORIGIN.');
+  assert.equal(
+    env.FORGE_STORE_HOSTS,
+    `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
+    'the refusal rewrote the host → store map.',
+  );
+  assert.equal(env.FORGE_ADMIN_SIBLINGS, undefined, 'the refusal wrote a sibling list for a network it refused.');
+  assert.deepEqual(calls, [], `the refusal claimed admin doors on ports that refuse to connect:\n  ${calls.join('\n  ')}`);
+});
+
+test('★★ pk24/d4 — a PARTIAL publication names the doors that are not doors, and does not exit 0', () => {
+  // The quiet half: `tailscale serve` fronts the shop and both admins but never got a rule for the counter.
+  // Three doors are real, the fourth falls back to `http://<host>:8203` — a port bound to loopback. A list of
+  // doors that contains one that is not a door is worse than a short list.
+  const SERVE_WITHOUT_THE_COUNTER = JSON.stringify({
+    TCP: { 443: { HTTPS: true }, 8443: { HTTPS: true }, 8444: { HTTPS: true } },
+    Web: {
+      [`${FAKE_TAILNET_HOST}:443`]: { Handlers: { '/': { Proxy: 'http://127.0.0.1:8200' } } },
+      [`${FAKE_TAILNET_HOST}:8443`]: { Handlers: { '/': { Proxy: 'http://127.0.0.1:8201' } } },
+      [`${FAKE_TAILNET_HOST}:8444`]: { Handlers: { '/': { Proxy: 'http://127.0.0.1:8202' } } },
+    },
+  });
+  const { stdout } = runPromotion({
+    mode: 'tailnet',
+    serve: SERVE_WITHOUT_THE_COUNTER,
+    benchBind: '127.0.0.1',
+    expectStatus: 1,
+  });
+  assert.match(
+    stdout,
+    new RegExp(`UNREACHABLE http://${FAKE_TAILNET_HOST}:8203\\s+\\(totem\\)`),
+    `the counter's dead door was printed among the live ones with nothing marking it:\n${stdout}`,
+  );
+  // …and the three that ARE published are not accused, or the rule is just noise.
+  assert.ok(
+    !/UNREACHABLE .*8443|UNREACHABLE .*8444|UNREACHABLE https/.test(stdout),
+    `a door \`tailscale serve\` really publishes was called unreachable:\n${stdout}`,
+  );
 });
 
 test('★★ pk6·D2 — `--localhost` releases BOTH spellings and puts the box back', () => {
