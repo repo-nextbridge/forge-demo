@@ -525,7 +525,7 @@ async function stores() {
       // the useful thing this script can do — its absence means the bootstrap step was skipped, and every
       // command below would then fail for a reason that names something else.
       if (!found) {
-        // ⛔ A13 — AND THE MESSAGE NAMES `seed/box.json`, NOT THIS ARRAY. Measured: `bin/box-up.sh:194` reads
+        // ⛔ A13 — AND THE MESSAGE NAMES `seed/box.json`, NOT THIS ARRAY. Measured: `bin/box-up.sh:1057` reads
         // the bootstrap handle with `jq … select(.bootstrap) | .handle` FROM box.json and never from here,
         // `.env.example` agrees with it, and for `forgeco` the two files disagree — this array says
         // "outlet" and the box is built with "forge". The old sentence printed THIS handle and prescribed a

@@ -324,7 +324,10 @@ say();
 // to have put it in a list; a variable added tomorrow is graded tomorrow.
 say('ADDRESSES OF THIS BOX · every one of them has to survive the next reset');
 const src = readFileSync(join(ROOT, 'bin/box-up.sh'), 'utf8');
-const promotionBlock = src.slice(src.indexOf('say "promotion · $MODE"'), src.indexOf('exit "$promotion_status"'));
+// ⚠️ pk24/§B5 — the anchor is the promotion's own first line, and the mode it announces is now its
+// DESTINATION (`--promote <tailnet|localhost|hostname>`) rather than the name of a bench mode. The check
+// below is about the `put_env` calls inside the block, which did not move.
+const promotionBlock = src.slice(src.indexOf('say "promotion · $PROMOTE_TO"'), src.indexOf('exit "$promotion_status"'));
 const moved = new Set([...promotionBlock.matchAll(/put_env ([A-Z0-9_]+)/g)].map((m) => m[1]));
 if (moved.size === 0) {
   bad('the promotion', 'no `put_env` found in bin/box-up.sh\'s promotion block — this check has nothing to derive from');
