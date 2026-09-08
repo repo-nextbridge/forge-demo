@@ -37,7 +37,8 @@ docs/capabilities/     what this box can DO that it could not before, one page e
 docs/operations/       how this box is OPERATED. `runbook-demo.md` is the online instance's runbook — the
                        deploy order, what to fill in, the weekly reset. This README is the BENCH; that is
                        the box anyone can reach.
-bin/                   build-local · build-coffee · pack-apps · images-from-lock · verify-composition · seed
+bin/                   build-local · build-coffee · build-totem · revendor-forks · pack-apps ·
+                       images-from-lock · verify-composition · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
 ```
 
@@ -90,10 +91,40 @@ printf 'forge-vault-key=%s\n'         "$(openssl rand -base64 32)" >> .secrets
 
 bash bin/build-local.sh ~/path/to/forge     # PRE-RELEASE ONLY — builds the four images, writes forge.lock
 bash bin/pack-apps.sh   ~/path/to/forge     # apps/ → extensions/ (the form the kernel loads)
+bash bin/revendor-forks.sh ~/path/to/forge  # the Forge packages the two forks install, from THAT tree
 bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's own front, built not pinned
+bash bin/build-totem.sh  ~/path/to/forge    # the counter's kiosk — same shape, same reason
 
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
+
+⚠️ **`bin/revendor-forks.sh` is there because a kit change used to cost four gestures composed by hand.**
+The two fork bakes each vendor and install their OWN fork, so a bake is never stale — but a kit change that
+lands while nobody is baking leaves two COMMITTED lockfiles describing a different commit of the product than
+the one this box pins, and then `npm ci` in a pipeline fails `EINTEGRITY` naming a base64 digest and no
+cause. This is the one step that puts every fork back in step with one checkout; it derives the forks
+(`bin/forks.mjs`, never a typed list), it rewrites `package-lock.json`, and it says which locks moved so they
+can be committed. `bash bin/revendor-forks.sh <tree> --check` writes nothing and is the shape a CI gate
+wants. `bin/vendor-drift.guard.mjs` is the rule underneath both.
+
+⚠️ **And `build-totem.sh` was missing from this list.** It is the fifth of five bake gestures, documented in
+"Bringing the counter up" below and nowhere in the sequence anybody follows.
+
+⚠️ **Every `docker build` above has a ceiling and a conscience.** On 2026-09-07 Docker Hub answered **500**
+to the HEAD request for the base image these four Dockerfiles pull, while this box was baking: the admin
+image did not rebuild,
+`bin/build-local.sh` refused to write the lock — correctly, the provenance is read back OUT of the image and
+compared — and a human ran `docker pull` and repeated the command. In a pipeline that minute is a red build
+with no cause of its own, and the habit it teaches is worse than the outage. `bin/docker-retry.sh` repeats
+it, at most three times, with 5 s and 20 s between; it says every repeat out loud with the reason, because a
+silent retry hides a sick registry.
+
+**It is not `|| true`.** `bin/registry-transient.mjs` decides, and its rule is structural rather than a
+contest between error strings: a failure INSIDE a build step is never repeated (that is how a one-in-three
+defect becomes a green), a registry ANSWERING — a tag that does not exist, `unauthorized`, an unknown
+manifest — is never repeated, and a failure it does not recognise is not repeated either. Only transport and
+registry-side illness (5xx, 429, TLS/timeout/reset/EOF/DNS) buys an attempt, and the fixtures it is tested
+against are buildkit output measured on a bench, not remembered.
 
 ### ⚠️ The host's Node — checked first, and it will refuse you
 
@@ -795,6 +826,17 @@ same reason twice: `apps/*/tsconfig.json` extended `../../tsconfig.base.json` an
 `apps/demo-gate/vitest.config.ts` imported `../../vitest.shared`, two files of the MONOREPO that this
 repository has never had. Without a Forge checkout on the machine it reports **NOT CHECKED**, never a silent
 green.
+
+⚠️ **`bin/vendor-drift.guard.mjs` is who asks whether the forks' COMMITTED locks still describe this
+release.** It recomputes each vendored tarball's `integrity` by packing the pinned checkout with the
+product's own `scripts/pack-publishable.sh`, and compares. That is the failure a pipeline would otherwise
+meet as an `EINTEGRITY` from `npm ci` with no cause attached, and its message names one command
+(`bin/revendor-forks.sh`) rather than four. It also proves what is INSTALLED is what is in `vendor/` —
+measured on 2026-09-08, `npm install` served a cached copy of an older tarball that had the same path, and
+the fork ran 174 lines behind the release with nothing saying a word. It costs ~9 s of packing on an idle
+machine (67 s measured on this bench with eight agents on it), and it says **NOT CHECKED** rather than green
+when there is no Forge checkout at the pinned commit, or when a `built` package's `dist` is not on disk —
+this guard never builds in a tree it does not own.
 
 ⚠️ **Two of those guards need the forks INSTALLED, and say so when they are not.**
 `bin/fork-typecheck.guard.mjs` compiles `storefront-coffee/` and `totem/` against the kit in their own
