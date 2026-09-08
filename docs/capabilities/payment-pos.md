@@ -168,11 +168,17 @@ cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
   falha reproduz a frase do defeito), `'unknown'` **desenha** (e a falha explica por que não é `'no'`), e o
   app **não** pode reconhecer o próprio id. Com `FORGE_MONOREPO=<checkout>` ele ainda cobra do produto o
   **nome do campo e os três membros** do union — um membro renomeado faria o `=== 'no'` casar com nada, em
-  silêncio. Fica em `bin/` porque as suítes vitest de `apps/payment-pos/` não são coletadas por comando
-  nenhum deste repositório — medido: `bin/test.sh` varre só `bin/` e `seed/`, e `bin/fork-suite.guard.mjs`
-  enxerga só quem depende do kit.
+  silêncio. Nasceu em `bin/` porque, até a `pk24/d3`, as suítes vitest de `apps/payment-pos/` não eram
+  coletadas por comando nenhum deste repositório — medido: `bin/test.sh` varria só `bin/` e `seed/`, e
+  `bin/fork-suite.guard.mjs` enxerga só quem depende do kit. **Isso mudou:** hoje as duas suítes rodam.
 * `apps/payment-pos/manifest.test.ts` — os métodos neutros, as janelas em minutos, os toggles, e a regra de
   cópia que o guard do monorepo não alcança um app da instância para cobrar.
+* `bin/instance-app.guard.mjs` — **quem roda as duas suítes acima**, e o compilador que nunca as tinha lido.
+  Um app desta instância não chega ao forno sem ter sido compilado e testado: o guard deriva a lista de quem
+  declara `forge.origin: "instance"` (a mesma propriedade que o forno exige, `bin/build-local.sh:114`), liga
+  as dependências a partir de um checkout do Forge, roda `tsc` e a suíte de cada app, e por fim cobra que a
+  lista de `instanceApps` do `composition.json` — a que o forno copia — seja exatamente a que ele acabou de
+  compilar e rodar. Sem checkout do Forge na máquina ele diz **NOT CHECKED**, nunca verde.
 * `totem/src/lib/pos.recover.test.ts` — a recuperação é uma LEITURA (nenhuma escrita), o `resume` fica
   desligado, e um pedido já pago não volta a oferecer QR.
 * `totem/src/components/Totem.reload.test.tsx` — o painel oferece a saída, o toque nomeia o pedido pelo id, e

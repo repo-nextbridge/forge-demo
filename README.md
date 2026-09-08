@@ -781,6 +781,21 @@ fixes that had travelled into the fork's source and stopped there. It costs ~5.6
 parallelism of `node --test` mostly absorbs on an idle machine and does not on a busy one, and a fork that is
 not installed is reported **NOT CHECKED**, never quietly passed.
 
+⚠️ **And it is also who runs THIS BOX'S OWN APPS.** `apps/payment-pos/` (the counter's payment driver) and
+`apps/demo-gate/` (the demo interstitial) are loaded by the kernel itself, and until 2026-09-08 nothing here
+compiled or ran them: not `bin/test.sh`, which scanned `bin/` and `seed/`; not the fork guards, which only see
+a directory that depends on the storefront kit; not `bin/pack-apps.sh`, which packs the artifact without
+reading it; not `bin/build-local.sh`, which copies it into the oven. An app of this instance could be written,
+packed, baked and served without a compiler or a runner ever having read it. `bin/instance-app.guard.mjs`
+closes that: it derives the list from `forge.origin: "instance"` (the property the oven itself requires),
+links each app's declared dependencies out of a Forge checkout the way the oven does, runs `tsc` and the app's
+own suite — 35 tests that had never run — and finally asserts that the `instanceApps` list `composition.json`
+hands the bake is exactly the set it just compiled and ran. The first run found both apps unloadable, for the
+same reason twice: `apps/*/tsconfig.json` extended `../../tsconfig.base.json` and
+`apps/demo-gate/vitest.config.ts` imported `../../vitest.shared`, two files of the MONOREPO that this
+repository has never had. Without a Forge checkout on the machine it reports **NOT CHECKED**, never a silent
+green.
+
 ⚠️ **Two of those guards need the forks INSTALLED, and say so when they are not.**
 `bin/fork-typecheck.guard.mjs` compiles `storefront-coffee/` and `totem/` against the kit in their own
 `node_modules` (`tsc --noEmit`, ~5 s) — the contract that used to be checked only by the oven, four minutes

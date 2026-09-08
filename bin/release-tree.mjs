@@ -45,16 +45,22 @@ export const gitOut = (cwd, args) => {
 };
 
 /** Does this directory hold the Forge monorepo, and at which commit? `existsSync` on the directory is not
- *  enough — a half-cloned or renamed tree would make every comparison argue about an empty tree. */
-function checkout(base) {
+ *  enough — a half-cloned or renamed tree would make every comparison argue about an empty tree.
+ *
+ *  ★ pk24/D3 — EXPORTED when `bin/instance-apps.mjs` became a reader that needs A checkout rather than THE
+ *  pinned one: an app of this box is linked against a Forge tree the way `bin/pack-apps.sh` links its
+ *  contracts, and that caller has to be able to fall back and SAY it fell back. Exporting was the alternative
+ *  to a second copy of "where is the monorepo", which is the drift this file exists to prevent. */
+export function checkout(base) {
   if (!base || !existsSync(join(base, 'packages', 'storefront-kit', 'package.json'))) return null;
   const head = gitOut(base, ['rev-parse', 'HEAD']);
   return head ? { path: base, head } : null;
 }
 
 /** Where a Forge checkout might be. Same first door as this repo's other guards — `FORGE_MONOREPO` — and the
- *  rest are the layouts this repository is actually cloned in, as a plain checkout and as a worktree. */
-function candidates() {
+ *  rest are the layouts this repository is actually cloned in, as a plain checkout and as a worktree.
+ *  ★ pk24/D3 — exported for the same reason `checkout` above is. */
+export function candidates() {
   return [
     process.env.FORGE_MONOREPO,
     join(ROOT, '..', 'forge'),
