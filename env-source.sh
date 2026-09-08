@@ -163,7 +163,46 @@ export FORGE_BULK_READ_TOKEN="$(optional_secret forge-bulk-read-token)"
 
 # Busting the storefront's cache from a write. Shared by kernel, storefront and admin: with either side
 # missing the POST answers 401 and every on-demand invalidation dies in silence.
-export FORGE_REVALIDATE_SECRET="$(optional_secret forge-revalidate-secret)"
+#
+# ★★ AND THIS ONE'S HOME IS `.env`, NOT THE SECRET STORE — the ONLY variable in this file that is read back
+# from there, and the reason is that this box MINTS it rather than being given it: `bin/box-up.sh` step
+# 3c-bis writes it into `.env` and never into a secret store.
+#
+# ⛔ THE TRAP THAT MADE THIS EXPLICIT, MEASURED ON THE BENCH 2026-09-08. `.env` held one value and `.secrets`
+# held ANOTHER, and both were live at once:
+#
+#   · `bin/box-up.sh` sources this file and THEN `.env` (bin/box-up.sh:587-589), so the birth's own shell —
+#     and every container it starts — carries `.env`'s value;
+#   · a human who runs `source env-source.sh` and stops there carries the secret store's, and compose PREFERS
+#     a shell value over the file (see this file's header) — so the next `docker compose up` from that shell
+#     would put a THIRD state on the box. Measured symptom: `node bin/warm-box.mjs` answered 401 against a
+#     storefront that held the other value, and nothing anywhere said the two disagreed.
+#
+# Two homes for one value is two answers, and the one the containers were interpolated from wins. The secret
+# store is still read for a box that keeps it there; when both answer and they DIFFER, this says so out loud
+# rather than shadowing one of them.
+_forge_env_declares() { # <VAR> — what `.env` declares, quotes stripped as bash's `source` and compose see it
+  local file line
+  file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env"
+  [ -f "$file" ] || return 1
+  line="$(grep -m1 "^$1=" "$file" 2>/dev/null)" || return 1
+  line="${line#*=}"
+  line="${line%\'}"
+  line="${line#\'}"
+  printf '%s' "$line"
+}
+_forge_revalidate_env="$(_forge_env_declares FORGE_REVALIDATE_SECRET || printf '')"
+_forge_revalidate_store="$(optional_secret forge-revalidate-secret)"
+if [ -n "$_forge_revalidate_env" ] && [ -n "$_forge_revalidate_store" ] &&
+  [ "$_forge_revalidate_env" != "$_forge_revalidate_store" ]; then
+  echo "[env-source] ⚠️  FORGE_REVALIDATE_SECRET is declared in TWO places with DIFFERENT values." >&2
+  echo "[env-source]     .env holds one (it is what the running containers were interpolated from) and the" >&2
+  echo "[env-source]     secret store holds another as 'forge-revalidate-secret'. Exporting .env's, so this" >&2
+  echo "[env-source]     shell agrees with the box. Delete the secret-store copy: bin/box-up.sh mints this" >&2
+  echo "[env-source]     value into .env and nothing ever writes it back." >&2
+fi
+export FORGE_REVALIDATE_SECRET="${_forge_revalidate_env:-$_forge_revalidate_store}"
+unset _forge_revalidate_env _forge_revalidate_store
 
 # The private half that signs the social login's factor assertion. ONLY the checkout container gets it.
 export FORGE_CUSTOMER_ASSERTION_PRIVATE_KEY="$(optional_secret forge-customer-assertion-private-key)"

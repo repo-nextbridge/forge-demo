@@ -2,6 +2,10 @@
 // ★★ THE LAST STEP OF A BIRTH: THE BOX IS NOT DONE UNTIL IT IS WARM, AND IT SAYS SO WITH NUMBERS.
 //
 //   FORGE_SEED_TOKEN=… FORGE_REVALIDATE_SECRET=… node bin/warm-box.mjs --tenant forgeco --api http://localhost:8200
+//     [--env ./.env]            the declaration this box is reborn from — how the run learns which store it
+//                               serves at the ROOT of that origin (§2b). Default: this repository's `.env`.
+//     [--root-store sto_…]      the same answer, named by hand, for a box whose `.env` is not readable here.
+//                               The URL inventory's flag, same name and same meaning.
 //
 // ── WHY WARMING IS PART OF "DONE" AND NOT A COURTESY ─────────────────────────────────────────────────────
 //
@@ -101,6 +105,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { readDeclaration, storeAtRoot } from './box-env.mjs';
 import { servability } from './servable.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -328,16 +333,32 @@ if (toWarm.length === 0) {
 // different sets of route-cache entries, so warming the second while shoppers arrive on the first fills
 // pages nobody opens — and reports them as this shop's, which is worse than not warming.
 //
-// ⛔ MEASURED ON THIS BOX, 04/09. `read.store.by_host` answers 404 for EVERY hostname the bench uses —
-// `localhost`, `localhost:8200`, `127.0.0.1:8200` and the tailnet name. The kernel's `store_directory` is
-// empty because this box resolves hosts through the `FORGE_STORE_HOSTS` OVERRIDE, which
+// ⛔ MEASURED ON THIS BOX, 04/09 AND AGAIN 08/09. `read.store.by_host` answers 404 for EVERY hostname the
+// bench uses — `localhost`, `localhost:8200`, `127.0.0.1:8200` and the tailnet name. The kernel's
+// `store_directory` is empty because this box resolves hosts through the `FORGE_STORE_HOSTS` OVERRIDE, which
 // `packages/storefront-kit/src/resolve-store.ts` checks first by design and which the warmer's
-// `storeForOrigin` (`apps/storefront/src/lib/warm/targets.ts`) cannot see: it asks the port and nothing else.
+// `storeForOrigin` (`apps/storefront/src/lib/warm/targets.ts:38`) cannot see: it asks the port and nothing else.
 //
-// ⚠️ THIS IS NOT MADE RED, AND THE REASON IS STATED. The run genuinely warms what it is able to warm, and the
-// gap is in the product's seam rather than in this box's configuration — an operator here cannot close it, and
-// a red nobody can act on is a red people learn to skip. It IS said, in the words of the read that decided it,
-// and the day a store claims the origin in the directory this line turns into the other one by itself.
+// ★★ SO THIS STEP ASKS BOTH SOURCES, AND THAT IS WHAT CHANGED IN pk25/d1. The port answers who claims the
+// origin in the DIRECTORY; `.env`'s `FORGE_STORE_HOSTS` answers who this box actually SERVES there, and it is
+// the second one a shopper's browser obeys. Reading it is the same derivation `bin/box-up.sh --promote`
+// already makes (it reads the root store back out of that map) and the same override the URL inventory takes
+// as `--root-store` — the flag is kept here, with the same name, for a box whose declaration this process
+// cannot read.
+//
+// ⛔ AND WHEN THE TWO DISAGREE THE REPORT STOPS SAYING «warm», WHICH IS THE HALF THAT WAS MISSING. Until now
+// this line was a `⚠` note under a `VERDICT: warm` and an exit 0 — so every birth of this box reported a warm
+// shop while the pages it warmed (`/s/<id>/botas/chelsea`) were not the pages a visitor opens
+// (`/botas/chelsea`). Two route-cache trees, and the operator was told about the wrong one in a sentence that
+// did not change the verdict. It is a SHORTFALL now: still not a gate (`bin/box-up.sh` does not fail a birth
+// on warmth), still not this operator's fault to fix, but no longer something the last line calls warm.
+//
+// ⚠️ AND THIS STEP CANNOT CLOSE THE GAP ITSELF — the address space is the VITRINE's to decide. `/api/warm`
+// takes `store=`, `origin=`, `depth=`, `products=`, `max_duration_ms=` … and NOTHING that names the root
+// store (`apps/storefront/src/app/api/warm/route.ts`), because `resolveTargets` derives each store's base
+// from `storeForOrigin` alone (`apps/storefront/src/lib/warm/targets.ts:88`). What closes it is DATA: a store
+// that claims the origin in the directory (`tenant.store.update` → `host`), and on the day one does, the
+// port's answer and the declaration agree and this branch turns into the first one by itself.
 const originAuthority = (() => {
   try {
     const u = new URL(api);
@@ -346,22 +367,103 @@ const originAuthority = (() => {
     return '';
   }
 })();
-let rootStore = null;
+
+// ── who the DIRECTORY says is at the root — the only thing the warmer itself can see ─────────────────────
+let rootByPort = null;
 try {
   const res = await fetch(`${api}/v1/read/store.by_host?host=${encodeURIComponent(originAuthority)}`);
-  if (res.ok) rootStore = (await res.json())?.store_id ?? null;
+  if (res.ok) rootByPort = (await res.json())?.store_id ?? null;
 } catch {
-  rootStore = null;
+  rootByPort = null;
 }
-if (rootStore && toWarm.some((s) => s.id === rootStore)) {
-  noted('the addresses', `read.store.by_host says ${originAuthority} → ${rootStore}, so that store is warmed at the ROOT (clean URLs) and the others under /s/<id>`);
-} else {
+
+// ── who this box SERVES there, read from the declaration it is reborn from ───────────────────────────────
+//
+// ⚠️ THE LOCAL `.env` DESCRIBES THE LOCAL BOX, and this step can be pointed at any `--api`. A run warming
+// somebody else's origin with this box's host map would be inventing a fact about another box's routing, so
+// the declaration is used ONLY when it declares the very origin being warmed. When it does not, the answer
+// is «this run does not know», never a guess.
+const envPath = argOf('--env') ?? join(ROOT, '.env');
+const rootFlag = argOf('--root-store') ?? null;
+let declaration = null;
+let blindWhy = '';
+try {
+  declaration = readDeclaration(envPath);
+} catch (error) {
+  blindWhy = `${envPath} could not be read (${error.code ?? error.message})`;
+}
+if (declaration) {
+  const declaredOrigin = (declaration.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
+  let declaredAuthority = '';
+  try {
+    const u = new URL(declaredOrigin);
+    declaredAuthority = u.port ? `${u.hostname}:${u.port}` : u.hostname;
+  } catch {
+    declaredAuthority = '';
+  }
+  if (!declaredAuthority || declaredAuthority.toLowerCase() !== originAuthority.toLowerCase()) {
+    blindWhy =
+      `${envPath} declares FORGE_PUBLIC_ORIGIN ${declaredOrigin || '(unset)'}, which is not ${api} — so its ` +
+      'host map describes a different box and this run refuses to read this origin out of it';
+    declaration = null;
+  }
+}
+const rootDeclared = rootFlag ?? (declaration ? storeAtRoot(declaration, originAuthority) : null);
+const rootFrom = rootFlag ? '--root-store' : `FORGE_STORE_HOSTS in ${envPath}`;
+
+/** A root store only matters here if it is one of the stores THIS run is warming. */
+const inThisRun = (id) => Boolean(id) && toWarm.some((s) => s.id === id);
+const warmedAtRoot = inThisRun(rootByPort) ? rootByPort : null;
+const servedAtRoot = inThisRun(rootDeclared) ? rootDeclared : null;
+
+if (warmedAtRoot && servedAtRoot && warmedAtRoot !== servedAtRoot) {
+  // Worse than cold: the warmer builds ROOT urls for the store the DIRECTORY names while the shopper who
+  // types this address is served by the store the OVERRIDE names. The clean urls warmed belong to nobody.
+  cold(
+    'the addresses',
+    `read.store.by_host says ${originAuthority} → ${warmedAtRoot}, but ${rootFrom} serves ${servedAtRoot} ` +
+      'there — and the FRONT obeys the override (resolve-store.ts checks it before it asks the port). So the ' +
+      `clean URLs this run warmed are ${warmedAtRoot}'s, at an address that answers with ${servedAtRoot}. ` +
+      'One of the two has to move: claim the origin on the store the box really serves, or drop the override.',
+  );
+} else if (warmedAtRoot) {
   noted(
     'the addresses',
-    `read.store.by_host claims no store for ${originAuthority}, so EVERY store below is warmed path-scoped ` +
-      '(/s/<id>/…). If a shopper reaches one of them at the root of this origin — which is what the ' +
-      'FORGE_STORE_HOSTS override does on this box — those pages are a DIFFERENT set of route-cache entries ' +
-      'and this run did not warm them. The warmer asks the port and the override never reaches it.',
+    `read.store.by_host says ${originAuthority} → ${warmedAtRoot}, so that store is warmed at the ROOT (clean URLs) and the others under /s/<id>`,
+  );
+} else if (servedAtRoot) {
+  cold(
+    'the addresses',
+    `${originAuthority} is served by ${servedAtRoot} (${rootFrom}) and read.store.by_host claims NO store for ` +
+      'it, so every store below was warmed path-scoped (/s/<id>/…) — including that one. A shopper typing ' +
+      `this address reaches ${servedAtRoot} at the ROOT, and those pages are a DIFFERENT set of route-cache ` +
+      'entries: THIS RUN DID NOT WARM THEM. The warmer asks the port and the override never reaches it ' +
+      '(apps/storefront/src/lib/warm/targets.ts), and its door takes no root-store parameter — what closes ' +
+      'this is the store claiming the origin in the directory (`tenant.store.update` → host).',
+  );
+} else if (rootDeclared) {
+  noted(
+    'the addresses',
+    `${originAuthority} is served by ${rootDeclared} (${rootFrom}), which is not one of ${tenant}'s stores — ` +
+      'so path-scoped (/s/<id>/…) really is the address a shopper receives for every store below.',
+  );
+} else if (declaration || rootFlag) {
+  noted(
+    'the addresses',
+    `no store claims ${originAuthority}: read.store.by_host answers 404 and ${rootFrom} names none either, ` +
+      'so path-scoped (/s/<id>/…) is the address a shopper receives and it is what was warmed.',
+  );
+} else {
+  // ★★★ THE VACUUM, AND IT IS THE ONE THIS LINE USED TO FALL INTO SILENTLY: not knowing which tree the
+  //     shopper reaches is not the same as knowing there is only one. Said out loud, and it costs the
+  //     verdict its «warm» — a run that cannot tell may have warmed pages nobody opens.
+  cold(
+    'the addresses',
+    `this run does not know which store this box serves at the root of ${originAuthority} — ${blindWhy}. ` +
+      'read.store.by_host claims none, so every store below was warmed path-scoped (/s/<id>/…); if this box ' +
+      'serves one of them at the root instead, those pages are a different set of route-cache entries and ' +
+      'were NOT warmed. Point this run at the box\'s own declaration with --env, or name the store with ' +
+      '--root-store <id>.',
   );
 }
 

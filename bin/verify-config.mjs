@@ -43,9 +43,12 @@
 import { readFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
+import { isIP } from 'node:net';
 import { hostname as machineHostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { readDeclaration } from './box-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BOX = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
@@ -75,24 +78,13 @@ const wrongQuestion = (message) => {
 
 // ── the declaration: `.env` as it stands on disk, because that is what the box is reborn from ────────────
 //
-// ⚠️ THE FILE, NOT THIS PROCESS'S ENVIRONMENT. `bin/box-up.sh` sources `.env` before it calls this, so both
-// would usually agree — but the file is what the next `docker compose up` interpolates and what the next
-// birth rewrites, so the file is the declaration. Single quotes are stripped the way bash's `source` and
-// compose both end up seeing the value (see `put_env`'s note on why the JSON values carry them).
+// ⚠️ THE FILE, NOT THIS PROCESS'S ENVIRONMENT — the reasoning, and the parser, live in `bin/box-env.mjs`,
+// which `bin/warm-box.mjs` reads the same declaration through. Two copies of «strip the quotes box-up.sh
+// wrote» would be two things to keep in agreement about one file.
 const envPath = argOf('--env') ?? join(ROOT, '.env');
 let declared;
 try {
-  declared = Object.fromEntries(
-    readFileSync(envPath, 'utf8')
-      .split('\n')
-      .filter((l) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(l))
-      .map((l) => {
-        const at = l.indexOf('=');
-        const value = l.slice(at + 1).trim();
-        const unquoted = /^'.*'$/s.test(value) ? value.slice(1, -1) : value;
-        return [l.slice(0, at), unquoted];
-      }),
-  );
+  declared = readDeclaration(envPath);
 } catch (error) {
   wrongQuestion(`${envPath} could not be read (${error.code ?? error.message}) — there is no declaration to grade.`);
 }
@@ -107,6 +99,28 @@ if (!api) wrongQuestion('no --api and no FORGE_PUBLIC_ORIGIN in the file — thi
  * measured against the live bench on 04/09, `fetch('http://127.0.0.1:8200/', {headers:{host:'nope.invalid'}})`
  * answered 200 while the same request through `node:http` answered 404. A probe built on fetch would have
  * graded every hostname as resolving, on every box, for ever — a green that proves the port is open.
+ *
+ * ⛔ AND `servername` IS THE OTHER HALF OF THAT SAME SENTENCE — WITHOUT IT THIS STEP IS RED ON EVERY HTTPS
+ * BOX, WHICH IS EVERY BOX ONLINE. Node derives the TLS ServerName from the `Host` HEADER when none is given
+ * (`calculateServerName`, `lib/https.js`), so a probe carrying `Host: localhost` negotiates the handshake as
+ * «localhost» against an edge holding a certificate for its own name; the handshake dies, `req.on('error')`
+ * resolves 0, and the shop is reported as answering NOTHING at an address it answers 200 at.
+ *
+ * ★ MEASURED 2026-09-08 against the live https bench, one request at a time, same `node:https`:
+ *
+ *     Host: <the origin's own name> → 200 · 200   Host: 127.0.0.1 → 200 · 200
+ *     Host: localhost               → EPROTO · 200        Host: ms-s1 (short name) → EPROTO · 200
+ *     Host: <a name the map does not declare> → EPROTO · 404
+ *
+ * («before · after».) The IP passes either way because the RFC forbids sending SNI for an IP literal, so
+ * there is no name to diverge. ★ THE LAST ROW IS WHY THIS IS NOT «make it green»: with TLS negotiated
+ * against the ORIGIN the HTTP layer still answers, and an undeclared name still comes back 404 — the same
+ * negative control this comment demands of `fetch` above.
+ *
+ * ⚠️ THE EMPTY STRING IS NOT «unset». For an IP origin `servername: url.hostname` would be an RFC-6066
+ * violation Node warns about (DEP0123) and `undefined` would let it derive one from the header again;
+ * `''` is the spelling that means «send no SNI», measured to be the only one of the three that both keeps
+ * Node quiet and stops the derivation.
  */
 function probeHost(host) {
   const url = new URL(api);
@@ -119,6 +133,8 @@ function probeHost(host) {
         path: '/',
         method: 'GET',
         headers: { Host: host },
+        // The TLS handshake is negotiated with the ORIGIN, while the header keeps carrying the name under test.
+        servername: isIP(url.hostname) ? '' : url.hostname,
         timeout: 15_000,
       },
       (res) => {

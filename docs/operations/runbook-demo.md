@@ -133,6 +133,14 @@ Não edite as linhas à mão para "consertar" um vermelho: o compose é a fonte.
     conexão dos apps; perder significa redigitar todos.
   · `DATABASE_URL` **não é digitada**: `env-source.sh:52` a monta a partir de `POSTGRES_USER` /
     `POSTGRES_PASSWORD` / `POSTGRES_DB` — as duas com default são o único par que você pode ignorar.
+  ⛔ **A exceção, e ela nasceu de uma armadilha medida em 08/09:** `FORGE_REVALIDATE_SECRET` **não** vem do
+  cofre — esta caixa a **cunha** (`bin/box-up.sh`, passo 3c-bis) direto no `.env`, e nada a escreve de volta.
+  Na bancada as duas existiam com **valores diferentes**, e as duas estavam vivas: o `box-up` sourceia o
+  `env-source.sh` e **depois** o `.env` (`bin/box-up.sh:587-589`), então os containers seguravam o do `.env`;
+  quem só rodava `source env-source.sh` segurava o do `.secrets` — e o compose **prefere o valor do shell**,
+  então um `docker compose up` dali colocaria um terceiro estado na caixa. Sintoma: `node bin/warm-box.mjs`
+  respondendo **401** contra uma vitrine que segurava o outro. Agora o `env-source.sh` exporta o do **`.env`**
+  quando ele existe e **avisa** quando o cofre discorda — apague a cópia do cofre.
 - **`.env`** (6): as suas. Três são endereços e identidades (`FORGE_DOMAIN`, `FORGE_ADMIN_DOMAIN`,
   `FORGE_PUBLIC_ORIGIN`); `FORGE_TOTEM_STORE_ID` é uma armadilha — leia a §3.3(c); e as **duas** restantes o
   compose deixa VAZIAS de propósito, logo abaixo.
@@ -313,6 +321,20 @@ outro conserto. O relatório antigo dizia *"198 of 419 pages did not answer"* e 
 O `box-up` imprime `⚠️ REPORT — THE BOX IS UP AND … DID NOT COME OUT FULLY WARM` e **sai 0**; se ele nem
 conseguiu perguntar, imprime `⚠️ REPORT — WARMTH IS UNKNOWN FOR …`, que é outra frase.
 
+**★★ pk25/d1 — E O RELATÓRIO PAROU DE CHAMAR DE «warm» A ÁRVORE ERRADA.** São **duas árvores de cache**: o
+visitante que digita o endereço da caixa cai em `/botas/chelsea`; a corrida aquecia `/s/<id>/botas/chelsea`.
+A vitrine decide isso perguntando `read.store.by_host`, que nesta caixa responde **404 nos oito nomes** — o
+mapa host→loja vive no `FORGE_STORE_HOSTS` dos **fronts**, e o kernel não o enxerga. O passo dizia isso numa
+linha `⚠` e terminava em `VERDICT: warm`, saída 0; ⇒ os *"95% aquecido"* de subidas passadas eram da árvore
+que ninguém navega. Agora o passo lê **as duas fontes** — a porta e o `.env` desta caixa — e, quando a caixa
+serve uma loja na **raiz** que a corrida aqueceu **path-scoped**, isso é um **shortfall**: continua **não
+sendo portão** (o `box-up` não reprova o nascimento por calor), mas o veredicto **não diz mais warm** e
+nomeia as duas árvores. ⛔ **O aquecedor não consegue fechar isso sozinho:** quem decide o endereço é a
+**vitrine** (`resolveTargets` deriva a base só de `storeForOrigin` —
+`apps/storefront/src/lib/warm/targets.ts:88`) e a rota `/api/warm` **não tem parâmetro de loja-raiz**. O que
+fecha é **dado**: uma loja que reivindique a origem no diretório (`tenant.store.update` → `host`) — e nesse
+dia a linha vira sozinha a outra.
+
 ⛔ **Uma metade do passo 14 continua vermelha:** uma loja que o `seed/box.json` **declara** e a caixa **não
 tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSITORY DECLARES`). Isso não é
 aquecimento, é *"o nascimento não construiu"* — e o passo 14 é o **único** que enxerga: o 12 e o 14-bis
@@ -442,6 +464,13 @@ faz: `FORGE_SEED_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> -
 ⚠️ **O que se perde ao pular:** o passo 14 é o **único** que enxerga uma loja que `seed/box.json` declara e a
 caixa não tem (12 e 14-bis andam pelas lojas que a **porta** reporta). A corrida diz isso no roteiro dela.
 
+⚠️ **E se for chamar o aquecedor à mão, chame-o de onde a caixa está.** `bin/warm-box.mjs` aprende **qual
+loja esta caixa serve na RAIZ** lendo o `.env` **desta pasta** (`--env` muda o arquivo, `--root-store` nomeia
+a loja direto). Ele só usa esse arquivo se o `FORGE_PUBLIC_ORIGIN` declarado ali for **a mesma origem** que
+está sendo aquecida — apontar a caixa local para uma origem remota faria o mapa de uma caixa descrever outra.
+Quando ele não consegue saber, **diz que não sabe** e o veredicto deixa de ser "warm": uma corrida que não
+sabe qual árvore o visitante alcança pode ter aquecido páginas que ninguém abre.
+
 1. **Cron não tem `node`.** `env -i` com `PATH` mínimo não acha `node` nem `pnpm`; só o diretório do nvm tem
    o par compatível. Metade do nascimento são processos de host (`seed.mjs`, `verify-seed.mjs`,
    `warm-box.mjs`, `verify-config.mjs`), então a unidade **tem** de receber esse diretório no `PATH`. A
@@ -478,6 +507,18 @@ ela declara tem de estar publicada ali*. Cada face é comparada com **o que a ca
 cópia do que ela deveria responder. A última checagem vira a regra contra o próprio arquivo: qualquer
 `FORGE_*` que segure um endereço **desta** caixa e que a promoção **não** reescreva é **nomeada**, porque o
 próximo reset a deixaria apontando para a rede em que a caixa costumava estar. Ninguém precisa ter lembrado.
+
+⛔ **pk25/d1 — e até 08/09 esse passo era vermelho em TODA caixa https, sem culpa da caixa.** O sintoma:
+`✗ localhost — claimed for sto_… and the shop answers nothing there`, em **5 dos 8** nomes, enquanto
+`curl -H "Host: <cada um dos oito>" https://<origem>/` respondia **200 nos oito**. A causa não era a caixa: o
+probe manda o nome reivindicado no header `Host` de propósito (é **roteamento** que ele testa), e o Node
+**deriva o ServerName do TLS desse mesmo header** quando nenhum é dado — então o handshake era negociado como
+«localhost» contra um certificado emitido para a borda, morria, e `req.on('error')` virava *"answers
+nothing"*. Ele foi escrito e medido em 04/09 contra uma origem **http**, onde não há TLS para errar. O
+conserto negocia o TLS contra a **origem** e deixa o header carregando o nome sob teste; ⚠️ **o controle
+negativo continua de pé** — um nome que o mapa **não** declara volta 404 e segue **vermelho** (medido).
+★ **Se você viu esses `✗` em scrollbacks antigos: eram falsos.** Online a origem é https por definição, então
+o veredicto final do nascimento estava reprovando toda caixa online.
 
 ⚠️ **A sonda é `node:http`, nunca `fetch`** — o undici **descarta em silêncio** um header `host`. Medido:
 `fetch(origem, {headers:{host:'nope.invalid'}})` respondeu **200** onde `node:http` respondeu **404**. Uma
