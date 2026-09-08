@@ -37,4 +37,57 @@ if [ "${#files[@]}" -eq 0 ]; then
 fi
 echo "[test] ${#files[@]} file(s):" >&2
 printf '  %s\n' "${files[@]}" >&2
-node --test "${files[@]}"
+
+# ── ★★ STRICT MODE — WHERE "NOT CHECKED" STOPS BEING AN ANSWER (pk24 integration) ──────────────────────────
+#
+# ⛔ THE DEFECT, MEASURED 2026-09-08 ON THIS TREE. Half the guards in `bin/` answer NOT CHECKED instead of
+# running when the thing they grade is absent — no `node_modules` in a fork, no Forge checkout to compare the
+# pinned release against. `node --test` reports those as SKIPPED, and a run that skips exits 0. Measured
+# here: 19 skipped, `rc=0`, and among them the fork suites (811 tests) and every rule that needs the
+# product's own lists.
+#
+# ★ ON A DEV MACHINE THAT IS THE RIGHT ANSWER, and it must stay. Saying "I did not check this, and here is
+# what would let me" is strictly better than pretending; that virtue is written into every one of those
+# guards on purpose, and this mode does not touch them.
+#
+# ⚠️ IN A PIPELINE IT IS A LIE. There, green means "the gate looked", and a runner that happens to lack a
+# checkout would publish a green that graded almost nothing. The two machines want opposite answers to the
+# same question, so the ANSWER IS A MODE, not an edit to nineteen call sites.
+#
+# ★★ AND IT IS ONE MECHANISM ON PURPOSE, because there are TWO ways to skip and a fix per call site would
+# have missed one: `t.skip(...)` (used by fork-suite, fork-typecheck, vendor-drift, instance-app, …) and the
+# `{ skip }` OPTION of `node:test` (bin/composition.guard.mjs, seven tests). Both surface in the run's own
+# summary, so grading THE SUMMARY covers both — and covers the twentieth, written next month, for free.
+strict=0
+case "${FORGE_STRICT_CHECKS:-}" in 1|true|yes) strict=1 ;; esac
+if [ "$strict" = 0 ]; then
+  node --test "${files[@]}"
+  exit $?
+fi
+
+echo "[test] ⚑ STRICT: a skipped test is a failure here — this run must GRADE, not report." >&2
+out="$(mktemp)"; trap 'rm -f "$out"' EXIT
+set -o pipefail
+node --test "${files[@]}" 2>&1 | tee "$out"
+rc=$?
+set +o pipefail
+
+# ⚠️ ANTI-VACUUM. If the summary line is not there, the run did not finish the way this parse assumes and the
+# count cannot be trusted. Believing "no summary ⇒ no skips" is exactly the silence this mode exists to end.
+skipped="$(sed -n 's/^ℹ skipped \([0-9]*\)$/\1/p' "$out" | tail -1)"
+if [ -z "$skipped" ]; then
+  echo "[test] ⛔ STRICT: the run printed no \`ℹ skipped\` line, so this mode cannot tell a graded run from a" >&2
+  echo "              skipped one. Refusing to call it green. (node --test exited $rc.)" >&2
+  exit 1
+fi
+if [ "$skipped" -gt 0 ]; then
+  echo "" >&2
+  echo "[test] ⛔ STRICT: $skipped test(s) reported NOT CHECKED instead of running:" >&2
+  grep -E '^﹣' "$out" | sed 's/^/       /' >&2
+  echo "" >&2
+  echo "       Each line above names what would let it run — a Forge checkout (FORGE_MONOREPO), an installed" >&2
+  echo "       fork (bash bin/revendor-forks.sh <checkout>). Give the runner those, or drop FORGE_STRICT_CHECKS" >&2
+  echo "       and accept that this run graded less than it looks like it did." >&2
+  exit 1
+fi
+exit $rc
