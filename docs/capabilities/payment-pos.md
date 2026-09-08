@@ -76,6 +76,34 @@ checkout da loja de cafés e do outlet.
 > é o cenário menos grave dos dois. O que continua verdade é o resto: a instalação é por tenant, ele aparece
 > nas outras lojas, e o `card` dele liquida na hora e de graça.
 
+#### ★ E a pior consequência disso já mordeu: o bloco falava por cobrança dos outros
+
+Medido em 07/09 (caderno pk21 §R3), na caixa viva. Um pedido na **loja de cafés**, cobrado pelo
+**`payment-reference`**, no **cartão**, com Entrega Expressa e endereço de entrega, recebeu na confirmação a
+frase deste app — *"Pagamento confirmado. Retire no balcão quando chamarmos o seu nome."* — logo acima do
+bloco que mostrava a transportadora e a previsão de sexta.
+
+A causa era a **pergunta**, não o texto: o bloco olhava o **método neutro** (`method !== 'pix' && method !==
+'card'`), e método neutro é vocabulário da casa — ele não diz **quem** recebeu. Como a instalação é por
+tenant, todo pedido de cartão ou pix de qualquer loja do tenant casava.
+
+**Agora quem compara é o ponto de render, não o app.** A confirmação sabe duas coisas que nenhum app sabe
+sozinho — **qual app ela está chamando** e **quem o kernel diz que cobrou** — e entrega o veredicto pronto a
+cada bloco (`settledByThisApp: 'yes' | 'no' | 'unknown'`, `pk23/p4` no produto). O `payment-pos` **cala em
+`'no'`** e desenha nos outros dois.
+
+⚠️ **Por que o app não reconhece o próprio id:** ele teria de **escrevê-lo à mão** — não dá para importar o
+próprio manifesto sem arrastar o `@forgecommerce/contracts` para o bundle da frente — e aí um *fork* ou um
+*rename* recolocaria o defeito **em silêncio**.
+
+⚠️ **E `'unknown'` NÃO é `'no'`.** `'unknown'` é *"o kernel não nomeou ninguém"* — nenhuma tentativa de
+pagamento foi aberta. É população **real** desta caixa e não um buraco: `apps/api/src/seed-history.ts:551,676`
+deixa os pedidos `pending_payment` no `place_order` e **nunca** chama `payment.initiate`, então o passado da
+demo carrega dezenas de pedidos sem tentativa — desenhados tanto na confirmação quanto na página de pedidos da
+conta. Ler isso como negativa apagaria uma tela que não é sobre a cobrança de ninguém.
+
+⛔ **Trocar a frase não teria consertado nada** — ela está certa para quem pagou no balcão.
+
 ### 2b. Composto ≠ instalado — e é a instalação que falta
 
 ⛔ **Medido em 02–03/09: o `payment-pos` está NA IMAGEM e NÃO está INSTALADO no tenant** — são duas perguntas
@@ -136,6 +164,13 @@ cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
 
 * `apps/payment-pos/provider.test.ts` — `card` liquida no `initiate`; `pix` não liquida e devolve o ref; a
   porta do escaneio recusa o que não é uma cobrança PIX aberta deste app.
+* `bin/pos-after-payment.guard.mjs` — **rodado por `bash bin/test.sh`**: `'yes'` desenha, `'no'` cala (a
+  falha reproduz a frase do defeito), `'unknown'` **desenha** (e a falha explica por que não é `'no'`), e o
+  app **não** pode reconhecer o próprio id. Com `FORGE_MONOREPO=<checkout>` ele ainda cobra do produto o
+  **nome do campo e os três membros** do union — um membro renomeado faria o `=== 'no'` casar com nada, em
+  silêncio. Fica em `bin/` porque as suítes vitest de `apps/payment-pos/` não são coletadas por comando
+  nenhum deste repositório — medido: `bin/test.sh` varre só `bin/` e `seed/`, e `bin/fork-suite.guard.mjs`
+  enxerga só quem depende do kit.
 * `apps/payment-pos/manifest.test.ts` — os métodos neutros, as janelas em minutos, os toggles, e a regra de
   cópia que o guard do monorepo não alcança um app da instância para cobrar.
 * `totem/src/lib/pos.recover.test.ts` — a recuperação é uma LEITURA (nenhuma escrita), o `resume` fica
