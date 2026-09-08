@@ -6,8 +6,8 @@
   },
   "provenance": {
     "origin": "local build",
-    "built_from": "v03/integra@ce38b5aa2",
-    "built_at": "2026-09-07T20:42:48Z",
+    "built_from": "v03/integra@217734df8",
+    "built_at": "2026-09-08T01:19:36Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -40,10 +40,10 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:30f1614174c6332033809757b0330dd207494c9039f293e161e60f15956a6350",
-    "storefront": "forge-demo-storefront@sha256:ec1c118029ab4b25b69892f8610c83e40d4207ded216c5e38ea7fa4dc7ba250c",
-    "checkout": "forge-demo-checkout@sha256:288a5e8507017b835c81649550fff007d0ab7288f3ab195189d1c23af2f7d637",
-    "admin": "forge-demo-admin@sha256:83164d8328ad0eadc9804372637c7e0bafecb4ae93f7f5ea07e738b447554779"
+    "kernel": "forge-demo-kernel@sha256:44c386cc04db62b40c2c4c6ea2fa49c49e9c7ba5d29bddee02ab5153dfd3bc3b",
+    "storefront": "forge-demo-storefront@sha256:f23f9343bcb566480cbe53f830bdc4a958efc13d11fcd8e5856b79d401060287",
+    "checkout": "forge-demo-checkout@sha256:fcdd046818285f8f1b0f6b8708bbb5573f018002ebf77776a0048562f5bbcd82",
+    "admin": "forge-demo-admin@sha256:ff643839eef3daa9be87144d393648582e3d456c96093533e2502ec29730c9ca"
   },
   "extensions": [],
   "dataset": {
