@@ -12,16 +12,19 @@
 # vitrine's own "Finalizar compra" is a relative `/checkout`. Two ports do not reproduce that — the browser
 # follows the link and never learns there is a second server.
 #
-# Bring it up with `.env` carrying:
+# Bring it up with `.env` carrying — these are the values `.env.example` ships, which is where they are
+# DECIDED; copying a different number here is how the box came to publish one port and announce another
+# (see `bin/bench-ports.guard.mjs`):
 #   FORGE_CADDYFILE=./caddy/Caddyfile.local
-#   FORGE_HTTP_PORT=8080        (or any free port)
-#   FORGE_PUBLIC_ORIGIN=http://localhost:8080
-# then open http://localhost:8080.
+#   FORGE_HTTP_PORT=8200        (or any free port)
+#   FORGE_PUBLIC_ORIGIN=http://localhost:8200
+# then open http://localhost:8200.
 #
 # ⚠️ THE ADMIN GETS ITS OWN PORT, AND A PATH PREFIX WAS TRIED FIRST AND MEASURED BROKEN. `handle /admin*
 # { reverse_proxy admin:3000 }` returns HTTP 307 to `/login` — an ABSOLUTE path with no prefix on it, because
 # the admin is a Next app with no `basePath` and every address it mints is rooted. The edge then routes
-# `/login` to the vitrine, which answers 404. Measured on this bench:
+# `/login` to the vitrine, which answers 404. Measured on this bench, back when it published 8080 — the
+# numbers are the measurement's and are left as they were read:
 #
 #     GET /admin  → 307  Location: http://localhost:8080/login
 #     GET /login  → 404  (the vitrine's)
@@ -178,7 +181,7 @@
 # ★★ THE COUNTER'S TOTEM (T2·S2), on a listener of its own — and it is a WHOLE SITE, not a path, because the
 # totem is the fourth posture of the customisation table: ONE app of the client's own serving every path of
 # the counter's host. There is no second Next server behind this hostname and no store in the URL, so there
-# is nothing to split. Published as ${FORGE_TOTEM_HTTP_PORT} (8102 by default) by compose.override.yml.
+# is nothing to split. Published as ${FORGE_TOTEM_HTTP_PORT} (8203 by default) by compose.override.yml.
 #
 # It mirrors the admin's `:81` for the same reason the admin got one: on this bench three stores share ONE
 # origin and the store comes from the PATH, which is a shape a whole-host app cannot live in.

@@ -1303,7 +1303,7 @@ Then set, in `.env` (the full block with its reasons is in `.env.example`):
 ```dotenv
 FORGE_TOTEM_STORE_ID=sto_…          # what the process sends to the port
 FORGE_TOTEM_STORE_HANDLE=balcao     # what a HUMAN reads to know which shop that id is
-FORGE_TOTEM_HTTP_PORT=8102          # the bench port; the site `:82` in caddy/Caddyfile.local
+FORGE_TOTEM_HTTP_PORT=8203          # the bench port; the site `:82` in caddy/Caddyfile.local
 FORGE_TOTEM_DOMAIN=                 # the counter's hostname in a deployment (caddy/Caddyfile)
 FORGE_TOTEM_IDLE_SECONDS=90         # how long before the screen resets between customers
 ```
@@ -1317,7 +1317,7 @@ id slot.
 
 ### Testing the counter by hand
 
-Open **http://localhost:8102** (the bench) — you should land on "Toque para começar".
+Open **http://localhost:8203** (the bench) — you should land on "Toque para começar".
 
 1. **Touch anywhere.** The attract screen lifts and the menu appears: four bands (Cafés · Especiais da casa ·
    Comidas · Pra levar), a fixed rail on the left, big finger-sized cards.
