@@ -42,6 +42,8 @@ import {
   silenceBuyerChannels,
   sellingStores,
   SEED_NOISE_TYPES,
+  buyerEmail,
+  placeOneOrder,
 } from './commerce.mjs';
 
 const STORES = [
@@ -632,4 +634,131 @@ test('★★ the intent is read off the STORE and never off the handle', () => {
   // two would disagree the first time somebody changed one — with the symptom being a seed that dies.
   assert.equal(liveProofGuestIntent({ handle: 'forge', guest_checkout_enabled: false }), false);
   assert.equal(liveProofGuestIntent({ handle: 'balcao', guest_checkout_enabled: true }), true);
+});
+
+// ── ★★ THE JOURNEY ITSELF (pk25/d3) ──────────────────────────────────────────────────────────────────────
+//
+// `placeOneOrder` was `placeOneLiveOrder` until this slice, and it grew two parameters — the BUYER and the
+// LINE's custom fields — so the café's subscriptions could ride the same measured journey instead of a copy
+// of it. Both are load-bearing and NEITHER was reachable by a test, because the function drives the port.
+//
+// ⛔ THE SABOTAGE THAT CAME BACK GREEN, AND IS WHY THIS BLOCK EXISTS. Deleting `custom_fields` from the
+// `cart.add_line` below is the whole subscription seam: the kernel freezes an ordinary line, the app's
+// `order.created` script finds no `sub_plan`, it mints NOTHING, and every seed log line is green. The step's
+// own suite could not see it — it drives an injected `placeOrder` — so the hole was exactly here.
+
+/** A port that answers the minimum this journey asks for, and records every command. */
+function fakeCheckout({ metadata = {} } = {}) {
+  const commands = [];
+  return {
+    commands,
+    port: {
+      log: () => {},
+      command: async (name, input) => {
+        commands.push({ name, input });
+        if (name === 'cart.create') return { cart_id: 'cart_1' };
+        if (name === 'checkout.place_order') return { order_id: 'ord_1' };
+        return {};
+      },
+      read: async (name) => {
+        if (name === 'internal/orders_admin') return { items: [] };
+        if (name === 'products')
+          return { items: [{ handle: 'forge-alvorada', skus: [{ id: 'sku_1', status: 'active', metadata }] }] };
+        if (name === 'payment_methods') return { methods: ['pix'], providers: [{ app_id: 'payment-reference' }] };
+        if (name === 'shipping_options')
+          return { options: [{ kind: 'delivery', method_id: 'shm_1' }] };
+        if (name === 'order_confirmation') return { number: 7, status: 'pending_payment' };
+        throw new Error(`the journey asked for a read this fake port does not serve: ${name}`);
+      },
+    },
+  };
+}
+
+const STORE_TAKING_ORDERS = { handle: 'cafe', id: 'sto_cafe', guest_checkout_enabled: false };
+
+test('★★★ THE PLAN RIDES THE CART LINE — without this key the app mints nothing and every log is green', async () => {
+  const { port, commands } = fakeCheckout();
+  await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Marina Toledo', email: buyerEmail('marina.toledo') },
+    what: 'subscription · weekly',
+    customFields: { sub_plan: 'weekly' },
+  });
+  const line = commands.find((c) => c.name === 'cart.add_line');
+  assert.deepEqual(line.input.custom_fields, { sub_plan: 'weekly' });
+});
+
+test('★ an ORDINARY order sends no `custom_fields` at all — absent is not the same as empty', async () => {
+  // The kernel aggregates a cart line by sku + custom fields, so `{}` and absent are the same line today —
+  // but the two are different STATEMENTS, and the live proof order is not a subscription.
+  const { port, commands } = fakeCheckout();
+  await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: liveProofBuyerOf('cafe'),
+    what: 'live proof',
+  });
+  const line = commands.find((c) => c.name === 'cart.add_line');
+  assert.ok(!Object.hasOwn(line.input, 'custom_fields'));
+});
+
+test('★★ the BUYER is the caller\'s, and the store\'s guest flag still decides how the order closes', async () => {
+  // A22, unchanged by the parameterisation: a shop that forbids guests gets `guest: false` and the account is
+  // created at close — which is also the condition the subscriptions app needs, since `order-placed.ts`
+  // mints nothing for an order with no customer_id.
+  const { port, commands } = fakeCheckout();
+  await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Bianca Rocha', email: buyerEmail('bianca.rocha') },
+    what: 'subscription · monthly',
+    customFields: { sub_plan: 'monthly' },
+  });
+  const buyer = commands.find((c) => c.name === 'cart.set_buyer');
+  assert.equal(buyer.input.email, 'hi+bianca.rocha@forgecommerce.pro');
+  assert.equal(buyer.input.name, 'Bianca Rocha');
+  assert.equal(buyer.input.guest, false);
+});
+
+test('★ the caller chooses the SKU — a subscription signs a marked coffee and not "the first one"', async () => {
+  const { port, commands } = fakeCheckout({ metadata: { sub_enabled: true } });
+  await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Otávio Ferraz', email: buyerEmail('otavio.ferraz') },
+    what: 'subscription · biweekly',
+    pickSku: (products) => products.flatMap((p) => p.skus).find((k) => k.metadata?.sub_enabled === true),
+    customFields: { sub_plan: 'biweekly' },
+  });
+  assert.equal(commands.find((c) => c.name === 'cart.add_line').input.sku_id, 'sku_1');
+});
+
+test('⛔ a store that publishes no sku the caller will take places NOTHING, and says so', async () => {
+  // A shop that cannot sell is a finding, not an exception to throw the seed away on — and for the
+  // subscriptions the cause is almost always the curation mark, which is a different file's defect.
+  const { port, commands } = fakeCheckout();
+  const order = await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Nobody', email: buyerEmail('no.body') },
+    what: 'subscription · weekly',
+    pickSku: () => undefined,
+    customFields: { sub_plan: 'weekly' },
+  });
+  assert.equal(order, null);
+  assert.deepEqual(commands, []);
+});
+
+test('★★ the ORDER ID is carried out — the confirmation does not publish it and a contract is paired by it', async () => {
+  const { port } = fakeCheckout();
+  const order = await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Marina Toledo', email: buyerEmail('marina.toledo') },
+    what: 'subscription · weekly',
+    customFields: { sub_plan: 'weekly' },
+  });
+  assert.equal(order.order_id, 'ord_1');
+  assert.equal(order.number, 7, 'the confirmation\'s own fields are still there');
 });

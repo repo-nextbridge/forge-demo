@@ -20,10 +20,10 @@
 //     used to show it: it is still a list a shopper reaches at `/collection/acabando`);
 //   · the SEVEN institutional pages, published — the shop had zero of them while its own footer and the
 //     institutional sidebar linked all seven (measured 05/09; `seed/outlet.json` → `_pages_why`);
-//   · the four Compose placements that ARE the home: the announcement band, and — all three in the SINGLE
-//     slot between «Compre por categoria» and «Marcas que amamos», ordered by `position` — the five-tile
-//     banner mosaic, the "Quase de graça" shelf and the "Outlet Kids" shelf, which carries the «Outlet Kids»
-//     campaign art as the promo picture of its own first grid cell (pk5).
+//   · the four Compose placements that ARE the home: the announcement band, the five-tile banner mosaic in
+//     `home.hero` (08/09, his call — above «Compre por categoria»), and the "Quase de graça" and "Outlet
+//     Kids" shelves in `home.below_categories`, the latter carrying the «Outlet Kids» campaign art as the
+//     promo picture of its own first grid cell (pk5).
 //
 // ⚠️ CONFINED TO THE OUTLET STORE — with one measured asterisk. Everything store-scoped below names
 // `data.store` and nothing else. Two steps are not store-scoped because the kernel models them per TENANT
@@ -40,9 +40,9 @@
 // ⚠️ WITH ONE EXCEPTION SINCE 02/09, AND IT IS DELIBERATE: `compose()` GOVERNS the home's slots rather than
 // appending to them, so a block in them that this file does not declare is REMOVED. Everything else here
 // still only ever adds — no product, photograph, collection or custom field is deleted by re-running. The
-// reason the home is different is written at `compose()`; the short version is that the previous version of
-// this file put the same three blocks in three OTHER slots, and a seed that only appends would leave that
-// page drawn above the new one and report success.
+// reason the home is different is written at `compose()`; the short version is that this file has now moved
+// the same blocks between slots TWICE (02/09 and 08/09), and a seed that only appends would leave the old
+// page drawn beside the new one and report success both times.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -659,18 +659,20 @@ export function outletPages() {
 }
 
 // ── 6. the home ─────────────────────────────────────────────────────────────────────────────────────
-// THE BLOCKS OF ONE SLOT ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home
-// is the reference vitrine with five rows of configuration in it, and not one line of front-end code.
+// THE BLOCKS ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home is the
+// reference vitrine with three rows of configuration in it, and not one line of front-end code.
 //
-// ★★ 02/09 — WHY THEY ARE ALL IN ONE SLOT NOW. He asked for «Compre por categoria» FIRST, then the mosaic,
-// the two shelves and the kids art, then «Marcas que amamos». Those two headings are FIXED SECTIONS of the
-// reference home (theme chrome over core reads, not slots), and between them the template declares exactly
-// ONE slot — `home.below_categories`. So the order he asked for is not a choice of slots, it is `position`
-// 0..2 inside that one (03/09: the "Outlet Kids" shelf appended after the banner he named last; pk5 then took
-// «Acabando!» off the home and folded the kids ART into that shelf's own first cell, which is where it had
-// been before 02/09 and where the `forge` store's «Botas que acabaram de chegar» has always kept its own).
-// `home.hero`, `home.banner_strip`, `home.below_shelf` and `home.below_brands` are
-// empty ON PURPOSE, and so is the PLP. See `outlet.json`'s `_home_why`.
+// ★★ 08/09 — THE MOSAIC IS IN `home.hero` AND THE PAGE IS TWO SLOTS, NOT ONE. His words, at the live store:
+// «eu achei melhor os banners da home em cima do compre por categoria… arrastei os banners para o slot hero
+// e ficou melhor. Então deixa assim no dataset.» «Compre por categoria» and «Marcas que amamos» are FIXED
+// SECTIONS of the reference home (theme chrome over core reads, not slots); the hero draws ABOVE the first
+// of them, which is exactly the change he asked for. So: the mosaic in `home.hero#0`, the two shelves in
+// `home.below_categories#0..1`. `home.banner_strip`, `home.below_shelf` and `home.below_brands` stay empty
+// ON PURPOSE, and so does the PLP. See `outlet.json`'s `_home_why` — including why the 02/09 paragraph that
+// argued the opposite is deleted rather than kept.
+//
+// ⚠️ POSITIONS ARE DENSE PER SLOT. `place`/`move` shift every instance at or after them IN THEIR OWN SLOT,
+// so the shelves are 0 and 1 now that the mosaic no longer sits above them — not 1 and 2.
 //
 // ⚠️ AND THAT IS WHY THIS FUNCTION GOVERNS RATHER THAN APPENDS — the change is not cosmetic, so read it.
 //
@@ -680,10 +682,12 @@ export function outletPages() {
 // banner block on this page — but the pairing stays positional: the day a second one is placed, a rule that
 // had quietly started depending on there being only one would be wrong with nothing red to say so.)
 //
-// Worse, appending is now WRONG in a way nothing would report. Every box that ran the previous version has
-// the mosaic in `home.hero`, "Quase de graça" in `home.banner_strip` and "Acabando!" in `home.below_shelf`.
-// A seed that only adds would leave that whole page drawn ABOVE the new one and call it success — the exact
-// order he asked us to change, still there, twice.
+// Worse, appending is WRONG in a way nothing would report, and THIS SLICE IS THE LIVE CASE OF IT: every box
+// running today has the mosaic in `home.below_categories#0` and the shelves at 1 and 2. A seed that only
+// added would leave a second mosaic under the categories, beside the new one in the hero, and report
+// success — the page he asked us to change, still there, twice. (The 02/09 rewrite faced the same shape from
+// the other side: the pages it had to converge had the mosaic in `home.hero` and the shelves in
+// `home.banner_strip` / `home.below_shelf`.)
 //
 // So within the slots this file OWNS (`storefront:home.*` and `storefront:list.*`, for `banners` and
 // `shelves` only) what this file says is there IS what is there: existing instances are REUSED — moved and
@@ -756,7 +760,7 @@ async function compose({ command, read, rows, log }, store, assets) {
     log(`compose ${band.slot} — configured ${band.what}`);
   }
 
-  // ── the home: three blocks, one slot, ordered by position ─────────────────────────────────────────
+  // ── the home: three blocks over two slots, ordered by position inside each ────────────────────────
   const mediaConfig = (items) =>
     items.map((m) => ({
       asset_id: assets.get(m.file).id,
@@ -899,8 +903,10 @@ export function planHome(placements, wanted, governed) {
     }
   }
 
-  // ASCENDING position: each `place`/`move` shifts what is at or after it, so filling 0,1,2,3 in that order
-  // lands every block on the number it asked for.
+  // ASCENDING position: each `place`/`move` shifts what is at or after it IN ITS OWN SLOT, so a slot has to
+  // be filled 0,1,2,… in that order for every block to land on the number it asked for. Sorting on the
+  // position alone is enough for that — a global ascending order is ascending inside each slot too — and it
+  // is the whole requirement: two blocks of DIFFERENT slots have no ordering relation to get wrong.
   ops.sort((a, b) => a.block.position - b.block.position);
   return { remove, ops };
 }

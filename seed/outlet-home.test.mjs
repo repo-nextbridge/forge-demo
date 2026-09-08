@@ -28,6 +28,10 @@ const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)
 
 const GOVERNED = { apps: new Set(['banners', 'shelves']), slot: /^storefront:(home|list)\./ };
 const SLOT = 'storefront:home.below_categories';
+/** ★ 08/09 — WHERE THE MOSAIC LIVES NOW. His call, at the live store: the banners belong ABOVE «Compre
+ *  por categoria», which is the hero. The page is therefore TWO slots, and each carries its own dense
+ *  0..N-1 run of positions — see `outlet.json`'s `_home_why`. */
+const HERO = 'storefront:home.hero';
 
 /** The four blocks `outlet.json` declared on 02/09, reduced to what the pairing actually reads. It is a
  *  HISTORICAL declaration — the tests using it reconcile older pages against it. What ships today is
@@ -181,11 +185,12 @@ test('the ops come out in ASCENDING position, whatever order they were declared 
 // That is a property worth a test precisely because it reads wrong: the audit trail of the row that used to
 // say «Acabando!» becomes the audit trail of «Outlet Kids».
 
-/** What `outlet.json` declares SINCE pk5 — one banner and two shelves, positions 0..2. */
+/** What `outlet.json` declares SINCE 08/09 — the mosaic alone in the HERO, the two shelves alone under the
+ *  categories. Three blocks still, over two slots, each slot dense from 0. */
 const WANTED_NOW = [
-  { extension_id: 'banners', component: 'banner', slot: SLOT, position: 0, what: 'mosaic' },
-  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 1, what: 'quase' },
-  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 2, what: 'kids-shelf' },
+  { extension_id: 'banners', component: 'banner', slot: HERO, position: 0, what: 'mosaic' },
+  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 0, what: 'quase' },
+  { extension_id: 'shelves', component: 'shelf', slot: SLOT, position: 1, what: 'kids-shelf' },
 ];
 
 /** The page a box that ran the 02/09 seed is showing right now. */
@@ -233,12 +238,55 @@ test('★★ the 03/09 page loses TWO — the banner block and the SURPLUS shelf
   );
 });
 
-test('★ and the run after THAT one changes nothing', () => {
+// ── 08/09 — THE MOSAIC RISES TO THE HERO, AND THE THIRD WORLD STATE IS THE ONE ON THE BENCH RIGHT NOW ───
+//
+// He dragged the block in Compose and asked for it in the dataset, so the seed has to MOVE what every live
+// box is already showing: mosaic in `home.below_categories#0`, the two shelves at 1 and 2. Nothing is added
+// and nothing is deleted — the same three rows change slot and number.
+//
+// ⚠️ THE HALF THAT WOULD HAVE BEEN SILENT is the shelves' renumbering. Leaving them at 1 and 2 in a slot
+// whose 0 has just been vacated is a slot with a hole in it, and `place`/`move` shift from the position they
+// are given — so the next run would ask for 1 and 2 again over a pair the kernel had settled at 0 and 1, and
+// the seed would never converge. The declaration is dense per slot and this is where that is graded.
+
+/** The page a box that ran the pk5 (03..08/09) seed is showing — the state of BOTH benches today. */
+const pageOfPk5 = () => [
+  row('hp_band', 'banners', 'announcement', 'storefront:header.announcement', 0, { text: 'x' }),
+  row('hp_mosaic', 'banners', 'banner', SLOT, 0),
+  row('hp_quase', 'shelves', 'shelf', SLOT, 1),
+  row('hp_acabando', 'shelves', 'shelf', SLOT, 2),
+];
+
+test('★★ the page ON THE BENCH TODAY is MOVED, not re-placed — three rows, three new addresses, no removal', () => {
+  const plan = planHome(pageOfPk5(), WANTED_NOW, GOVERNED);
+  assert.deepEqual(named(plan), [
+    ['mosaic', 'hp_mosaic'],
+    ['quase', 'hp_quase'],
+    ['kids-shelf', 'hp_acabando'],
+  ]);
+  // ⚠️ THE ASSERTION THAT WOULD CATCH A SECOND MOSAIC. `reuse` non-null on every op IS "nothing is placed":
+  // a plan that failed to recognise the held mosaic would pair it with `null`, the seed would `place` a
+  // second one in the hero, and the old one would still be drawn under the categories — green, and two
+  // mosaics on one page.
+  assert.ok(plan.ops.every((op) => op.reuse), 'a block was PLACED where an existing row could host it');
+  assert.deepEqual(plan.remove, [], 'the move deleted a row it should have carried');
+  // And WHERE each one lands, which is the whole of his instruction plus the renumbering it forces.
+  assert.deepEqual(
+    plan.ops.map((op) => [op.block.what, op.block.slot, op.block.position]),
+    [
+      ['mosaic', HERO, 0],
+      ['quase', SLOT, 0],
+      ['kids-shelf', SLOT, 1],
+    ],
+  );
+});
+
+test('★ and the run after THAT one changes nothing — over the page 08/09 produces', () => {
   const settled = [
     row('hp_band', 'banners', 'announcement', 'storefront:header.announcement', 0, { text: 'x' }),
-    row('hp_mosaic', 'banners', 'banner', SLOT, 0),
-    row('hp_quase', 'shelves', 'shelf', SLOT, 1),
-    row('hp_acabando', 'shelves', 'shelf', SLOT, 2),
+    row('hp_mosaic', 'banners', 'banner', HERO, 0),
+    row('hp_quase', 'shelves', 'shelf', SLOT, 0),
+    row('hp_acabando', 'shelves', 'shelf', SLOT, 1),
   ];
   const plan = planHome(settled, WANTED_NOW, GOVERNED);
   assert.deepEqual(named(plan), [
@@ -247,6 +295,12 @@ test('★ and the run after THAT one changes nothing', () => {
     ['kids-shelf', 'hp_acabando'],
   ]);
   assert.deepEqual(plan.remove, []);
+  // No op asks for a slot or a position the row is not already at — which is what `compose()` reads to decide
+  // whether to call `composition.move` at all.
+  assert.deepEqual(
+    plan.ops.filter((op) => op.reuse.target !== op.block.slot || op.reuse.position !== op.block.position),
+    [],
+  );
 });
 
 test('★ the PLP default is STILL surplus with two shelves wanted — it is not the kids shelf\'s host', () => {
@@ -270,20 +324,81 @@ test('★ the PLP default is STILL surplus with two shelves wanted — it is not
 test('★★ THE DECLARED SHAPE IS THE ONE THE PLAN IS FED — the fixtures above are not a second source', () => {
   // The fixtures in this file are hand-written on purpose: they describe world STATES, and a state derived
   // from the file under test proves nothing. What must NOT drift is the OTHER half — what `outlet.json`
-  // declares. So this one reads it and checks the shape the fixtures assume: one slot, three blocks,
-  // positions 0..2, ONE `banners/banner` and two `shelves/shelf`.
+  // declares. So this one reads it and checks the shape the fixtures assume, which since 08/09 is TWO slots:
+  // the mosaic alone in the hero, the two shelves alone under the categories, each slot dense from 0.
+  //
+  // ⚠️ ANTI-VACUUM FIRST. Every assertion below reads `data.mosaic` / `data.shelves`, and a declaration that
+  // simply disappeared would make each of them compare `undefined` against `undefined` — a guard aimed at
+  // nothing, green forever. So the file's own shape is asserted before anything is derived from it.
+  assert.ok(data.mosaic && typeof data.mosaic === 'object', 'outlet.json declares no `mosaic` — this guard has nothing to grade');
+  assert.ok(Array.isArray(data.shelves) && data.shelves.length > 0, 'outlet.json declares no `shelves` — this guard has nothing to grade');
+
   const declared = [
     { app: 'banners', component: 'banner', slot: data.mosaic.slot, position: data.mosaic.position },
     ...data.shelves.map((s) => ({ app: 'shelves', component: 'shelf', slot: s.slot, position: s.position })),
   ];
   assert.equal(declared.length, WANTED_NOW.length, 'outlet.json no longer declares the number of blocks these fixtures model');
-  assert.deepEqual(new Set(declared.map((b) => b.slot)), new Set([SLOT]), 'a block left the single slot');
-  assert.deepEqual(
-    declared.map((b) => b.position).sort((a, b) => a - b),
-    [0, 1, 2],
-    'the positions are no longer 0..2 — the shifting `place`/`move` semantics assume a dense run',
+
+  // ★ HIS DECISION OF 08/09, AS AN ASSERTION: the mosaic is in the HERO. It is stated on its own, before the
+  // shape checks, because this is the line somebody undoes by accident when they "tidy the page back into one
+  // slot" — and every other assertion here would still pass while it did.
+  assert.equal(
+    data.mosaic.slot,
+    HERO,
+    'the outlet mosaic left `home.hero`. He moved it there on 08/09 («arrastei os banners para o slot hero e ' +
+      'ficou melhor. Então deixa assim no dataset») — putting it back under the categories undoes his call.',
   );
+  assert.equal(data.mosaic.position, 0, 'the hero holds one block and it is not at 0 — the run is not dense');
+  assert.deepEqual(
+    new Set(data.shelves.map((s) => s.slot)),
+    new Set([SLOT]),
+    'a shelf left `home.below_categories` — the two shelves are what sits between «Compre por categoria» and «Marcas que amamos»',
+  );
+
+  // ★★ DENSE PER SLOT, WHICH IS WHERE THE 08/09 MOVE COULD HAVE ROTTED SILENTLY. `place`/`move` shift every
+  // instance at or after the given position IN THAT SLOT, so each slot must declare 0..N-1. The shelves used
+  // to be 1 and 2 beside the mosaic; with the mosaic gone from that slot, 1 and 2 is a hole at 0 and a seed
+  // that never converges.
+  const bySlot = new Map();
+  for (const block of declared) {
+    if (!bySlot.has(block.slot)) bySlot.set(block.slot, []);
+    bySlot.get(block.slot).push(block.position);
+  }
+  for (const [slot, positions] of bySlot) {
+    assert.deepEqual(
+      [...positions].sort((a, b) => a - b),
+      positions.map((_, index) => index),
+      `the positions declared for ${slot} are not a dense 0..N-1 run — the shifting \`place\`/\`move\` semantics assume one`,
+    );
+  }
+
   const count = (app) => declared.filter((b) => b.app === app).length;
   assert.equal(count('banners'), 1, 'a second banner block is back on this home — see the removal tests above');
   assert.equal(count('shelves'), 2, 'the number of shelf blocks changed — see the PLP-default test above');
+});
+
+test('⛔ THE `forge` STORE IS NOT DECLARED HERE, AND THAT IS WHAT KEEPS ITS TWO BANNERS', () => {
+  // ★ WHY THIS GUARD EXISTS. On 08/09 he moved the OUTLET's banners and said nothing about the shoe shop —
+  // whose home carries TWO `banners/banner` blocks, a carousel in `home.hero` and a mosaic in
+  // `home.below_categories`. The obvious way to lose one of them is to "unify" the two homes into one
+  // declaration here, because both stores now put a banner in the hero and the files look redundant.
+  //
+  // ⚠️ AND THEY ARE NOT ONE DECLARATION, MEASURED: the `forge` window is declared by the MOUNTED DATASET
+  // (`storefront.json`, read by `seed/vitrine.mjs` from `FORGE_SEED_DATASET_DIR`), which is a monorepo file
+  // this repository does not own and cannot guard. What this repository CAN state is the separation — this
+  // file speaks for ONE store — and that is the whole of what is asserted here.
+  assert.equal(data.store, 'outlet', 'seed/outlet.json stopped naming the outlet as its store');
+  // ⚠️ THE PROSE IS STRIPPED FIRST — both kinds of it. Half this module's lines are commentary and several
+  // of them NAME the shoe shop (it is the store the Outlet is compared against); a sweep over the whole
+  // source would go red on the explanation and not on the code. Block comments matter as much as line ones:
+  // this file's jsdoc mentions `forge` more often than its `//` lines do.
+  const code = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'outlet.mjs'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(
+    /['"`]forge['"`]/.test(code),
+    false,
+    'seed/outlet.mjs names the `forge` store in CODE. This module composes ONE store; the shoe shop\'s ' +
+      'window is the mounted dataset\'s and `seed/vitrine.mjs` is its only author.',
+  );
 });

@@ -19,6 +19,17 @@
 //
 // **It creates no logistics.** Zone, method, rate and the pickup point belong to the filler slice, which
 // already creates them from the dataset. This file CONSUMES them: it reads the quote and picks what is there.
+//
+// ★★ pk25/d3 — AND THERE ARE THREE MORE ORDERS NOW, IN THE CAFÉ, AND THEY ARE NOT A SECOND POPULATION. The
+// rule above is about ONE FACT having ONE SOURCE, and "the box still sells today" still has exactly one: the
+// live proof order. The café's three answer a DIFFERENT question — does this shop have subscribers — and
+// there is no other way to answer it: a subscription contract is not a command, it is DERIVED by the app
+// from an `order.created` the kernel itself froze (`seed/subscriptions.mjs` carries the measurement, and the
+// reason that derivation is a security property rather than an inconvenience). Signing one means placing an
+// order, and inventing rows in the app's schema instead would be the second write path this whole
+// architecture refuses.
+
+import { signSubscriptions } from './subscriptions.mjs';
 
 /** The channel every message in this box travels on. The kernel declares exactly one today (`email`). */
 export const EMAIL_CHANNEL = 'email';
@@ -443,6 +454,19 @@ export async function seedCommerce({ expect, command, read, log, fail, post }) {
     await seedAdvertisedCoupons({ stores, command, read, log });
     await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
+    // ★★ pk25/d3 — AND THE CAFÉ'S SUBSCRIPTIONS, WHICH ARE ORDERS BEFORE THEY ARE ANYTHING ELSE. It is here
+    // and not in `seed/coffee.mjs` for the same reason the live proof order is here: a cart can only hold
+    // what the store publishes, and `place_order` needs the logistics and the payment app the one-shot
+    // brings. It is INSIDE the silence fence on purpose — three more buyers is three more order mails.
+    await signSubscriptions({
+      stores,
+      read,
+      log,
+      fail,
+      action: appAction(post),
+      buyerEmail,
+      placeOrder: (args) => placeOneOrder({ command, read, log, ...args }),
+    });
     await awaitQueueDrained({ read, log });
   } finally {
     const on = channelPlan(stores, { enabled: true });
@@ -683,9 +707,10 @@ async function seedAdvertisedCoupons({ stores, command, read, log }) {
  * after everything above it ran. Two populations would be two sources for one fact and a dashboard that
  * disagrees with itself.
  *
- * ⚠️ EXACTLY ONE `cart.set_buyer` PER STORE, and that is a budget rather than tidiness: `set_buyer` is an
- * ORACLE-class face capped at ten a minute per store+IP, and a seed is one address. Four stores is four
- * calls; a retry loop here would spend somebody's ceiling.
+ * ⚠️ `cart.set_buyer` IS A BUDGET RATHER THAN TIDINESS: it is an ORACLE-class face capped at TEN A MINUTE per
+ * store+IP, and a retry loop here would spend somebody's ceiling. This pass spends one call per selling
+ * store, plus the three the café's subscriptions sign (`seed/subscriptions.mjs`) — so the busiest store in
+ * the run makes FOUR of the ten, measured against the declaration and not against a hope.
  */
 /**
  * ⭐ WHO THE LIVE PROOF ORDER IS PLACED AS — a person, per store, and it used to be "PRE SEED" (s7-11).
@@ -725,13 +750,18 @@ export function liveProofBuyerOf(handle) {
         'a fallback would put one "customer" in every shop and stop the key distinguishing them. Add the ' +
         'store to LIVE_PROOF_BUYERS, with a name that reads like a person.',
     );
-  return { ...buyer, email: `hi+${buyer.tag}@forgecommerce.pro` };
+  return { ...buyer, email: buyerEmail(buyer.tag) };
 }
 
-/** The address only — the key the idempotence check compares. */
-function liveProofBuyer(store) {
-  return liveProofBuyerOf(store.handle).email;
-}
+/**
+ * ★ THE ONE AUTHOR OF A SEEDED BUYER'S ADDRESS. Every synthetic shopper this seed creates is a plus-tag on
+ * the SAME mailbox, and the shape is not decoration: the buyer's order mail is re-armed at the end of this
+ * pass, so a bounce is somebody's postmaster problem. `hi@forgecommerce.pro` is the box that exists.
+ *
+ * ⛔ AND NEVER A REAL PERSON'S ADDRESS. This dataset shipped the owner's personal one once, in fifteen files.
+ * A tag here is a name that reads like a person and a mailbox that is ours.
+ */
+export const buyerEmail = (tag) => `hi+${tag}@forgecommerce.pro`;
 
 /**
  * ★★ A22 — THE PROOF ORDER IS PLACED THE WAY THE STORE ALLOWS, and getting this wrong would have killed the
@@ -758,7 +788,14 @@ export function liveProofGuestIntent(store) {
 async function placeLiveOrders({ stores, command, read, log }) {
   const placed = [];
   for (const store of sellingStores(stores)) {
-    const order = await placeOneLiveOrder({ store, command, read, log });
+    const order = await placeOneOrder({
+      store,
+      command,
+      read,
+      log,
+      buyer: liveProofBuyerOf(store.handle),
+      what: 'live proof',
+    });
     if (order) placed.push(`${store.handle} #${order.number}`);
   }
   log(
@@ -769,11 +806,27 @@ async function placeLiveOrders({ stores, command, read, log }) {
   return placed;
 }
 
-/** The whole journey for one store, through the same door a shopper uses. Returns the confirmation, or null
- *  with a reason logged — a store that cannot sell is a finding, not an exception to throw the seed away on. */
-async function placeOneLiveOrder({ store, command, read, log }) {
+/**
+ * The whole journey for one store, through the same door a shopper uses. Returns the confirmation, or null
+ * with a reason logged — a store that cannot sell is a finding, not an exception to throw the seed away on.
+ *
+ * ★★ pk25/d3 — IT TAKES ITS BUYER AND ITS LINE NOW, and that is what makes a SUBSCRIPTION reachable without
+ * a second copy of this journey. The parts that were measured the hard way — a store that forbids guests, an
+ * address that is required even for pickup, an option chosen by INTENTION and not by position — are exactly
+ * the parts a copy would get subtly wrong, and the subscription orders need every one of them.
+ *
+ * @param buyer     `{name, email}` — the ADDRESS is the idempotence key, the NAME is what the admin shows.
+ * @param what      how this order is described in the log ("live proof", "subscription · weekly", …).
+ * @param pickSku   chooses the SKU off the store's published catalogue. Default: the first active one.
+ * @param customFields the LINE's declared custom fields, or undefined for an ordinary purchase. This is the
+ *                  seam a subscription rides: `sub_plan` is the `subscriptions` app's own `cart_line`
+ *                  declaration, the kernel validates it against the declared options and freezes it into
+ *                  `sales_order_line.custom_fields`, and the app's `order.created` script mints the contract
+ *                  from THAT — the kernel's own snapshot, which is the only inforgeable half.
+ */
+export async function placeOneOrder({ store, command, read, log, buyer, what, pickSku, customFields }) {
   const skip = (why) => {
-    log(`commerce — ${store.handle} took no live order: ${why}`);
+    log(`commerce — ${store.handle} took no ${what} order: ${why}`);
     return null;
   };
 
@@ -782,16 +835,18 @@ async function placeOneLiveOrder({ store, command, read, log }) {
   // runs is a seed nobody can run twice, which is one of this wave's acceptance criteria. The proof order is
   // therefore keyed by a STABLE synthetic buyer per store, and a store that already has one is left alone.
   const already = ((await read('internal/orders_admin', { limit: 100 }))?.items ?? []).find(
-    (o) => o.buyer?.email === liveProofBuyer(store) || o.buyer?.email_masked === liveProofBuyer(store),
+    (o) => o.buyer?.email === buyer.email || o.buyer?.email_masked === buyer.email,
   );
   if (already) {
-    log(`commerce — ${store.handle} already carries its live proof order #${already.number}; leaving it`);
+    log(`commerce — ${store.handle} already carries its ${what} order #${already.number}; leaving it`);
     return already;
   }
 
-  const catalogue = (await read('products', { store: store.id, limit: 5 }))?.items ?? [];
-  const sku = catalogue.flatMap((p) => p.skus.filter((k) => k.status === 'active'))[0];
-  if (!sku) return skip('it publishes nothing sellable');
+  const catalogue = (await read('products', { store: store.id, limit: 25 }))?.items ?? [];
+  const sku = (pickSku ?? ((products) => products.flatMap((p) => p.skus.filter((k) => k.status === 'active'))[0]))(
+    catalogue,
+  );
+  if (!sku) return skip('it publishes nothing sellable this order could hold');
 
   const methods = await read('payment_methods', { store: store.id });
   const method = methods?.methods?.[0];
@@ -799,12 +854,16 @@ async function placeOneLiveOrder({ store, command, read, log }) {
   if (!method || !app) return skip('no payment app is installed for this tenant');
 
   const { cart_id } = await command('cart.create', {}, { store: store.id });
-  await command('cart.add_line', { cart_id, sku_id: sku.id, qty: 1 }, { store: store.id });
+  await command(
+    'cart.add_line',
+    { cart_id, sku_id: sku.id, qty: 1, ...(customFields ? { custom_fields: customFields } : {}) },
+    { store: store.id },
+  );
 
   // ⚠️ THE BUYER'S ADDRESS IS REQUIRED EVEN FOR PICKUP — measured in the totem wave: a cart with the pickup
   // method, a point and a buyer still answered `missing: [shipping_address]`. So the address is always sent,
   // and it is the PICKUP POINT'S OWN, read back from the kernel, never invented.
-  const buyer = liveProofBuyerOf(store.handle);
+  //
   // A22 — the INTENT comes off the store's own flag; see `liveProofGuestIntent` for the refusal it avoids.
   const guest = liveProofGuestIntent(store);
   await command(
@@ -865,10 +924,13 @@ async function placeOneLiveOrder({ store, command, read, log }) {
 
   const confirmation = await read('order_confirmation', { store: store.id, order_id });
   log(
-    `commerce — ${store.handle} #${confirmation?.number} ${confirmation?.status} ` +
+    `commerce — ${store.handle} #${confirmation?.number} ${confirmation?.status} · ${what} ` +
       `(${method} via ${app}, ${point ? 'pickup' : 'delivery'}, ${guest ? 'guest' : 'account at close'})`,
   );
-  return confirmation;
+  // ⚠️ `order_id` IS CARRIED OUT, and the confirmation does not publish it. The subscription step pairs a
+  // contract with the order that signed it (`origin_order_id`), and re-deriving that from a number would be
+  // a second key for one fact.
+  return { ...confirmation, order_id };
 }
 
 /**
