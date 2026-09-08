@@ -13,6 +13,7 @@
     "drivers/payment.ts",
     "payment-options.tsx",
     "after-payment.tsx",
+    "after-payment-notice.ts",
     "global.d.ts",
     "*.test.ts"
   ],

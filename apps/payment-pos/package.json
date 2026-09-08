@@ -40,6 +40,7 @@
   },
   "files": [
     "after-payment.tsx",
+    "after-payment-notice.ts",
     "notice.module.css",
     "payment-options.tsx"
   ],

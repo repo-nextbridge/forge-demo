@@ -76,6 +76,26 @@ checkout da loja de cafés e do outlet.
 > é o cenário menos grave dos dois. O que continua verdade é o resto: a instalação é por tenant, ele aparece
 > nas outras lojas, e o `card` dele liquida na hora e de graça.
 
+#### ★ E a pior consequência disso já mordeu: o bloco falava por cobrança dos outros
+
+Medido em 07/09 (caderno pk21 §R3), na caixa viva. Um pedido na **loja de cafés**, cobrado pelo
+**`payment-reference`**, no **cartão**, com Entrega Expressa e endereço de entrega, recebeu na confirmação a
+frase deste app — *"Pagamento confirmado. Retire no balcão quando chamarmos o seu nome."* — logo acima do
+bloco que mostrava a transportadora e a previsão de sexta.
+
+A causa era a **pergunta**, não o texto: o bloco olhava o **método neutro** (`method !== 'pix' && method !==
+'card'`), e método neutro é vocabulário da casa — ele não diz **quem** recebeu. Como a instalação é por
+tenant, todo pedido de cartão ou pix de qualquer loja do tenant casava.
+
+**O bloco agora só desenha quando o kernel diz que a cobrança foi dele** (`read.payment` publica
+`provider_app_id`, e a confirmação passa isso ao bloco). ⚠️ **E ausência é silêncio, de propósito:** pedido de
+valor zero, pagamento na entrega, ou uma frente que ainda não conta quem cobrou — nada disso é prova de que
+este balcão recebeu, e toda frase deste bloco é uma **afirmação** de que dinheiro trocou de mãos num balcão
+desta caixa. Um bloco calado não custa nada ao comprador (o slot não desenha nem a moldura); um bloco errado
+manda quem espera entrega ir pegar fila no café.
+
+⛔ **Trocar a frase não teria consertado nada** — ela está certa para quem pagou no balcão.
+
 ### 2b. Composto ≠ instalado — e é a instalação que falta
 
 ⛔ **Medido em 02–03/09: o `payment-pos` está NA IMAGEM e NÃO está INSTALADO no tenant** — são duas perguntas
@@ -136,6 +156,11 @@ cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
 
 * `apps/payment-pos/provider.test.ts` — `card` liquida no `initiate`; `pix` não liquida e devolve o ref; a
   porta do escaneio recusa o que não é uma cobrança PIX aberta deste app.
+* `bin/pos-after-payment.guard.mjs` — **rodado por `bash bin/test.sh`**: a cobrança do balcão desenha, a de
+  outro provedor não desenha (a falha nomeia o provedor), e pedido sem provedor nenhum é silêncio e não
+  "foi meu". Fica em `bin/` porque as suítes vitest de `apps/payment-pos/` não são coletadas por comando
+  nenhum deste repositório — medido: `bin/test.sh` varre só `bin/` e `seed/`, e `bin/fork-suite.guard.mjs`
+  enxerga só quem depende do kit.
 * `apps/payment-pos/manifest.test.ts` — os métodos neutros, as janelas em minutos, os toggles, e a regra de
   cópia que o guard do monorepo não alcança um app da instância para cobrar.
 * `totem/src/lib/pos.recover.test.ts` — a recuperação é uma LEITURA (nenhuma escrita), o `resume` fica
