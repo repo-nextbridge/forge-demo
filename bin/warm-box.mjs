@@ -40,10 +40,21 @@
 // never visited (a different thing, and the difference used to live only in a sentence), and why.
 //
 // ⛔ WHAT DID NOT STOP GRADING: a store `seed/box.json` DECLARES and the box does not hold. That is not a
-// statement about warmth — it is "the birth did not build what this repository declares" — and this step is
-// the ONLY one that can see it (`bin/verify-seed.mjs` grades the stores the port REPORTS, and `bin/prove-doors.mjs`
-// opens the doors of the stores the port reports; neither can miss a store that is not there). It keeps an exit
-// code of its own so that dropping the warmth gate did not quietly drop that one too.
+// statement about warmth — it is "the birth did not build what this repository declares" — so it keeps an
+// exit code of its own (3), and dropping the warmth gate did not quietly drop that one too.
+//
+// ⚠️ AND THIS PARAGRAPH USED TO CLAIM THIS STEP WAS THE **ONLY** ONE THAT COULD SEE IT. That was true when it
+// was written (`e6df443`, 2026-09-05) and it stopped being true two days later: `b72eca4` (2026-09-07, the
+// pk19 `--tenant` repair) gave `bin/prove-doors.mjs` the same loop over the same two sources —
+// `seed/box.json`'s stores for the tenant against the handles `read.internal.stores` answers — and it `bad`s
+// on a declared store the port does not list, which is a non-zero exit there too. MEASURED, not read: its
+// suite covers it (*"SABOTAGE, THE VACUUM: the port holds NONE of the declared stores ⇒ red naming them"*).
+// So the two steps ask it independently, which is what `prove-doors` already says at that loop — *"neither
+// runs the other"* — and this file is now the second half of that sentence instead of contradicting it.
+//
+// ★ WHAT IS STILL TRUE, AND IT IS THE HALF THAT MATTERS: `bin/verify-seed.mjs` cannot see it. It compares
+// handles only to catch a WRONG CREDENTIAL (no overlap at all between what this repository declares and what
+// the token sees); one declared store missing out of two passes it without a word.
 //
 // ── WHO WARMS, AND WHY THIS SCRIPT ONLY DRIVES ───────────────────────────────────────────────────────────
 //

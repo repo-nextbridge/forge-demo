@@ -160,7 +160,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 
 # ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
 # string, so a plan cannot promise a reason the run does not give.
-WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ THE BOX IS HANDED OVER COLD: warm it later with `FORGE_SEED_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`, and note that step 14 is the ONLY step that can see a store seed/box.json declares and the box does not hold — this run does not ask that question'
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later, unchanged: `FORGE_SEED_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
 #
 # ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
 # a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
@@ -1731,8 +1731,17 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # answer BY NAME, and which were never VISITED — a different thing, and a different repair.
 #
 # ⛔ AND ONE THING IT REPORTS IS STILL A RED: exit 3, "the box does not hold a store `seed/box.json` declares".
-# That is not warmth, it is "the birth did not build it", and no other step can see it — steps 12 and 14-bis
-# both walk the stores the PORT reports, so a store that is not there is a store they never ask about.
+# That is not warmth, it is "the birth did not build it", so it keeps an exit code of its own.
+#
+# ⚠️ THIS PARAGRAPH USED TO NAME BOTH 12 AND 14-bis AS BLIND TO IT, on the grounds that they walk the stores
+# the PORT reports. TRUE OF 12, FALSE OF 14-bis SINCE 2026-09-07, and nobody updated it: `b72eca4` gave
+# `bin/prove-doors.mjs` a loop over the SAME two sources (this tenant's stores in `seed/box.json` against the
+# handles `read.internal.stores` answers) which `bad`s a declared store the port does not list — a non-zero
+# exit there too, covered by its own suite. Step 12 (`verify-seed`) really is blind to it: it compares handles
+# only to catch a WRONG CREDENTIAL, so one missing store out of two passes it in silence.
+# ⇒ pk24: this matters because `--no-warm` exists now. What the operator gives up by skipping step 14 is the
+# WARMTH REPORT, not this question — and `$WARM_SKIP_WHY` says exactly that. `bin/birth-roteiro.guard.mjs`
+# keeps the two sentences from drifting apart again.
 #
 # ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
 # that lists a tenant's stores resolves the tenant from the CREDENTIAL.
@@ -1914,8 +1923,8 @@ if [ -n "${WARM_UNKNOWN:-}" ]; then
 fi
 if [ -n "${MISSING_STORE:-}" ]; then
   printf '[box-up] ⛔ THE BOX IS UP AND%s IS MISSING A STORE THIS REPOSITORY DECLARES. The birth did not build
-         it — that is not warmth, and step 14 is the only step that can see it: 12 and 14-bis both walk the
-         stores the PORT reports, so a store that is not there is a store they never ask about.
+         it — that is not warmth. Step 14-bis asks the same question and names the store too; step 12 does
+         NOT (it compares handles only to catch a wrong credential, so one missing store of two passes it).
 
 ' "$MISSING_STORE" >&2
 fi

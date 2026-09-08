@@ -238,6 +238,61 @@ test('★★ --plan and --no-warm are refused where they mean nothing, instead o
   }
 });
 
+// ── 2b · WHAT THE SKIP MESSAGE CLAIMS, GRADED AGAINST WHAT THE OTHER STEPS REALLY ASK ─────────────────────
+//
+// ⛔ THE DEFECT, MEASURED IN THIS SLICE AND ALREADY TWO FILES DEEP. `bin/warm-box.mjs` said step 14 was
+// *"the ONLY one that can see"* a store `seed/box.json` declares and the box does not hold. It was TRUE when
+// written (`e6df443`, 2026-09-05) and FALSE two days later: `b72eca4` (2026-09-07) gave `bin/prove-doors.mjs`
+// the same loop over the same two sources, reds on it, and its own suite covers it. Nobody updated the
+// sentence — and this slice copied it, in good faith, into the message an operator reads AT THE MOMENT OF
+// DECIDING to skip. It told him he was giving up a check that 14-bis goes on making.
+//
+// ★ SO THE CLAIM IS DERIVED FROM THE SOURCE THAT WOULD HAVE TO CHANGE. If `prove-doors` still grades the
+// declared-store disagreement, no file may say the warmer is the only one that can. If it ever loses that
+// loop, THIS test goes red and the message has to be rewritten back — which is the whole point: the prose
+// cannot drift away from the mechanism in silence a third time.
+test('★★★ nothing claims the warming step is the ONLY one that sees a declared store the box lacks', () => {
+  const doors = read('bin/prove-doors.mjs');
+  // 1 · the FACT, read where it lives. Anti-vacuity: the check must be there AND be a failure, or the
+  //     exclusivity claim would be true again and rule 2 below would be forbidding a true sentence.
+  const grades = /bad\(\s*\n?\s*handle,\s*\n?\s*`declared in seed\/box\.json and NOT in this box/.test(doors);
+  assert.ok(
+    grades,
+    'bin/prove-doors.mjs no longer REFUSES over a store seed/box.json declares and the box does not hold. ' +
+      'That check is what makes the --no-warm message true; if it really went away on purpose, step 14 is ' +
+      'the only asker again and both messages this test guards have to say so.',
+  );
+  assert.match(doors, /process\.exit\(failures === 0 \? 0 : 1\)/, 'bin/prove-doors.mjs no longer turns a ✗ into a non-zero exit, so "it refuses" is not a claim this box can make.');
+
+  // 2 · …and therefore nobody may claim exclusivity. Both files that speak about it are graded, because the
+  //     defect this test exists for is precisely that the sentence had been copied into a second place.
+  for (const file of ['bin/warm-box.mjs', 'bin/box-up.sh']) {
+    const body = read(file);
+    // ⚠️ BOTH SPELLINGS, AND THE SECOND IS WHY THIS LINE IS A LIST. The first version of this test matched
+    //    only "the ONLY one/step that can see" and went green over two more copies in bin/box-up.sh phrased
+    //    as "no other step can see it" — one of them the sentence a RED birth prints at the operator.
+    const claims = [...body.matchAll(/ONLY (?:one|step) that can see|no other step can see/gi)];
+    assert.deepEqual(
+      claims.map((m) => m[0]),
+      [],
+      `${file} claims the warming step is the only one that can see a store this repository declares and the ` +
+        'box does not hold. bin/prove-doors.mjs asks the same question, from the same two sources, and reds ' +
+        'on it — so that sentence is false, and it is the sentence somebody reads while deciding to skip.',
+    );
+  }
+
+  // ⚠️ AND A RETIRED CLAIM MUST BE PARAPHRASED, NEVER QUOTED VERBATIM, in the comment that retires it: this
+  //    check reads the file, so a comment carrying the old sentence in quotes is indistinguishable from the
+  //    file still making it. Measured here — the first correction of bin/box-up.sh quoted it and went red.
+  //
+  // 3 · and the message an operator reads NAMES the step that keeps asking. Deleting the false half without
+  //     putting the true half in its place would leave him guessing what --no-warm costs.
+  const message = BOX_UP.match(/^WARM_SKIP_WHY='([^']*)'/m);
+  assert.ok(message, 'bin/box-up.sh no longer declares WARM_SKIP_WHY — the skip has no reason to print.');
+  assert.match(message[1], /14-bis/, 'the --no-warm message does not name the step that goes on asking the declared-store question.');
+  assert.match(message[1], /CREDENTIAL/, 'the message does not carry the nuance that 14-bis resolves its store list from the credential rather than from --tenant.');
+});
+
 // ── 3 · THE GRADER, RUN FOR REAL ──────────────────────────────────────────────────────────────────────────
 
 const LEDGER = '1|first\n2|second\n3|third';
