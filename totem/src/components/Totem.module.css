@@ -176,6 +176,17 @@
 
 /* ── MENU: header, rail, bands ───────────────────────────────────────────────────────────────────────── */
 
+/* ★ THE BAND'S SLACK IS SHARED, NOT PARKED — the owner, 2026-09-08: «No totem, quero deixar essa parte mais
+ * centralizada, tem muito espaço verde embaixo».
+ *
+ * The band is the artboard's fixed 372px and its three children measure 214px, so 142px of it is empty.
+ * MEASURED (headless Chromium, the panel's own 1080x1920, this app's own self-hosted Fraunces and Poppins):
+ * `flex-start` left 28px above the mark and all 142px below the arrow. `center` splits it — 91 above, 79
+ * below — and the 12px residue is the wordmark's own `margin-top`, which is the artboard's number and stays.
+ *
+ * ⚠️ AND THE PADDING IS SYMMETRIC FOR THE SAME REASON, not for tidiness: the children are centred in the
+ * CONTENT box, so the old `16px 0 0` would have moved that centre down by 16 and measured 99/71 — a centred
+ * header that is still off. `bin/totem-hero-balance.guard.mjs` grades both halves. */
 .menuHeader {
   position: absolute;
   left: 0;
@@ -186,8 +197,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 16px 0 0;
+  justify-content: center;
+  padding: 16px 0;
   gap: 8px;
   z-index: 0;
 }
