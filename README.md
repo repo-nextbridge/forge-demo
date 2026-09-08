@@ -1092,14 +1092,16 @@ store axis, so the Outlet's «Trocas e devoluções» renders the same paragraph
 measurement and the two ways out (a store axis on that registry, or a body on the page card — both the
 product's, neither this repo's) are in `seed/outlet.json`'s `_pages_why`.
 
-⚠️ **Three of those four are in ONE slot.** The reference home draws its sections in a fixed order and the two
-headings this store keeps — «Compre por categoria» and «Marcas que amamos» — are theme chrome, not slots, with
-exactly one slot between them (`home.below_categories`). So the banner mosaic, «Quase de graça» and «Outlet
-Kids» are `position` 0..2 inside it, and `home.hero` / `home.banner_strip` / `home.below_shelf` /
-`home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s `_home_why`. That
-also makes `compose()` the one step in this seed that **removes**: it governs those slots rather than
-appending to them, because a box that ran the previous version has the old page in the old slots and appending
-would draw both.
+⚠️ **Three of those four sit in TWO slots, and where they sit is his call of 08/09.** The reference home draws
+its sections in a fixed order and the two headings this store keeps — «Compre por categoria» and «Marcas que
+amamos» — are theme chrome, not slots. He moved the banner mosaic ABOVE the first of them by dragging it in
+Compose («arrastei os banners para o slot hero e ficou melhor. Então deixa assim no dataset»), so the mosaic
+is `home.hero#0` and «Quase de graça» / «Outlet Kids» are `home.below_categories#0..1`; `home.banner_strip`,
+`home.below_shelf`, `home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s
+`_home_why`. Positions are dense **per slot**, because `place`/`move` shift everything at or after them inside
+one slot. That also makes `compose()` the one step in this seed that **removes**: it governs those slots
+rather than appending to them, because a box that ran the previous version has the mosaic in the old slot and
+appending would draw both.
 
 The same run also stands the **Balcão** up (`seed/totem.mjs`, its data in `seed/totem.json`) — the counter
 store the totem serves, handle `balcao`, on the same tenant and with no theme (the totem is an app of its

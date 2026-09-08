@@ -19,7 +19,8 @@
 
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,7 @@ import { promisify } from 'node:util';
 import { COFFEE_PROMOTIONS, coffeePages, expectedCoffees } from '../seed/coffee.mjs';
 import { poolProducts } from '../seed/pool.mjs';
 import { outletPages } from '../seed/outlet.mjs';
+import { SUBSCRIBERS } from '../seed/subscriptions.mjs';
 
 const run = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -223,6 +225,17 @@ function declaredBox() {
       { id: 'ast_1', kind: 'image', provider_key: 'placeholder-cafe.png', filename: 'placeholder-cafe.png', mime: 'image/png', size: 10, created_by: null, created_at: '2026-09-03T00:00:00Z' },
     ],
     reviews,
+    // ★ THE SUBSCRIPTION CONTRACTS, one per declared subscriber, in the state that subscriber's row asks
+    // for — derived from `seed/subscriptions.mjs` and never a second list of states.
+    contracts: SUBSCRIBERS.map((s, i) => ({
+      id: `sub_${i}`,
+      customer_ref: `cus_${i}`,
+      store_id: CAFE,
+      frequency: s.plan,
+      status: s.state,
+      cycles_completed: 1,
+      origin_order_id: `ord_${i}`,
+    })),
   };
 }
 
@@ -237,6 +250,70 @@ const pageRow = (storeId, spec, published = true) => ({
   published,
   archived_at: null,
 });
+
+/**
+ * One row of `read.extension_composition` — the ADMIN EDITOR's model, which is why `placement_id` and
+ * `enabled` are here: that read also answers the manifest's own default hooks nobody ever placed
+ * (`placement_id: null`) and the ones an operator switched off, and a verifier that counted those would
+ * report a page no shopper can see.
+ */
+const compositionRow = (extension_id, component, target, position, extra = {}) => ({
+  extension_id,
+  component,
+  declared_target: target,
+  target,
+  position,
+  enabled: true,
+  has_placement: true,
+  placement_id: `hp_${extension_id}_${component}_${target.replace(/[^a-z]+/gi, '')}_${position}`,
+  config: {},
+  active: true,
+  ...extra,
+});
+
+/** The Outlet's home, as the box would answer it when the seed has just run — DERIVED from the same
+ *  declaration `seed/outlet.mjs` composes from, so the two cannot drift apart in agreement. */
+const outletHomeRows = () => [
+  compositionRow('banners', 'banner', outlet.mosaic.slot, outlet.mosaic.position),
+  ...outlet.shelves.map((shelf) => compositionRow('shelves', 'shelf', shelf.slot, shelf.position)),
+];
+
+/**
+ * ★★ THE MOUNTED DATASET, STAGED — a directory holding one `storefront.json`, which is what the verifier
+ * reads to learn the shoe shop's window.
+ *
+ * ⚠️ IT IS HAND-WRITTEN AND MUST STAY THAT WAY. The real file is `instances/demo/dataset/storefront.json`,
+ * a MONOREPO file this repository does not own and a machine running this suite may not have. What is
+ * modelled here is its SHAPE and the one fact of it this slice is about: the `forge` store carries TWO
+ * `banners/banner` blocks, the hero carousel and the mosaic under the categories. Deriving it from the real
+ * file would make the suite pass on one developer's disk and skip on another's.
+ */
+const DATASET_HOME = {
+  store: 'forge',
+  banners: [
+    { slot: 'storefront:home.hero', style: 'carousel', media: [] },
+    { slot: 'storefront:home.below_categories', style: 'mosaic', media: [] },
+  ],
+  shelves: [{ slot: 'storefront:home.below_shelf', config: { title: 'Corra para não perder' } }],
+};
+
+/** Write `DATASET_HOME` to a throwaway directory and hand back what `FORGE_SEED_DATASET_DIR` would point at. */
+function mountedDataset(declared = DATASET_HOME) {
+  const dir = mkdtempSync(join(tmpdir(), 'forge-demo-dataset-'));
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'storefront.json'), JSON.stringify(declared));
+  return { dir, close: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+/** The `forge` store's home as a box that ran that dataset would answer it. */
+const datasetHomeRows = (declared = DATASET_HOME) => [
+  ...declared.banners
+    .filter((b) => b.slot.startsWith('storefront:home.'))
+    .map((b, i) => compositionRow('banners', 'banner', b.slot, i)),
+  ...declared.shelves
+    .filter((b) => b.slot.startsWith('storefront:home.'))
+    .map((b, i) => compositionRow('shelves', 'shelf', b.slot, i)),
+];
 
 /**
  * THE FOOTWEAR TENANT, as the frozen reads would answer it — the box the institutional-page section is about.
@@ -297,6 +374,8 @@ function footwearBox() {
       pii: null,
     })),
     productStores: {},
+    // ★ 08/09 — THE SHOP WINDOWS, per store id, as `read.extension_composition` answers them.
+    composition: { [OUTLET]: outletHomeRows(), [FORGE]: datasetHomeRows() },
     pages: [
       ...outletPages().map((spec) => pageRow(OUTLET, spec)),
       // The Forge store's own seven, with the dataset's titles. Nothing here grades them.
@@ -363,8 +442,18 @@ async function serve(box, { drop } = {}) {
       return send(without('custom_field_definitions', box.customFields));
     if (p === '/v1/read/internal/products_admin')
       return send(pageOf(without('products_admin', box.catalogue), url));
-    if (p === '/v1/read/internal/extension_records')
-      return send(pageOf(without('extension_records', box.reviews), url));
+    if (p === '/v1/read/internal/extension_composition')
+      return send(
+        without('extension_composition', (box.composition ?? {})[url.searchParams.get('store')] ?? []),
+      );
+    if (p === '/v1/read/internal/extension_records') {
+      // ⚠️ ONE READ NAME, N APPS × N MODELS — so the fake face has to route on the pair, exactly as the real
+      // one does. Answering `box.reviews` to every caller was fine while reviews were the only reader; the
+      // moment the subscriptions check landed it would have graded the contracts against the review rows.
+      const model = `${url.searchParams.get('extension')}/${url.searchParams.get('model')}`;
+      const table = { 'reviews/review': box.reviews, 'subscriptions/contract': box.contracts ?? [] }[model] ?? [];
+      return send(pageOf(without('extension_records', table), url));
+    }
     if (p === '/v1/read/internal/product_stores')
       return send(box.productStores[url.searchParams.get('product_id')] ?? []);
     if (p === '/v1/read/internal/assets') return send(without('assets', box.assets));
@@ -395,10 +484,13 @@ async function serve(box, { drop } = {}) {
 }
 
 /** Run a verifier (the real one, or a sabotaged copy) against a fake face. Never throws on a red exit. */
-async function verify(script, api, tenant = 'forgecafe') {
+async function verify(script, api, tenant = 'forgecafe', env = {}) {
   try {
     const { stdout } = await run(process.execPath, [script, '--api', api, '--tenant', tenant], {
-      env: { ...process.env, FORGE_SEED_TOKEN: 'tok_fake' },
+      // ⚠️ `FORGE_SEED_DATASET_DIR` IS CLEARED UNLESS A TEST SETS IT. The verifier reads the mounted
+      // dataset's own `storefront.json` to grade the shoe shop's window; a developer who happens to export
+      // that variable would otherwise have every run of this suite graded against the dataset on THEIR disk.
+      env: { ...process.env, FORGE_SEED_DATASET_DIR: '', FORGE_SEED_TOKEN: 'tok_fake', ...env },
       maxBuffer: 8 * 1024 * 1024,
     });
     return { code: 0, stdout };
@@ -800,5 +892,213 @@ test("★ a read that stops publishing `hours` is the verifier's wrong question,
     assert.equal(code, 2, stdout);
   } finally {
     face.close();
+  }
+});
+
+// ── ★★ THE SHOP WINDOW (pk25/d3) ─────────────────────────────────────────────────────────────────────────
+//
+// On 08/09 he dragged the Outlet's banner mosaic from `home.below_categories` into `home.hero` and asked for
+// it in the dataset — «arrastei os banners para o slot hero e ficou melhor. Então deixa assim no dataset».
+// The seed is RESET + SEED by definition, so a dataset that did not learn it puts the page back the next
+// time anybody re-seeds, and until this section nothing in this repository read `hook_placement` at all: the
+// one thing a person looks at first was measured by nobody.
+
+test('★★ the two windows, each graded against the file that DECLARES it — the verifier settles', async () => {
+  const mount = mountedDataset();
+  const face = await serve(footwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✓ outlet's home — banners\/banner@home\.hero#0/, stdout);
+    assert.match(stdout, /✓ forge's home — .*\(from the mounted dataset\)/, stdout);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★ SABOTAGE — the Outlet mosaic goes back under the categories, and the verifier names the slot', async () => {
+  // The re-seed that undoes his call: the box comes back up with the mosaic where it used to be. Every other
+  // check in this file is green about that box — the catalogue, the pages, the promotions are all untouched —
+  // which is exactly why the window needed a check of its own.
+  const box = footwearBox();
+  box.composition[OUTLET] = [
+    compositionRow('banners', 'banner', 'storefront:home.below_categories', 0),
+    ...outlet.shelves.map((shelf, i) => compositionRow('shelves', 'shelf', shelf.slot, i + 1)),
+  ];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ outlet's home/, stdout);
+    assert.match(stdout, /banners\/banner@home\.below_categories#0/, stdout);
+    assert.match(stdout, /belongs in `home\.hero` since 08\/09/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★ SABOTAGE — the `forge` store loses ONE of its two banner blocks, and it is the DATASET that accuses', async () => {
+  // ⛔ THE NEIGHBOURING DAMAGE. The shoe shop carries two `banners/banner` blocks and he asked for nothing to
+  // change there; the way to lose one is to "unify" two homes that now both put a banner in the hero. No file
+  // of THIS repository declares that shop's window, so the expectation is read off the MOUNTED dataset — the
+  // same file `seed/vitrine.mjs` composes from — and the accusation is therefore not an invention.
+  const box = footwearBox();
+  box.composition[FORGE] = datasetHomeRows().filter(
+    (r) => r.target !== 'storefront:home.below_categories',
+  );
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forge's home/, stdout);
+    assert.match(stdout, /the mounted dataset declares .*banners\/banner@home\.below_categories/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★ with NO dataset mounted the shoe shop is REPORTED, never invented — and the Outlet is still graded', async () => {
+  // ⚠️ THE HALF THAT KEEPS THIS HONEST. A verifier that typed the dataset's slots in would disagree with a
+  // file it cannot see the day that file changes — the failure section 1 and section 3b already refuse by
+  // name. Absent mount ⇒ a line that says so and names the variable, and no verdict either way.
+  const face = await serve(footwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco');
+    assert.match(stdout, /· forge — 3 block\(s\) on the home/, stdout);
+    assert.match(stdout, /no FORGE_SEED_DATASET_DIR is set, so the dataset/, stdout);
+    assert.match(stdout, /✓ outlet's home — banners\/banner@home\.hero#0/, stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('⛔ a manifest default nobody placed, and a block an operator SWITCHED OFF, are not the page', async () => {
+  // `read.extension_composition` is the admin editor's model: it answers unplaced hooks (`placement_id:
+  // null`) and disabled ones so the operator can manage them. Counting either would report a window no
+  // shopper can see — and here they would make the Outlet's home look like FIVE blocks instead of three.
+  const box = footwearBox();
+  box.composition[OUTLET] = [
+    ...outletHomeRows(),
+    compositionRow('recommendations', 'related', 'storefront:home.hero', 9, {
+      placement_id: null,
+      has_placement: false,
+      active: false,
+    }),
+    compositionRow('banners', 'banner', 'storefront:home.below_shelf', 9, { enabled: false, active: false }),
+  ];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✓ outlet's home — banners\/banner@home\.hero#0/, stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+// ── ★★ THE SUBSCRIPTIONS (pk25/d3) ───────────────────────────────────────────────────────────────────────
+//
+// ⛔ MEASURED ON THE LIVE BENCH, 08/09: zero rows in the app's `contract` table, in both schemas, on a box
+// that had been offering subscriptions for days. Every existing check was green about that shop, because
+// every one of them grades the OFFER — the five marked coffees, the two perks, the plan picker. The
+// operator's half was a blank card and nothing anywhere said so.
+
+test('★★ the café with its three signed subscriptions — the verifier settles and prints the mix', async () => {
+  const face = await serve(declaredBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✓ the subscriptions — 3 contract\(s\): /, stdout);
+    assert.match(stdout, /active=1/, stdout);
+    assert.match(stdout, /paused=1/, stdout);
+    assert.match(stdout, /canceled=1/, stdout);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+  }
+});
+
+test('★★★ SABOTAGE — ZERO subscriptions, and the verifier names the widget that comes up empty', async () => {
+  // The state the bench was really in. What must NOT happen is a green run: the coffee section stays ✓ on
+  // every other line, so a verifier that did not ask this question reports a settled box with a blank card.
+  const box = declaredBox();
+  box.contracts = [];
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ the subscriptions — NO contract in this tenant/, stdout);
+    assert.match(stdout, /latest_subscriptions/, stdout);
+    // ⛔ AND THE HALF THAT PROVES IT WAS INVISIBLE: the offer is still perfect on the same box.
+    assert.match(stdout, /sku\(s\) subscribable/, stdout);
+    assert.match(stdout, /✓ the perk "Assinante 10% OFF"/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★★ SABOTAGE — three contracts, all ACTIVE: the card renders and the ficha has one word', async () => {
+  // ⚠️ THE ONE THAT LOOKS FINE. A count check would go green here — there ARE subscriptions — and the demo
+  // would show a status filter with one value in it, where «pausada» and «cancelada» are indistinguishable
+  // from "not implemented".
+  const box = declaredBox();
+  for (const row of box.contracts) row.status = 'active';
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /✗ the subscriptions — active=3 — the seed declares /, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ a read that stops publishing `status` is the verifier\'s wrong question, never the box\'s defect', async () => {
+  // The species this whole file exists for: a name that did not come back must not become an accusation.
+  const face = await serve(declaredBox(), { drop: { read: 'extension_records', key: 'status' } });
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api);
+    assert.match(stdout, /⚑ WRONG QUESTION — read\.extension_records does not publish `status`/, stdout);
+    assert.equal(code, 2, stdout);
+  } finally {
+    face.close();
+  }
+});
+
+test('★ a dataset dir that holds no storefront.json says "I could not look", not "nothing is declared"', async () => {
+  // ⚠️ `bin/box-up.sh` remaps this variable for host processes (`host_node` / CONTAINER_PATH_VARS) because
+  // `FORGE_SEED_DATASET_DIR` is the CONTAINER's path. A hand-run that exports the container path gets a
+  // directory with nothing in it, and the two states — unset, and set-but-unreadable — are different facts.
+  const mount = mkdtempSync(join(tmpdir(), 'forge-demo-empty-'));
+  const face = await serve(footwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', { FORGE_SEED_DATASET_DIR: mount });
+    assert.match(stdout, /holds no readable storefront\.json/, stdout);
+    assert.match(stdout, /✓ outlet's home — banners\/banner@home\.hero#0/, stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    rmSync(mount, { recursive: true, force: true });
   }
 });

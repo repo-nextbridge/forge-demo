@@ -55,6 +55,14 @@ import { coffeePages } from '../seed/coffee.mjs';
 // ★ THE PICKUP WEEK, from the module that holds the rule and the list of points the dataset declares — so
 // this file grades a live point against the SAME sentence the seed refuses to write with.
 import { declaredPickupPoints, pickupWeekProblem } from '../seed/pickup-hours.mjs';
+// ★ 08/09 — AND THE MOUNTED DATASET, WHICH IS WHERE THE `forge` STORE'S WINDOW IS DECLARED. `seed/vitrine.mjs`
+// composes that shop from `<dataset>/storefront.json`, a MONOREPO file this repository does not own; the only
+// honest expectation for it is the one read off the same file the seed read. Absent mount ⇒ reported, never
+// invented. Same function the seed uses, so the two cannot disagree about where the dataset is.
+import { datasetDir, DATASET_DIR_ENV } from '../seed/forge.mjs';
+// ★ AND THE THREE SUBSCRIBERS, from the module that signs them. A second list of names typed here would go
+// stale agreeing with itself — the failure this whole file is written against.
+import { SUBSCRIBERS } from '../seed/subscriptions.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -339,6 +347,65 @@ const PAGES_DECLARED = {
   outlet: outletPages().map((p) => p.slug),
   cafe: coffeePages().map((p) => p.slug),
 };
+
+/**
+ * ★★ 08/09 — THE HOME'S BLOCKS, PER STORE, EACH DERIVED FROM THE FILE THAT DECLARES THAT STORE.
+ *
+ * ⛔ THE DEFECT THIS EXISTS FOR IS A PAGE THAT LOOKS RIGHT IN THE ADMIN AND IS WRONG THE NEXT MORNING. He
+ * moved the Outlet's banner mosaic into `home.hero` by dragging it in Compose — «arrastei os banners para o
+ * slot hero e ficou melhor. Então deixa assim no dataset» — and the seed is RESET + SEED by definition, so
+ * the next re-semeadura writes whatever the dataset says and the drag is gone. Nothing measured whether the
+ * box came back up in the slot he chose.
+ *
+ * ⚠️ AND THE TWO SHOPS ARE DECLARED IN TWO DIFFERENT REPOSITORIES, which is why this is two expectations and
+ * not one list. `outlet` is `seed/outlet.json`, right here. `forge` is the MOUNTED DATASET's
+ * `storefront.json` — read at run time through the same `datasetDir()` the seed uses, and simply NOT JUDGED
+ * when no dataset is mounted. Typing the shoe shop's slots in here would be this file disagreeing with a
+ * file it cannot see, which is the failure section 1 and section 3b already refuse by name.
+ *
+ * ⚠️ THE OUTLET IS JUDGED ON `position` AND THE FORGE IS NOT. `outlet.json` declares one, because the
+ * reconciler in `seed/outlet.mjs` governs that page and orders it; the dataset declares no position at all
+ * (`seed/vitrine.mjs` appends), so asking for one there would be a question the declaration cannot answer.
+ */
+const OUTLET_HOME = [
+  { app: 'banners', component: 'banner', slot: outlet.mosaic.slot, position: outlet.mosaic.position },
+  ...outlet.shelves.map((s) => ({ app: 'shelves', component: 'shelf', slot: s.slot, position: s.position })),
+];
+
+/**
+ * The blocks the MOUNTED dataset declares for its own store, or null when it cannot be read — and the
+ * `whyNoDataset` beside it says WHICH of the two, because they are different states and one of them is a
+ * misconfiguration.
+ *
+ * ⚠️ `bin/box-up.sh` REMAPS THE VARIABLE FOR HOST PROCESSES (`host_node`, CONTAINER_PATH_VARS):
+ * `FORGE_SEED_DATASET_DIR` is the CONTAINER's path and its host sibling is `FORGE_SEED_DATASET_HOST_DIR`.
+ * So a step-12 run really does get a readable directory, and a hand-run with the container path exported
+ * gets a `storefront.json` that is not there — which must read as "I could not look", never as "nothing is
+ * declared".
+ */
+let whyNoDataset = `no ${DATASET_DIR_ENV} is set`;
+function datasetHome() {
+  const dir = datasetDir();
+  if (!dir) return null;
+  let declared;
+  try {
+    declared = JSON.parse(readFileSync(join(dir, 'storefront.json'), 'utf8'));
+  } catch (error) {
+    whyNoDataset = `${DATASET_DIR_ENV}=${dir} holds no readable storefront.json (${error?.code ?? error?.message ?? 'unreadable'})`;
+    return null;
+  }
+  if (typeof declared?.store !== 'string') {
+    whyNoDataset = `${join(dir, 'storefront.json')} names no \`store\`, so nothing says whose window it is`;
+    return null;
+  }
+  return {
+    store: declared.store,
+    blocks: [
+      ...(declared.banners ?? []).map((b) => ({ app: 'banners', component: 'banner', slot: b.slot })),
+      ...(declared.shelves ?? []).map((b) => ({ app: 'shelves', component: 'shelf', slot: b.slot })),
+    ],
+  };
+}
 
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────
 const store$ = of('stores');
@@ -901,6 +968,127 @@ if (!seen.includes('cafe')) {
       bad('the review mix', `${line} — approved, pending AND rejected are all needed (the vocabulary is approved|pending|rejected, never "published")`);
     }
   });
+
+  // ── ★★ THE SUBSCRIPTIONS — THE OFFER EXISTED AND THE REGISTER DID NOT (pk25/d3) ──────────────────────
+  //
+  // ⛔ MEASURED ON THE LIVE BENCH, 08/09: `select count(*) from <subscriptions schema>.contract` answered
+  // ZERO in both app schemas, on a box that had been offering subscriptions for days. Every check above was
+  // green about that shop — the five marked coffees, the two subscriber perks, the plan picker — because
+  // each of them grades the OFFER. The admin's home card (`latest_subscriptions`), the app's own screen and
+  // every contract ficha were empty, and nothing anywhere said so.
+  //
+  // ⚠️ THE STATES ARE HALF THE CHECK. Three active contracts render the card and teach an operator nothing:
+  // the status filter has one value, the ficha shows one word, and «pausada» and «cancelada» are
+  // indistinguishable from "not implemented". `seed/subscriptions.mjs` declares who is in which state and
+  // reaches the two non-birth ones by running the app's OWN actions, so this compares the multiset.
+  await checking(async () => {
+    const contract$ = of('extension_records');
+    const held = await allOf('extension_records', { extension: 'subscriptions', model: 'contract' });
+    const want = SUBSCRIBERS.map((s) => s.state).sort();
+    const got = held.map((row) => contract$(row, 'status')).sort();
+    const spell = (list) =>
+      Object.entries(list.reduce((acc, k) => ({ ...acc, [k]: (acc[k] ?? 0) + 1 }), {}))
+        .map(([k, n]) => `${k}=${n}`)
+        .join(' · ') || 'none';
+    if (held.length === 0) {
+      bad(
+        'the subscriptions',
+        'NO contract in this tenant. The shop offers subscriptions and nobody has ever signed one, so the ' +
+          "admin home's `latest_subscriptions` card, Apps → Assinaturas and every ficha behind them render " +
+          'empty — the capability is demonstrated with nothing in it. A contract is minted by the app from ' +
+          'an `order.created` carrying `sub_plan`; see seed/subscriptions.mjs.',
+      );
+      return;
+    }
+    if (want.join(',') === got.join(',')) {
+      ok('the subscriptions', `${held.length} contract(s): ${spell(got)}`);
+    } else {
+      bad(
+        'the subscriptions',
+        `${spell(got)} — the seed declares ${spell(want)}. A state the box does not hold is a word the ficha ` +
+          'never shows.',
+      );
+    }
+  });
+}
+say();
+// ── 3c. ★★ THE HOME'S BLOCKS — WHICH SLOT EACH ONE ACTUALLY SITS IN (08/09) ──────────────────────────────
+//
+// The page is what `hook_placement` says it is, and until now nothing here read that table at all: every
+// check above graded catalogue, pages, stock and promotions, and the SHOP WINDOW — the one thing a person
+// looks at first — was measured by nobody. His 08/09 move is what made the gap expensive: a re-seed that put
+// the Outlet's mosaic back under «Compre por categoria» would be green everywhere and wrong on the screen.
+//
+// ⚠️ ONLY PLACED, ENABLED INSTANCES COUNT. `read.extension_composition` is the ADMIN EDITOR's model: it also
+// answers the manifest's own default hooks that no operator ever placed (`placement_id: null`) and the ones
+// an operator switched off. Counting those would report a page nobody can see.
+say('THE HOME — the blocks of the shop window, and the slot each one is really in');
+{
+  const comp$ = of('extension_composition');
+  const dataset = datasetHome();
+  for (const handle of seen) {
+    await checking(async () => {
+      const entries = rows(await internal('extension_composition', { store: storeIdOf(handle) }));
+      const live = entries
+        .filter((e) => comp$(e, 'placement_id') !== null && comp$(e, 'enabled') === true)
+        .filter((e) => /^storefront:home\./.test(comp$(e, 'target')))
+        .map((e) => ({
+          app: comp$(e, 'extension_id'),
+          component: comp$(e, 'component'),
+          slot: comp$(e, 'target'),
+          position: comp$(e, 'position'),
+        }));
+      const spell = (b) => `${b.app}/${b.component}@${b.slot.replace('storefront:', '')}`;
+
+      if (handle === 'outlet') {
+        // JUDGED ON SLOT AND POSITION — `seed/outlet.json` declares both and `seed/outlet.mjs` governs them.
+        const want = OUTLET_HOME.map((b) => `${spell(b)}#${b.position}`).sort();
+        const got = live.map((b) => `${spell(b)}#${b.position}`).sort();
+        if (want.join(' · ') === got.join(' · ')) {
+          ok(`${handle}'s home`, want.join(' · '));
+        } else {
+          bad(
+            `${handle}'s home`,
+            `is ${got.join(' · ') || '(no block at all)'} — seed/outlet.json declares ${want.join(' · ')}. ` +
+              'The banner mosaic belongs in `home.hero` since 08/09, ABOVE «Compre por categoria»; a home ' +
+              'that came back with it under the categories is a re-seed that undid his call.',
+          );
+        }
+        return;
+      }
+
+      if (dataset && handle === dataset.store) {
+        // JUDGED ON SLOT ONLY, against the MOUNTED declaration — see `datasetHome()`. This is the check that
+        // catches the shoe shop losing one of its TWO banner blocks (the hero carousel and the mosaic under
+        // the categories), which is the neighbouring damage the Outlet's move could do and which no file of
+        // THIS repository declares.
+        const count = (list) => {
+          const map = new Map();
+          for (const b of list) map.set(spell(b), (map.get(spell(b)) ?? 0) + 1);
+          return [...map].sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => (n > 1 ? `${k}×${n}` : k));
+        };
+        const want = count(dataset.blocks.filter((b) => b.slot.startsWith('storefront:home.')));
+        const got = count(live);
+        if (want.join(' · ') === got.join(' · ')) {
+          ok(`${handle}'s home`, `${want.join(' · ')} (from the mounted dataset)`);
+        } else {
+          bad(
+            `${handle}'s home`,
+            `is ${got.join(' · ') || '(no block at all)'} — the mounted dataset declares ${want.join(' · ')}`,
+          );
+        }
+        return;
+      }
+
+      say(
+        `  · ${handle} — ${live.length} block(s) on the home` +
+          `${live.length ? `: ${live.map((b) => `${spell(b)}#${b.position}`).sort().join(' · ')}` : ''}. ` +
+          (dataset
+            ? "Nothing declares this shop's window, so the list is reported and not judged."
+            : `${whyNoDataset}, so the dataset's own declaration cannot be read here; reported and not judged.`),
+      );
+    });
+  }
 }
 say();
 // ── 4. the placeholders ─────────────────────────────────────────────────────────────────────────────────
