@@ -14,29 +14,36 @@
 // the kernel already resolved. Anything else here would be reading a field that is empty by design.
 //
 // ★★ THIS FILE DRAWS; IT DOES NOT DECIDE. Whether the counter may speak for an order at all — and what it may
-// say — is `afterPaymentNotice()` in `./after-payment-notice`, which is JSX-free so that a test can execute
-// it (see the header there for the defect that split them, and for why `unknown` is silence). The rule the
-// guard holds this file to is exactly that split: nothing here compares a `method` or a `status`, because a
-// second opinion about who was paid is how the wrong sentence got out the first time.
+// say — is `afterPaymentNotice()` in `./after-payment-notice`, which is JSX-free so that a test can execute it
+// in a repository whose runner cannot load JSX (see the header there for the defect that split them, and for
+// why only `'no'` is silence). The rule the guard holds this file to is exactly that split: nothing here
+// compares a `method` or a `status`, because a second opinion about who was paid is how the wrong sentence got
+// out the first time.
 //
 // Presentational, SEMANTIC THEME TOKENS only. Hook-free by design (see payment-options.tsx).
 
-import { afterPaymentNotice, type PaymentNextAction } from './after-payment-notice';
+import {
+  afterPaymentNotice,
+  type PaymentNextAction,
+  type SettledByThisApp,
+} from './after-payment-notice';
 import styles from './notice.module.css';
 
-export type { PaymentNextAction };
+export type { PaymentNextAction, SettledByThisApp };
 
 export type AfterPaymentProps = {
-  /** ★ WHICH APP ACTUALLY TOOK THIS CHARGE (`read.payment`'s `provider_app_id`, threaded by the confirmation).
-   * The one prop that decides whether this block exists on the page: everything it prints describes a counter
-   * of THIS box, so it prints nothing unless the kernel says this box's counter is who was paid.
-   *
-   * Optional, and absent means SILENCE rather than "probably me" — a front that has not threaded it has not
-   * told us anything, and it is that state which printed "retire no balcão" over a delivery address. */
-  providerAppId?: string | null;
-  /** The NEUTRAL kernel method the order was placed with. Still REQUIRED — it is part of the role's contract
-   * with the checkout, and this app narrowing it would be this app editing that contract. It is simply no
-   * longer what decides whether the app speaks: the method is the house's vocabulary, not this app's identity. */
+  /** ★★ pk23/p4 — WAS THIS CHARGE MINE? Answered by the RENDER SITE, which knows both which app it is calling
+   * and who the kernel says took the money; never guessed here from the neutral method. `'no'` means another
+   * installed payment app took this order's charge and this block must not speak for it. `'unknown'` (also the
+   * default, for a storefront that predates the field) means nobody was named — no payment intent was ever
+   * opened — and the block renders as it always did, because silence there would delete a legitimate screen.
+   * Declared in `./after-payment-notice` rather than imported from the checkout: an app never imports the
+   * storefront. */
+  settledByThisApp?: SettledByThisApp;
+  /** The NEUTRAL kernel method the order was placed with. REQUIRED and UNREAD, both on purpose: it is part of
+   * the role's contract with the checkout and this app narrowing it would be this app editing that contract,
+   * but nothing here branches on it — the old `method` condition was a GATE, and `status` alone ever chose the
+   * words. A settled card and a settled PIX say the same thing at a counter. */
   method: string;
   /** The neutral payment status (read.payment). `card` settles at initiate, so `approved` is its normal case;
    * `pix` is `pending` until somebody pays it. */
@@ -45,8 +52,12 @@ export type AfterPaymentProps = {
   config?: Record<string, unknown>;
 };
 
-export function AfterPayment({ providerAppId, method, status, nextAction = null }: AfterPaymentProps) {
-  const notice = afterPaymentNotice({ providerAppId, method, status, nextAction });
+export function AfterPayment({
+  status,
+  nextAction = null,
+  settledByThisApp = 'unknown',
+}: AfterPaymentProps) {
+  const notice = afterPaymentNotice({ settledByThisApp, status, nextAction });
   if (!notice) return null;
   if (notice.kind === 'rejected') {
     return (

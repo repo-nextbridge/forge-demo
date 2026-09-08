@@ -14,6 +14,20 @@
 // condition matched every card and every PIX order of every store of the tenant. ⛔ And the fix is not the
 // copy: the sentence is right for somebody who paid at a counter. What was wrong is who it reached.
 //
+// ── WHOSE ANSWER IT IS (pk23/p4, the product half) ───────────────────────────────────────────────────────
+//
+// The confirmation slot compares WHO IT IS CALLING against WHO THE KERNEL SAYS CHARGED and hands each block
+// the verdict as `settledByThisApp: 'yes' | 'no' | 'unknown'`. So this app never recognises its own id — which
+// it could only do by HARDCODING it (an app cannot import its own manifest without dragging
+// `@forgecommerce/contracts` into the front bundle), and a fork or a rename would then restore the class
+// defect in silence.
+//
+// ⚠️ ONLY `'no'` IS SILENCE. `'unknown'` means the kernel named NOBODY — no payment intent was ever opened —
+// and that is a real population on this very box, not a hole: `apps/api/src/seed-history.ts:551,676` leaves
+// `pending_payment` orders at `place_order` and never calls `payment.initiate`. Reading it as silence would
+// delete a screen that is not about anybody else's charge. The two answers are graded separately below, in
+// both directions, because collapsing them is the one change that would look like tightening and be a bug.
+//
 // ── WHAT THIS FILE PROVES, AND WHY IT IS HERE RATHER THAN IN THE APP ─────────────────────────────────────
 //
 // `apps/payment-pos/` carries a vitest suite (`manifest.test.ts`, `provider.test.ts`) that NOTHING in this
@@ -23,26 +37,22 @@
 // `node_modules` outside the monorepo anyway (its contracts dependency is `workspace:*`). So a rule written
 // there is a rule that runs only inside a `docker build`, weeks later, if at all.
 //
-// This box could not afford that for a rule about who is allowed to speak on a confirmation screen. So the
-// DECISION lives in `apps/payment-pos/after-payment-notice.ts`, JSX-free, and this guard imports and RUNS it:
-// Node strips types from a `.ts` on import and refuses JSX outright, which is the whole reason the split
-// exists. The markup half is held to the split structurally, below.
+// That is why the DECISION lives in `apps/payment-pos/after-payment-notice.ts`, JSX-free, and this guard
+// imports and RUNS it: Node strips types from a `.ts` on import and refuses JSX outright. The product's own
+// four payment apps keep the line inline, correctly — over there a suite reaches them. The markup half is held
+// to the split structurally, below.
 //
-// ── ⚠️ THE NAME THIS APP READS IS A CONTRACT WITH THE OTHER REPOSITORY, AND NOBODY SYNCHRONISES IT ────────
+// ── ⚠️ THE NAME AND THE THREE MEMBERS ARE A CONTRACT WITH THE OTHER REPOSITORY ────────────────────────────
 //
-// The block is told who charged through a prop named `providerAppId`, which is the camelCase of
-// `read.payment`'s `provider_app_id` (packages/core/src/read/payment-capabilities.ts:43 in the monorepo) and
-// the continuation of the three props the confirmation slot already passes (`method`, `status`, `nextAction`
-// — `apps/checkout/src/lib/payment-blocks/registry.tsx`, `AfterPaymentProps`). The product half that threads
-// it is `pk23/p4-provedor`, developed in PARALLEL with this one and in another repository, and there is no CI
-// across the two.
+// `settledByThisApp` and `'yes' | 'no' | 'unknown'` are declared in BOTH repositories (an app never imports
+// the storefront) and no CI crosses them. A renamed member is the dangerous one: `=== 'no'` would simply stop
+// matching, every test here would stay green, and the defect would be back on the box.
 //
-// ⇒ if the product named it something else, the correct fix is ONE line: the prop name in
-// `apps/payment-pos/after-payment.tsx`. Nothing else in this repository knows it.
-// ⇒ `FORGE_MONOREPO=<a Forge checkout> node --test bin/pos-after-payment.guard.mjs` grades the two halves
-// against each other. It is OPT-IN rather than searched for on purpose: the pinned tree this box's other
-// guards use (`bin/release-tree.mjs`) is the commit the images were BAKED from, which by construction
-// predates the product half — and a check against "whatever tree was lying around" is not a measurement.
+//   FORGE_MONOREPO=<a Forge checkout> node --test bin/pos-after-payment.guard.mjs   ← grades the two halves
+//
+// It is OPT-IN rather than searched for on purpose: the pinned tree this box's other guards use
+// (`bin/release-tree.mjs`) is the commit the images were BAKED from, which may predate the product half — and
+// a check against "whatever tree was lying around" is not a measurement.
 //
 //   node --test bin/pos-after-payment.guard.mjs        (or: bash bin/test.sh)
 
@@ -51,158 +61,114 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import {
-  afterPaymentNotice,
-  APP_ID,
-  chargeOwner,
-} from '../apps/payment-pos/after-payment-notice.ts';
+import { afterPaymentNotice } from '../apps/payment-pos/after-payment-notice.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'apps', 'payment-pos');
 const BLOCK = readFileSync(join(APP, 'after-payment.tsx'), 'utf8');
+const NOTICE = readFileSync(join(APP, 'after-payment-notice.ts'), 'utf8');
 
 /** The sentence the whole slice is about. Written out here, verbatim, because a guard that only knew the
  *  CONDITION would go green on a "fix" that softened the copy — which the brief rules out explicitly: the
  *  words are correct for somebody who paid at a counter. */
 const COUNTER_SENTENCE = 'Retire no balcão quando chamarmos o seu nome.';
 
-/** A charge some OTHER app took, named so every failure below can say whose money it was talking about. */
-const SOMEBODY_ELSE = 'payment-reference';
-
 /** The PIX envelope this app's own provider mints, as the block receives it. */
 const OUR_PIX = { type: 'pos_pix_qr', data: { copy_paste: '00020126-forge-demo-pix' } };
 
-// ── 1. the app is who it says it is ──────────────────────────────────────────────────────────────────────
+/** The three neutral statuses a confirmation can carry, and what this app says about each when it may speak. */
+const WHEN_ALLOWED_TO_SPEAK = [
+  ['approved', { kind: 'approved' }],
+  ['rejected', { kind: 'rejected' }],
+  ['pending', { kind: 'waiting', copyPaste: null }],
+];
 
-test('APP_ID is the id the manifest and the composition already use — one name, three files', () => {
-  // The decision module compares an id the kernel sends against a STRING. A string that drifted from the
-  // manifest would make this app silent everywhere and look, from the outside, exactly like the bug being
-  // fixed: a block that never draws.
-  const manifest = readFileSync(join(APP, 'manifest.ts'), 'utf8');
-  assert.ok(
-    manifest.includes(`id: '${APP_ID}'`),
-    `after-payment-notice.ts calls this app '${APP_ID}', and apps/payment-pos/manifest.ts does not declare that id.`,
-  );
-  const composition = JSON.parse(readFileSync(join(ROOT, 'composition.json'), 'utf8'));
-  const listed = (composition.instanceApps ?? []).map((app) => app.id);
-  assert.ok(
-    listed.includes(APP_ID),
-    `composition.json's instanceApps does not list '${APP_ID}' — it lists ${listed.join(', ') || '(nothing)'}.`,
-  );
-});
+// ── 1. the verdict decides, and only `'no'` is silence ──────────────────────────────────────────────────
 
-// ── 2. whose charge is it — three answers, and the third is not the second ───────────────────────────────
-
-test('★ the kernel naming US is the only thing that reads as ours', () => {
-  assert.equal(chargeOwner(APP_ID), 'us');
-});
-
-test(`★ the kernel naming ${SOMEBODY_ELSE} reads as another app's charge`, () => {
-  assert.equal(
-    chargeOwner(SOMEBODY_ELSE),
-    'another-app',
-    `a charge ${SOMEBODY_ELSE} took must be legible as somebody else's, or the counter cannot stay out of it.`,
-  );
-});
-
-test('★★ ABSENCE IS NOT A DENIAL — nothing said is `unknown`, never `another-app`', () => {
-  // The distinction the brief asked for out loud: an order with no provider at all (a zero-value order, a
-  // pay-on-delivery one) and a front that has not threaded the field are not the same claim as "somebody
-  // else was paid", and collapsing them would make this app's silence unreadable.
-  for (const nothing of [undefined, null, '', 0, false, {}]) {
-    assert.equal(
-      chargeOwner(nothing),
-      'unknown',
-      `${JSON.stringify(nothing) ?? 'undefined'} is nobody having said who charged — it is not a denial and it is not a name.`,
-    );
+test("★★ THE POSITIVE CONTROL: 'yes' — the counter still speaks for the counter’s own charge", () => {
+  // ⚠️ THE RULE AGAINST THE VACUUM, and it is the first one to read. The section below expects `null`, so a
+  // "fix" that made this block draw NOTHING EVER — or a decision module that threw its subject away — would
+  // satisfy all of it and leave the app broken in the opposite direction. This is the test that is red for
+  // that. The sentence the owner saw is the RIGHT sentence here.
+  for (const [status, expected] of WHEN_ALLOWED_TO_SPEAK) {
+    assert.deepEqual(afterPaymentNotice({ settledByThisApp: 'yes', status }), expected);
   }
-});
-
-// ── 3. what the block draws — RUN, not read ─────────────────────────────────────────────────────────────
-
-test('★★ THE POSITIVE CONTROL: the counter still speaks for the counter’s own charge', () => {
-  // ⚠️ THE RULE AGAINST THE VACUUM, and it is the first one to read. Every other assertion in this section
-  // expects `null`, so a "fix" that made this block draw NOTHING EVER — or a decision module that threw its
-  // subject away — would satisfy all of them and leave the app broken in the opposite direction. This is the
-  // test that has to be red for that. The sentence the owner saw is the RIGHT sentence here.
-  assert.deepEqual(afterPaymentNotice({ providerAppId: APP_ID, method: 'card', status: 'approved' }), {
-    kind: 'approved',
-  });
-  assert.deepEqual(afterPaymentNotice({ providerAppId: APP_ID, method: 'card', status: 'rejected' }), {
-    kind: 'rejected',
-  });
   assert.deepEqual(
-    afterPaymentNotice({
-      providerAppId: APP_ID,
-      method: 'pix',
-      status: 'pending',
-      nextAction: OUR_PIX,
-    }),
+    afterPaymentNotice({ settledByThisApp: 'yes', status: 'pending', nextAction: OUR_PIX }),
     { kind: 'waiting', copyPaste: OUR_PIX.data.copy_paste },
     'a PIX this counter is waiting on still shows its own copy-paste — that is the whole point of the block.',
   );
 });
 
-test(`★★ THE DEFECT: a CARD charge ${SOMEBODY_ELSE} took draws nothing at the counter`, () => {
-  // The owner's order, reproduced. `method: 'card'` and `status: 'approved'` are exactly what the old
-  // condition matched on, and they stay matched — what changed is that they are no longer the question.
-  assert.equal(
-    afterPaymentNotice({ providerAppId: SOMEBODY_ELSE, method: 'card', status: 'approved' }),
-    null,
-    `${SOMEBODY_ELSE} settled this order and the counter's block drew anyway. That is the pk21 §R3 defect: ` +
-      `"Retire no balcão quando chamarmos o seu nome." printed over a delivery address, because the block ` +
-      `asked what the METHOD was instead of who was PAID.`,
-  );
-});
-
-test(`★ and neither does a PIX ${SOMEBODY_ELSE} is waiting on`, () => {
-  assert.equal(
-    afterPaymentNotice({
-      providerAppId: SOMEBODY_ELSE,
-      method: 'pix',
-      status: 'pending',
-      nextAction: { type: 'reference_pix', data: { copy_paste: 'not-ours' } },
-    }),
-    null,
-    `${SOMEBODY_ELSE}'s PIX is not this counter's PIX, and its envelope is not this counter's to read.`,
-  );
-});
-
-test(`★ nor a rejection ${SOMEBODY_ELSE} took — "fale com o atendente do balcão" has no balcão to point at`, () => {
-  assert.equal(
-    afterPaymentNotice({ providerAppId: SOMEBODY_ELSE, method: 'card', status: 'rejected' }),
-    null,
-  );
-});
-
-test('★★ THE VACUUM: an order nobody charged is not an order WE charged', () => {
-  // A zero-value order, a pay-on-delivery one, or a front that has not threaded the field. Silence, and the
-  // reason is written where the decision is made: every sentence this block prints CLAIMS money changed hands
-  // at a counter of this box, and a claim needs evidence rather than the absence of a denial.
-  for (const nothing of [undefined, null, '']) {
-    for (const status of ['approved', 'pending', 'rejected']) {
-      assert.equal(
-        afterPaymentNotice({ providerAppId: nothing, method: 'card', status }),
-        null,
-        `nobody said who charged (${JSON.stringify(nothing) ?? 'the prop is absent'}) and the counter spoke ` +
-          `anyway on a '${status}' order. Drawing on ignorance IS the defect — it is not the fallback for it.`,
-      );
-    }
+test("★★ THE DEFECT: 'no' — a charge another app took draws nothing at the counter", () => {
+  // The owner's order, reproduced. An approved CARD is exactly what the old condition matched on, and it stays
+  // matched — what changed is that the method is no longer the question.
+  for (const [status] of WHEN_ALLOWED_TO_SPEAK) {
+    assert.equal(
+      afterPaymentNotice({ settledByThisApp: 'no', status, nextAction: OUR_PIX }),
+      null,
+      `another installed payment app settled this order ('${status}') and the counter's block drew anyway. ` +
+        `That is the pk21 §R3 defect: "${COUNTER_SENTENCE}" printed over a delivery address, because the ` +
+        `block asked what the METHOD was instead of who was PAID. Only 'no' is silence, and this is 'no'.`,
+    );
   }
 });
 
-// ── 4. the markup half asks; it does not decide ─────────────────────────────────────────────────────────
+test("★★ AND 'unknown' IS NOT 'no' — an order nobody charged still gets its screen", () => {
+  // ⚠️ THE REVERSAL, GRADED. This slice was first written with `unknown` as silence, on the argument that a
+  // front which had not threaded the field was the state that printed the sentence over a delivery address.
+  // pk23/p4 killed that argument by making the slot's own `providerAppId` REQUIRED and never defaulted
+  // (apps/checkout/src/lib/payment-blocks/AfterPaymentSlot.tsx:55), so a render site that does not know has to
+  // say so. `unknown` stopped meaning "nobody told us" and now means "no charge was recorded".
+  //
+  // And the population is real on this box: `apps/api/src/seed-history.ts:551,676` leaves `pending_payment`
+  // orders at `place_order` and never calls `payment.initiate` — dozens of them, rendered by the account's
+  // order page (`apps/checkout/src/templates/order/OrderTemplate.tsx:688`) as well as the confirmation.
+  for (const [status, expected] of WHEN_ALLOWED_TO_SPEAK) {
+    assert.deepEqual(
+      afterPaymentNotice({ settledByThisApp: 'unknown', status }),
+      expected,
+      `an order with no payment intent ('${status}') got SILENCE. 'unknown' is not 'no': nobody was named, ` +
+        `which is not the same claim as somebody else having been. Reading it as a denial deletes a screen.`,
+    );
+  }
+});
+
+test("★ an ABSENT verdict behaves as 'unknown' — a front that predates the field renders as it always did", () => {
+  for (const [status, expected] of WHEN_ALLOWED_TO_SPEAK) {
+    assert.deepEqual(afterPaymentNotice({ status }), expected);
+  }
+});
+
+test('★ the block never recognises its OWN id — that comparison belongs to the render site', () => {
+  // An app that hardcoded its id would survive a rename or a fork with the defect quietly restored, which is
+  // exactly why pk23/p4 put the comparison in the slot. A literal 'payment-pos' in the decision is that
+  // mistake coming back.
+  assert.ok(
+    !/'payment-pos'|"payment-pos"/.test(NOTICE),
+    'after-payment-notice.ts hardcodes this app\'s own id. The verdict arrives ready (settledByThisApp); an ' +
+      'app that recognises itself by a typed-in name is one rename away from the pk21 §R3 defect, in silence.',
+  );
+});
+
+// ── 2. the markup half asks; it does not decide ─────────────────────────────────────────────────────────
 
 test('★★ after-payment.tsx routes every verdict through the decision module', () => {
   assert.match(
     BLOCK,
-    /import \{ afterPaymentNotice[^}]*\} from '\.\/after-payment-notice'/,
+    /import \{[\s\S]*?afterPaymentNotice[\s\S]*?\} from '\.\/after-payment-notice'/,
     'the block no longer imports afterPaymentNotice — whatever it draws now, this guard is not grading it.',
   );
   assert.match(
     BLOCK,
     /afterPaymentNotice\(\{/,
     'the block imports the decision and never calls it. A gate nothing invokes is not a gate.',
+  );
+  assert.match(
+    BLOCK,
+    /settledByThisApp = 'unknown'/,
+    "the block must default settledByThisApp to 'unknown', like the product's own blocks do — an absent " +
+      'verdict is not a denial.',
   );
 });
 
@@ -228,29 +194,44 @@ test('⛔ and the counter’s sentence is UNCHANGED — the copy was never the d
   );
 });
 
-// ── 5. the other repository, when the operator names it ─────────────────────────────────────────────────
+// ── 3. the other repository, when the operator names it ─────────────────────────────────────────────────
 
-test('★★ the product half threads the prop this app reads (FORGE_MONOREPO=<checkout> to grade it)', (t) => {
+test('★★ the product half declares the field and the members this app reads (FORGE_MONOREPO=<checkout>)', (t) => {
   const forge = process.env.FORGE_MONOREPO;
   const registry = forge && join(forge, 'apps/checkout/src/lib/payment-blocks/registry.tsx');
   if (!registry || !existsSync(registry)) {
     t.skip(
-      'NOT CHECKED — no FORGE_MONOREPO. The prop name below is a contract with another repository and no CI ' +
-        'crosses the two: `FORGE_MONOREPO=~/path/to/forge bash bin/test.sh` grades it.',
+      'NOT CHECKED — no FORGE_MONOREPO. The field name and its three members are declared in BOTH ' +
+        'repositories and no CI crosses them: `FORGE_MONOREPO=~/path/to/forge bash bin/test.sh` grades it.',
     );
     return;
   }
-  const props = readFileSync(registry, 'utf8').match(
-    /export type AfterPaymentProps = \{[\s\S]*?\n\};/,
-  )?.[0];
+  const source = readFileSync(registry, 'utf8');
+  const props = source.match(/export type AfterPaymentProps = \{[\s\S]*?\n\};/)?.[0];
   assert.ok(props, `${registry} no longer declares AfterPaymentProps — this check has lost its subject.`);
   assert.match(
     props,
-    /\bproviderAppId\b/,
-    "the checkout's AfterPaymentProps does not declare `providerAppId`, which is the name " +
+    /\bsettledByThisApp\b/,
+    "the checkout's AfterPaymentProps does not declare `settledByThisApp`, which is the field " +
       'apps/payment-pos/after-payment.tsx reads to answer "was this charge mine?". Either the product half ' +
-      '(pk23/p4-provedor) has not landed, or it named the field something else — in which case the fix is ' +
-      'one line, the prop name in after-payment.tsx. Until they agree, this box\'s counter block is silent ' +
-      'on every order, including its own.',
+      '(pk23/p4-provedor) is not in this tree, or it renamed the field — in which case the fix is the prop ' +
+      "name in this app. Until they agree, this box's counter block speaks for other apps' charges again.",
   );
+  // The dangerous half: a RENAMED MEMBER breaks nothing loudly. `=== 'no'` would stop matching, every test
+  // above would stay green, and the block would be back to speaking for somebody else's money.
+  const union = source.match(/export type SettledByThisApp =[^;]*;/)?.[0];
+  assert.ok(
+    union,
+    `${registry} no longer exports the SettledByThisApp union — this app declares its own copy of it and has ` +
+      'nothing left to compare against.',
+  );
+  for (const member of ['yes', 'no', 'unknown']) {
+    assert.match(
+      union,
+      new RegExp(`'${member}'`),
+      `the product's SettledByThisApp no longer carries '${member}' (${union.trim()}). This app compares ` +
+        `\`=== 'no'\` and defaults to 'unknown'; a renamed member makes that comparison match nothing, in ` +
+        'silence, with every test in this file still green.',
+    );
+  }
 });
