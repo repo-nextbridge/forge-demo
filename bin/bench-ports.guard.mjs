@@ -46,6 +46,16 @@
 // production Caddyfile has no `:82` site), so its fallback only ever acts on a bench and must be the bench's
 // number. If `compose.yml` is ever made the bench's file too, move it into `gradedFallbackFiles()` on purpose.
 //
+// ⚠️ THIS FILE ANSWERS **WHICH NUMBER**, AND ONLY THAT. Since pk24/d4 the same `ports:` lines carry a second
+// question — **who can reach that number** — and it has a guard of its own: `bin/bench-http-door.guard.mjs`
+// grades the `${FORGE_BENCH_BIND?…}` prefix in front of the port, because every door of this bench is plain
+// http and a browser drops a `Secure` cookie on any plain-http origin but `localhost`. The two never overlap:
+// this file matches `${FORGE_*_PORT:-N}`, that one matches what stands before it. In particular `compose.yml`
+// stays out of `gradedFallbackFiles()` HERE for the reason below, and IS graded there — the interface
+// question has the same answer in a deployment and on a bench; only the VALUE differs, which is why that
+// value is demanded rather than defaulted. ⛔ Do not start grading the bind in this file: two guards over one
+// question is two answers on the day they disagree.
+//
 // ⚠️ THIS FILE IS THE THING THAT KEEPS THE FIVE IN AGREEMENT. There is no templating that could make them
 // literally one string — a checked-in compose file and a README cannot read `.env.example` — so agreement is
 // asserted, not derived. Deleting this guard puts the box back where 2026-09-07 found it.

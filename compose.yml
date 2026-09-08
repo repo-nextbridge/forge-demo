@@ -287,17 +287,55 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    # ★★★ pk24/d4 — EVERY DOOR THIS BOX PUBLISHES NAMES THE INTERFACE IT IS PUBLISHED ON, AND THE BOX HAS
+    # TO SAY WHICH. Same species `pk23/p5` closed on the product's `:3033`, and it is not about the numbers
+    # (that is `bin/bench-ports.guard.mjs`, a different question about these same lines) — it is about who
+    # can reach them.
+    #
+    # ⛔ THE DEFECT, MEASURED. Every front on this box declares `NODE_ENV: production`, so `secureCookie()`
+    # is true — `packages/storefront-kit/src/cookies.ts:85` for the shopper's cookies, the admin image's
+    # `apps/admin/src/lib/session.ts:21` for the operator's — and a browser SILENTLY refuses a `Secure`
+    # cookie on any plain-http origin that is not `localhost`. Every door below is plain http on the bench
+    # (`caddy/Caddyfile.local` carries no TLS), so a door published on every interface answers 200 to a
+    # phone on the tailnet and then loses the cart, or the session, with nothing on screen saying why.
+    # `bin/box-up.sh` already carries the browser measurement of exactly that, on `http://<tailnet>:8201`:
+    # «the login succeeds, the jar keeps nothing, and the next request bounces». Measured again 2026-09-08,
+    # before this line existed: `:8200/health`, `:8201/login`, `:8202/login` and `:8203/` all answered 200
+    # from off the box.
+    #
+    # ⚠️ AND `Secure` CANNOT BE TURNED OFF FROM HERE. `FORGE_STOREFRONT_SECURE_COOKIE` and
+    # `FORGE_ADMIN_SECURE_COOKIE` are opt-INS (`NODE_ENV === 'production' || … === '1'`), and this box passes
+    # neither to any container. The interface is the only place this trap can be closed.
+    #
+    # ★ SO THE VALUE IS DEMANDED, NEVER DEFAULTED. `${FORGE_BENCH_BIND?…}` — WITHOUT the colon, exactly like
+    # `FORGE_ADMIN_TENANT` below: it must EXIST and it MAY be empty. Empty is byte-for-byte what this file
+    # published before (measured with `docker compose config`: no `host_ip`, so the IPv6 listener a
+    # deployment has today survives), so a deployment declares it empty and NOTHING about a deployment
+    # changes. `.env.example` — which is the BENCH's configuration, the same seam that decides the port
+    # numbers — ships `127.0.0.1`, and that is what closes the trap here. A box that says nothing at all is
+    # refused BY NAME before the first container starts, which is the one thing a silent default could never
+    # do.
+    #
+    # ⚠️ THE TAILNET KEEPS ITS DOOR, AND THAT IS WHY LOOPBACK IS ENOUGH. `tailscale serve` terminates TLS and
+    # proxies to `http://127.0.0.1:<port>` — read from `tailscale serve status --json` on this machine,
+    # 2026-09-08, for all four of these ports. Loopback removes the plain-http door and nothing else.
+    #
+    # ⚠️ ONE VARIABLE FOR ALL FIVE, INCLUDING `:443`, WHICH IS NOT ITSELF A TRAP. The bench never answers on
+    # it (`caddy/Caddyfile.local` is HTTP-only — measured inside the container: `nc -z 127.0.0.1 443` → 1),
+    # and a deployment's `:443` is https and safe. It is here anyway because "this box publishes on <this
+    # interface>" is ONE decision, and a per-port exception is exactly the half-applied rename that made this
+    # file publish 8102 while every document said 8203.
     ports:
-      - '${FORGE_HTTP_PORT:-80}:80'
-      - '${FORGE_HTTPS_PORT:-443}:443'
+      - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_HTTP_PORT:-80}:80'
+      - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_HTTPS_PORT:-443}:443'
       # BENCH ONLY, and harmless in a deployment: the production Caddyfile has no `:81` site, so nothing
       # answers here and the published port is inert. On the bench it is the admin's own origin — a path
       # prefix does not work (the admin is a Next app with no basePath; see caddy/Caddyfile.local).
-      - '${FORGE_ADMIN_HTTP_PORT:-8081}:81'
+      - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_ADMIN_HTTP_PORT:-8081}:81'
       # ★ THE SECOND TENANT'S ADMIN DOOR (PRE-SEED · P-A). Same container as `:81`; the PORT is what
       # `read.admin.by_host` keys on, so two tenants on one `localhost` need two published ports. See
       # caddy/Caddyfile.local, `:83`.
-      - '${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
+      - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
     environment:
       FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
       FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}

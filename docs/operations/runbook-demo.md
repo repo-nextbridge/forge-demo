@@ -110,6 +110,7 @@ Não edite as linhas à mão para "consertar" um vermelho: o compose é a fonte.
 | `FORGE_ADMIN_DOMAIN` | .env | não |
 | `FORGE_ADMIN_IMAGE` | forge.lock | não |
 | `FORGE_ADMIN_TENANT` | .env | sim |
+| `FORGE_BENCH_BIND` | .env | sim |
 | `FORGE_CHECKOUT_IMAGE` | forge.lock | não |
 | `FORGE_DOMAIN` | .env | não |
 | `FORGE_IMAGE` | forge.lock | não |
@@ -132,13 +133,26 @@ Não edite as linhas à mão para "consertar" um vermelho: o compose é a fonte.
     conexão dos apps; perder significa redigitar todos.
   · `DATABASE_URL` **não é digitada**: `env-source.sh:52` a monta a partir de `POSTGRES_USER` /
     `POSTGRES_PASSWORD` / `POSTGRES_DB` — as duas com default são o único par que você pode ignorar.
-- **`.env`** (5): as suas. Quatro são endereços e identidades; a quinta é uma armadilha — leia a §3.3.
+- **`.env`** (6): as suas. Três são endereços e identidades (`FORGE_DOMAIN`, `FORGE_ADMIN_DOMAIN`,
+  `FORGE_PUBLIC_ORIGIN`); `FORGE_TOTEM_STORE_ID` é uma armadilha — leia a §3.3(c); e as **duas** restantes o
+  compose deixa VAZIAS de propósito, logo abaixo.
 
-⚠️ **`FORGE_ADMIN_TENANT` é a única que o compose deixa VAZIA de propósito** — `${FORGE_ADMIN_TENANT?…}`,
-sem os dois-pontos: ela tem de **existir** e pode ser branco. Vazia é o que põe o admin em **modo host**
-(um container servindo as duas marcas, resolvidas pelo hostname). Preencher "porque estava vazio" tira a
-caixa do modo em que ela roda. Nesse modo quem serve o login é a credencial de plataforma
-(`FORGE_ADMIN_PLATFORM_TOKEN`), não o token singular.
+⚠️ **DUAS entram com `${VAR?…}`, sem os dois-pontos: têm de EXISTIR e podem ser branco.** Não é pedantismo —
+é a diferença entre "você ainda não decidiu" e "você decidiu que é vazio", e nas duas o vazio *é* a
+configuração:
+
+- **`FORGE_ADMIN_TENANT`** — vazia põe o admin em **modo host** (um container servindo as duas marcas,
+  resolvidas pelo hostname). Preencher "porque estava vazio" tira a caixa do modo em que ela roda. Nesse modo
+  quem serve o login é a credencial de plataforma (`FORGE_ADMIN_PLATFORM_TOKEN`), não o token singular.
+- **`FORGE_BENCH_BIND`** — a **interface** em que a caixa publica as cinco portas. Vazia = **todas as
+  interfaces**, que é o que um *deployment* diz e é byte a byte o que esta caixa publicava antes de a
+  variável existir. `.env.example` traz `127.0.0.1`, porque **toda porta desta bancada é http puro** e as
+  frentes rodam `NODE_ENV=production`: o cookie sai `Secure`, e o navegador **descarta em silêncio** um
+  cookie `Secure` em qualquer origem http que não seja `localhost`. Publicada na rede,
+  `http://<nome-tailnet>:8200` responde **200 e perde o carrinho**; `:8201` mostra o login do admin, aceita a
+  senha e volta pro `/login` com o pote vazio. `localhost` continua funcionando (é contexto seguro) e o
+  `tailscale serve` também (ele termina TLS e fala com `http://127.0.0.1:<porta>`). Medido em 08/09/2026 —
+  as quatro portas http respondiam 200 de fora da máquina.
 
 ### 3.2 Os segredos que **a própria caixa** cria
 
@@ -203,6 +217,27 @@ as páginas respondem 200, com o corpo compartilhado com a vitrine de referênci
 sintoma**, e é por isso que ela é gradada fora da caixa: `bin/coffee-store-id.guard.mjs` prova as quatro
 pernas de uma vez (derivada no `box-up`, declarada no `.env.example`, entregue pelo compose, lida pelo fork)
 e recusa qualquer `sto_…` escrito à mão no fonte do fork.
+
+**(e) ⛔ `FORGE_BENCH_BIND` — a porta que responde 200 e perde o carrinho, e o silêncio é do NAVEGADOR.**
+Medido em 08/09/2026, na bancada viva: `docker ps` mostrava as cinco portas em `0.0.0.0`, e
+`http://<nome-tailnet>:8200/health`, `:8201/login`, `:8202/login` e `:8203/` respondiam **200** de fora da
+máquina. Toda porta desta caixa é **http puro** (`caddy/Caddyfile.local` não tem TLS) e toda frente roda
+`NODE_ENV=production` ⇒ `secureCookie()` é verdadeiro (kit: `cookies.ts:85`; admin: `session.ts:21`) e o
+navegador **descarta em silêncio** um cookie `Secure` em qualquer origem http que não seja `localhost`.
+Resultado: a loja aceita o "adicionar ao carrinho" e o carrinho volta vazio; o admin aceita a senha e volta
+pro `/login` com o pote vazio. O `bin/box-up.sh` já carregava a medição em navegador dessa segunda metade.
+⚠️ **E não dá para desligar o `Secure`**: `FORGE_STOREFRONT_SECURE_COOKIE` / `FORGE_ADMIN_SECURE_COOKIE` são
+**opt-in** (`NODE_ENV === 'production' || … === '1'`) e esta caixa não passa nenhuma das duas a container
+nenhum. A **interface** é o único lugar onde isso fecha — é a mesma espécie que a `pk23/p5` fechou na
+`:3033` do produto.
+**O que fazer:** nada, se você copiou o `.env.example` (ele traz `FORGE_BENCH_BIND=127.0.0.1`). Num `.env`
+antigo, acrescente a linha — sem ela o compose **recusa por nome** antes do primeiro container
+(`${FORGE_BENCH_BIND?…}`, sem dois-pontos). `localhost` continua por http (é contexto seguro) e o tailnet
+continua inteiro pelo `tailscale serve`, que termina TLS e fala com `http://127.0.0.1:<porta>` (lido do
+`tailscale serve status --json` desta máquina). Num deployment a resposta é **vazio** = todas as interfaces,
+que é byte a byte o que esta caixa publicava antes da variável existir.
+⚠️ **E o `--tailnet` passou a RECUSAR** quando o `tailscale serve` não publica nada e as portas estão em
+loopback: o antigo "cai de volta nas portas diretas" agora seria escrever endereços que ninguém atende.
 
 ---
 
