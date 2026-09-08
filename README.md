@@ -797,6 +797,19 @@ reference: a fix that shipped in the product does not travel to a cut of it, and
 thing that knew was `curl`. A red here is not automatically "go copy the product" — this fork owns its
 front — but a divergence has to be a decision, not a surprise.
 
+⚠️ **And that guard is deliberately blind above the `[store]` segment — `bin/fork-refusal-drift.guard.mjs`
+is the eye for what is up there.** `sitemap.xml`, `robots.txt` and the `api/*` handlers sit outside every
+store-scoped tree and outside the middleware matcher, so no layout refuses on their behalf: whatever they
+refuse, they refuse in their own body. This guard derives that complement (`src/app/**` minus every path
+holding a `[store]` segment), reads which of those routes the REFERENCE refuses on before answering — a
+`@forgecommerce/*` call whose value decides an early `return` out of an exported handler — and requires the
+fork's file at the same path to ask the same question. It exists because the fork's `src/app/sitemap.ts`
+was cut without `readClient().storeFlags`, so a store with **no public page** (`storefront_enabled: false`)
+had its whole list of URLs — categories, CMS pages, products, brands, collections, every one of them a
+404 — published to any crawler that asked. Neither guard above could see it, by their own design; that is
+the hole this one covers. Divergences are declared in the file, printed on every run, and go red the run
+after the reference stops making the refusal they waive.
+
 A store is reached at `/s/<store id>` until a hostname claims it — host → store is DATA, set in the admin
 (Settings ▸ General ▸ Stores), never configuration.
 

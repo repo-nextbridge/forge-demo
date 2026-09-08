@@ -53,7 +53,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import test from 'node:test';
-import { pinnedCommit, readJson, releaseTree, ROOT } from './release-tree.mjs';
+import { surfaceForks, surfaces } from './forks.mjs';
+import { pinnedCommit, releaseTree } from './release-tree.mjs';
 
 const say = (line) => console.error(`[fork-chrome] ${line}`);
 
@@ -69,31 +70,6 @@ const DIVERGENCES = [];
 
 const PINNED = pinnedCommit();
 const TREE = PINNED ? releaseTree(PINNED) : { tried: [] };
-
-/** The release's own table of forkable surfaces — read, never assumed, exactly as its sibling guard does. */
-function surfaces() {
-  if (!TREE.path) return [];
-  const file = join(TREE.path, 'scripts', 'publishing', 'surfaces.json');
-  return existsSync(file) ? readJson(file) : [];
-}
-
-/** Every directory of THIS repository whose package name is a packed surface name. */
-function forks() {
-  const table = surfaces();
-  const out = [];
-  for (const entry of readdirSync(ROOT, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-    let name;
-    try {
-      name = readJson(join(ROOT, entry.name, 'package.json')).name;
-    } catch {
-      continue;
-    }
-    const surface = table.find((s) => s.packedName === name);
-    if (surface) out.push({ dir: entry.name, path: join(ROOT, entry.name), surface });
-  }
-  return out.sort((a, b) => a.dir.localeCompare(b.dir));
-}
 
 // ── reading a layout ────────────────────────────────────────────────────────────────────────────────────
 
@@ -164,7 +140,7 @@ function chromeMounts(source) {
 
 // ── what every run says out loud, before any assertion ──────────────────────────────────────────────────
 
-const FORKS = forks();
+const FORKS = surfaceForks(TREE);
 
 say(`forge.lock pins: ${PINNED ? PINNED.ref : 'no branch@sha — this lock names registry digests'}`);
 if (TREE.path) {
@@ -188,7 +164,7 @@ test('a Forge checkout at the pinned commit was found (otherwise nothing here is
     t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (set FORGE_MONOREPO)`);
     return;
   }
-  assert.ok(surfaces().length > 0, `${TREE.path} has no scripts/publishing/surfaces.json entries to map a fork to`);
+  assert.ok(surfaces(TREE).length > 0, `${TREE.path} has no scripts/publishing/surfaces.json entries to map a fork to`);
 });
 
 test('this repository owns at least one fork of a packed surface', (t) => {

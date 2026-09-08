@@ -32,6 +32,7 @@ const {
   categoryPaths,
   pagesPublished,
   collections,
+  storeFlags,
 } = vi.hoisted(() => ({
   headersMock: vi.fn(),
   unstableCache: vi.fn(),
@@ -43,6 +44,7 @@ const {
   categoryPaths: vi.fn(),
   pagesPublished: vi.fn(),
   collections: vi.fn(),
+  storeFlags: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({ headers: headersMock }));
@@ -61,6 +63,7 @@ vi.mock('@forgecommerce/storefront-kit/config', () => ({
     categoryPaths,
     pagesPublished,
     collections,
+    storeFlags,
   }),
 }));
 
@@ -183,6 +186,8 @@ beforeEach(() => {
   categoryPaths.mockResolvedValue([{ path: 'roupas' }, { path: 'roupas.camisetas' }]);
   pagesPublished.mockResolvedValue(list([page('sobre')]));
   collections.mockResolvedValue(list([collection('winter-essentials')]));
+  // pk9/P1 — a store on the street, which is what every store is by default.
+  storeFlags.mockResolvedValue({ name: 'Loja', storefront_enabled: true });
 });
 
 // ---- ★ the whole map ----------------------------------------------------------------------------
@@ -588,4 +593,29 @@ test('★ an INCOMPLETE walk is served but NEVER cached — a truncated sitemap 
   expect(productPaths.mock.calls.length, 'the next request must walk again').toBeGreaterThan(
     callsAfterFirst,
   );
+});
+
+// ---- pk9/P1 · a store with no public page ---------------------------------------------------------
+
+test('★★ a store with NO public page hands a crawler nothing', async () => {
+  // The refusal this fork was cut without. Every URL this file would emit answers 404
+  // (`requirePublicStorefront`, mounted in both store-scoped trees); this route lives OUTSIDE both of them —
+  // the middleware matcher excludes `sitemap.xml` and it sits above every `[store]` segment — so the layouts'
+  // refusal cannot reach it and it has to ask for itself. Measured before the fix: the whole list of URLs.
+  storeFlags.mockResolvedValue({ name: 'Balcão', storefront_enabled: false });
+
+  expect(await sitemap()).toEqual([]);
+  expect(
+    productPaths,
+    'a store with no public page must not even be walked: the catalogue read is spent on nothing',
+  ).not.toHaveBeenCalled();
+});
+
+test('a kernel older than the flag still gets its whole sitemap', async () => {
+  // ⚠️ THE CONTROL AGAINST REFUSING TOO MUCH. The field is optional on the wire. Read as "falsy means
+  // private", every store on such an instance would silently lose its sitemap — the entire SEO surface, from
+  // one missing key — which is a worse defect than the one being fixed.
+  storeFlags.mockResolvedValue({ name: 'Loja' });
+
+  expect((await sitemap()).length).toBeGreaterThan(0);
 });
