@@ -35,6 +35,7 @@
     "@forgecommerce/contracts": "./vendor/forgecommerce-contracts-0.3.0.tgz",
     "@forgecommerce/ext-banners": "./vendor/forgecommerce-ext-banners-0.3.0.tgz",
     "@forgecommerce/ext-chrome": "./vendor/forgecommerce-ext-chrome-0.3.0.tgz",
+    "@forgecommerce/ext-content": "./vendor/forgecommerce-ext-content-0.3.0.tgz",
     "@forgecommerce/ext-feed": "./vendor/forgecommerce-ext-feed-0.3.0.tgz",
     "@forgecommerce/ext-leads": "./vendor/forgecommerce-ext-leads-0.3.0.tgz",
     "@forgecommerce/ext-payment-mercadopago": "./vendor/forgecommerce-ext-payment-mercadopago-0.3.0.tgz",
