@@ -158,14 +158,24 @@ export function pickSubscribableSku(products, index) {
  * ⏳ WAIT FOR THE APP'S SCRIPT — the contract is minted by an outbox consumer, so it does not exist when
  * `place_order` answers.
  *
- * ⚠️ IT FAILS RATHER THAN SHRUGGING, and the sentence names the two things that actually produce this: a
- * relay that is not running, and an order with no `customer_id` (a guest checkout, which the script refuses
- * by design). A step that placed three orders and reported "no contracts yet" would leave a box that looks
- * seeded and shows an empty widget — the exact state this whole file exists to end.
+ * ⚠️ IT FAILS RATHER THAN SHRUGGING. A step that placed three orders and reported "no contracts yet" would
+ * leave a box that looks seeded and shows an empty widget — the exact state this whole file exists to end.
+ *
+ * ★★ THE BUDGET IS 60s AND NOT 15s, AND THE MEASUREMENT IS WHY (pk28, the birth of 09/09). The three orders
+ * DID mint their contracts — they were simply not there yet at the fifteenth second. Measured on that box
+ * after the failure: `ext:subscriptions:order-placed` had **717 deliveries, all `delivered`, zero errors**,
+ * the three orders all carried a `customer_id`, and the three contracts existed. The relay was not broken; it
+ * was BEHIND, because this same birth had just written 7 250 reviews and hundreds of orders into the outbox
+ * and eight consumers were draining it.
+ *
+ * ⚠️⚠️ AND THAT IS WHY THE SENTENCE BELOW CHANGED. It used to name exactly two causes — "the relay is not
+ * delivering" and "the order closed as a GUEST" — and on the first real failure BOTH WERE FALSE. A diagnostic
+ * that offers two hypotheses and omits the true one is worse than none: it sends the reader to check a relay
+ * that is fine. The third cause is "it has not arrived yet", and it is the likeliest one on a birth.
  *
  * @param wanted the order ids that must each have produced a contract
  */
-export async function awaitContracts({ read, log, wanted, polls = 15, waitMs = 1_000, sleep }) {
+export async function awaitContracts({ read, log, wanted, polls = 60, waitMs = 1_000, sleep }) {
   const nap = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const missing = new Set(wanted);
   let held = [];
@@ -260,9 +270,13 @@ export async function signSubscriptions({ stores, read, log, fail, action, place
   if (outcome.unresolved) {
     fail(
       `subscriptions — ${outcome.unresolved.length} of ${signed.length} order(s) produced no contract: ` +
-        `${outcome.unresolved.join(', ')}. The app mints one from \`order.created\` through the outbox, so ` +
-        'either the relay is not delivering, or the order closed as a GUEST — `order-placed.ts` returns ' +
-        'without minting anything when the order carries no customer_id, and a guest checkout carries none.',
+        `${outcome.unresolved.join(', ')}. The app mints one from \`order.created\` through the outbox. ` +
+        'THREE things produce this, and they are checked in this order because that is how likely they are ' +
+        'on a birth: (1) the relay is still BEHIND — this seed writes thousands of events and eight ' +
+        'consumers drain them, so look at `event_delivery` for `ext:subscriptions:order-placed` before ' +
+        'anything else; a row per order with status `delivered` means it arrived and the contract is coming; ' +
+        '(2) the relay is not running at all — then there are no rows for that consumer; (3) the order closed ' +
+        'as a GUEST — `order-placed.ts` returns without minting when the order carries no customer_id.',
     );
     return; // see the note above on `fail` being terminal
   }

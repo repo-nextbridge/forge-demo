@@ -1,13 +1,13 @@
 {
-  "forgeVersion": "v0.3.0-pre.8ad75f6c0",
+  "forgeVersion": "v0.3.0-pre.38db5f3a1",
   "node": {
     "minMajor": 24,
     "engines": ">=24"
   },
   "provenance": {
     "origin": "local build",
-    "built_from": "v03/integra@8ad75f6c0",
-    "built_at": "2026-09-09T01:39:09Z",
+    "built_from": "v03/integra@38db5f3a1",
+    "built_at": "2026-09-09T18:09:18Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -42,18 +42,18 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:980367aba3a5e6348ad45b0e2f70a547d1f9a56b6b963f7b1c363176f24f0f00",
-    "storefront": "forge-demo-storefront@sha256:14803fa94e2c1d57b8268fcd16ca8803e101f703183e93935092ad5785f12e96",
-    "checkout": "forge-demo-checkout@sha256:8f28874de015857e1cc854e26774e0b01f187bd69ab9d5df9874d285feb756de",
-    "admin": "forge-demo-admin@sha256:b8ebadbe7d7d6624d7098170a76dd232ea0edb7276806c694779b5d89e7a0cfb"
+    "kernel": "forge-demo-kernel@sha256:0fb497db43342812ce87217eec08364d4d1f5e9baa16386bff6e1d11c2fa7024",
+    "storefront": "forge-demo-storefront@sha256:a9189b580f34a9357526480409fb09f54029899dc4acb939034c0a89df0ebb16",
+    "checkout": "forge-demo-checkout@sha256:1a4f57fe6b1a3d7ecfb65999ded71132ab40a9412dad98c8f9194db3f7bfbf7e",
+    "admin": "forge-demo-admin@sha256:4719c24202fcfd71ccc7e9b538a4eb101a73c179482aa1b49beab2e13d8ec93b"
   },
   "extensions": [],
   "dataset": {
     "source": "instances/demo/dataset",
     "id": "demo",
     "catalog": {
-      "version": "66281d3556b79fcf",
-      "totalBytes": 41289298
+      "version": "04ca24f9ae6c2c65",
+      "totalBytes": 41289467
     },
     "photos": {
       "version": "9aa8af0d782b82ec",
