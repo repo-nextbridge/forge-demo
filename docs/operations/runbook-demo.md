@@ -279,6 +279,35 @@ a face que recusou. O seed avisa em voz alta se achar a variável setada.
 | semear de um dataset que **não é o das imagens** | passo 0c, `bin/box-up.sh:1029` | 2 790 produtos de um checkout velho, caixa verde, painel de estoque nascido vazio |
 | promover sem dizer **para onde** | `bin/box-up.sh:114` (o destino) e `:669` (o tailnet sem nome) | `FORGE_PUBLIC_ORIGIN=http://:8200`, que é a origem de toda URL de imagem |
 
+**★★ pk26/d1 · O ENDEREÇO DESTA CAIXA AGORA É *DADO*, NÃO SÓ VARIÁVEL DE AMBIENTE (passo 6b).** Até aqui o
+mapa host→loja vivia **só** no `FORGE_STORE_HOSTS` do `.env`, que **apenas os fronts** leem — o kernel não
+sabia em que endereço esta caixa se publica, e `read.store.by_host` respondia **404 em todos os nomes**
+(medido em 04/09, 08/09 e de novo hoje: `localhost`, `localhost:8200`, `127.0.0.1`, `127.0.0.1:8200`,
+`ms-s1`, `ms-s1:8200`). Tudo que resolve endereço **pela porta** errava em silêncio enquanto a loja abria
+perfeita: o aquecedor enchia `/s/<id>/…`, o inventário de URLs não achava a loja-raiz, e um 404 do
+`store.by_host` parecia caixa quebrada.
+
+O passo **6b** (`bin/store-host.mjs`) fecha isso: a loja que o mapa põe na **raiz** reivindica o
+`FORGE_PUBLIC_ORIGIN` através de `tenant.store.update --host`, e o passo **espera a projeção** (o diretório
+global é alimentado por um consumidor do relay, ~1 s depois do comando) antes de dizer que deu certo.
+
+- **O override continua existindo, e não é uma segunda verdade.** Quem decide os endereços é o `box-up` —
+  passo 3b no nascimento, a promoção depois — e ele escreve os **dois** registros; nada lê o diretório para
+  escrever o mapa. O override não sai porque **uma loja reivindica UM endereço só** (a chave é única entre
+  todos os tenants) e o mapa desta bancada carrega de seis a dez grafias.
+- **Caixa não promovida declara `http://localhost:8200`** — que é verdade, é por-caixa, e a **promoção
+  reescreve os três registros no mesmo gesto** (mapa, `FORGE_PUBLIC_ORIGIN` e diretório); `--localhost`
+  desfaz. Um renascimento devolve os três ao `localhost` juntos.
+- **Só a loja-raiz reivindica.** As outras três (outlet, café, balcão) são alcançadas por caminho
+  (`/s/<id>/…`); reivindicar o mesmo endereço seria recusado com `host_taken`, e o campo é também a **URL
+  pública** que o admin mostra em Settings ▸ General.
+- **Idempotente:** rodar de novo não escreve nada se o valor já é esse. **"Ninguém reivindicou"** é recusa,
+  não sucesso: o passo roda uma vez por tenant, o que **não** é dono responde `not-mine`, e zero de N mata o
+  nascimento nomeando o motivo.
+- **O passo 15 (`verify-config`) pergunta a mesma coisa, por conta própria** — todos os outros testes da
+  seção da loja mandam `Host:` para a **borda**, então gradúam o que os **fronts** resolvem; a linha nova é a
+  única que fala com o kernel. Nenhum dos dois roda o outro.
+
 **O que a caixa PUBLICA ≠ o que ela escuta.** Quando a Demo está atrás de um `tailscale serve` (ou de
 qualquer terminador de TLS), a porta que o navegador digita **não** é a porta do container. `box-up`
 **lê** o que está publicado (`tailscale serve status --json`, `bin/box-up.sh:487-518`) em vez de supor.
@@ -323,17 +352,22 @@ conseguiu perguntar, imprime `⚠️ REPORT — WARMTH IS UNKNOWN FOR …`, que 
 
 **★★ pk25/d1 — E O RELATÓRIO PAROU DE CHAMAR DE «warm» A ÁRVORE ERRADA.** São **duas árvores de cache**: o
 visitante que digita o endereço da caixa cai em `/botas/chelsea`; a corrida aquecia `/s/<id>/botas/chelsea`.
-A vitrine decide isso perguntando `read.store.by_host`, que nesta caixa responde **404 nos oito nomes** — o
-mapa host→loja vive no `FORGE_STORE_HOSTS` dos **fronts**, e o kernel não o enxerga. O passo dizia isso numa
-linha `⚠` e terminava em `VERDICT: warm`, saída 0; ⇒ os *"95% aquecido"* de subidas passadas eram da árvore
-que ninguém navega. Agora o passo lê **as duas fontes** — a porta e o `.env` desta caixa — e, quando a caixa
-serve uma loja na **raiz** que a corrida aqueceu **path-scoped**, isso é um **shortfall**: continua **não
-sendo portão** (o `box-up` não reprova o nascimento por calor), mas o veredicto **não diz mais warm** e
-nomeia as duas árvores. ⛔ **O aquecedor não consegue fechar isso sozinho:** quem decide o endereço é a
-**vitrine** (`resolveTargets` deriva a base só de `storeForOrigin` —
-`apps/storefront/src/lib/warm/targets.ts:88`) e a rota `/api/warm` **não tem parâmetro de loja-raiz**. O que
-fecha é **dado**: uma loja que reivindique a origem no diretório (`tenant.store.update` → `host`) — e nesse
-dia a linha vira sozinha a outra.
+A vitrine decide isso perguntando `read.store.by_host`, que **até a pk26/d1** respondia **404 nos oito nomes**
+desta caixa — o mapa host→loja vivia só no `FORGE_STORE_HOSTS` dos **fronts**, e o kernel não o enxergava.
+O passo dizia isso numa linha `⚠` e terminava em `VERDICT: warm`, saída 0; ⇒ os *"95% aquecido"* de subidas
+passadas eram da árvore que ninguém navega. Desde a pk25/d1 o passo lê **as duas fontes** — a porta e o
+`.env` desta caixa — e, quando a caixa serve uma loja na **raiz** que a corrida aqueceu **path-scoped**, isso
+é um **shortfall**: continua **não sendo portão** (o `box-up` não reprova o nascimento por calor), mas o
+veredicto **não diz mais warm** e nomeia as duas árvores. ⛔ **O aquecedor não consegue fechar isso sozinho:**
+quem decide o endereço é a **vitrine** (`resolveTargets` deriva a base só de `storeForOrigin` —
+`apps/storefront/src/lib/warm/targets.ts:88`) e a rota `/api/warm` **não tem parâmetro de loja-raiz**.
+
+**★★★ pk26/d1 — E O QUE FECHA É DADO, que agora o nascimento escreve: o passo 6b.** A loja-raiz reivindica o
+endereço desta caixa no diretório do kernel (`tenant.store.update` → `host`), então `read.store.by_host`
+responde, a vitrine dá **URLs limpas** à loja da raiz e o passo 14 aquece a árvore que o visitante navega.
+⇒ **O `⚠ … did NOT come out fully warm` por causa do endereço some sozinho** numa caixa nascida depois
+disto; se ele aparecer, a leitura mudou de *"a feature ainda não existe"* para **"o passo 6b não pegou nesta
+caixa"** — e a linha do passo 14 diz isso com essas palavras.
 
 ⛔ **Uma metade do passo 14 continua vermelha:** uma loja que o `seed/box.json` **declara** e a caixa **não
 tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSITORY DECLARES`). Isso não é
