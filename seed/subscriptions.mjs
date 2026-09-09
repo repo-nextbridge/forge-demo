@@ -351,9 +351,43 @@ export async function signSubscriptions({ stores, read, log, fail, action, place
       log(`subscriptions — ${subscriber.name}'s contract is already ${subscriber.state}`);
       continue;
     }
-    await action(APP, wantedAction, { id: contract.id });
+    const outcome = await action(APP, wantedAction, { id: contract.id });
+    // ★★ THE STEP READS THE ANSWER INSTEAD OF COUNTING THE CALL. On 2026-09-09 this line was
+    // `await action(...); moved += 1;` and it reported "2 moved off active" while the box held `active=2`:
+    // `cancel_contract` declares a confirmation phrase, the gate answered **200** with
+    // `{ needs_confirmation: true }`, and a step that counts calls cannot tell that from a run. The app's own
+    // refusals travel the same way — `{ refused: true, reason: 'unknown_contract' | 'contract_canceled' }` —
+    // so this one check covers both, and the message names the contract rather than the count.
+    if (outcome?.needs_confirmation)
+      fail(
+        `subscriptions — \`${wantedAction}\` on ${subscriber.name}'s contract came back asking for the ` +
+          `phrase "${outcome.confirm_phrase ?? '?'}" instead of running. The seed answers that gate ` +
+          '(`appAction`), so reaching here means the answer did not travel — check that the second POST ' +
+          'carries `phrase`.',
+      );
+    if (outcome?.refused)
+      fail(
+        `subscriptions — \`${wantedAction}\` refused ${subscriber.name}'s contract: ` +
+          `${outcome.reason ?? 'no reason given'}. The contract is ${contract.status} and the seed wants it ` +
+          `${subscriber.state}.`,
+      );
     moved += 1;
   }
+  // ⚠️ AND THE LINE BELOW USED TO BE THE ONLY WITNESS, WHICH IS WHY IT LIED FOR A WHOLE BIRTH. It prints what
+  // the seed WANTED (`s.state`, off SUBSCRIBERS) next to a count of calls it made. Both were true and the box
+  // still disagreed. Step 12 (`verify-seed`) is what caught it, three steps later. The re-read below makes
+  // this step answer for itself.
+  const after = (await read('internal/extension_records', { extension: APP, model: CONTRACT_MODEL, limit: 100 }))?.items ?? [];
+  const wrong = signed
+    .map((s) => ({ s, got: after.find((r) => r.origin_order_id === s.order.order_id)?.status }))
+    .filter(({ s, got }) => got !== s.state);
+  if (wrong.length > 0)
+    fail(
+      `subscriptions — ${wrong.length} contract(s) did not reach the state the seed declares: ` +
+        `${wrong.map(({ s, got }) => `${s.name} is ${got ?? 'gone'}, wanted ${s.state}`).join(' · ')}. ` +
+        'The actions were invoked and reported no refusal, so the app accepted them and the record did not ' +
+        'move — read this app\'s runs (`internal/extension_runs`) before anything else.',
+    );
   log(
     `subscriptions — ${signed.length} contract(s) in the café: ` +
       `${signed.map((s) => `${s.name} ${s.plan}/${s.state}`).join(' · ')}` +

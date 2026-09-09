@@ -398,8 +398,45 @@ export async function appsNotInstalled(read, ids) {
 /** An app action on the tenant face. ⚠️ The tenant is the CREDENTIAL's — `tenant_id` in the body is ignored
  * by construction (action-adapter.ts), which is the write side of the same rule `assertCredentialTenant`
  * exists for on the read side. */
-const appAction = (post) => (extension_id, action, input) =>
-  post('/v1/internal/extension/action', { extension_id, action, ...(input ? { input } : {}) });
+export const appAction = (post) => async (extension_id, action, input) => {
+  const first = await post('/v1/internal/extension/action', {
+    extension_id,
+    action,
+    ...(input ? { input } : {}),
+  });
+
+  // ★★★ A 200 THAT MEANS "NO" — AND THIS ONE COST A WHOLE BIRTH.
+  //
+  // The confirmation gate (`apps/api/src/action-adapter.ts:237`) answers **HTTP 200** with
+  // `{ needs_confirmation: true, confirm_phrase }` when an app's preflight demands a typed phrase, and
+  // echoes the input back so the re-submit can carry both. `post` sees 200 and returns; the caller counted a
+  // move that never happened.
+  //
+  // ⚠️ MEASURED on the birth of 2026-09-09: the café's seed logged
+  //     "3 contract(s) in the café: … Bianca Rocha monthly/canceled (2 moved off `active`…)"
+  // and the box held `active=2 · paused=1`. `pause_contract` declares no phrase and worked; `cancel_contract`
+  // declares `confirmPhrase: 'CANCEL'` and never ran. Step 12 caught it — *"the seed declares active=1 ·
+  // canceled=1 · paused=1"* — three steps later, about the DATA, never about the call.
+  //
+  // ★ THE PHRASE IS NOT CEREMONY TO SKIP, IT IS THE SERVER-SIDE INTERLOCK, and the adapter's own comment says
+  // whose it is: *"a stray app can never nuke/pollute a real catalog without the exact typed phrase"*. So the
+  // seed does what an operator does — it reads the phrase THE BOX ASKS FOR and sends that one back. It never
+  // guesses a phrase, and it never carries a literal: a phrase typed here would be a second copy of a policy
+  // the app owns, and it would go stale the day the app changes it.
+  if (!first || first.needs_confirmation !== true) return first;
+  if (!first.confirm_phrase)
+    throw new Error(
+      `${extension_id}.${action} demands a confirmation and did not say which phrase. The box answered ` +
+        '`needs_confirmation` with no `confirm_phrase`, so there is nothing to send back — this is the box ' +
+        'asking for something it did not name, not a seed that forgot to ask.',
+    );
+  return post('/v1/internal/extension/action', {
+    extension_id,
+    action,
+    ...(input ? { input } : {}),
+    phrase: first.confirm_phrase,
+  });
+};
 
 /**
  * ⛔ THE SILENCING — AND IT RUNS IN THE **CURATED** PHASE, NOT THE WINDOW.

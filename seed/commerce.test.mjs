@@ -44,6 +44,7 @@ import {
   SEED_NOISE_TYPES,
   buyerEmail,
   placeOneOrder,
+  appAction,
 } from './commerce.mjs';
 
 const STORES = [
@@ -806,4 +807,51 @@ test('★★★ the re-run branch returns the SAME shape as the fresh one — th
       key in reused && key in fresh,
       `the two branches of one function disagree on "${key}" — that is how the 09/09 birth failed silently`,
     );
+});
+
+// ★★★ A 200 THAT MEANS "NO" — the fourth one this box has produced, and the most expensive.
+//
+// `apps/api/src/action-adapter.ts:237` answers HTTP **200** with `{ needs_confirmation: true, confirm_phrase }`
+// when an app's preflight demands a typed phrase. `post` sees 200 and returns; a caller that counts calls
+// counts a move that never happened. Measured on the birth of 2026-09-09: the seed logged
+// "Bianca Rocha monthly/canceled (2 moved off `active`…)" and the box held `active=2 · paused=1`.
+//
+// ⚠️ THE PHRASE IS READ BACK FROM THE BOX, NEVER TYPED HERE. A literal in this repo would be a second copy of
+// a policy the app owns, and it would go stale the day the app changes it — so the rule below CHANGES the
+// phrase the box asks for and expects the seed to send THAT one.
+test('★★★ the confirmation gate answers 200, and the seed answers the gate instead of believing it', async () => {
+  const sent = [];
+  const post = async (_path, body) => {
+    sent.push(body);
+    if (!body.phrase) return { needs_confirmation: true, confirm_phrase: 'DESTRUIR', input: body.input ?? null };
+    return { key: 'outcome.canceled' };
+  };
+  const result = await appAction(post)('subscriptions', 'cancel_contract', { id: 'rec_1' });
+
+  assert.equal(sent.length, 2, 'a gate that asks for a phrase must be ANSWERED, not accepted as a result');
+  assert.equal(sent[1].phrase, 'DESTRUIR', 'the phrase must be the one the BOX asked for, never a literal from this repo');
+  assert.deepEqual(sent[1].input, { id: 'rec_1' }, 'the re-submit carries the same input — the gate echoes it for exactly this');
+  assert.equal(result.key, 'outcome.canceled', 'and the caller gets the RUN, not the gate');
+});
+
+test('★★ an action that needs no phrase is not re-sent — the answer must not become a second write', async () => {
+  const sent = [];
+  const post = async (_path, body) => {
+    sent.push(body);
+    return { key: 'outcome.paused' };
+  };
+  await appAction(post)('subscriptions', 'pause_contract', { id: 'rec_1' });
+  assert.equal(sent.length, 1, '`pause_contract` declares no phrase; sending it twice would be a duplicate write');
+});
+
+test('⛔ a gate that asks for a phrase without naming it is the BOX\'s fault, and says so', async () => {
+  const post = async () => ({ needs_confirmation: true });
+  await assert.rejects(
+    () => appAction(post)('subscriptions', 'cancel_contract', { id: 'rec_1' }),
+    (err) => {
+      assert.match(err.message, /did not say which phrase/);
+      assert.match(err.message, /not a seed that forgot to ask/, 'the message must not send the reader to the wrong file');
+      return true;
+    },
+  );
 });
