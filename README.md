@@ -1373,19 +1373,29 @@ question rather than to fill a hole: **how does a customer extend Forge?** The o
 app me ajuda a mostrar para os clientes como eles podem fazer apps livremente (principal forma de extensão do
 Forge) … esse mostra mais claramente e de forma simples um logo virando outro"*.
 
-It declares **four blocks — one per place a shop shows its name**: the header bar (`storefront:header.brand`),
-the mobile drawer (`header.drawer_brand`), the footer's brand column (`footer.brand`) and the login box
-(`account.brand`). Each is placed and configured on its own in Compose; each draws either a logo from the
-asset library or a wordmark whose tail takes the theme's accent, so the SAME four configs make the Outlet look
-like the Outlet without a line of code.
+It declares **three blocks — one per place the SHOP WINDOW shows a name**: the header bar
+(`storefront:header.brand`), the mobile drawer (`header.drawer_brand`) and the footer's brand column
+(`footer.brand`). Each is placed and configured on its own in Compose; each draws either a logo from the asset
+library or a wordmark whose tail takes the theme's accent, so the SAME three configs make the Outlet look like
+the Outlet without a line of code.
 
-**Why four and not one.** Until pk26 the mark was a single block of the OOTB `chrome` app, read in four
-renders — so an operator dragged one row in Compose and changed four places, and the board could not say
-which. The owner named it (*"o compose não faz sentido, está configurando algo lá que nem sabe onde vai
-aparecer"*), Forge gave each place its own slot, and the mark left the product: **a logo is CONTENT**, and the
-product ships slots with a bare default while whoever wants a mark writes the block. ⛔ The kernel already
-required it — `placement: 'single'` is enforced per *(store, app, component)*, so one component cannot fill
-two slots.
+⛔ **The login box (`account.brand`) is NOT one of them, and the line is the DEPLOYABLE (trava 4).** That
+screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable
+*without* a fork, which makes it a capability of the **product**: the OOTB `chrome` app carries it from pk28
+on. The **vitrine** is the opposite, a deployable the customer forks and makes theirs, so identity there may
+live in an app of their own. The owner, 09/09: *"prefiro colocar N blocos em N lugares do que colocar só um
+para todos … essas 3 são do storefront e a caixa de login é do checkout."* ⚠️ The slot did not move; only this
+app's block did — and `seed/chrome.json` will not place the product's replacement until a kernel image baked
+from that slice is pinned, because `composition.place` refuses a component the installed manifest does not
+declare and would fail the birth rather than skip a mark.
+
+**Why one per place and not one for all.** Until pk26 the mark was a single block of the OOTB `chrome` app,
+read in four renders — so an operator dragged one row in Compose and changed four places, and the board could
+not say which. The owner named it (*"o compose não faz sentido, está configurando algo lá que nem sabe onde
+vai aparecer"*), Forge gave each place its own slot, and the vitrine's mark left the product: **a logo is
+CONTENT**, and the product ships slots with a bare default while whoever wants a mark writes the block. ⛔ The
+kernel already required it — `placement: 'single'` is enforced per *(store, app, component)*, so one component
+cannot fill two slots.
 
 **And it says the shop's own tagline.** `footer.brand`'s Forge fallback cedes its node as a UNIT — the
 wordmark AND *"Leve. Inteligente. Sua."* — deliberately, because that sentence is Forge's. So a shop that

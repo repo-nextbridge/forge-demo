@@ -18,15 +18,15 @@ export { data as DEMO_SETUP };
 /**
  * ⛔ THE BLOCK THAT WOULD DELETE THE SHOP'S MARK — refused here, before anything is written.
  *
- * Every one of these four slots REPLACES the front's own wordmark instead of standing beside it: the slot
+ * Every one of these three slots REPLACES the front's own wordmark instead of standing beside it: the slot
  * cedes its whole node to whatever is placed there, and the app draws nothing when nothing is configured. So
- * a brand placement with an empty config is not a neutral default — it is a header, a drawer, a footer column
- * or a login box with NO MARK AT ALL, on every page of that store, and nothing anywhere would report it.
+ * a brand placement with an empty config is not a neutral default — it is a header, a drawer or a footer
+ * column with NO MARK AT ALL, on every page of that store, and nothing anywhere would report it.
  *
- * ⚠️ IT ASKS THE QUESTION OF EVERY BLOCK THE DECLARATION CARRIES, never of a component named here. All four
- * are marks; a fifth added tomorrow is a mark too, and a list of three component names would have let it
- * through in silence. `tagline` is deliberately NOT one of the answers: a footer with a sentence and no mark
- * is the same defect one element to the right.
+ * ⚠️ IT ASKS THE QUESTION OF EVERY BLOCK THE DECLARATION CARRIES, never of a component named here. All three
+ * are marks; a fourth added tomorrow is a mark too, and a list of component names would have let it through
+ * in silence. `tagline` is deliberately NOT one of the answers: a footer with a sentence and no mark is the
+ * same defect one element to the right.
  */
 export function markless(spec = data) {
   const bad = [];

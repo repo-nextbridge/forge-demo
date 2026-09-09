@@ -1,16 +1,23 @@
-// ★★ THE FOUR MARKS — one component per place the shop shows its name, which is the whole point of this app.
+// ★★ THE THREE MARKS OF THE SHOP WINDOW — one component per place the vitrine shows the shop's name, which
+// is the whole point of this app.
 //
-// ⛔ FOUR EXPORTS AND NOT ONE COMPONENT PLACED FOUR TIMES, and the kernel is what says so: `placement:
+// ★★ THERE WAS A FOURTH AND IT LEFT IN pk28, ON THE AXIS OF THE DEPLOYABLE. `account.brand` — the login box —
+// is drawn by the CHECKOUT, which we host and nobody forks, so a mark there has to be configurable without a
+// fork and is therefore the PRODUCT's job (the OOTB `chrome` app carries it now). The vitrine is the opposite:
+// a customer forks it and makes it theirs, so identity there can live in an app of that customer's own. The
+// owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».
+//
+// ⛔ THREE EXPORTS AND NOT ONE COMPONENT PLACED THREE TIMES, and the kernel is what says so: `placement:
 // 'single'` is enforced per (store, app, COMPONENT) — `assertSingleFree`,
 // packages/core/src/commands/composition.ts:176 — so the same component dropped in a second slot is refused
 // with `conflict`. That refusal is the contract the previous design broke: `chrome/brand` was ONE placement
 // read in four renders, so an operator dragged one row and changed four places, and the Compose board could
-// not say which. Four components is what makes the board literal again.
+// not say which. A component per place is what makes the board literal again.
 //
-// ★ THE DRAWING IS SHARED AND THE DECLARATION IS NOT. `Mark` below is the one implementation; the four
+// ★ THE DRAWING IS SHARED AND THE DECLARATION IS NOT. `Mark` below is the one implementation; the three
 // exports differ only where the PLACE differs, which today is one thing: the footer's column is the one that
 // also carries a sentence under the mark. Sharing the render is why «a logo virando outro» is a config change
-// and not four maintenance jobs; declaring four is why the operator can see where each one lands.
+// and not three maintenance jobs; declaring three is why the operator can see where each one lands.
 //
 // ★★ AND THE TAGLINE EXISTS BECAUSE THE FOOTER'S FALLBACK CEDES ITS WHOLE NODE. `footer.brand` draws, when
 // nothing is placed, the Forge wordmark AND «Leve. Inteligente. Sua.» as ONE unit — deliberately, because
@@ -125,10 +132,4 @@ export function FooterBrand({ config, storeHref }: MarkProps): ReactNode {
       ) : null}
     </Mark>
   );
-}
-
-/** The login box. ★ THE PLACE THE FIRST DESIGN MISSED: the modal a shopper of somebody else's shop signs in
- * on, in the deployable WE host — so no fork could ever have taken our wordmark out of it. */
-export function AccountBrand({ config, storeHref }: MarkProps): ReactNode {
-  return <Mark config={config} storeHref={storeHref} place="account" />;
 }

@@ -1,8 +1,8 @@
 // pk26/D2 — THE SHOP'S MARK, DECLARED BY THIS BOX'S OWN APP. What is worth testing, and none of it is "the
-// file has four keys":
-//   · a brand block with NEITHER a logo NOR a word DELETES the shop's mark. All four of these slots replace
+// file has three keys":
+//   · a brand block with NEITHER a logo NOR a word DELETES the shop's mark. All three of these slots replace
 //     the front's own wordmark and the app draws nothing when nothing is configured, so the failure is a
-//     header — or a login box — with no name on it, on every page, and nothing anywhere going red;
+//     header — or a footer column — with no name on it, on every page, and nothing anywhere going red;
 //   · «Leve. Inteligente. Sua.» used to be a LITERAL of the Forge kit, ceded as one node with the mark. From
 //     this file on the demo says it because it CONFIGURED it, and only in the two shops the owner named. A
 //     declaration that drops it puts the shops' footers back to a mark with nothing under it — and a test
@@ -26,14 +26,24 @@ const SEED = dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(readFileSync(join(SEED, 'demo-setup.json'), 'utf8'));
 const CHROME = JSON.parse(readFileSync(join(SEED, 'chrome.json'), 'utf8'));
 
-/** The four blocks the app declares and the slot each is allowed in — read off
- *  `apps/demo-setup/manifest.ts`, whose own suite holds the same table against the manifest. */
+/** The three blocks the app declares and the slot each is allowed in — read off
+ *  `apps/demo-setup/manifest.ts`, whose own suite holds the same table against the manifest.
+ *
+ *  ★★ THERE WAS A FOURTH UNTIL pk28 — `account_brand` → `storefront:account.brand`, the login box — and it
+ *  left on the axis of the DEPLOYABLE, not because anything about it was wrong. The vitrine is FORKABLE and a
+ *  customer makes it theirs, so identity there may live in an app of that customer's own; the CHECKOUT is
+ *  hosted by us and nobody forks it, so identity there has to be configurable without a fork and is the
+ *  PRODUCT's. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout». */
 const MANIFEST_SLOTS = {
   header_brand: 'storefront:header.brand',
   drawer_brand: 'storefront:header.drawer_brand',
   footer_brand: 'storefront:footer.brand',
-  account_brand: 'storefront:account.brand',
 };
+
+/** The block that moved to the product in pk28. Named here so that putting it back is RED in the declaration
+ *  as well as in the manifest — a store that declared it again would place a block this app no longer ships,
+ *  and `composition.place` would refuse the birth with `no block 'account_brand' declared by extension`. */
+const GONE_TO_THE_PRODUCT = 'account_brand';
 
 /** Which config keys each block declares (`config_schema`). A key this file invents is dropped by the
  *  kernel's own validation, so it would be a sentence nobody ever reads. Only the footer has a tagline. */
@@ -41,7 +51,6 @@ const CONFIG_KEYS = {
   header_brand: ['logo', 'text', 'tail'],
   drawer_brand: ['logo', 'text', 'tail'],
   footer_brand: ['logo', 'text', 'tail', 'tagline'],
-  account_brand: ['logo', 'text', 'tail'],
 };
 
 /** The owner's instruction of 08/09, verbatim: «um bloco de conteúdo com "Leve. Inteligente. Sua." abaixo do
@@ -56,19 +65,43 @@ test('★★ the slot map is the app’s own — a slot this file invented would
   assert.equal(DATA.app, 'demo-setup');
 });
 
-test('★★★ every dressed store declares ALL FOUR marks — a shop with three is a place that lost its name', () => {
+test('★★★ every dressed store declares ALL THREE marks — a shop with two is a place that lost its name', () => {
   // ⛔ ONE COMPONENT PER PLACE, WHICH IS THE KERNEL'S RULE AND NOT A PREFERENCE: `placement: 'single'` is per
-  // (store, app, component), so the four places can only be filled by four components. A store that declared
-  // three would have one of its four wearing the FORGE fallback — the exact half-substitution («`acme.` at
+  // (store, app, component), so the three places can only be filled by three components. A store that
+  // declared two would have one of them wearing the FORGE fallback — the exact half-substitution («`acme.` at
   // the top and `forge.` at the bottom of the same page») that pk26 exists to end.
   for (const [handle] of dressed) {
     assert.deepEqual(
       blocksFor(DATA, handle).map((b) => b.component).sort(),
       Object.keys(MANIFEST_SLOTS).sort(),
-      `store "${handle}" does not declare all four marks`,
+      `store "${handle}" does not declare all three marks`,
     );
   }
   assert.equal(dressed.length, 3, 'three shops wear a mark — a shorter list is a shop that vanished');
+});
+
+test('★★ the LOGIN BOX is not this file’s — the block moved to the product on the deployable axis', () => {
+  // ⇒ SABOTAGE: give any store back an `account_brand` and this names the store. It is not a tidy-up: the app
+  //   no longer ships that component, so `composition.place` would refuse it at birth with
+  //   `validation_failed: no block 'account_brand' declared by extension 'demo-setup'` — and a birth that
+  //   fails on the mark of one shop is a box that does not come up.
+  assert.equal(
+    DATA.slots[GONE_TO_THE_PRODUCT],
+    undefined,
+    `the \`slots\` map still names "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
+      'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by an ' +
+      'app of one instance. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».',
+  );
+  for (const [handle, spec] of Object.entries(DATA.stores)) {
+    if (spec === null) continue;
+    assert.equal(
+      spec[GONE_TO_THE_PRODUCT],
+      undefined,
+      `store "${handle}" declares "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
+        'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by ' +
+        'an app of one instance. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».',
+    );
+  }
 });
 
 test('★★ no config key is invented — every one is in the block’s own `config_schema`', () => {
@@ -148,7 +181,7 @@ test('⛔ and ONLY those two say it — the café has a footer of its own and th
     DATA.stores.balcao,
     null,
     'the counter is a whole-host app with no store in its URL: it mounts neither the kit chrome nor our ' +
-      'account screens, so four placements there would be four rows an operator can drag and never see. It ' +
+      'account screens, so three placements there would be three rows an operator can drag and never see. It ' +
       'is declared `null` — named, never silently absent.',
   );
 });
@@ -214,8 +247,8 @@ test('★★ no configured word leans on WHITESPACE — the two halves are glued
   }
 });
 
-test('★★★ one shop, ONE mark — the four places of a store all spell it the same way', () => {
-  // ⇒ SABOTAGE: change the tail of one of the four and this names the shop and the two spellings. The
+test('★★★ one shop, ONE mark — the three places of a store all spell it the same way', () => {
+  // ⇒ SABOTAGE: change the tail of one of the three and this names the shop and the two spellings. The
   //   liberty pk26 bought is the liberty to put a DIFFERENT mark in each place; this box does not want one,
   //   and the difference between "we may" and "we did by accident" is this rule.
   for (const [handle] of dressed) {
@@ -228,8 +261,8 @@ test('★★★ one shop, ONE mark — the four places of a store all spell it t
     assert.equal(
       marks.size,
       1,
-      `store "${handle}" spells its mark ${marks.size} different ways across its four places: ` +
-        `${[...marks].join(' vs ')}. Four placements is what lets a shop CHOOSE that; this box did not.`,
+      `store "${handle}" spells its mark ${marks.size} different ways across its three places: ` +
+        `${[...marks].join(' vs ')}. A component per place is what lets a shop CHOOSE that; this box did not.`,
     );
   }
 });
@@ -336,7 +369,7 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
     assert.deepEqual(uploaded, ['forge-co-logo.png']);
 
     const placed = calls.filter((c) => c.name === 'composition.place');
-    assert.equal(placed.length, 12, 'three dressed shops × four marks');
+    assert.equal(placed.length, 9, 'three dressed shops × three marks');
     assert.deepEqual(
       [...new Set(placed.map((c) => c.input.store))].sort(),
       ['sto_cafe', 'sto_forge', 'sto_outlet'],
