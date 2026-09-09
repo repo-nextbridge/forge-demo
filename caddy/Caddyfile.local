@@ -92,7 +92,7 @@
 	# Caddy has TWO path-matching regimes and the pattern picks which one: ONE trailing `*` and nothing else
 	# is a PREFIX match (crosses `/`), while a pattern with a SECOND wildcard falls back to Go's `path.Match`,
 	# where `*` matches any run of NON-SEPARATOR characters — so `/s/*/account*` stops dead at the slash
-	# before `login`. That is why `caddy/extra/coffee.local.caddy`, which spells the store id out and
+	# before `login`. That is why `caddy/extra-local/coffee.caddy`, which spells the store id out and
 	# therefore carries a single trailing `*`, has a WORKING login while the generic rule right here does not.
 	#
 	# A regexp has one regime. The alternative was five handles at five depths (`/s/*/account/*`,
@@ -133,23 +133,34 @@
 	# project of this repo's own, built into an image of its own). It is a deployable, and whoever creates a
 	# deployable wires it: its compose service and its routing are C1's to write, not this file's to guess.
 	#
-	# What is here is the HOLE it drops into. One file in `caddy/extra/` ending in `.local.caddy` — say
-	# `coffee.local.caddy` holding `handle /s/cafe* { reverse_proxy coffee-storefront:3000 }` — and its
-	# service in `compose.override.yml` (see compose.yml's own note), and nothing in this repository's
-	# committed files has to change.
+	# What is here is the HOLE it drops into. One file in `caddy/extra-local/` ending in `.caddy` — say
+	# `coffee.caddy` holding `handle /s/cafe* { reverse_proxy coffee-storefront:3000 }` — and its service in
+	# `compose.override.yml` (see compose.yml's own note), and nothing in this repository's committed files
+	# has to change.
+	#
+	# ⚠️⚠️ A FOLDER OF THIS FILE'S OWN, AND THE SEPARATION IS THE WHOLE OF A10. This import sits INSIDE a site
+	# block, so what it pulls are FRAGMENTS (bare `handle` blocks). `caddy/Caddyfile` — the edge a deployment
+	# reads — ends with `import /etc/caddy/extra/*.caddy` at TOP level, where every file is parsed as a SITE
+	# BLOCK. Both globs used to point at `caddy/extra/`, on the theory that `*.local.caddy` was narrower;
+	# `*.caddy` MATCHES `coffee.local.caddy`, a `.local.` in the name being a strict SUBSET and never an
+	# escape. Production imported the fragment at top level and `caddy validate` answered `parsed 'handle' as
+	# a site address` — an invalid Caddyfile, which is not a broken extra host but a DEAD EDGE: store,
+	# checkout and admin down together. The bench never showed it, because the bench reads this file.
+	# ⇒ ONE DIRECTORY, ONE READER. `bin/caddy-extra-door.guard.mjs` holds it, and holds three more legs with
+	# it (mounted, generated where its reader looks, never committed).
 	#
 	# ⚠️ IT MUST BE IMPORTED BEFORE THE FALL-THROUGH BELOW is REACHED — not because Caddy reads top to
 	# bottom (it matches `handle` by how SPECIFIC the path is, wherever it appears), but because a reader
 	# needs to see that the last block is the DEFAULT and not the only answer.
 	#
 	# An empty folder is the normal state: Caddy accepts a pattern matching nothing with one `warn` line.
-	import /etc/caddy/extra/*.local.caddy
+	import /etc/caddy/extra-local/*.caddy
 
 	# ── everything else is the reference vitrine ───────────────────────────────────────────────────────────
 	handle {
 		# ★ WHO SERVED. Set by the ROUTE, so a reader can prove which front the edge chose instead of inferring
 		# it from a theme attribute — which proves the THEME and misled two people into believing the café's
-		# fork was serving a page the vanilla front was rendering. See caddy/extra/coffee.local.caddy.
+		# fork was serving a page the vanilla front was rendering. See caddy/extra-local/coffee.caddy.
 		header X-Forge-Served-By "storefront"
 		reverse_proxy storefront:3000
 	}

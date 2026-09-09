@@ -1,8 +1,15 @@
 # Extra hostnames (normally empty)
 
-`caddy/Caddyfile` ends with `import /etc/caddy/extra/*.caddy`, and this folder is what gets mounted there.
-Leave it empty and nothing changes — Caddy accepts a pattern that matches no files (it writes one `warn`
-line and carries on). This README is not a `.caddy` file, so it is never imported.
+`caddy/Caddyfile` ends with `import /etc/caddy/extra/*.caddy` — **at top level**, so every file here is a
+whole **site block** (`hostname { … }`). Leave it empty and nothing changes — Caddy accepts a pattern that
+matches no files (it writes one `warn` line and carries on). This README is not a `.caddy` file, so it is
+never imported.
+
+> ⚠️ **The BENCH's fragments live next door, in `caddy/extra-local/`** — `caddy/Caddyfile.local` imports them
+> from *inside* its `:80` site block, so they are bare `handle` blocks, not site blocks. They shared this
+> folder once, under the name `*.local.caddy`, on the theory that it was a narrower glob: `*.caddy` matches
+> `coffee.local.caddy`, so production parsed a fragment as a site address and refused the whole file — store,
+> checkout and admin down together. **One folder, one reader** (A10); `bin/caddy-extra-door.guard.mjs` holds it.
 
 Put a file here when this box has to serve a hostname the two in `.env` do not cover.
 

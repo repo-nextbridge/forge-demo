@@ -40,7 +40,10 @@ docs/operations/       how this box is OPERATED. `runbook-demo.md` is the online
                        the box anyone can reach.
 bin/                   build-local · build-coffee · build-totem · revendor-forks · pack-apps ·
                        images-from-lock · verify-composition · seed
-caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge)
+caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge), plus ONE extension
+                       folder per edge — `extra/` (site blocks, read by Caddyfile) and `extra-local/`
+                       (fragments, read by Caddyfile.local). Sharing one folder killed the production
+                       edge once: `*.caddy` matches `coffee.local.caddy`. See caddy/extra-local/README.md.
 ```
 
 ---
@@ -218,9 +221,10 @@ and whether every shop can be signed in to is not.
 
 (Not in the table because they are not steps of the birth: **3b/3c/3d** wire the host → store map, the coffee
 fork's edge rule and the admin's brand switcher, each from an id or a file that only exists by then. **3c
-writes two things from the one id it resolves**: the edge rule AND `FORGE_COFFEE_STORE_ID` in `.env`, which
-is what lets the café's own vitrine give its own store institutional pages of its own — the id cannot be
-typed into either, for the same reason, and `bin/coffee-store-id.guard.mjs` grades all four legs of it.)
+writes two things from the one id it resolves**: the edge rule (into `caddy/extra-local/`, never `caddy/extra/`
+— see below) AND `FORGE_COFFEE_STORE_ID` in `.env`, which is what tells the café's own vitrine **which shop it
+is** — the store its clean addresses serve and whose institutional pages it renders. The id cannot be typed
+into either, for the same reason, and `bin/coffee-store-id.guard.mjs` grades all four legs of it.)
 
 ### ★★ 13–15 are the reset's own tail: reborn → purge → warm → grade
 
@@ -818,6 +822,26 @@ saying nothing at all stops `docker compose` by name before the first container.
 | `forgeco` | `outlet` | `outlet` | yes |
 | `forgecafe` | `cafe` (bootstrap) | `coffee-store` | yes, on its **fork** |
 | `forgecafe` | `balcao` | — | **no** — `status: "private"`; its front is the **totem** |
+
+### ★★ The café's fork IS the café's vitrine — its root is the café's home, not a store the host names
+
+The owner's rule, 09/09: *"o storefront usado é um fork, é ele que será acessado pelo subdomínio … acessar uma
+home de café de storefront vanilla nem deveria existir, afinal o fork do storefront assume esse papel."* So
+`storefront-coffee/` serves **one shop**: the store `FORGE_COFFEE_STORE_ID` names (`src/lib/own-store.ts`,
+asked by `src/middleware.ts` **before** the host). Every clean address of that image — `/` first of all — is
+that store's.
+
+⚠️ **Asking the host instead was wrong in both directions, measured on this bench 09/09.** The café's own
+container carries a `FORGE_STORE_HOSTS` mapping *every* hostname of the box (`localhost`, `127.0.0.1`,
+this machine's own name, its tailnet name) to the **shoe shop** — so `/` on the café's front was the shoe
+shop's home wearing
+the café's header. And no hostname of the café's own resolves at all: `read.store.by_host` gives **one store
+per authority** and the box's **root** store is the one that claims it (`bin/store-host.mjs`), so the café
+claims none and its own subdomain answered the clean 404. Neither answer is this shop.
+
+It does not show on the bench because the bench has **one origin**, whose root belongs to the shoe shop, and
+the café is reached path-scoped (`/s/cafe…`). In production each store has its **own host**, and `/` is the
+first thing a shopper opens. `storefront-coffee/src/root-is-own-shop.test.ts` is the rule.
 
 ⚠️ **The fourth store is not «off».** `balcao` keeps its catalogue, its prices, its stock, its cart and its
 orders through the port — that is how the totem sells for it — and `/s/balcao/checkout`,

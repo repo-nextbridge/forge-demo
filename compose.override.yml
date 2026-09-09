@@ -55,7 +55,8 @@ services:
       # It selects WHOSE version of an institutional template renders (`src/templates/cms/registry.ts`): the
       # café gets its own «Sobre», every other store of this image gets the shared body. The value CANNOT be
       # written into the source, because a store id is a ULID minted fresh on every `bash bin/box-up.sh` — the
-      # exact rot that made `caddy/extra/coffee.local.caddy` match nothing and hand every café request to the
+      # exact rot that made the café's generated edge rule (`caddy/extra-local/coffee.caddy`) match nothing
+      # and hand every café request to the
       # VANILLA storefront, while the page still looked right because the theme comes from the store's row.
       #
       # ⚠️ SOFT (`:-`), UNLIKE THE TOTEM'S BELOW, AND THE DIFFERENCE IS DELIBERATE. A totem with no store is
@@ -176,3 +177,22 @@ services:
   caddy:
     ports:
       - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_TOTEM_HTTP_PORT:-8203}:82'
+    # ★★ A10 — THE BENCH EDGE'S OWN EXTENSION FOLDER, AND IT IS A SECOND FOLDER ON PURPOSE.
+    #
+    # `compose.yml` already mounts `caddy/extra/`, which `caddy/Caddyfile` imports at TOP level: every file
+    # there is parsed as a SITE BLOCK. `caddy/Caddyfile.local` imports its own folder from INSIDE its `:80`
+    # site block, so what it reads are FRAGMENTS (bare `handle` blocks) — and the two shapes cannot share a
+    # directory. They did: both globs pointed at `caddy/extra/`, on the theory that `*.local.caddy` was
+    # narrower than `*.caddy`. It is a strict SUBSET, so production imported the bench's fragment at top
+    # level and `caddy validate` refused the whole file — store, checkout and admin down together, and never
+    # visible on the bench, which reads the other top-level file.
+    #
+    # It is written HERE and not in `compose.yml` for the reason the `:82` port above is: that file is the
+    # product's shape and this folder is the BENCH's. It is inert in a deployment — `caddy/Caddyfile` imports
+    # nothing from it — exactly like the published port right above.
+    #
+    # ⚠️ `bin/box-up.sh` (step 3c) WRITES into this folder. Move it here and forget the writer and the café's
+    # front becomes unreachable while every page still answers 200 (the request falls through to the vanilla
+    # storefront, which paints the store with its own theme). `bin/caddy-extra-door.guard.mjs` pairs the two.
+    volumes:
+      - ${FORGE_CADDY_EXTRA_LOCAL_DIR:-./caddy/extra-local}:/etc/caddy/extra-local:ro
