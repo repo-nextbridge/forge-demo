@@ -209,11 +209,11 @@ and whether every shop can be signed in to is not.
 | 6 | **`seed-box.mjs` × tenant** | the remaining stores, the settings every screen inherits, and — for a tenant the mounted dataset is **not** about — its apps, its freight and its checkout flag |
 | 6b | **`store-host.mjs` × tenant** | the **root store claims this box's address** in the kernel's directory (`tenant.store.update` → `host`), so `read.store.by_host` answers it. Without it the fronts route through their `FORGE_STORE_HOSTS` override and every consumer that asks the PORT — the warmer's address space first — is wrong while the shop looks perfect |
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
-| 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
+| 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes, ending with the **cache bust** over every store the port lists |
 | 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`) |
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
-| 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, cache bust, and the **re-arm** |
+| 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
 | 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
 | 14 | **`warm-box.mjs` × tenant** | every store the **port** says has a public page (`storefront_enabled`), warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
@@ -553,9 +553,15 @@ fires), so its targets are **massive** products and it must follow 9. Step 9 pub
 the one-shot inside the container — not a line in the curated script.
 
 Until the sports catalogue retired from the curated seed, that script created the 2,790 itself moments before
-the window ran. **The crutch was hiding the dependency; removing it did not create one.** The revalidate
-lands in step 10, at the end, which is where a cache bust belongs: it invalidates a store that is finished
-rather than one with a step still to come.
+the window ran. **The crutch was hiding the dependency; removing it did not create one.**
+
+⚠️ **The cache bust is the LAST line of each phase, and it says so because it was not.** It used to be step 7
+of `seed/vitrine.mjs` — one shop's seeder — so it busted the **sports store and no other** (the outlet, the
+café, the counter and the chrome were composed and never invalidated), and it ran **mid-phase**, with
+`seedLogistics`, `seedAudience` and `seedCommerce` still to write after it. It lives in `seed/purge.mjs` now,
+driven from `bin/seed.mjs` as the last statement of both phases over **every store the port lists**, and
+`bin/purge.guard.mjs` holds that word *last*. A cache bust belongs where nothing follows it: it invalidates
+shops that are finished, never one with a step still to come.
 
 ⚠️ **Step 8 must precede step 9, and that order is forced rather than chosen.** The boundary is
 CURATED × MASSIVE: `bin/seed.mjs` owns what a human wrote (the six coffees, the counter's menu, the outlet's
@@ -1276,7 +1282,9 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
 
 - **A PLACEMENT DRIVEN THROUGH THE PORT NEEDS A CACHE BUST.** The admin calls the storefront's
   revalidation hook when an operator saves; a script driving `composition.place` does not, so the page
-  keeps its cached render until the TTL. Ask for it by hand:
+  keeps its cached render until the TTL. **`bin/seed.mjs` now asks for you** — `seed/purge.mjs`, the last
+  statement of each phase, over every store the port lists. Ask for it by hand after any OTHER script that
+  drives the port:
 
   ```bash
   curl -X POST "http://localhost:8200/api/revalidate?tag=extensions:<store id>&tag=store:<store id>" \
@@ -1286,6 +1294,11 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
   ⚠️ **The checkout has no such hook** — measured: `/_checkout/api/revalidate` is a 404 and that container
   carries no `FORGE_REVALIDATE_SECRET`. Restarting it is the only lever there, which matters the day a
   block is composed into a checkout slot.
+
+  ⚠️ **And neither does the café's fork, for a different reason: the edge.** `/api/revalidate` falls through
+  to the default `handle { reverse_proxy storefront:3000 }`, so the hook reaches the **reference vitrine and
+  only it**. `storefront-coffee` holds its own Next cache behind `handle /s/cafe*` and no path on this box
+  reaches its revalidation route. `docker compose restart storefront-coffee` is the lever there.
 
 ---
 

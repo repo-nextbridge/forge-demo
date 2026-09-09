@@ -28,6 +28,44 @@
 // extra block in a slot is a human's, and deleting a human's block to make a count match is the one thing a
 // seed may not do.
 
+// ── ⛔ WHY THIS FILE IS STILL HERE (pk29/d3, `APOSENTA-VITRINE-MJS`) ──────────────────────────────────────
+//
+// The card that retires this module has a DoD of three steps, and only the middle one could be done in this
+// repository. Written here rather than in a report, because the report is not what the next person reads.
+//
+//   ✅ THE CACHE BUST HAS AN OWNER. It was step 7 of this file and it is `seed/purge.mjs` now — driven from
+//      `bin/seed.mjs` as the last statement of BOTH phases, over every store the port lists, guarded by
+//      `bin/purge.guard.mjs`. Deleting this module no longer takes the box's cache correctness with it.
+//      (And it was never only a move: here it busted ONE store of four and ran with three writers still to
+//      come in the same phase. Both facts are measured in that file's header.)
+//
+//   ⛔ THE PROMOTIONS CANNOT MOVE FROM THIS REPOSITORY, AND THE OWNER IS THE PRODUCT. Measured 2026-09-09:
+//      · `dist/seed-demo.js` → `seedCuratedStorefront` (apps/api/src/seed-storefront.ts) drives no
+//        `promotion.*` at all — and the comment that explains why, at line 857, describes a world that no
+//        longer exists: *"promotions do not exist on this branch: there is no `promotion.*` command"*.
+//        `promotion.create` is packages/core/src/commands/promotion.ts:250, and the four rows below were
+//        written by it.
+//      · The platform DOES own a runner — apps/api/scripts/seed-promotions.ts, which reads the very same
+//        `promotions.json` — but it is in `scripts/`, not `src/`, so it is NOT in the kernel image:
+//        `docker exec … ls /app/dist` answers twelve entrypoints and none of them is `seed-promotions`
+//        (apps/api/tsup.config.ts:35-50). A box that runs images cannot reach it.
+//      · And it could not express this box anyway: it omits `store_id`, so every promotion it writes is
+//        TENANT-WIDE — it would price the coffee shop and the Outlet too. The dataset cannot fix that from
+//        the outside either: `DatasetPromotion` (packages/seed-dataset/src/types.ts:567) has no store field,
+//        which is exactly why the four-of-sixteen selection lives in `seed/vitrine.json` and not in the
+//        dataset.
+//      ⇒ Any of the three moves is a change to the PRODUCT repository. This slice stopped at that border on
+//        purpose; the card stays open with this as its reason.
+//
+//   ⚠️ AND IT IS THREE THINGS, NOT ONE — whoever picks it up must not move only the first. `seedPromotions`
+//      creates them, `announce` DERIVES the band's floor from the one that actually zeroes the freight, and
+//      `progressBars` moves `show_progress` onto it. Neither of the last two exists anywhere in
+//      `seed-storefront.ts` (grepped: no `show_progress`, no announcement). Move the creation alone and the
+//      shop silently loses its band and the cart's "faltam R$ X", with every exit code still 0.
+//
+// ⇒ SO THIS FILE IS NOT DELETED, AND THE THIRD STEP OF THE DoD IS NOT DONE. Deleting it today would lose the
+//   shoe store's whole pricing bench, and the symptom would be a shop that quietly stopped discounting.
+
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,7 +126,6 @@ export async function seedVitrine(port) {
   await seedPromotions(port, store, dir);
   await announce(port, store);
   await progressBars(port, store);
-  await revalidate(port, store);
 
   log('vitrine — done. Re-running this is a no-op.');
 }
@@ -878,33 +915,3 @@ async function progressBars(port, store) {
   }
 }
 
-// ── 7. the cache ───────────────────────────────────────────────────────────────────────────────────────
-/**
- * ⚠️ A PLACEMENT DRIVEN THROUGH THE PORT NEEDS A CACHE BUST, and without this the proof of this whole module
- * is a render from before it ran. The admin calls the storefront's revalidation hook when an operator saves a
- * block; a script driving `composition.place` does not, so the page keeps its ISR render until the TTL. The
- * README already documents the curl; a seed that composes a home and then leaves the shop showing the old one
- * is a seed that needs a footnote to be true.
- *
- * No secret means a LINE, never a failure: the box may legitimately run without one, and the composition
- * landed either way. The human is told exactly what is now stale.
- */
-async function revalidate({ api, log }, store) {
-  const secret = (process.env.FORGE_REVALIDATE_SECRET ?? '').trim();
-  if (secret === '') {
-    log(
-      'vitrine — no FORGE_REVALIDATE_SECRET: the home is composed and the STOREFRONT still serves its cached\n' +
-        `        render until the TTL. Bust it with the curl in the README (tags extensions:${store.id} and store:${store.id}).`,
-    );
-    return;
-  }
-  const res = await fetch(`${api}/api/revalidate?tag=extensions:${store.id}&tag=store:${store.id}`, {
-    method: 'POST',
-    headers: { 'x-revalidate-secret': secret },
-  });
-  log(
-    res.ok
-      ? 'vitrine — storefront cache busted; the composed home is what the next request gets'
-      : `vitrine — revalidate answered HTTP ${res.status}. The composition landed; the page is stale until the TTL.`,
-  );
-}

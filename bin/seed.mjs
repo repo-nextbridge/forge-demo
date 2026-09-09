@@ -92,6 +92,10 @@ import { priceOutlet } from '../seed/outlet.mjs';
 // its own beside the catalogue's, and it runs AFTER it for a reason the commands enforce: a shelf sourced from
 // a category and a promotion targeting a handle both resolve against products that have to be published first.
 import { seedVitrine } from '../seed/vitrine.mjs';
+// THE STOREFRONT CACHE BUST — the box's, and the LAST thing every phase does. It used to be a private step
+// of `seed/vitrine.mjs`, which made the whole box's cache correctness a side effect of one shop's seeder and
+// covered one store of four. Its own header carries the measurement and the two doors it cannot reach.
+import { purgeStorefrontCache } from '../seed/purge.mjs';
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SEED = join(HERE, 'seed');
@@ -118,8 +122,12 @@ const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env
 //   --phase curated   (default)  the terrain and the curated content: stores, vocabulary, declared fields,
 //                                the six coffees, the outlet's eight, the counter's menu, the placeholders.
 //   --phase window               the shop window of the sports store: the composed blocks, the app settings,
-//                                the institutional pages, the DATASET's promotions, the cache bust — and the
+//                                the institutional pages, the DATASET's promotions — and the
 //                                OUTLET'S "DE", which the massive step erases if it is written in `curated`.
+//
+// ★ AND BOTH END THE SAME WAY: `purgeStorefrontCache`, over every store the PORT lists. It is the last
+// statement of each phase and `bin/purge.guard.mjs` holds that word — see `seed/purge.mjs` for why it stopped
+// being one shop's private step.
 //
 // ⚠️ THEY ARE TWO INVOCATIONS BECAUSE A THIRD PROCESS RUNS BETWEEN THEM. The massive half — the 2 790-product
 // catalogue and the assortment — is filled by `dist/seed-demo.js`, a one-shot INSIDE the container. The order
@@ -1561,6 +1569,12 @@ await silenceBuyerChannels({
 });
 
 log('curated — done. Next: the one-shot (`dist/seed-demo.js`), then `--phase window`.');
+
+// ⛔ LAST, AND THE GUARD (`bin/purge.guard.mjs`) HOLDS THAT WORD. Everything above wrote through the port,
+// and a placement driven through the port carries no revalidation of its own — so a phase that ends without
+// this leaves the shops serving the render they had before it ran, which is the one failure nobody connects
+// to a seed. Anything appended after this line is written behind a cache this run has just called fresh.
+await purgeStorefrontCache({ api, read, rows, log });
 } // ── end of the curated phase ───────────────────────────────────────────────────────────────────────────────
 
 // ── ★ THE WINDOW — AFTER the one-shot, never before. The header of `--phase` says why. ──────────────────────
@@ -1621,6 +1635,9 @@ await seedCommerce({
   fail,
 });
 
+
+// ⛔ LAST — same word, same guard, same reason as the end of the curated phase above.
+await purgeStorefrontCache({ api, read, rows, log });
 } // ── end of the window phase ────────────────────────────────────────────────────────────────────────────────
 // ★ WHERE THE MINUTES WENT, per face — the number nobody could answer after a 74-minute birth without
 // reading the source. It counts what was DONE (a token handed out), never what was planned: three of the
