@@ -87,6 +87,10 @@
       "package": "@forgecommerce/ext-chrome"
     },
     {
+      "id": "content",
+      "package": "@forgecommerce/ext-content"
+    },
+    {
       "id": "demo-data",
       "package": "@forge/ext-demo-data"
     },
