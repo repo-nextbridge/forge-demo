@@ -41,9 +41,19 @@ COPY public ./public
 
 EXPOSE 3000
 
-# Liveness only: any HTTP response means the server is up (a bare "/" without a matching Host resolves to a
-# clean 404, which is still a response). This never depends on host->store config being present.
+# Liveness, graded on the SERVER'S HALF of the status: 5xx is unhealthy, everything below it is an answer.
+# This never depends on host->store config being present.
+#
+# ⚠️ NOT `r.ok`, and that is a measurement rather than a preference: a bare "/" carrying a Host no store claims
+# resolves to a clean 404 (measured 2026-09-09 on the live bench: `Host: cafe.localhost` -> 404), so `r.ok`
+# would paint a perfectly healthy container red forever.
+#
+# ⚠️ AND NOT `.then(() => exit(0))`, which is what this line used to be. Discarding the response makes `then`
+# resolve for 200, 404 and 500 alike, so the ONLY way the container could ever go unhealthy was a refused
+# connection. Measured: `forge-preseed-storefront-coffee-1` sat at `health=healthy`, `FailingStreak=0`, for 15
+# hours while its middleware threw on every request — 118 stack traces in 20 min, one per `--interval`, because
+# this probe was both the traffic producing the error and the authority calling the container healthy.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(()=>process.exit(0)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

@@ -200,3 +200,270 @@ test('every image this repository builds declares HEALTHCHECK in its own Dockerf
     `these Dockerfiles build a long-running server with no HEALTHCHECK:\n  ${naked.join('\n  ')}`,
   );
 });
+
+// ── 3 · pk28/D2 — AND THE PULSE HAS TO BE ABLE TO SAY NO ──────────────────────────────────────────────────
+//
+// Everything above asks whether a container HAS a probe. Until 2026-09-09 nothing asked whether that probe
+// could ever answer NO, and both of this repository's probes could not:
+//
+//     fetch(url).then(() => process.exit(0))    <- the response is DISCARDED. `then` resolves for 200, for
+//                                                  404 and for 500 alike; only a REFUSED CONNECTION is red.
+//
+// ★★ MEASURED ON THIS BOX, not reasoned. `forge-preseed-storefront-coffee-1` — the image built from
+// `storefront-coffee/Dockerfile` — sat at `health=healthy`, `FailingStreak=0`, for 15 hours while its Next
+// middleware threw `TypeError: (0 , i.isServerActionSubmission) is not a function` on the probe's own request:
+// 118 stack traces in 20 min, one every ~10.2 s, which is this probe's `--interval` to the second. Measured
+// the same day with the probe's exact Host (`curl -H 'Host: 127.0.0.1:3000' http://<container-ip>:3000/`):
+// **HTTP 500**, and the counter went up by one per call. So the healthcheck was the traffic PRODUCING the
+// error and the authority calling the container healthy, and `docker ps` printed `(healthy)` next to a front
+// that answered 500 to every request it routed.
+//
+// ── WHY THE OBVIOUS FIX (`r.ok`) IS WRONG, AND THIS IS THE MEASUREMENT THAT SETTLES IT ────────────────────
+//
+// `r.ok` is 200–299. Measured 2026-09-09 against the two live containers of this box, a bare `/` with a Host
+// no store claims answers **404** (`Host: 172.24.0.8` and `Host: cafe.localhost` -> 404 on the coffee front),
+// and the shipped comment beside each probe already argued exactly that ("a bare `/` without a matching Host
+// resolves to a clean 404, which is still a response"). The discarded response was therefore a REASONED
+// liveness choice — the reasoning just never noticed that it swallowed 5xx along with the 404. Tightening to
+// `r.ok` would paint a healthy fork red on every box.
+//
+// ⇒ THE RULE, DERIVED FROM THE PATH THE PROBE ITSELF FETCHES rather than from a list of images — the same
+// derivation the product's `scripts/ci/container-health.guard.test.ts` makes, so the two sides of the fence
+// grade the eighth front the same way:
+//
+//   · a probe of a DEDICATED health endpoint (`/health`)  it exists to answer 200 and nothing else, so `r.ok`
+//                                                         is exactly right (this is the kernel's probe, which
+//                                                         lives in the product; no Dockerfile HERE has one).
+//   · a probe of any OTHER route (`/`)                    the app's own routing decides the status and 404 is
+//                                                         a legitimate answer, so the probe grades the
+//                                                         SERVER's half — `r.status < 500` — and must NOT use
+//                                                         `r.ok`, which is red on a healthy box.
+//
+// ⚠️ AND THE RULE IS NOT ONLY READ, IT IS RUN. The last test below takes the `node -e` script OUT of each
+// Dockerfile and executes it against a local server that answers 200, 404, 500, 503 and nothing at all. A
+// static regex can be satisfied by a line that mentions `r.status` and still exits 0 for a 500; only running
+// it proves the table. The old line scores 0/5 on it.
+
+import { spawn } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import { createServer } from 'node:http';
+
+/** Build output and vendored trees — a copy of a file, never the file. */
+const PRUNED = new Set(['node_modules', '.next', 'dist', '.git', '.turbo', 'coverage', 'dataset']);
+
+function walkDockerfiles(dir = ROOT, found = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (PRUNED.has(entry.name)) continue;
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) walkDockerfiles(abs, found);
+    else if (entry.isFile() && (entry.name === 'Dockerfile' || entry.name.endsWith('.Dockerfile')))
+      found.push(abs.slice(ROOT.length + 1));
+  }
+  return found;
+}
+
+const DOCKERFILES = walkDockerfiles().sort();
+
+/** The path a `/health`-style probe asks for is the one graded with `.ok`; everything else is an app route. */
+const DEDICATED_HEALTH_PATH = '/health';
+
+/**
+ * The command a Dockerfile's HEALTHCHECK runs, with `\` continuations joined, or null when it declares none.
+ * PARSED, not grepped: the paragraph above a HEALTHCHECK is prose ABOUT it — the block you are reading names
+ * `then(() => process.exit(0))` — and a grep cannot tell the two apart.
+ */
+function healthcheckCommandOf(source) {
+  const lines = source.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!/^HEALTHCHECK\b/.test(lines[i])) continue;
+    let joined = lines[i];
+    while (joined.trimEnd().endsWith('\\') && i + 1 < lines.length) {
+      i += 1;
+      joined = `${joined.trimEnd().slice(0, -1)}${lines[i].trim()}`;
+    }
+    const cmd = /\bCMD\b([\s\S]*)$/.exec(joined);
+    return cmd ? cmd[1].trim() : '';
+  }
+  return null;
+}
+
+/**
+ * The path a `fetch(...)` probe asks for: the last quoted literal inside the call, which is how these are
+ * written (`'http://127.0.0.1:'+(process.env.PORT||3000)+'/'`). Null when the command does not fetch at all —
+ * `wget`, `nc`, `pg_isready` grade their own exit status and are not this rule's subject.
+ */
+function fetchedPathOf(command) {
+  const call = /fetch\(([\s\S]*)\)\s*\.\s*then\(/.exec(command);
+  if (!call) return null;
+  const literals = [...call[1].matchAll(/'([^']*)'|"([^"]*)"/g)].map((m) => m[1] ?? m[2]);
+  const last = literals.at(-1);
+  return last?.startsWith('/') ? last : '/';
+}
+
+/** Does the `then` handler BIND the response and use it to choose the exit code? */
+function gradesTheResponse(command) {
+  const bound = /\.\s*then\(\s*(?:async\s+)?(?:\(\s*([A-Za-z_$][\w$]*)\s*\)|([A-Za-z_$][\w$]*))\s*=>/.exec(
+    command,
+  );
+  const name = bound?.[1] ?? bound?.[2];
+  if (!name) return false;
+  return new RegExp(`\\b${name}\\s*\\.\\s*(ok|status)\\b`).test(command);
+}
+
+/** The script inside `node -e "…"`, so the real line can be EXECUTED rather than only read. */
+function nodeScriptOf(command) {
+  const hit = /^node\s+(?:--\S+\s+)*-e\s+"([\s\S]*)"\s*$/.exec(command.trim());
+  return hit ? hit[1] : null;
+}
+
+const FETCH_PROBES = DOCKERFILES.flatMap((file) => {
+  const command = healthcheckCommandOf(readFileSync(join(ROOT, file), 'utf8'));
+  if (command === null) return [];
+  const path = fetchedPathOf(command);
+  return path === null ? [] : [{ file, command, path }];
+});
+
+test('★★ the probe reader SEES both forks — a scan that finds no probe grades nothing forever', () => {
+  // The whole finding is a clause missing from a copied line. A reader that stopped seeing the line would go
+  // green on the exact regression it exists to catch, so the set is PINNED: a third Dockerfile, or a rename,
+  // forces a decision here instead of slipping past.
+  assert.deepEqual(
+    DOCKERFILES,
+    ['storefront-coffee/Dockerfile', 'totem/Dockerfile'],
+    `the Dockerfile walk found ${DOCKERFILES.length} file(s): ${DOCKERFILES.join(', ')}. This box builds two ` +
+      'images; a different list means the walk broke or an image arrived unattended.',
+  );
+  assert.deepEqual(
+    FETCH_PROBES.map((p) => p.file),
+    ['storefront-coffee/Dockerfile', 'totem/Dockerfile'],
+    'the HEALTHCHECK parser extracted no fetch probe from one of the two Dockerfiles — every rule below then ' +
+      `grades nothing. Found: ${FETCH_PROBES.map((p) => p.file).join(', ') || '(none)'}`,
+  );
+  assert.ok(
+    FETCH_PROBES.some((p) => p.path !== DEDICATED_HEALTH_PATH),
+    'no probe asks an app route — the `do not discard the response` rule grades nothing',
+  );
+  // ⓘ No Dockerfile HERE probes `/health` (the kernel's does, and the kernel is the product's image), so the
+  // `.ok` rule below currently grades ZERO probes. That is stated rather than asserted away: the day one of
+  // these forks grows a real health endpoint, the rule is already waiting for it.
+});
+
+test('★★ a fetch probe GRADES the response — `then(() => exit(0))` is green for a 500', () => {
+  const blind = FETCH_PROBES.filter((probe) => !gradesTheResponse(probe.command)).map(
+    (probe) => `${probe.file} (fetches ${probe.path})`,
+  );
+  assert.deepEqual(
+    blind,
+    [],
+    'these HEALTHCHECKs throw the response away, so `then` resolves for 200, 404 and 500 alike and the only ' +
+      'way the container can go unhealthy is a REFUSED CONNECTION. Measured on this box: a front answering ' +
+      '500 to every request — its own probe included, one per --interval — reported itself healthy for 15 ' +
+      `hours:\n  ${blind.join('\n  ')}`,
+  );
+});
+
+test('★★ a probe of an APP ROUTE fails on 5xx and survives a 404 — `r.ok` there is red on a healthy box', () => {
+  const wrong = FETCH_PROBES.filter((probe) => probe.path !== DEDICATED_HEALTH_PATH)
+    .map((probe) => {
+      if (/\.\s*ok\b/.test(probe.command))
+        return `${probe.file}: grades with \`.ok\`, but ${probe.path} with a Host no store claims answers 404 (measured 2026-09-09 on this box) — that is unhealthy on a healthy container`;
+      if (!/\.\s*status\b/.test(probe.command))
+        return `${probe.file}: never reads \`.status\`, so nothing decides the exit code`;
+      if (!/\b5\d\d\b/.test(probe.command))
+        return `${probe.file}: reads \`.status\` but names no 5xx boundary — say which statuses are the SERVER's fault`;
+      return null;
+    })
+    .filter((line) => line !== null);
+  assert.deepEqual(
+    wrong,
+    [],
+    `a probe of a route the app itself routes must grade the SERVER's half of the status:\n  ${wrong.join('\n  ')}`,
+  );
+});
+
+test('★ a probe of a DEDICATED health endpoint asks for 200 — there a 404 is a defect too', () => {
+  const wrong = FETCH_PROBES.filter((probe) => probe.path === DEDICATED_HEALTH_PATH)
+    .filter((probe) => !/\.\s*ok\b/.test(probe.command))
+    .map(
+      (probe) =>
+        `${probe.file}: ${probe.path} exists to answer 200 and nothing else, so it is graded with \`.ok\` — a 404 there means the route is gone, which is not health`,
+    );
+  assert.deepEqual(wrong, [], `${wrong.join('\n  ')}`);
+});
+
+// ── 4 · AND THE LINE IS RUN, NOT ONLY READ ────────────────────────────────────────────────────────────────
+
+/** An HTTP server on 127.0.0.1 that answers `status` to everything, and the port it took. */
+async function serverAnswering(status) {
+  const server = createServer((_req, res) => res.writeHead(status).end(''));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { port: server.address().port, close: () => new Promise((r) => server.close(r)) };
+}
+
+/** A port nothing is listening on: taken, read, released. */
+async function deadPort() {
+  const { port, close } = await serverAnswering(200);
+  await close();
+  return port;
+}
+
+/**
+ * Runs the probe's own script with PORT pointed at a local server, and resolves with its exit code.
+ *
+ * ⚠️ ASYNC ON PURPOSE, and it cost a red to learn: `spawnSync` BLOCKS this process's event loop, which is the
+ * very loop serving the server below — the probe's connection is never accepted, the child is killed at the
+ * timeout and reports exit code `null`. A synchronous spawn cannot talk to an in-process server.
+ */
+function runProbe(script, port) {
+  const child = spawn(process.execPath, ['-e', script], {
+    env: { ...process.env, PORT: String(port) },
+    stdio: 'ignore',
+  });
+  const timer = setTimeout(() => child.kill('SIGKILL'), 10_000);
+  return new Promise((resolve) => {
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
+  });
+}
+
+test('★★ the probe, EXECUTED: 200 -> 0 · 404 -> 0 · 500 -> 1 · 503 -> 1 · refused -> 1', async () => {
+  // ⚠️ THE ONE TEST A REGEX CANNOT REPLACE. A line that merely MENTIONS `r.status` still exits 0 for a 500 if
+  // the comparison is backwards, and that mistake reads as a fix. So the script is lifted out of the
+  // Dockerfile and run against a server that answers each status in the table.
+  const dead = await deadPort();
+  for (const probe of FETCH_PROBES) {
+    const script = nodeScriptOf(probe.command);
+    assert.ok(
+      script,
+      `${probe.file}: its HEALTHCHECK is not a \`node -e "…"\` command, so this test cannot run it. Either ` +
+        `write it that way or teach this extractor the new shape — do not leave the probe ungraded:\n  ${probe.command}`,
+    );
+    for (const [status, expected] of [
+      [200, 0],
+      [404, 0],
+      [500, 1],
+      [503, 1],
+    ]) {
+      const server = await serverAnswering(status);
+      const code = await runProbe(script, server.port);
+      await server.close();
+      assert.equal(
+        code,
+        expected,
+        `${probe.file}: its healthcheck exited ${code} against HTTP ${status}, and docker reads that exit ` +
+          `code as ${code === 0 ? 'HEALTHY' : 'unhealthy'}. Expected ${expected}. ` +
+          (status >= 500
+            ? 'A 5xx is the SERVER failing; a probe that exits 0 there can never report a dead container.'
+            : `A ${status} is an answer — the server is up and routed the request. A probe that exits 1 there paints a healthy box red.`),
+      );
+    }
+    assert.equal(
+      await runProbe(script, dead),
+      1,
+      `${probe.file}: its healthcheck did not exit 1 against a REFUSED connection — the one case the old ` +
+        'blind probe did get right.',
+    );
+  }
+});
