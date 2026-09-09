@@ -12,6 +12,7 @@
 //   rides a cart line, the contract is the app's to mint, the states are reached by the app's own actions).
 //   What the box actually holds afterwards is `bin/verify-seed.mjs`'s question, not this file's.
 
+import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -427,4 +428,63 @@ test('★ and a real id still waits — the refusal above must not swallow the n
     sleep: async () => {},
   });
   assert.equal(held.length, 1);
+});
+
+// ★★★ ONE BOX, ONE CEILING FOR ONE QUESTION — READ FROM THE OTHER FILE, NEVER TYPED TWICE.
+//
+// `bin/box-up.sh` step 10b waits for the dispatcher with `DRAIN_CEILING_S=600`, asking exactly what this wait
+// asks: "is the relay still behind?". This step asked the same question with 15s, then 60s, and failed both
+// times on a real birth. The number is no longer this file's opinion — it is the box's, and this rule reads
+// it out of `box-up.sh` so that moving one moves the other or turns red.
+//
+// ⚠️ THE BUDGET IS MEASURED, NOT READ OFF THE SIGNATURE — `sleep` is handed every interval, so summing what
+// the wait ASKS FOR is the box's own answer. A default changed to `polls: 300, waitMs: 1` would pass a
+// signature check and fail this one.
+test('★★★ the ceiling is the one box-up already declares for the same question (10b)', async () => {
+  const boxUp = await readFile(new URL('../bin/box-up.sh', import.meta.url), 'utf8');
+  const declared = /DRAIN_CEILING_S=(\d+)/.exec(boxUp);
+  assert.ok(
+    declared,
+    'bin/box-up.sh no longer declares DRAIN_CEILING_S. This rule derives this step\'s ceiling from it; ' +
+      'without it the ceiling would silently become a number typed in two files again.',
+  );
+  const ceilingMs = Number(declared[1]) * 1000;
+
+  let budgetMs = 0;
+  const outcome = await awaitContracts({
+    read: async () => ({ items: [] }),
+    log: () => {},
+    wanted: ['ord_1'],
+    sleep: async (ms) => {
+      budgetMs += ms;
+    },
+  });
+  assert.ok(outcome.unresolved, 'a contract that never arrives must still be UNRESOLVED');
+  assert.equal(
+    budgetMs,
+    ceilingMs,
+    `this step gives the app ${budgetMs / 1000}s and step 10b of the same birth gives the relay ` +
+      `${ceilingMs / 1000}s for the same question. Measured on 2026-09-09 the contracts landed at 201s, ` +
+      'past a 60s budget; and quietness cannot be the give-up rule here because the café tenant ran NOTHING ' +
+      'for three legitimate minutes while the OTHER tenant\'s 32k events drained.',
+  );
+});
+
+// ★★ AND IT SAYS SO WHILE IT WAITS. Ten minutes of silence is indistinguishable from a hang, and the person
+// watching a birth is the one who decides whether to kill it.
+test('★★ the wait reports what it is still short of, by name, while it waits', async () => {
+  const lines = [];
+  await awaitContracts({
+    read: async () => ({ items: [{ origin_order_id: 'ord_1' }] }),
+    log: (m) => lines.push(m),
+    wanted: ['ord_1', 'ord_2'],
+    polls: 30,
+    waitMs: 2_000,
+    sleep: async () => {},
+  });
+  const progress = lines.filter((l) => l.includes('still waiting on'));
+  assert.ok(progress.length >= 2, `a wait this long printed ${progress.length} progress line(s)`);
+  assert.match(progress[0], /still waiting on 1 of 2 contract\(s\)/, 'it must count what is MISSING, not what arrived');
+  assert.match(progress[0], /ord_2/, 'and name it — a spinner is not a fact that shrinks');
+  assert.ok(!progress[0].includes('ord_1'), 'the one that already arrived must not be named as missing');
 });

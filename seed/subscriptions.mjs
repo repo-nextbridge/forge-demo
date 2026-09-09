@@ -161,7 +161,32 @@ export function pickSubscribableSku(products, index) {
  * ⚠️ IT FAILS RATHER THAN SHRUGGING. A step that placed three orders and reported "no contracts yet" would
  * leave a box that looks seeded and shows an empty widget — the exact state this whole file exists to end.
  *
- * ★★ THE BUDGET IS 60s AND NOT 15s, AND THE MEASUREMENT IS WHY (pk28, the birth of 09/09). The three orders
+ * ★★★ THE CEILING IS 600s, AND IT IS NOT A THIRD GUESS — IT IS THE ONE THIS BOX ALREADY DECLARES.
+ * `bin/box-up.sh` step 10b waits for the dispatcher with `DRAIN_CEILING_S=600` for the same question this
+ * wait asks: "is the relay still behind?". Two waits on one box answering one question with two different
+ * ceilings is how you get a third number next month. 15s failed, 60s failed; the number is now the box's.
+ *
+ * ⛔⛔ AND QUIETNESS CANNOT BE THE RULE HERE, WHICH IS THE THING I TRIED FIRST AND MEASURED AWAY.
+ * Step 10b gives up on PROGRESS, not on the clock, and that is the better shape — so the obvious fix was to
+ * watch this app's own runs (`internal/extension_runs`, backed by `extension_invocation`) and give up when it
+ * went quiet. Measured on the birth of 2026-09-09, per minute, for the café's tenant:
+ *
+ *     22:34  reviews 48 · subscriptions —      ← the three orders are placed at 22:34:30
+ *     22:35  (nothing ran)
+ *     22:36  (nothing ran)
+ *     22:37  subscriptions 5                   ← the three contracts, at 22:37:50
+ *
+ * ⇒ THREE MINUTES OF LEGITIMATE SILENCE. A quietness rule would have given up in the middle of it and blamed
+ * the relay, which is the very failure this file exists to stop. The reason the silence is legitimate is the
+ * one thing a per-tenant credential CANNOT see: the queue delaying the café belonged to the OTHER tenant —
+ * 32 018 storefront invalidations, 31 880 availability rows and 37 458 catalogue projections, all forgeco's.
+ * Nothing published by this box says "the relay is behind": not `/health` (`{status, service, extensions}`),
+ * not any `internal/*` face. Step 10b works around it with the NOTIFICATION queue, and that proxy is blind
+ * exactly here — measured: forgeco wrote 17-30 notifications a minute through the whole window and the café
+ * wrote ZERO, because its channel is disabled. ⇒ THE REAL FIX IS THAT THE BOX PUBLISH ITS RELAY DEPTH, and
+ * until it does, a ceiling is the honest instrument. That is a slice, and it is named in CADERNO-PK29 §14.
+ *
+ * ★★ THE BUDGET WAS 60s AND NOT 15s, AND THE MEASUREMENT IS WHY (pk28, the birth of 09/09). The three orders
  * DID mint their contracts — they were simply not there yet at the fifteenth second. Measured on that box
  * after the failure: `ext:subscriptions:order-placed` had **717 deliveries, all `delivered`, zero errors**,
  * the three orders all carried a `customer_id`, and the three contracts existed. The relay was not broken; it
@@ -175,7 +200,7 @@ export function pickSubscribableSku(products, index) {
  *
  * @param wanted the order ids that must each have produced a contract
  */
-export async function awaitContracts({ read, log, wanted, polls = 60, waitMs = 1_000, sleep }) {
+export async function awaitContracts({ read, log, wanted, polls = 300, waitMs = 2_000, sleep }) {
   const nap = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   // ★★ A WAIT THAT IS ASKED TO WATCH FOR NOTHING SAYS SO, INSTEAD OF WATCHING FOREVER AND BLAMING THE RELAY.
   // Measured on the birth of 2026-09-09: `placeOrder`'s re-run branch returned a row with no `order_id`, so
@@ -192,15 +217,29 @@ export async function awaitContracts({ read, log, wanted, polls = 60, waitMs = 1
         'orders further down would UNDERSTATE it and name nobody.',
     );
   const missing = new Set(wanted);
+  const waited = () => Math.round((attemptsMade * waitMs) / 1000);
+  let attemptsMade = 0;
   let held = [];
   for (let attempt = 0; attempt <= polls; attempt += 1) {
-    if (attempt > 0) await nap(waitMs);
+    if (attempt > 0) {
+      await nap(waitMs);
+      attemptsMade += 1;
+    }
     held = (await read('internal/extension_records', { extension: APP, model: CONTRACT_MODEL, limit: 100 }))?.items ?? [];
     for (const row of held) missing.delete(row.origin_order_id);
     if (missing.size === 0) {
-      log(`subscriptions — ${wanted.length} contract(s) minted by the app, after ${attempt}s of waiting`);
+      log(`subscriptions — ${wanted.length} contract(s) minted by the app, after ${waited()}s of waiting`);
       return held;
     }
+    // ★ A TEN-MINUTE CEILING THAT SAYS NOTHING IS INDISTINGUISHABLE FROM A HANG, and the operator watching a
+    // birth is the one who decides whether to kill it. Every 30s the wait states what it is still short of.
+    // ⚠️ It reports the ORDERS, not a spinner: "still 2 of 3" is a fact that shrinks; "waiting…" is not.
+    if (attempt > 0 && attempt % Math.max(1, Math.round(30_000 / waitMs)) === 0)
+      log(
+        `subscriptions — still waiting on ${missing.size} of ${wanted.length} contract(s) after ${waited()}s ` +
+          `(${[...missing].join(', ')}). The app mints from \`order.created\` through the outbox, and on a ` +
+          'birth the relay is draining every tenant of this box, not just this one.',
+      );
   }
   return { unresolved: [...missing], held };
 }
