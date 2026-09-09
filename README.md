@@ -914,6 +914,23 @@ is that commit (`FORGE_MONOREPO=<path>` names one; a worktree of it is found fro
 prints the tree it compiled against, and a run that cannot check prints **NOT CHECKED** with the reason —
 never a silent green.
 
+⚠️ **And `tsc` being green is not the same sentence as "the bundle is built from that kit" —
+`bin/fork-bundle-freshness.guard.mjs` is the difference.** Measured 2026-09-09:
+`forge-preseed-storefront-coffee-1` was born **(unhealthy)** and threw
+`TypeError: (0 , i.isServerActionSubmission) is not a function` on every request, while the kit in its
+`node_modules` exported that function, `tsc` was green and `next build` exited 0. The middleware it shipped
+carried a kit six days old, because webpack validates everything under `snapshot.managedPaths` — all of
+`node_modules`, in a Next build — by the package's **version**, and the Forge packages are vendored here as
+tarballs frozen at one version forever, so `.next/cache/webpack` served a September-3 compilation to a
+September-9 build. Re-baking the image did not move it: the cache lives in the fork's directory, not in the
+image. Each fork's `next.config.mjs` now carries one shared block that (1) takes the scopes named in its own
+`transpilePackages` out of `managedPaths`, so they are invalidated by content like first-party source, and
+(2) sets `exportsPresence: 'error'`, so an import of a name the target module does not export is a **red
+build naming the symbol and the module** instead of a warning, an exit 0 and a production `TypeError`. This
+guard proves both facts by loading each config and calling the hook, and compares the block byte for byte
+across the forks. It needs no `node_modules` and no Forge checkout, and it has no NOT CHECKED to fall back
+on — the defect it grades is invisible everywhere else.
+
 ⚠️ **And one of them is about a rule this repository never asked for.** `bin/store-mount-drift.guard.mjs`
 reads the REFERENCE vitrine out of that same pinned checkout and requires `storefront-coffee/`'s
 store-scoped root layouts to mount whatever the reference mounts there from `@forgecommerce/*`. It exists
