@@ -185,11 +185,72 @@ test('⛔ a contract that never arrives is UNRESOLVED, never an empty success', 
   assert.deepEqual(outcome.unresolved, ['ord_1', 'ord_2']);
 });
 
+// ★★★ pk29/D1 — THE BUDGET AND THE SENTENCE, WHICH ARE THE TWO HALVES OF THE 09/09 FAILURE.
+//
+// The birth of 2026-09-09 stopped here: `awaitContracts` gave up at the fifteenth second and reported "no
+// contract", naming two causes — a relay that is not delivering, and a guest checkout. Measured on that box
+// minutes later, BOTH WERE FALSE: `ext:subscriptions:order-placed` had 717 deliveries, all `delivered`, zero
+// errors; the three orders each carried a `customer_id`; and the three contracts EXISTED. The relay was not
+// broken, it was BEHIND — the same birth had just written 7 250 reviews and hundreds of orders into the
+// outbox for eight consumers to drain.
+//
+// `8517dc9` widened the budget and rewrote the sentence and shipped NEITHER with a test, which is what these
+// two rules are. They grade the two things that failed, and they grade them the way the box experiences them:
+// the budget is MEASURED by summing what the wait asks to sleep (never read off the signature), and the
+// sentence is read off a REFUSAL driven end to end.
+
+test('★★★ the DEFAULT budget outlives the backlog the same birth writes — 15s is where it died', async () => {
+  // ⛔ NO `polls`/`waitMs` OVERRIDE. Every other rule here passes its own budget, so all of them were green
+  // on the day the default was too short: the default is the thing that runs on a birth and the only thing
+  // this rule is about. It is measured rather than read — `sleep` is handed the interval, so summing what the
+  // wait ASKS FOR is the box's own answer to "how long does this step give the app?".
+  let budgetMs = 0;
+  const outcome = await awaitContracts({
+    read: async () => ({ items: [] }),
+    log: () => {},
+    wanted: ['ord_1'],
+    sleep: async (ms) => {
+      budgetMs += ms;
+    },
+  });
+  assert.ok(outcome.unresolved, 'a contract that never arrives must still be UNRESOLVED');
+  assert.ok(
+    budgetMs >= 60_000,
+    `this step gives the app ${budgetMs / 1000}s. The birth of 2026-09-09 failed at the FIFTEENTH second ` +
+      'with all three contracts already on their way: the relay was draining an outbox this same birth had ' +
+      'just filled with 7 250 reviews and hundreds of orders, for eight consumers. A budget under a minute ' +
+      'is a step that reports a broken relay because the box was busy.',
+  );
+});
+
+test('★★★ …and a contract that lands PAST the old budget still resolves, on the default', async () => {
+  // The concrete shape of the failure: the app minted it, just not by second fifteen. At second forty the
+  // old budget had already given up and the new one has not.
+  const LATE = 40;
+  const rows = [];
+  let naps = 0;
+  const held = await awaitContracts({
+    read: async () => ({ items: rows }),
+    log: () => {},
+    wanted: ['ord_1'],
+    sleep: async () => {
+      naps += 1;
+      if (naps === LATE) rows.push({ id: 'sub_1', origin_order_id: 'ord_1', status: 'active' });
+    },
+  });
+  assert.ok(
+    Array.isArray(held),
+    `a contract minted at second ${LATE} was reported as never minted — the default budget gave up first`,
+  );
+  assert.equal(contractOf(held, 'ord_1').id, 'sub_1');
+  assert.equal(naps, LATE, 'it kept polling after the contract arrived, or stopped before it did');
+});
+
 // ── the step, driven end to end against a fake port ──────────────────────────────────────────────────────
 
 /** A port that records every gesture. The contracts appear the moment an order is placed, which is what the
  *  app's script really does — just without the outbox in between. */
-function fakePort({ installed = true, stored = null, statusOf = () => 'active' } = {}) {
+function fakePort({ installed = true, stored = null, statusOf = () => 'active', mints = true } = {}) {
   // `statusOf(index)` is the status the contract is BORN with in this fixture — 'active' for a first run,
   // and each subscriber's declared state for the "second run" case, which is the page the first run leaves.
   const calls = { orders: [], actions: [], failed: null };
@@ -220,6 +281,9 @@ function fakePort({ installed = true, stored = null, statusOf = () => 'active' }
       placeOrder: async (args) => {
         calls.orders.push(args);
         const order_id = `ord_${calls.orders.length}`;
+        // `mints: false` is the box of 09/09: the orders are placed and no contract ever appears within the
+        // budget. It is the only way to reach the refusal, and the refusal is a sentence somebody has to read.
+        if (!mints) return { order_id, number: calls.orders.length };
         contracts.push({
           id: `sub_${calls.orders.length}`,
           origin_order_id: order_id,
@@ -292,4 +356,45 @@ test('⛔ a rhythm the STORE does not offer is refused by name, before a single 
   await assert.rejects(() => signSubscriptions(port));
   assert.match(calls.failed, /this store offers \[weekly\]/);
   assert.deepEqual(calls.orders, [], 'it placed an order before checking the offer');
+});
+
+test('★★★ pk29/D1 — the refusal names the TABLE to look in, and offers the TRUE cause FIRST', async () => {
+  // ★ THE LESSON THIS RULE PINS: *a diagnostic that lists two hypotheses and omits the true one is worse than
+  // none — it sends the reader to check a relay that is fine.* On 09/09 this sentence named exactly two
+  // causes, "the relay is not delivering" and "the order closed as a GUEST", and on the first real failure
+  // BOTH WERE FALSE. What was true was a THIRD thing the sentence did not mention: the relay was behind.
+  //
+  // ⚠️ IT IS DRIVEN, NOT GREPPED. The message is produced by a run that really places three orders and really
+  // gets no contract, which is what makes this rule notice a refusal that stops being reached at all.
+  const { port, calls } = fakePort({ mints: false });
+  await assert.rejects(() => signSubscriptions({ ...port, sleep: async () => {} }));
+  const said = calls.failed;
+
+  // The evidence, by name. A reader told "the relay may be behind" and not told WHERE to look is a reader
+  // who checks the relay's logs — which is exactly the trip this sentence exists to save.
+  assert.match(
+    said,
+    /event_delivery/,
+    'the refusal does not name `event_delivery`, the table that answers "has it arrived yet?" — without it ' +
+      'the likeliest cause is a hypothesis the reader cannot check.',
+  );
+  assert.match(
+    said,
+    /ext:subscriptions:order-placed/,
+    'the refusal does not name the CONSUMER whose rows to read; `event_delivery` has one row per consumer ' +
+      'per event and this seed drives eight of them.',
+  );
+
+  // ⛔ AND THE ORDER IS THE CLAIM. "Three causes" in the wrong order is the same defect in a longer sentence:
+  // the reader works down the list and the first thing they do is still the wrong one.
+  const behind = said.indexOf('BEHIND');
+  const dead = said.search(/not running/);
+  const guest = said.indexOf('GUEST');
+  assert.ok(behind >= 0 && dead >= 0 && guest >= 0, `one of the three causes is missing: ${said}`);
+  assert.ok(
+    behind < dead && dead < guest,
+    'the causes are not in the order they are likely on a birth. The one that actually happened — the relay ' +
+      'BEHIND a backlog this same seed wrote — has to come first, before "the relay is not running" and ' +
+      'before "the order closed as a guest".',
+  );
 });

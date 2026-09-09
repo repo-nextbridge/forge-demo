@@ -203,9 +203,14 @@ export const contractOf = (held, orderId) => held.find((row) => row.origin_order
  * function, so importing its address helper back would close a cycle between the two modules. One author of
  * the address shape, one direction of dependency.
  *
- * @param port {{ stores, read, log, fail, action, placeOrder, buyerEmail }}
+ * ⚠️ `sleep` IS INJECTED FOR THE SAME REASON AND ONLY FOR THE TESTS. The wait below is a MINUTE on a birth
+ * (see `awaitContracts`), so the refusal it produces — the sentence a person reads when no contract arrives —
+ * could not be driven end to end without either shortening the real budget or waiting a real minute per run.
+ * Undefined here is the seed's own timer, which is what every caller of this file passes.
+ *
+ * @param port {{ stores, read, log, fail, action, placeOrder, buyerEmail, sleep? }}
  */
-export async function signSubscriptions({ stores, read, log, fail, action, placeOrder, buyerEmail }) {
+export async function signSubscriptions({ stores, read, log, fail, action, placeOrder, buyerEmail, sleep }) {
   const store = stores.find((s) => s.handle === STORE_HANDLE);
   if (!store) {
     log(`subscriptions — the "${STORE_HANDLE}" store is not on this tenant; nothing to sign`);
@@ -266,6 +271,7 @@ export async function signSubscriptions({ stores, read, log, fail, action, place
     read,
     log,
     wanted: signed.map((s) => s.order.order_id),
+    sleep,
   });
   if (outcome.unresolved) {
     fail(
