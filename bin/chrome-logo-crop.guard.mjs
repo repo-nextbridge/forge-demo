@@ -68,7 +68,9 @@
 //
 // Every rule loops over the logos the DECLARATION names, so a store that lost its `logo` would make the loop
 // shorter and greener. The three shops that carry one are therefore pinned by name, `balcao`'s `null` is
-// asserted rather than skipped, and the count of graded files is asserted at the end of each rule.
+// asserted rather than skipped, and — since pk29/D1 — the blocks that MUST carry a mark are DERIVED from the
+// two apps' manifests rather than counted into a literal. Each rule then asserts that it graded every logo
+// the declarations name, and a separate rule asserts that every block able to wear one does.
 //
 // ⚠️ AND `seed/photos/` IS INVENTORIED, because the file that is not declared is the one nobody grades. The
 // last rule requires every picture in that folder to be named by a seed declaration or listed as a known
@@ -82,6 +84,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 import { blocksFor } from '../seed/blocks.mjs';
+import { blocksOf, logoComponentsOf, wordmarkComponentsOf } from './app-manifest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PHOTOS = join(ROOT, 'seed/photos');
@@ -97,23 +100,54 @@ const PHOTOS = join(ROOT, 'seed/photos');
  *
  * ⇒ THE SUBJECT IS «EVERY LOGO ANY DECLARATION OF THIS BOX NAMES», never «the logos of the chrome app».
  */
-const DECLARATIONS = ['seed/chrome.json', 'seed/demo-setup.json'].map((file) => ({
-  file,
-  spec: JSON.parse(readFileSync(join(ROOT, file), 'utf8')),
-}));
+const DECLARATIONS = ['seed/chrome.json', 'seed/demo-setup.json'].map((file) => {
+  const spec = JSON.parse(readFileSync(join(ROOT, file), 'utf8'));
+  // ★ pk29/D1 — the app is READ, so that "which of this app's blocks can carry a mark" stops being a number
+  // spelled here. `demo-setup` is an app of this box and always answers; `chrome` is the product's and
+  // answers at the pinned commit, or not at all — see `bin/app-manifest.mjs`.
+  return { file, spec, app: spec.app, manifest: blocksOf(spec.app) };
+});
 
 /** The shops that wear a mark, and the one that wears no chrome and no mark at all. Pinned so that a
  *  declaration losing a `logo` shortens no loop in silence. */
 const DRESSED = ['cafe', 'forge', 'outlet'];
 const BARE = ['balcao'];
 
-/** How many declared logos the rules below must each grade, spelled once. MEASURED: the café names its mark
- *  in five blocks (two funnel bars + three marks) and the two shoe shops in two bars each.
+/**
+ * ★★★ pk29/D1 — WHAT EACH RULE BELOW MUST GRADE, DERIVED FROM THE TWO APPS' MANIFESTS.
  *
- *  ⚠️ IT WAS 10 UNTIL pk28, when `demo-setup`'s fourth mark — the login box — left that app: the checkout is
- *  the deployable nobody forks, so its mark is the product's to configure. The count is spelled here so that
- *  a declaration losing a logo shortens no loop in silence. */
-const DECLARED_LOGOS = 10;
+ * ⛔ IT WAS A NUMBER, AND THE NUMBER'S OWN COMMENT HAD GONE FALSE. `const DECLARED_LOGOS = 10` went 10 → 9 →
+ * 10 across pk26 and pk28 as the marks moved between the two apps, and the sentence explaining it still said
+ * «the café names its mark in five blocks (two funnel bars + three marks)» — the café names it in SIX today
+ * (three in `chrome` since the sign-in mark arrived, three in `demo-setup`). The total happened to survive the
+ * move; the reason for it did not, and a reason nobody can check is how a number goes on looking measured.
+ *
+ * ⇒ THE ANTI-VACUUM IS A RULE PER BLOCK NOW, NOT A TOTAL. A block CAN carry a mark when its manifest declares
+ * a `logo` field; it MUST carry one unless it is a wordmark block — which the manifest also says, by
+ * declaring `tail`, the terminação the theme paints with its accent. A wordmark IS the mark and may be words
+ * (`forge` + `.outlet`); a BAR wears the mark beside the way back, where R4 gave the picture a position of
+ * its own and words never replace it. So a declaration that drops a logo is now named by the store and the
+ * block it dropped it from, instead of by a total being one smaller than a literal.
+ */
+function markableBlocks() {
+  const out = [];
+  for (const { file, spec, app, manifest } of DECLARATIONS) {
+    if (manifest.tried) continue; // the caller says NOT CHECKED; see the rule below
+    const canWearOne = new Set(logoComponentsOf(manifest.blocks));
+    const isWordmark = new Set(wordmarkComponentsOf(manifest.blocks));
+    for (const handle of Object.keys(spec.stores)) {
+      if (spec.stores[handle] === null) continue;
+      for (const block of blocksFor(spec, handle)) {
+        if (!canWearOne.has(block.component)) continue;
+        out.push({ file, app, store: handle, component: block.component, wordmark: isWordmark.has(block.component) });
+      }
+    }
+  }
+  return out;
+}
+
+/** The declarations this machine could not read the app of — a caller has to say so out loud. */
+const UNREAD = DECLARATIONS.filter((d) => d.manifest.tried);
 
 /** The mark fills at least half the height of its own file.
  *
@@ -286,6 +320,49 @@ test('★★ every store of the box is DECIDED here — dressed with a mark, or 
   }
 });
 
+/**
+ * Every geometric rule below loops over `logosDeclared()`, so it must end by saying it reached all of them:
+ * a `continue` added inside one of those loops would otherwise make it greener, silently.
+ *
+ * ⚠️ THIS IS THE LOOP'S OWN HONESTY AND NOT THE DECLARATION'S. That a declaration still NAMES every mark it
+ * should is a different question and has its own rule — the one below, derived from the manifests.
+ */
+function assertGradedEverything(graded) {
+  const declared = logosDeclared();
+  assert.ok(declared.length > 0, 'no declaration names a logo at all — every rule here would pass over nothing');
+  assert.equal(
+    graded,
+    declared.length,
+    `this rule graded ${graded} of the ${declared.length} logos the declarations name. A rule that skips a ` +
+      'file is a rule that passes over the file somebody broke.',
+  );
+}
+
+test('★★★ every block that CAN wear a mark DOES — unless it is a wordmark, where words are the mark', (t) => {
+  // ⛔ THE VÁCUO, DERIVED. `seed/*.json` losing a `logo` used to be caught only by a total being 9 instead of
+  // 10, which says nothing about WHICH shop went bare. The manifest knows which blocks have a `logo` field
+  // and which are wordmarks, so the shop and the block are named.
+  //
+  // ⇒ SABOTAGE: delete `"logo"` from `forge.checkout_header` in seed/chrome.json and this says exactly that.
+  if (UNREAD.length > 0)
+    return t.skip(
+      `NOT CHECKED — ${UNREAD.map((d) => `${d.file} (${d.app}): ${d.manifest.tried.join(' · ')}`).join(' | ')}`,
+    );
+  const markable = markableBlocks();
+  assert.ok(markable.length > 0, 'neither app declares a block with a `logo` field — this rule grades nothing');
+  const declared = new Set(logosDeclared().map((l) => `${l.app}/${l.store}/${l.component}`));
+  for (const block of markable) {
+    if (block.wordmark) continue; // its own exclusivity rule lives in seed/demo-setup.test.mjs
+    assert.ok(
+      declared.has(`${block.app}/${block.store}/${block.component}`),
+      `store "${block.store}", ${block.app}/${block.component} declares no \`logo\`, and that block is a BAR: ` +
+        'since R4 the mark, the label and the way back are three positions there, so a missing picture is a ' +
+        'bar with no mark and nothing else goes red. (A wordmark block may legitimately carry words instead; ' +
+        'this one is not a wordmark — its schema declares no `tail`.)',
+    );
+  }
+});
+
 test('★★★ the mark is TRIMMED — the drawing fills its own file, because the bar sizes by HEIGHT', () => {
   // ⇒ SABOTAGE: put the 1536x1024 artboard export back as any of the three and this names the file, the
   //   canvas, the ink inside it and how tall the mark is actually drawn in the bar.
@@ -307,13 +384,7 @@ test('★★★ the mark is TRIMMED — the drawing fills its own file, because 
     );
     graded += 1;
   }
-  assert.equal(
-    graded,
-    DECLARED_LOGOS,
-    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
-      'two bars each. A smaller number is this rule grading less than it claims.',
-  );
+  assertGradedEverything(graded);
 });
 
 test('★★ the canvas is a WORDMARK\'s shape, not an artboard\'s', () => {
@@ -337,13 +408,7 @@ test('★★ the canvas is a WORDMARK\'s shape, not an artboard\'s', () => {
     );
     graded += 1;
   }
-  assert.equal(
-    graded,
-    DECLARED_LOGOS,
-    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
-      'two bars each. A smaller number is this rule grading less than it claims.',
-  );
+  assertGradedEverything(graded);
 });
 
 test('★★★ the mark carries its own transparent ground — WITHOUT WHICH THE TRIM RULE GRADES NOTHING', () => {
@@ -378,13 +443,7 @@ test('★★★ the mark carries its own transparent ground — WITHOUT WHICH TH
     );
     graded += 1;
   }
-  assert.equal(
-    graded,
-    DECLARED_LOGOS,
-    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
-      'two bars each. A smaller number is this rule grading less than it claims.',
-  );
+  assertGradedEverything(graded);
 });
 
 test('★★★ the café\'s mark is ONE drawing in TWO deployables — and the two copies still agree', () => {

@@ -8,7 +8,8 @@
 // from one row of Compose, and the board could not say where. pk26/P1 gave each of the four its own slot and
 // pk26/D2 moved the mark into `demo-setup`, this box's own app. What is left here is the app's honest OOTB
 // half: the four bars of the funnel and the account screens, one block per bar, each rendering in exactly the
-// place its name says.
+// place its name says — plus, since pk28, the sign-in mark, which came BACK to this app because the login box
+// lives in the CHECKOUT image and nobody forks that one.
 //
 // ⇒ THE `brand` BLOCK IS NOT DELETED, IT MOVED. `seed/demo-setup.json` carries the three shops' marks with
 // their history; `seed/chrome.json` keeps the funnel. Anything that graded a mark had to move with it —

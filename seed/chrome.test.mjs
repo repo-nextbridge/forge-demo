@@ -21,6 +21,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { blocksOf, configKeysOf, surfaceSlots } from '../bin/app-manifest.mjs';
 import { blocksFor, imagesOf, planChrome, seedChrome } from './chrome.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -31,48 +32,73 @@ const BOX = JSON.parse(readFileSync(join(SEED, 'box.json'), 'utf8'));
 // it is read from the file that holds it rather than assumed.
 const MARKS = JSON.parse(readFileSync(join(SEED, 'demo-setup.json'), 'utf8'));
 
-/** The four blocks the app declares, and the slot each is allowed in — read off `extensions/chrome/manifest.ts`
- *  and confirmed against the `target_override` column of placements a human made on the bench (04/09).
+/**
+ * ★★★ pk29/D1 — THE APP'S OWN DECLARATION, READ, AND NO LONGER RE-TYPED HERE.
  *
- *  ⛔ THERE WERE FIVE UNTIL pk26/D2, and the fifth is why the split happened: `brand` was ONE slot read in
- *  FOUR renders, so an operator dragged one row and changed four places. Three of those places are
- *  `demo-setup`'s now — one component each, graded in `seed/demo-setup.test.mjs`. ⚠️ pk28 — THE FOURTH, the
- *  login box, is coming BACK to this app: the checkout is the deployable nobody forks, so a mark there has to
- *  be configurable without one, which makes it the product's. This declaration does not place it yet — the
- *  block has to exist in the pinned image first, or `composition.place` refuses the birth. */
-const MANIFEST_SLOTS = {
-  checkout_header: 'storefront:checkout.header',
-  checkout_footer: 'storefront:checkout.footer',
-  account_header: 'storefront:account.header',
-  account_footer: 'storefront:account.footer',
-  // pk28 — AND HERE IT IS, the fourth mark coming back, exactly as the paragraph above said it would.
-  // The image is baked with it before this declaration places it, which is the order `composition.place`
-  // demands: it validates the component against the INSTALLED manifest and refuses one it does not know.
-  account_brand: 'storefront:account.brand',
-};
+ * ⛔ WHAT USED TO BE HERE, AND WHY IT HAD TO GO. Three tables — the slot map, the config keys, the word
+ * fields — each a hand copy of `extensions/chrome/manifest.ts`. Moving ONE block into this app (pk28, the
+ * sign-in mark) meant editing all three plus two more elsewhere, and one of them failed as
+ * `TypeError: WORD_KEYS[block.component] is not iterable` — a red that does not name the block whose fields
+ * nobody declared. A list that is a copy of a declaration is a list that can disagree with it, silently, in
+ * the direction of grading less.
+ *
+ * `bin/app-manifest.mjs` reads the manifest at the commit `forge.lock` pins — the commit the running image
+ * was baked from, so it is the same declaration the kernel validates placements against. A machine with no
+ * Forge clone gets `{ tried }`, and the rules that need it say NOT CHECKED instead of passing over nothing.
+ *
+ * ⚠️ AND THE RULES THAT DO NOT NEED IT STILL RUN. "Which blocks exist" has a second answer that is always
+ * here — `DATA.slots`, this box's own declaration — so the rules ABOUT THE STORES are graded against it, and
+ * the manifest is what grades `DATA.slots` ITSELF. One cross-repo link instead of three copies.
+ */
+const APP = blocksOf('chrome');
+const NOT_CHECKED = APP.tried ? `NOT CHECKED — the pinned chrome manifest: ${APP.tried.join(' · ')}` : null;
+const CONFIG_KEYS = APP.blocks ? configKeysOf(APP.blocks) : null;
 
-/** Which config keys each block declares (`config_schema`). A key this file invents is dropped by the kernel's
- *  own validation, so it would be a sentence nobody ever reads. */
-const CONFIG_KEYS = {
-  checkout_header: ['logo', 'back', 'title', 'seal'],
-  account_header: ['logo', 'back', 'account', 'cart'],
-  checkout_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
-  account_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
-  account_brand: ['logo', 'text', 'tail'],
-};
+/** The components this declaration places, which is what every rule about the STORES loops over. */
+const COMPONENTS = Object.keys(DATA.slots);
 
 const dressed = Object.entries(DATA.stores).filter(([, spec]) => spec !== null);
 
-test('★★ the slot map is the app’s own — a slot this file invented would be refused at place time', () => {
-  assert.deepEqual(DATA.slots, MANIFEST_SLOTS);
+test('★★ the slot map names the app’s OWN blocks — a component it does not ship is refused at place time', (t) => {
+  // `composition.place` validates the component against the INSTALLED manifest and refuses one it does not
+  // know, which costs a birth to find out. This is that refusal, read off the same manifest, in milliseconds.
+  if (NOT_CHECKED) return t.skip(NOT_CHECKED);
+  assert.deepEqual(
+    Object.keys(DATA.slots).sort(),
+    APP.blocks.map((b) => b.component).sort(),
+    `seed/chrome.json places components the pinned image's manifest does not declare, or misses one it does`,
+  );
 });
 
-test('★★★ every dressed store declares ALL FIVE blocks — a half-dressed shop is the state this replaces', () => {
+test('★★ …and every slot it names is a slot the SURFACE really publishes', (t) => {
+  // ⛔ THE OTHER HALF, AND IT IS THE ONE THE OLD HAND-COPY WAS SECRETLY DOING. A slot string is
+  // `<surface>:<name>`: the surface is the block's own (the manifest says it), the name belongs to the
+  // deployable that draws it — `apps/storefront/.../generated/sibling-slots.ts`, the catalogue the admin's
+  // Composição reads. A typo here places a block in a slot nothing renders: 200 everywhere, drawn nowhere.
+  const catalogue = surfaceSlots();
+  if (NOT_CHECKED || catalogue.tried)
+    return t.skip(NOT_CHECKED ?? `NOT CHECKED — the pinned slot catalogue: ${catalogue.tried.join(' · ')}`);
+  for (const block of APP.blocks) {
+    const declared = DATA.slots[block.component];
+    const [surface, name] = String(declared).split(':');
+    assert.equal(surface, block.surface, `${block.component} is placed on the "${surface}" surface and the app declares "${block.surface}"`);
+    assert.ok(
+      catalogue.slots.includes(name),
+      `${block.component} is placed in "${declared}" and the ${block.surface} surface publishes no slot ` +
+        `called "${name}". The block would be stored, and drawn by nobody.`,
+    );
+  }
+});
+
+test('★★★ every dressed store declares EVERY block — a half-dressed shop is the state this replaces', () => {
+  // ⚠️ NO NUMBER, IN THE TITLE OR IN THE BODY. It said «ALL FIVE» and was «ALL FOUR» one pass earlier: what
+  // this grades is «every block this declaration places, in every dressed store», and that sentence has no
+  // number in it. The number was a second thing to edit whenever a block moved.
   for (const [handle] of dressed) {
     assert.deepEqual(
       blocksFor(DATA, handle).map((b) => b.component).sort(),
-      Object.keys(MANIFEST_SLOTS).sort(),
-      `store "${handle}" does not declare all five chrome blocks`,
+      [...COMPONENTS].sort(),
+      `store "${handle}" does not declare every chrome block this file places`,
     );
   }
 });
@@ -94,14 +120,17 @@ test('★★★ and every block is FILLED IN — placed-and-empty draws nothing 
   }
 });
 
-test('★★ no config key is invented — every one is in the block’s own `config_schema`', () => {
+test('★★ no config key is invented — every one is in the block’s own `config_schema`', (t) => {
+  // The schema is the APP's, so this is the one rule here that genuinely cannot be answered without it.
+  if (NOT_CHECKED) return t.skip(NOT_CHECKED);
   for (const [handle] of dressed) {
     for (const block of blocksFor(DATA, handle)) {
       for (const key of Object.keys(block.config ?? {})) {
         assert.ok(
-          CONFIG_KEYS[block.component].includes(key),
+          CONFIG_KEYS[block.component]?.includes(key),
           `store "${handle}", block ${block.component}: "${key}" is not one of ` +
-            `${CONFIG_KEYS[block.component].join('/')}. The kernel validates config against the schema, so ` +
+            `${CONFIG_KEYS[block.component]?.join('/') ?? 'a block the manifest does not declare at all'}. ` +
+            'The kernel validates config against the schema, so ' +
             'an invented key is a sentence nobody ever reads.',
         );
       }
@@ -126,7 +155,7 @@ test('★ the picture list is DERIVED from the configs, not typed beside them', 
   // A second list is a list that can disagree. Proven by driving the derivation over a made-up declaration.
   assert.deepEqual(
     imagesOf({
-      slots: MANIFEST_SLOTS,
+      slots: DATA.slots,
       stores: {
         a: { account_header: { logo: 'one.png' }, checkout_footer: { end_image: 'two.png' } },
         b: { checkout_header: { logo: 'one.png' } },
@@ -156,7 +185,7 @@ test('★★ every store of the box is DECIDED — dressed, or explicitly null w
 test('★★ a placement whose config still holds somebody’s test content is RE-ASSERTED, not left alone', () => {
   // The bench state this file exists to replace, verbatim: seven placements carrying `{"back":"a"}`. A plan
   // that treated «already placed» as «already right» would leave exactly that on the box forever.
-  const wanted = [{ component: 'checkout_header', slot: MANIFEST_SLOTS.checkout_header, config: { back: 'Voltar à loja' } }];
+  const wanted = [{ component: 'checkout_header', slot: DATA.slots.checkout_header, config: { back: 'Voltar à loja' } }];
   const placed = [{ placement_id: 'hp_1', component: 'checkout_header', config: { back: 'a', seal: 'c' } }];
   assert.deepEqual(planChrome(wanted, placed), [
     { action: 'update', placement_id: 'hp_1', ...wanted[0] },
@@ -166,11 +195,14 @@ test('★★ a placement whose config still holds somebody’s test content is R
 test('★★ …and a placement that already says the declaration costs NOTHING, `_url` stamps included', () => {
   // ⚠️ THE TRAP: a `type:'id'` field comes back with a `<field>_url` beside it. A deep-equal would find a
   // difference on every run and rewrite all fifteen placements at every birth, forever.
-  const wanted = [{ component: 'brand', slot: MANIFEST_SLOTS.brand, config: { logo: 'ast_1', text: 'forge.co' } }];
+  // ⚠️ `account_brand`, and it used to say `brand` — a component this app has not shipped since pk26/D2,
+  // with `MANIFEST_SLOTS.brand` resolving to `undefined` beside it. The rule was about `_url` stamps and went
+  // on being about them over a placement of a block nobody ships.
+  const wanted = [{ component: 'account_brand', slot: DATA.slots.account_brand, config: { logo: 'ast_1', text: 'forge.co' } }];
   const placed = [
     {
       placement_id: 'hp_2',
-      component: 'brand',
+      component: 'account_brand',
       config: { logo: 'ast_1', logo_url: 'https://cdn.example/x.png', text: 'forge.co' },
     },
   ];
@@ -333,7 +365,7 @@ test('⛔ an emptied field is DECLARED empty — a key this file drops is a key 
   // stored with that value?». It has to: the kernel stamps `<field>_url` beside every `type:'id'` field, so a
   // deep-equal would rewrite all fifteen placements at every birth. The cost of that shape is that SILENCE IS
   // CONSENT — the declaration cannot un-say something by leaving it out.
-  const slot = MANIFEST_SLOTS.checkout_footer;
+  const slot = DATA.slots.checkout_footer;
   const stale = [
     {
       placement_id: 'hp_9',
@@ -436,16 +468,19 @@ test('★★ no contact detail is a REAL one — this dataset shipped the owner�
 //     failure this file's own header describes ("the config would keep a filename where the kernel expects an
 //     asset id, and the header would draw nothing").
 
-/** The word fields of each block, by component — the ones `wordOf` reads. `logo` is an asset ref, not a word. */
-const WORD_KEYS = {
-  checkout_header: ['back', 'title', 'seal'],
-  account_header: ['back', 'account', 'cart'],
-  checkout_footer: ['start_text', 'middle_text', 'end_text'],
-  account_footer: ['start_text', 'middle_text', 'end_text'],
-  // pk28 — the sign-in mark moved here from the demo's own app: the login box lives in the CHECKOUT image,
-  // which a client never forks, so configuring it cannot require one. `logo` is a media ref, not a word.
-  account_brand: ['text', 'tail'],
-};
+/**
+ * ⛔ pk29/D1 — THERE IS NO LIST HERE ANY MORE, AND THE RULE GOT WIDER RATHER THAN NARROWER.
+ *
+ * `WORD_KEYS` named, per component, the fields `wordOf` reads — so that the whitespace rule below could skip
+ * `logo`, which is an asset reference and not a word. It was the fifth hand copy of the manifest and the one
+ * that failed WORST when the sign-in mark arrived: `TypeError: WORD_KEYS[block.component] is not iterable`,
+ * a red that names neither the block nor the missing declaration.
+ *
+ * ⇒ THE DISTINCTION IT ENCODED EARNED NOTHING. A `logo` with a leading space is not "a filename with
+ * harmless whitespace": `bin/seed.mjs` resolves a bare name inside `seed/photos/`, and " forge-co-logo.png"
+ * is not a file. So EVERY configured string is graded, the loop needs no table, and there is one less copy of
+ * somebody else's declaration to keep in step.
+ */
 
 test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a space never reaches a screen', () => {
   // ⛔ THE MEASUREMENT BEHIND THE OWNER'S "o certo é forge.outlet". The outlet's mark used to be
@@ -460,8 +495,7 @@ test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a spa
       continue;
     }
     for (const block of blocksFor(DATA, handle)) {
-      for (const key of WORD_KEYS[block.component]) {
-        const raw = block.config?.[key];
+      for (const [key, raw] of Object.entries(block.config ?? {})) {
         if (typeof raw !== 'string' || raw.length === 0) continue;
         assert.equal(
           raw,

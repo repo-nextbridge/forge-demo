@@ -97,3 +97,41 @@ export function releaseTree(pinned) {
   }
   return { tried };
 }
+
+/**
+ * ★★ ONE FILE OF THE RELEASE, AT THE PINNED COMMIT, FROM ANY CLONE THAT HOLDS THE OBJECT (pk29/D1).
+ *
+ * `releaseTree` above answers a different question and answers it correctly: it wants a WORKING TREE checked
+ * out at the pinned commit, because its callers typecheck a fork against it and run its suites. Reading ONE
+ * FILE needs no working tree — git is the index, and `git show <sha>:<path>` answers from any clone that has
+ * fetched the branch, whatever that clone currently has checked out.
+ *
+ * ⚠️ AND THE DIFFERENCE IS NOT ACADEMIC. MEASURED on this machine, 2026-09-09: `forge.lock` pins
+ * `v03/integra@38db5f3a1`, NO worktree of the monorepo sat at that commit (the branch had moved on), so
+ * `releaseTree` returned `{ tried }` and every rule that needs the product said NOT CHECKED — 27 skipped in
+ * one run. `git show 38db5f3a1:extensions/chrome/manifest.ts` answered instantly from the same clone that had
+ * just been rejected as "a different commit". A rule that only needs to READ a declaration should not be
+ * silenced by which branch somebody left checked out.
+ *
+ * Returns `{ text, from }` — the bytes AT the pinned commit and the clone that served them — or `{ tried }`,
+ * the list of what was looked at, for a caller that must then say NOT CHECKED out loud.
+ */
+export function fileAtPinned(pinned, relPath) {
+  const tried = [];
+  for (const base of candidates()) {
+    if (!existsSync(join(base, '.git')) && !existsSync(join(base, 'packages', 'storefront-kit', 'package.json'))) {
+      tried.push(`${base} — not a Forge checkout`);
+      continue;
+    }
+    // ⛔ `git show` AND NOT `git cat-file -p`, because the first takes `<rev>:<path>` — which is the whole
+    // point: the path is resolved INSIDE that commit's tree, so a file that has since moved or been deleted
+    // is still read as the baked image saw it.
+    const text = gitOut(base, ['show', `${pinned.sha}:${relPath}`]);
+    if (text === null || text === '') {
+      tried.push(`${base} — has no ${relPath} at ${pinned.sha} (unfetched commit, or the path is not there)`);
+      continue;
+    }
+    return { text, from: `${base} @ ${pinned.sha}` };
+  }
+  return { tried };
+}
