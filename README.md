@@ -25,7 +25,8 @@ composition.json       WHICH APPS the images compose. An instance's answer, not 
                        reason; `bin/composition.guard.mjs` grades that against the monorepo.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
-apps/                  the apps THIS box wrote: `demo-gate` (§4) and `payment-pos` (§4b). Composed into the images.
+apps/                  the apps THIS box wrote: `demo-gate` (§4), `demo-setup` (§4b) and `payment-pos` (§4c).
+                       Composed into the images.
 extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
                        composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
@@ -1340,9 +1341,43 @@ entry is a Server Component in the storefront and the checkout, so its wiring li
 
 ---
 
-## 4b. The counter's payment app — this box's own payment DRIVER
+## 4b. `demo-setup` — the shop's own MARK, and the app that exists to be looked at
 
-`payment-pos` (`apps/payment-pos/`) is the second app this repository owns, and the first that is not a
+`demo-setup` (`apps/demo-setup/`) is the second app this repository owns, and the one written to answer a
+question rather than to fill a hole: **how does a customer extend Forge?** The owner's words, 08/09 — *"esse
+app me ajuda a mostrar para os clientes como eles podem fazer apps livremente (principal forma de extensão do
+Forge) … esse mostra mais claramente e de forma simples um logo virando outro"*.
+
+It declares **four blocks — one per place a shop shows its name**: the header bar (`storefront:header.brand`),
+the mobile drawer (`header.drawer_brand`), the footer's brand column (`footer.brand`) and the login box
+(`account.brand`). Each is placed and configured on its own in Compose; each draws either a logo from the
+asset library or a wordmark whose tail takes the theme's accent, so the SAME four configs make the Outlet look
+like the Outlet without a line of code.
+
+**Why four and not one.** Until pk26 the mark was a single block of the OOTB `chrome` app, read in four
+renders — so an operator dragged one row in Compose and changed four places, and the board could not say
+which. The owner named it (*"o compose não faz sentido, está configurando algo lá que nem sabe onde vai
+aparecer"*), Forge gave each place its own slot, and the mark left the product: **a logo is CONTENT**, and the
+product ships slots with a bare default while whoever wants a mark writes the block. ⛔ The kernel already
+required it — `placement: 'single'` is enforced per *(store, app, component)*, so one component cannot fill
+two slots.
+
+**And it says the shop's own tagline.** `footer.brand`'s Forge fallback cedes its node as a UNIT — the
+wordmark AND *"Leve. Inteligente. Sua."* — deliberately, because that sentence is Forge's. So a shop that
+places a mark there LOSES the sentence; the `footer_brand` block carries a `tagline` field, and the two shoe
+shops now say that line **because they configured it**. That is the half worth showing a customer.
+
+It has **no admin page, no scope and no table**: there is no path from a page to the vitrine's mark (the only
+access is the slot, and the shops that wear it run the vanilla storefront image, unforked), so a page would
+either mirror what the seed writes or invite a visitor to edit what the weekly reset erases. Page administers,
+block renders.
+
+Data and reasons: `seed/demo-setup.json` (declaration) · `seed/demo-setup.mjs` (the hand, shared with
+`seed/chrome.mjs` through `seed/blocks.mjs`) · `docs/capabilities/demo-setup.md` · the app's own README.
+
+## 4c. The counter's payment app — this box's own payment DRIVER
+
+`payment-pos` (`apps/payment-pos/`) is the third app this repository owns, and the first that is not a
 screen. It serves the totem's two ways to pay: the card machine (`card`, settled the moment the kernel is
 told, because the machine already took the money) and the totem's PIX QR (`pix`, which waits for a scan).
 
@@ -1378,7 +1413,7 @@ change inside this repository can fix it: a per-store offer gate would be a kern
 that does exist is the name: the app is called after a PLACE ("Pagar no balcão"), so that seeing it in the
 coffee store's checkout reads as a misconfiguration and never as a legitimate option.
 
-## 4c. The counter's totem — and why this box runs SIX images, not four
+## 4d. The counter's totem — and why this box runs SIX images, not four
 
 The demo instance is **six images**, and only four of them are the product:
 

@@ -1,0 +1,58 @@
+/* The four marks' styling — and every colour and size here is a TOKEN, never a literal.
+ *
+ * ★ THAT IS WHAT MAKES ONE CONFIG LOOK LIKE FOUR SHOPS. The same block, placed in the outlet and in the
+ * reference store, draws its tail carmine in one and copper in the other because `--color-accent` is one of
+ * the six values a theme redefines. An app that wrote `#b4553a` here would have to be forked per shop, which
+ * is the opposite of what this app is a demonstration of.
+ *
+ * ⚠️ THE FALLBACKS ARE NOT DECORATION. `--color-chrome-*` is the funnel's own palette and it is absent on the
+ * vitrine; `var(--a, var(--b))` is how the same block draws correctly in both deployables without knowing
+ * which one it is in. */
+
+.mark {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-sm, 0.5rem);
+  min-width: 0;
+}
+
+/* The mark's own anchor: a wordmark's type, and the promise not to wrap. It inherits the row's placement from
+   whatever slot it was dropped into, so this rule owes nothing about layout. */
+.link {
+  font-size: var(--font-size-20, 1.25rem);
+  font-weight: var(--font-weight-bold, 700);
+  letter-spacing: var(--tracking-title, -0.01em);
+  color: var(--color-chrome-ink, var(--color-ink, #17181a));
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The tail — `.store` after `forge`. Painted with the ACCENT, so a store that themed its accent has themed
+   its mark for free. ⛔ No literal colour lives here. */
+.tail {
+  color: var(--color-accent, #b4553a);
+}
+
+/* Sized in `em`, so the picture tracks the type around it and keeps the operator's own proportions.
+   ⚠️ THE BOX IS SIZED BY HEIGHT ALONE and `width: auto` keeps whatever ratio the uploaded file has — which
+   means the FILE'S geometry decides how big the mark looks. A mark floating in the middle of a large
+   transparent canvas draws small no matter what this number is; the fix is always to cut the file, never to
+   grow the `em`. `bin/chrome-logo-crop.guard.mjs` grades every declared logo against that, by proportion. */
+.logo {
+  display: block;
+  height: 1.6em;
+  width: auto;
+}
+
+/* The shop's own sentence, under the mark, in the footer only. Same ink the kit's own tagline used, through
+   the token rather than through the kit's stylesheet — an app cannot reach a package's CSS module. */
+.tagline {
+  margin: 0;
+  color: var(--color-chrome-subtle, var(--color-subtle, #6b6d73));
+  font-size: var(--font-size-14, 0.875rem);
+  font-weight: var(--font-weight-regular, 400);
+  letter-spacing: normal;
+  white-space: normal;
+}

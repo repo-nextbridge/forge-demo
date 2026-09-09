@@ -4,10 +4,17 @@
 //
 // ── WHAT THIS GUARD PROVES, SO THE NEXT PERSON KNOWS WHAT BROKE WHEN IT BREAKS ─────────────────────────────
 //
-// `seed/chrome.json` hands three shops a `logo`, and the app draws it in a box sized BY HEIGHT ALONE:
+// This box's TWO block declarations hand three shops a `logo`, and both apps draw it in a box sized BY
+// HEIGHT ALONE:
 //
-//     extensions/chrome/chrome.module.css:22-26    .logo       { display:block; height: 2em;   width: auto }
-//     extensions/chrome/chrome.module.css:152-156  .brandLogo  { display:block; height: 1.6em; width: auto }
+//     seed/chrome.json      → extensions/chrome/chrome.module.css  .logo  { height: 2em;   width: auto }
+//     seed/demo-setup.json  → apps/demo-setup/block/marks.module.css .logo { height: 1.6em; width: auto }
+//
+// ★★ pk26/D2 SPLIT THE SECOND ONE OUT OF THE FIRST, and this guard had to move with it. The café's mark used
+// to be declared three times in `seed/chrome.json`; the shop's own `brand` block became `demo-setup`'s four
+// marks, in a file this guard did not read. A guard that kept reading only `chrome.json` would have stayed
+// GREEN while grading the vitrine's mark not at all — «guard que não importa o sujeito não falha, para de
+// perguntar», which is the same failure this guard was written for, one file to the left.
 //
 // with the reason written beside the first — «`width:auto` keeps whatever ratio the operator uploaded,
 // because the next logo is not this one's shape». ⇒ THE FILE'S OWN GEOMETRY DECIDES HOW BIG THE MARK LOOKS.
@@ -74,16 +81,35 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { blocksFor } from '../seed/chrome.mjs';
+import { blocksFor } from '../seed/blocks.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PHOTOS = join(ROOT, 'seed/photos');
-const CHROME = JSON.parse(readFileSync(join(ROOT, 'seed/chrome.json'), 'utf8'));
 
-/** The shops that wear a mark in the funnel, and the one that wears no chrome at all. Pinned so that a
+/**
+ * ★★ pk26/D2 — TWO DECLARATIONS, ONE RULE, AND THE MOVE IS WHY THIS IS A LIST.
+ *
+ * The café's mark used to be declared THREE times in `seed/chrome.json` — the two funnel bars and the shop's
+ * own `brand`. pk26/D2 split that last one out into `demo-setup`, this box's own app, and a guard that had
+ * kept reading only `chrome.json` would have gone on being green while grading one file less: the vitrine's
+ * mark would have left this rule's sight, which is the exact shape of the defect this guard was WRITTEN for
+ * (`storefront-coffee`'s copy was trimmed, `seed/photos`'s was not, and nothing looked at the second).
+ *
+ * ⇒ THE SUBJECT IS «EVERY LOGO ANY DECLARATION OF THIS BOX NAMES», never «the logos of the chrome app».
+ */
+const DECLARATIONS = ['seed/chrome.json', 'seed/demo-setup.json'].map((file) => ({
+  file,
+  spec: JSON.parse(readFileSync(join(ROOT, file), 'utf8')),
+}));
+
+/** The shops that wear a mark, and the one that wears no chrome and no mark at all. Pinned so that a
  *  declaration losing a `logo` shortens no loop in silence. */
 const DRESSED = ['cafe', 'forge', 'outlet'];
 const BARE = ['balcao'];
+
+/** How many declared logos the rules below must each grade, spelled once. MEASURED: the café names its mark
+ *  in six blocks (two funnel bars + four marks) and the two shoe shops in two bars each. */
+const DECLARED_LOGOS = 10;
 
 /** The mark fills at least half the height of its own file.
  *
@@ -202,21 +228,29 @@ export function cropOf(path) {
   };
 }
 
-/** Every `logo` the declaration gives a store, as `{store, component, file}` — derived from `chrome.json`
- *  through the same reader the seed itself uses, never listed a second time here. */
+/** Every `logo` EITHER declaration gives a store, as `{app, store, component, file}` — derived through the
+ *  same reader the seeds themselves use, never listed a second time here. */
 function logosDeclared() {
   const found = [];
-  for (const handle of Object.keys(CHROME.stores)) {
-    if (CHROME.stores[handle] === null) continue;
-    for (const block of blocksFor(CHROME, handle)) {
-      const file = block.config?.logo;
-      if (typeof file === 'string' && file.trim().length > 0) {
-        found.push({ store: handle, component: block.component, file });
+  for (const { spec } of DECLARATIONS) {
+    for (const handle of Object.keys(spec.stores)) {
+      if (spec.stores[handle] === null) continue;
+      for (const block of blocksFor(spec, handle)) {
+        const file = block.config?.logo;
+        if (typeof file === 'string' && file.trim().length > 0) {
+          found.push({ app: spec.app, store: handle, component: block.component, file });
+        }
       }
     }
   }
   return found;
 }
+
+/** The box the app draws this block's mark in. Both apps size by HEIGHT ALONE and let the width follow, and
+ *  the two numbers differ: the funnel's bars are 2em (extensions/chrome/chrome.module.css:22-26), every mark
+ *  of `demo-setup` is 1.6em (apps/demo-setup/block/marks.module.css). The property being graded belongs to
+ *  the FILE either way — this number only decides how the failure is reported. */
+const boxOf = (app) => (app === 'demo-setup' ? 1.6 : 2);
 
 test('★★ every store of the box is DECIDED here — dressed with a mark, or wearing no chrome at all', () => {
   // ⛔ THE VÁCUO. Every rule below loops over the declared logos; a store that lost its `logo` would make
@@ -225,38 +259,44 @@ test('★★ every store of the box is DECIDED here — dressed with a mark, or 
   assert.deepEqual(
     dressed,
     DRESSED,
-    'these are the shops `seed/chrome.json` gives a mark to. A shop leaving this list has lost the logo ' +
-      'from its funnel — and every geometric rule below would then pass by grading one store less.',
+    'these are the shops the two declarations give a mark to. A shop leaving this list has lost the logo ' +
+      'from its funnel or from its shop window — and every geometric rule below would then pass by grading ' +
+      'one store less.',
   );
-  for (const handle of BARE) {
-    assert.equal(
-      CHROME.stores[handle],
-      null,
-      `"${handle}" carries no chrome and chrome.json must say so with null — see \`_balcao_why\``,
+  // ⛔ AND BOTH DECLARATIONS ARE ASKED, SEPARATELY. A file that stopped declaring anything at all would make
+  // the union above shorter, and the union is the only place that could tell — so each is made to speak for
+  // the counter and for its own store list. This is what pk26/D2's split would otherwise have hidden.
+  for (const { file, spec } of DECLARATIONS) {
+    for (const handle of BARE) {
+      assert.equal(
+        spec.stores[handle],
+        null,
+        `"${handle}" wears no mark and ${file} must say so with null, never by being silent`,
+      );
+    }
+    assert.deepEqual(
+      Object.keys(spec.stores).sort(),
+      [...DRESSED, ...BARE].sort(),
+      `a store ${file} does not name is a store nothing here grades`,
     );
   }
-  assert.deepEqual(
-    Object.keys(CHROME.stores).sort(),
-    [...DRESSED, ...BARE].sort(),
-    'a store this guard has never heard of is a store nothing here grades',
-  );
 });
 
 test('★★★ the mark is TRIMMED — the drawing fills its own file, because the bar sizes by HEIGHT', () => {
   // ⇒ SABOTAGE: put the 1536x1024 artboard export back as any of the three and this names the file, the
   //   canvas, the ink inside it and how tall the mark is actually drawn in the bar.
   let graded = 0;
-  for (const { store, component, file } of logosDeclared()) {
+  for (const { app, store, component, file } of logosDeclared()) {
     const art = cropOf(join(PHOTOS, file));
     const fill = art.ink.height / art.canvas.height;
-    // The box the app draws this block's mark in — the two are different and both size by height alone.
-    const box = component === 'brand' ? 1.6 : 2;
+    const box = boxOf(app);
     assert.ok(
       fill >= IS_TRIMMED,
-      `store "${store}", ${component}.logo = "${file}": the drawing fills ${(fill * 100).toFixed(1)}% of the ` +
+      `store "${store}", ${app}/${component}.logo = "${file}": the drawing fills ${(fill * 100).toFixed(1)}% of the ` +
         `file's height (canvas ${art.canvas.width}x${art.canvas.height}, ink ${art.ink.width}x${art.ink.height} ` +
         `at ${art.ink.x},${art.ink.y}). The app scales the CANVAS to ${box}em and lets the width follow ` +
-        '(extensions/chrome/chrome.module.css:22-26 and :152-156), so the mark is drawn ' +
+        '(extensions/chrome/chrome.module.css:22-26, apps/demo-setup/block/marks.module.css), so the mark ' +
+        'is drawn ' +
         `${(box * fill).toFixed(3)}em tall — the transparent margin is what the shopper sees. ⛔ The fix is ` +
         'to CUT THE FILE, never to grow the `em`: a bigger box scales the same empty canvas and only makes ' +
         'the bar taller. (Measured floor: the three marks in this box fill 60.6%, 65.8% and 84.6%.)',
@@ -265,9 +305,10 @@ test('★★★ the mark is TRIMMED — the drawing fills its own file, because 
   }
   assert.equal(
     graded,
-    7,
-    'seven declared logos over three files — the café names its mark in three blocks and the two shoe shops ' +
-      'in two each. A smaller number is this rule grading less than it claims.',
+    DECLARED_LOGOS,
+    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
+      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });
 
@@ -280,12 +321,12 @@ test('★★ the canvas is a WORDMARK\'s shape, not an artboard\'s', () => {
   // number, and because a square file in a height-sized bar is a decision somebody should have to make out
   // loud. The rule that carries the mechanism is the one above.
   let graded = 0;
-  for (const { store, component, file } of logosDeclared()) {
+  for (const { app, store, component, file } of logosDeclared()) {
     const art = cropOf(join(PHOTOS, file));
     const ratio = art.canvas.width / art.canvas.height;
     assert.ok(
       ratio >= IS_WORDMARK,
-      `store "${store}", ${component}.logo = "${file}": the canvas is ${art.canvas.width}x${art.canvas.height}, ` +
+      `store "${store}", ${app}/${component}.logo = "${file}": the canvas is ${art.canvas.width}x${art.canvas.height}, ` +
         `i.e. ${ratio.toFixed(3)}:1. Nothing about a wordmark is 1.5 wide — that is the shape of the ` +
         'artboard it was exported from, with the mark floating in the middle of it. The three marks in this ' +
         'box are 3.032, 3.289 and 3.452.',
@@ -294,9 +335,10 @@ test('★★ the canvas is a WORDMARK\'s shape, not an artboard\'s', () => {
   }
   assert.equal(
     graded,
-    7,
-    'seven declared logos over three files — the café names its mark in three blocks and the two shoe shops ' +
-      'in two each. A smaller number is this rule grading less than it claims.',
+    DECLARED_LOGOS,
+    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
+      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });
 
@@ -315,17 +357,17 @@ test('★★★ the mark carries its own transparent ground — WITHOUT WHICH TH
   // looked at a `logo`.
   const FLOOR = 0.15; // measured: the three carry 77.5%, 78.9% and 79.3% clear pixels.
   let graded = 0;
-  for (const { store, component, file } of logosDeclared()) {
+  for (const { app, store, component, file } of logosDeclared()) {
     const art = cropOf(join(PHOTOS, file));
     assert.ok(
       art.hasAlphaChannel,
-      `store "${store}", ${component}.logo = "${file}": the PNG has no alpha channel at all, so it is art ` +
+      `store "${store}", ${app}/${component}.logo = "${file}": the PNG has no alpha channel at all, so it is art ` +
         'FLATTENED ONTO A GROUND. In this bar that is a rectangle of somebody else\'s colour on the shop\'s ' +
         'own canvas — and it also makes the trim rule above report 100%, because every pixel is opaque.',
     );
     assert.ok(
       art.clearShare >= FLOOR,
-      `store "${store}", ${component}.logo = "${file}": only ${(art.clearShare * 100).toFixed(1)}% of this ` +
+      `store "${store}", ${app}/${component}.logo = "${file}": only ${(art.clearShare * 100).toFixed(1)}% of this ` +
         'file is transparent. A wordmark on a transparent ground is mostly ground (measured: 77.5%, 78.9% ' +
         'and 79.3% here); a file this full is a slab with an alpha channel, which draws as a coloured ' +
         'rectangle on the shop\'s own bar and passes the trim rule for the wrong reason.',
@@ -334,9 +376,10 @@ test('★★★ the mark carries its own transparent ground — WITHOUT WHICH TH
   }
   assert.equal(
     graded,
-    7,
-    'seven declared logos over three files — the café names its mark in three blocks and the two shoe shops ' +
-      'in two each. A smaller number is this rule grading less than it claims.',
+    DECLARED_LOGOS,
+    `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
+      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });
 
