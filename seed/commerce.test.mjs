@@ -762,3 +762,48 @@ test('★★ the ORDER ID is carried out — the confirmation does not publish i
   assert.equal(order.order_id, 'ord_1');
   assert.equal(order.number, 7, 'the confirmation\'s own fields are still there');
 });
+
+// ★★★ ONE FUNCTION, ONE SHAPE — AND THE RE-RUN BRANCH USED TO HAVE ITS OWN.
+//
+// The block above promises "SECOND RUN CONVERGES". Measured on the birth of 2026-09-09 it did not: the
+// fresh path returns `{ ...confirmation, order_id }` (the confirmation does not publish the id, so it is
+// carried out by hand), and the re-run path returned the `orders_admin` row VERBATIM — and that face
+// publishes the id as `id`. So a second run handed `signSubscriptions` three orders with no `order_id`,
+// which became `[undefined, undefined, undefined]`, which a `Set` collapses into ONE, which printed
+// `1 of 3 order(s) produced no contract: .` and blamed a relay that was healthy.
+//
+// ⚠️ THE GRADE IS THE SHAPE, NOT THE FIELD. Asserting `order_id === 'ord_…'` on the re-run alone would go
+// green the day the fresh path renames it. Both branches are asked for the SAME keys.
+test('★★★ the re-run branch returns the SAME shape as the fresh one — the id survives a second run', async () => {
+  const existing = { id: 'ord_EXISTING', number: 505, status: 'paid', buyer: { email: buyerEmail('marina.toledo') } };
+  const { port } = fakeCheckout();
+  const reused = await placeOneOrder({
+    ...port,
+    read: async (name, args) =>
+      name === 'internal/orders_admin' ? { items: [existing] } : port.read(name, args),
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Marina Toledo', email: buyerEmail('marina.toledo') },
+    what: 'subscription · weekly',
+    customFields: { sub_plan: 'weekly' },
+  });
+  const fresh = await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: { name: 'Marina Toledo', email: buyerEmail('marina.toledo') },
+    what: 'subscription · weekly',
+    customFields: { sub_plan: 'weekly' },
+  });
+
+  assert.equal(
+    typeof reused.order_id,
+    'string',
+    'the re-run branch handed back an order without `order_id` — this is the 09/09 defect: ' +
+      '`signSubscriptions` maps `.order.order_id`, so a re-run waits for `undefined` forever and names nobody',
+  );
+  assert.equal(reused.order_id, 'ord_EXISTING', 'the id of the order it decided to LEAVE, not a new one');
+  for (const key of ['order_id', 'number', 'status'])
+    assert.ok(
+      key in reused && key in fresh,
+      `the two branches of one function disagree on "${key}" — that is how the 09/09 birth failed silently`,
+    );
+});

@@ -177,6 +177,20 @@ export function pickSubscribableSku(products, index) {
  */
 export async function awaitContracts({ read, log, wanted, polls = 60, waitMs = 1_000, sleep }) {
   const nap = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  // ★★ A WAIT THAT IS ASKED TO WATCH FOR NOTHING SAYS SO, INSTEAD OF WATCHING FOREVER AND BLAMING THE RELAY.
+  // Measured on the birth of 2026-09-09: `placeOrder`'s re-run branch returned a row with no `order_id`, so
+  // this was called with `[undefined, undefined, undefined]` — and a `Set` collapses those into ONE. The
+  // refusal then said `1 of 3 order(s) produced no contract: .` — a count that contradicts the sentence
+  // beside it and a list that names nobody — and pointed the reader at a relay that was healthy. The caller's
+  // defect is fixed (`seed/commerce.mjs`); this is the half that makes the NEXT one loud instead of confusing.
+  const blank = wanted.filter((id) => typeof id !== 'string' || id === '').length;
+  if (blank > 0)
+    throw new Error(
+      `subscriptions — ${blank} of ${wanted.length} order id(s) handed to the contract wait are not ids. ` +
+        'This is NOT a relay problem and no amount of waiting fixes it: whoever placed the orders returned ' +
+        'something without `order_id`. Note that a Set collapses repeated blanks, so the count of "missing" ' +
+        'orders further down would UNDERSTATE it and name nobody.',
+    );
   const missing = new Set(wanted);
   let held = [];
   for (let attempt = 0; attempt <= polls; attempt += 1) {

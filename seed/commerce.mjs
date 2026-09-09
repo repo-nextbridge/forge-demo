@@ -839,7 +839,20 @@ export async function placeOneOrder({ store, command, read, log, buyer, what, pi
   );
   if (already) {
     log(`commerce — ${store.handle} already carries its ${what} order #${already.number}; leaving it`);
-    return already;
+    // ⚠️⚠️ THE SAME SHAPE AS THE FRESH PATH, AND IT USED NOT TO BE. `orders_admin` publishes the order's id
+    // as `id`; the fresh return below carries it as `order_id`, because `order_confirmation` does not
+    // publish it at all. So this branch used to hand back a row WITHOUT `order_id` — one function, two
+    // shapes, and only on the second run.
+    //
+    // ★ MEASURED on the birth of 2026-09-09, and the way it failed is the reason this comment is long:
+    // `signSubscriptions` does `wanted: signed.map((s) => s.order.order_id)`, so a re-run built
+    // `[undefined, undefined, undefined]`, and `awaitContracts` puts that into a `Set` — where THREE
+    // undefineds collapse into ONE. The refusal then read
+    //     `subscriptions — 1 of 3 order(s) produced no contract: .`
+    // — a count that says 1 where three orders were placed, and a list that names nobody. It then sent the
+    // reader to check the relay, which was fine; the three contracts existed. ⇒ the seed that promises
+    // "SECOND RUN CONVERGES" four lines above could not, in fact, run twice.
+    return { ...already, order_id: already.id };
   }
 
   const catalogue = (await read('products', { store: store.id, limit: 25 }))?.items ?? [];

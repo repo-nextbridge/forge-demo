@@ -398,3 +398,33 @@ test('★★★ pk29/D1 — the refusal names the TABLE to look in, and offers t
       'before "the order closed as a guest".',
   );
 });
+
+// ★★ A WAIT ASKED TO WATCH FOR NOTHING SAYS SO — and this is not hypothetical.
+//
+// On the birth of 2026-09-09 the caller's re-run branch handed three orders with no `order_id`. A `Set`
+// collapses repeated blanks, so the refusal read `1 of 3 order(s) produced no contract: .` — a count that
+// contradicts its own sentence, a list that names nobody, and three hypotheses about a relay that was fine.
+// The caller is fixed; this proves the wait no longer TRANSLATES that defect into a lie about the relay.
+test('★★ blank order ids are refused up front — a Set would collapse them and understate the count', async () => {
+  await assert.rejects(
+    () => awaitContracts({ read: async () => ({ items: [] }), log: () => {}, wanted: [undefined, undefined, undefined], polls: 0, waitMs: 0, sleep: async () => {} }),
+    (err) => {
+      assert.match(err.message, /3 of 3 order id\(s\)/, 'it must count all three, not the one the Set would keep');
+      assert.match(err.message, /NOT a relay problem/, 'it must say the relay is innocent — that is the whole lesson');
+      assert.match(err.message, /Set collapses/, 'it must name the mechanism that hid it');
+      return true;
+    },
+  );
+});
+
+test('★ and a real id still waits — the refusal above must not swallow the normal case', async () => {
+  const held = await awaitContracts({
+    read: async () => ({ items: [{ origin_order_id: 'ord_real' }] }),
+    log: () => {},
+    wanted: ['ord_real'],
+    polls: 1,
+    waitMs: 0,
+    sleep: async () => {},
+  });
+  assert.equal(held.length, 1);
+});
