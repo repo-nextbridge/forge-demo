@@ -1,3 +1,4 @@
+<!-- @dsCard group="Demo gate" -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -11,143 +12,130 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
 <style>
-@font-face{font-family:'Geigyll Duplex Var';src:url('assets/geigyll-duplex-var.woff2') format('woff2-variations');font-weight:100 900;font-style:normal;font-display:swap}
 body{margin:0;background:#0F1011;color:#FFFFFF;font-family:'Urbanist','Helvetica Neue',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 a{color:#FFFFFF;text-decoration:none}
 a:hover{color:#C2410C}
 @keyframes dmIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-@keyframes dmBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
 </style>
 </helmet>
-<div style="min-height:100vh;min-height:100dvh;box-sizing:border-box;background:#17181A;display:flex;align-items:center;justify-content:center;padding:40px 24px">
-  <div style="width:100%;max-width:920px;animation:dmIn .6s cubic-bezier(.22,1,.36,1) both">
-    <div style="border:1px solid rgba(255,255,255,.09)">
-      <div style="padding:clamp(38px,5.5vw,64px) clamp(22px,4vw,52px);border-bottom:1px solid rgba(255,255,255,.09);text-align:center">
-        <div style="display:inline-flex;align-items:baseline;font-size:22px;letter-spacing:-.02em;margin-bottom:26px"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#C2410C">.</span></span><span style="font-weight:500;color:#A6A6A6">demo</span></div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#FFFFFF"><span style="color:#C2410C">.</span>Ambiente de demonstração</div>
-        <h1 style="font-family:'Geigyll Duplex Var','Helvetica Neue',sans-serif;margin:16px 0 0;font-size:clamp(30px,4.6vw,52px);line-height:1.1;letter-spacing:-.025em;font-weight:400;color:#FFFFFF">Loja demo.</h1>
-        <p style="margin:18px auto 0;max-width:520px;font-size:clamp(15px,1.8vw,17px);line-height:1.6;color:#A6A6A6;text-wrap:pretty">Tudo aqui é fictício: produtos, preços, pedidos e clientes. Nada é cobrado, nada é enviado. Clique em tudo, quebre o que quiser, é para isso que ela existe. E de tempos em tempos, tudo volta ao lugar.</p>
-      </div>
-      <div style="display:grid;grid-template-columns: {{ dmHatch }}">
-        <div style="background:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 8px);border-right:1px solid rgba(255,255,255,.09)"></div>
-        <div style="display:grid;grid-template-columns: {{ dmCols }}">
+<div style="min-height:100vh;min-height:100dvh;box-sizing:border-box;background:#0F1011;display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,56px) clamp(16px,3vw,32px)">
+<div style="width:100%;max-width:1080px;animation:dmIn .6s cubic-bezier(.22,1,.36,1) both">
 
-          <div style="box-sizing:border-box;aspect-ratio: {{ dmAspect }};padding:clamp(22px,3vw,32px);display:flex;flex-direction:column;justify-content:space-between;gap:20px">
-            <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-              <div style="width:min(210px,100%);background:#FAFAFA;border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:6px;box-shadow:0 10px 26px -12px rgba(0,0,0,.6)">
-                <div style="background:#fff;border-radius:7px;overflow:hidden">
-                  <div style="height:16px;border-bottom:1px solid rgba(0,0,0,.07);display:flex;align-items:center;gap:3px;padding:0 7px">
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                  </div>
-                  <div style="padding:8px">
-                    <div style="height:34px;border-radius:4px;background:linear-gradient(120deg,#E9E6E1,#F5F3F0)"></div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:6px">
-                      <div><div style="height:28px;border-radius:4px;background:#F1EFEC"></div><div style="height:4px;width:80%;border-radius:2px;background:#EAE7E3;margin-top:4px"></div><div style="height:4px;width:46%;border-radius:2px;background:#C2410C;margin-top:3px"></div></div>
-                      <div><div style="height:28px;border-radius:4px;background:#F1EFEC"></div><div style="height:4px;width:70%;border-radius:2px;background:#EAE7E3;margin-top:4px"></div><div style="height:4px;width:52%;border-radius:2px;background:#C2410C;margin-top:3px"></div></div>
-                      <div><div style="height:28px;border-radius:4px;background:#F1EFEC"></div><div style="height:4px;width:86%;border-radius:2px;background:#EAE7E3;margin-top:4px"></div><div style="height:4px;width:40%;border-radius:2px;background:#C2410C;margin-top:3px"></div></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div style="font-size:16px;font-weight:700;color:#FFFFFF">Storefront</div>
-              <p style="margin:8px 0 0;font-size:13.5px;line-height:1.55;color:#8A8478;text-wrap:pretty">A loja pelos olhos do cliente.</p>
-              <a href="{{ storeUrl }}" target="_blank" style="margin-top:18px;display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;padding:13px 20px;background:transparent;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">
-                Abrir a loja
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
-              </a>
-            </div>
-          </div>
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:clamp(20px,3vw,30px)">
+<div>
+<div style="display:inline-flex;align-items:baseline;font-size:20px;letter-spacing:-.02em"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#C2410C">.</span></span><span style="font-weight:500;color:#8A8478">demo</span></div>
+<h1 style="margin:14px 0 0;font-size:clamp(26px,3.6vw,40px);line-height:1.08;letter-spacing:-.03em;font-weight:700;color:#FFFFFF;text-wrap:balance;max-width:14ch">Dois tenants. Quatro lojas. Dois admins.</h1>
+</div>
+<p style="margin:0;max-width:330px;font-size:13.5px;line-height:1.6;color:#8A8478;text-wrap:pretty">Cada tenant é uma conta isolada: banco, catálogo, pedidos e login próprios. Mas o mesmo <strong style="color:#FFFFFF;font-weight:700">kernel</strong>.</p>
+</div>
 
-          <div style="box-sizing:border-box;aspect-ratio: {{ dmAspect }};padding:clamp(22px,3vw,32px);display:flex;flex-direction:column;justify-content:space-between;gap:20px;border-left: {{ dmDivL }};border-top: {{ dmDivT }}">
-            <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center">
-              <div style="width:min(210px,100%);background:#FAFAFA;border:1px solid rgba(255,255,255,.1);border-radius:11px;padding:6px;box-shadow:0 10px 26px -12px rgba(0,0,0,.6)">
-                <div style="background:#fff;border-radius:7px;overflow:hidden">
-                  <div style="height:16px;border-bottom:1px solid rgba(0,0,0,.07);display:flex;align-items:center;gap:3px;padding:0 7px">
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                    <span style="width:4px;height:4px;border-radius:50%;background:#DDD"></span>
-                  </div>
-                  <div style="display:flex">
-                    <div style="width:34px;border-right:1px solid rgba(0,0,0,.06);padding:7px 5px;display:flex;flex-direction:column;gap:4px">
-                      <div style="height:4px;border-radius:2px;background:#C2410C"></div>
-                      <div style="height:4px;border-radius:2px;background:#EAE7E3"></div>
-                      <div style="height:4px;border-radius:2px;background:#EAE7E3"></div>
-                      <div style="height:4px;border-radius:2px;background:#EAE7E3"></div>
-                    </div>
-                    <div style="flex:1;padding:7px 8px">
-                      <div style="display:flex;gap:5px">
-                        <div style="flex:1;border:1px solid rgba(0,0,0,.07);border-radius:4px;padding:4px 5px"><div style="height:3px;width:60%;border-radius:2px;background:#EAE7E3"></div><div style="font-size:7px;font-weight:800;color:#17181A;margin-top:3px">128</div></div>
-                        <div style="flex:1;border:1px solid rgba(0,0,0,.07);border-radius:4px;padding:4px 5px"><div style="height:3px;width:70%;border-radius:2px;background:#EAE7E3"></div><div style="font-size:7px;font-weight:800;color:#17181A;margin-top:3px">R$ 42k</div></div>
-                      </div>
-                      <div style="margin-top:6px;border:1px solid rgba(0,0,0,.07);border-radius:4px;overflow:hidden">
-                        <div style="display:flex;align-items:center;gap:4px;padding:4px 5px;border-bottom:1px solid rgba(0,0,0,.05)"><span style="width:5px;height:5px;border-radius:50%;background:#16A34A;flex:none"></span><div style="flex:1;height:3px;border-radius:2px;background:#EFEDEA"></div></div>
-                        <div style="display:flex;align-items:center;gap:4px;padding:4px 5px;border-bottom:1px solid rgba(0,0,0,.05)"><span style="width:5px;height:5px;border-radius:50%;background:#C2410C;flex:none"></span><div style="flex:1;height:3px;border-radius:2px;background:#EFEDEA"></div></div>
-                        <div style="display:flex;align-items:center;gap:4px;padding:4px 5px"><span style="width:5px;height:5px;border-radius:50%;background:#1D4ED8;flex:none"></span><div style="flex:1;height:3px;border-radius:2px;background:#EFEDEA"></div></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div style="font-size:16px;font-weight:700;color:#FFFFFF">Admin</div>
-              <p style="margin:8px 0 0;font-size:13.5px;line-height:1.55;color:#8A8478;text-wrap:pretty">O painel de quem opera.</p>
-              <a href="{{ adminUrl }}" target="_blank" style="margin-top:18px;display:inline-flex;align-items:center;gap:9px;font-size:14.5px;font-weight:600;padding:13px 20px;background:transparent;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">
-                Abrir o admin
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
-              </a>
-            </div>
-          </div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px">
 
-        </div>
-        <div style="background:repeating-linear-gradient(45deg,rgba(255,255,255,.07) 0 1px,transparent 1px 8px);border-left:1px solid rgba(255,255,255,.09)"></div>
-      </div>
-    </div>
-    <div style="margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
-      <a href="Forge%20Home.dc.html" style="font-size:13px;font-weight:600;color:#8A8478" style-hover="color:#FFFFFF">← voltar para forgecommerce.pro</a>
-      <div style="display:flex;align-items:center;gap:8px">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6E6A63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-        <sc-for list="{{ langs }}" as="l" hint-placeholder-count="3">
-          <button type="button" onClick="{{ l.pick }}" style="background:none;border:none;padding:2px 4px;cursor:pointer;font-family:'Urbanist',sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transition:color .2s;color: {{ l.color }}" style-hover="color:#FFFFFF">{{ l.code }}</button>
-        </sc-for>
-      </div>
-    </div>
-  </div>
+<div style="box-sizing:border-box;background:#17181A;border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column">
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(255,255,255,.1)">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8A8478">Sapatos</div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C2410C;border:1px solid rgba(194,65,12,.4);padding:4px 9px">Tenant 1</div>
+</div>
+<div style="margin-top:12px;font-size:15px;font-weight:600;color:#FFFFFF">Duas lojas, um único banco.</div>
+<p style="margin:6px 0 0;font-size:13px;line-height:1.55;color:#8A8478;text-wrap:pretty">Mesmo catálogo, vitrines e temas independentes.</p>
+</div>
+
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:14px;flex:1">
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+<div style="display:inline-flex;align-items:baseline;font-size:19px;letter-spacing:-.02em"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#C2410C">.</span></span><span style="font-weight:500;color:#C2410C">store</span></div>
+<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#0F1011;background:#E7E4DE;padding:3px 7px">Referência</div>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">O storefront serve uma loja de verdade: 2 790 produtos, 44 427 SKUs, busca, PLP, PDP, carrinho, checkout e conta.</p>
+<a href="{{ storeUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,color .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">Abrir a loja<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
+</div>
+
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:14px;flex:1">
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+<div style="display:inline-flex;align-items:baseline;font-size:19px;letter-spacing:-.02em"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#E11D48">.</span></span><span style="font-weight:500;color:#E11D48">outlet</span></div>
+<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#FFFFFF;background:#9F1239;padding:3px 7px">Segunda loja</div>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">Multi-loja não é multi-tenant: mesmos produtos e pedidos, com tema, preços e publicação próprios.</p>
+<a href="{{ outletUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,color .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">Abrir o outlet<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
+</div>
+
+<a href="{{ adminShoesUrl }}" target="_blank" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,2.4vw,28px);background:rgba(255,255,255,.03);transition:background .2s" style-hover="background:rgba(255,255,255,.09)">
+<span style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#FFFFFF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg>Admin do tenant</span>
+<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#8A8478">admin.store.forgecommerce.pro →</span>
+</a>
+</div>
+
+<div style="box-sizing:border-box;background:#F3EDE3;border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column">
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(43,33,24,.14)">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#7A6A55">Café</div>
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#2F3B30;border:1px solid rgba(47,59,48,.35);padding:4px 9px">Tenant 2</div>
+</div>
+<div style="margin-top:12px;font-family:'Fraunces',Georgia,serif;font-size:19px;font-weight:600;color:#241C14">Outra conta, outra casca.</div>
+<p style="margin:6px 0 0;font-size:13px;line-height:1.55;color:#6B5C49;text-wrap:pretty">O mesmo kernel sem a nossa vitrine e, no limite, sem o nosso checkout.</p>
+</div>
+
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(43,33,24,.1);display:flex;flex-direction:column;gap:14px;flex:1">
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+<div style="font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;letter-spacing:-.01em;color:#241C14">forge<span style="color:#A9793F">.</span>co</div>
+<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F3EDE3;background:#2F3B30;padding:3px 7px">Storefront forkado</div>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">A vitrine é substituível e o kernel não: repositório e imagem próprios, assinatura recorrente, com o nosso checkout inteiro por trás.</p>
+<a href="{{ cafeUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#241C14;border:1px solid rgba(36,28,20,.28);transition:background .2s,color .2s,border-color .2s" style-hover="background:#2F3B30;border-color:#2F3B30;color:#F3EDE3">Abrir a loja<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
+</div>
+
+<div style="padding:clamp(20px,2.4vw,26px) clamp(20px,2.4vw,28px);border-bottom:1px solid rgba(43,33,24,.14);display:flex;flex-direction:column;gap:14px;flex:1">
+<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px">
+<div style="font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;letter-spacing:-.01em;color:#241C14">forge<span style="color:#A9793F">.</span>co balcão</div>
+<div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#2F3B30;background:#DCD3C4;padding:3px 7px">Totem</div>
+</div>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">O degrau final: um totem de balcão que não usa storefront nem checkout. Aplicação própria falando direto com a porta.</p>
+<a href="{{ balcaoUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#241C14;border:1px solid rgba(36,28,20,.28);transition:background .2s,color .2s,border-color .2s" style-hover="background:#2F3B30;border-color:#2F3B30;color:#F3EDE3">Abrir o totem<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
+</div>
+
+<a href="{{ adminCafeUrl }}" target="_blank" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,2.4vw,28px);background:rgba(43,33,24,.05);transition:background .2s" style-hover="background:rgba(43,33,24,.11)">
+<span style="display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#241C14"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2F3B30" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg>Admin do tenant</span>
+<span style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#7A6A55">admin.cafe.forgecommerce.pro →</span>
+</a>
+</div>
+
+</div>
+
+<div style="margin-top:18px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+<p style="margin:0;max-width:640px;font-size:12px;line-height:1.55;color:#6E6A63;text-wrap:pretty">Tudo fictício: nada é cobrado, nada é enviado. Pode quebrar: o ambiente volta ao lugar de tempos em tempos.</p>
+<div style="display:flex;align-items:center;gap:8px">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6E6A63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+<sc-for list="{{ langs }}" as="l" hint-placeholder-count="3">
+<button type="button" onClick="{{ l.pick }}" style="background:none;border:none;padding:2px 4px;cursor:pointer;font-family:'Urbanist',sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transition:color .2s;color: {{ l.color }}" style-hover="color:#FFFFFF">{{ l.code }}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="margin-top:14px">
+<a href="Forge%20Home.dc.html" style="font-size:13px;font-weight:600;color:#8A8478" style-hover="color:#FFFFFF">← voltar para forgecommerce.pro</a>
+</div>
+
+</div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;storeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://staging.forgecommerce.app&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Links&quot;},&quot;adminUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://staging.forgecommerce.app/admin&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Links&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;storeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.store.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;outletUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.store.forgecommerce.pro/s/outlet&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;adminShoesUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://admin.store.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;cafeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.cafe.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;},&quot;balcaoUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.cafe.forgecommerce.pro/balcao&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;},&quot;adminCafeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://admin.cafe.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;}}">
 class Component extends DCLogic {
-  state = { isMobile: false, lang: 'pt' };
-  componentDidMount() {
-    this.mq = window.matchMedia('(max-width: 760px)');
-    this.onMq = () => this.setState({ isMobile: this.mq.matches });
-    this.onMq();
-    this.mq.addEventListener('change', this.onMq);
-  }
-  componentWillUnmount() {
-    if (this.mq) this.mq.removeEventListener('change', this.onMq);
-  }
+  state = { lang: 'pt' };
   renderVals() {
-    const m = this.state.isMobile;
     return {
       langs: ['pt', 'en', 'es'].map(code => ({
         code,
         color: this.state.lang === code ? '#FFFFFF' : '#6E6A63',
         pick: () => this.setState({ lang: code })
       })),
-      dmHatch: m ? '18px 1fr 18px' : '48px 1fr 48px',
-      dmCols: m ? 'minmax(0,1fr)' : '1fr 1fr',
-      dmAspect: m ? 'auto' : '1/1',
-      dmDivL: m ? 'none' : '1px solid rgba(255,255,255,.09)',
-      dmDivT: m ? '1px solid rgba(255,255,255,.09)' : 'none',
-      storeUrl: this.props.storeUrl ?? 'https://staging.forgecommerce.app',
-      adminUrl: this.props.adminUrl ?? 'https://staging.forgecommerce.app/admin'
+      storeUrl: this.props.storeUrl ?? 'https://demo.store.forgecommerce.pro',
+      outletUrl: this.props.outletUrl ?? 'https://demo.store.forgecommerce.pro/s/outlet',
+      adminShoesUrl: this.props.adminShoesUrl ?? 'https://admin.store.forgecommerce.pro',
+      cafeUrl: this.props.cafeUrl ?? 'https://demo.cafe.forgecommerce.pro',
+      balcaoUrl: this.props.balcaoUrl ?? 'https://demo.cafe.forgecommerce.pro/balcao',
+      adminCafeUrl: this.props.adminCafeUrl ?? 'https://admin.cafe.forgecommerce.pro'
     };
   }
 }
