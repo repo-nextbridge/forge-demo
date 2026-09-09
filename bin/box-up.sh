@@ -553,9 +553,15 @@ origin_for() { # <host> <published-scheme> <published-port> <fallback-port>
 # names are de-duplicated. IPv6 is not a spelling this box ever writes into that map (step 3b and the
 # promotion both compose `"<name>":` / `"<name>:<port>":` from hostnames), so a `[::1]:8200` key here would
 # be one nobody put there.
-promoted_hosts() {
-  { printf '%s\n' "${FORGE_TAILNET_HOST:-}" "${FORGE_TAILNET_IP:-}"
-    python3 - "$HERE/.env" <<'PYSTOREHOSTS'
+#
+# ★ pk29/D1 — THE MAP'S OWN ANSWER IS ITS OWN FUNCTION, because there are now two questions and only one of
+# them may be answered by the environment. `promoted_hosts` below is «which names might this box have been
+# promoted to», and it deliberately includes `FORGE_TAILNET_HOST` — a box promoted by the older script has
+# that variable and a map that may not carry the name. The bench summary asks the OPPOSITE question — «has
+# this box claimed the name this machine answers to?» — and for that, reading the variable back would be
+# reading the question as the answer: the variable is set on a box that was never promoted at all.
+store_host_names() {
+  python3 - "$HERE/.env" <<'PYSTOREHOSTS'
 import json, sys
 raw = ''
 for line in open(sys.argv[1], encoding='utf-8'):
@@ -568,10 +574,52 @@ except ValueError:
 for key in mapping:
     print(key.rsplit(':', 1)[0] if ':' in key else key)
 PYSTOREHOSTS
+}
+
+promoted_hosts() {
+  { printf '%s\n' "${FORGE_TAILNET_HOST:-}" "${FORGE_TAILNET_IP:-}"
+    store_host_names
   } | awk -v self="$(hostname 2>/dev/null)" '
       $0 == "" || $0 == "localhost" || $0 == "127.0.0.1" || $0 == self { next }
       !seen[$0]++ { printf "%s%s", (n++ ? " " : ""), $0 }
     '
+}
+
+# ── ★★★ pk29/D1 · THE DOORS THIS MACHINE PUBLISHES THAT THE BOX HAS NOT CLAIMED ─────────────────────────────
+#
+# ⛔ THE TROPEÇO, MEASURED AT THE BIRTH OF 2026-09-09. The box was born, every step green, and the owner
+# opened `https://<tailnet>:8443/login` and got `?error=unknown_host` — «This address is not registered on
+# this instance». `forge_control.admin_directory` held `localhost:8201` and `localhost:8202` and nothing else:
+# the box is born on `localhost` BY DECISION (§0b), `tailscale serve` was already putting the tailnet in front
+# of it, and the `Host` that arrived was claimed by no tenant. `bash bin/box-up.sh --promote tailnet` fixed it
+# in seconds — hours later, and only because he asked.
+#
+# ⇒ THE MECHANISM WAS RIGHT AND THE BIRTH WAS SILENT. Both halves matter. ⛔ The promotion is NOT forced here
+# and must not be: §0b says at length why the box is born on `localhost` and pk24/§B5 made the promotion a
+# NAMED step of the pipeline rather than a mode of this bench. What is repaired is the SILENCE — a box that
+# answers only on `localhost` while this machine publishes it under another name KNOWS that, and used to say
+# nothing, leaving `unknown_host` to explain it to whoever opened a browser first.
+#
+# ⚠️ IT IS DERIVED FROM WHAT IS PUBLISHED, NEVER FROM A VARIABLE BEING SET. `FORGE_TAILNET_HOST` alone proves
+# nothing: it is in `.env` on this laptop whether or not anything is serving. The report fires only when
+# `tailscale serve` really publishes a door on that name AND the box's own host → store map does not name it.
+# Both facts are read; neither is configured. A machine with no tailscale, no `serve`, or an already-promoted
+# box prints nothing at all.
+promotion_gap_doors() {
+  [ -n "${FORGE_TAILNET_HOST:-}" ] || return 0
+  local table doors='' port scheme public
+  table="$(tailnet_published_ports "$FORGE_TAILNET_HOST")"
+  [ -n "$table" ] || return 0
+  # Already claimed ⇒ the box IS promoted and there is nothing owed. This asks the map and not the variable;
+  # see `store_host_names` for why that distinction is the whole of the check.
+  case " $(store_host_names | tr '\n' ' ') " in *" $FORGE_TAILNET_HOST "*) return 0 ;; esac
+  while read -r port scheme public; do
+    [ -n "$port" ] || continue
+    doors="$doors $(origin_for "$FORGE_TAILNET_HOST" "$scheme" "$public" "$port")"
+  done <<EOF
+$table
+EOF
+  printf '%s' "${doors# }"
 }
 
 # ── 0 · the environment ─────────────────────────────────────────────────────────────────────────────────────
@@ -2063,6 +2111,10 @@ note ''
 note 'not a step of the birth (the box is born on localhost, on purpose) and invocable on its own:'
 note '  bash bin/box-up.sh --promote <tailnet|localhost|hostname>   ← the address this box publishes itself at'
 
+# ★★ pk29/D1 — ASKED BEFORE THE ADDRESSES ARE HANDED OUT, so the summary can qualify them. See
+# `promotion_gap_doors` for the birth this repairs and for why the promotion is still NOT forced here.
+PROMOTION_OWED="$(promotion_gap_doors)"
+
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
@@ -2091,6 +2143,11 @@ if bench_bind_is_loopback; then
 else
   note "⚠️ FORGE_BENCH_BIND is \"${FORGE_BENCH_BIND:-}\", so these doors are on the NETWORK as plain http: a browser off \`localhost\` keeps none of the Secure cookies these fronts set — the cart and the admin session evaporate. See .env.example."
 fi
+if [ -n "$PROMOTION_OWED" ]; then
+  # ⛔ NOT A WARNING ABOUT A VARIABLE — the doors below were READ off `tailscale serve` and the box's own host
+  # → store map does not name that host. Somebody opening one of them today gets `?error=unknown_host`.
+  note "⚠️  and this machine ALSO answers at:$(printf ' %s' $PROMOTION_OWED) — which this box has NOT claimed."
+fi
 note 'off the laptop, the promotion is its own step and it takes the destination:'
 note '  bash bin/box-up.sh --promote tailnet            (needs FORGE_TAILNET_HOST in .env)'
 note '  bash bin/box-up.sh --promote <hostname>         any address this box really answers at'
@@ -2117,6 +2174,24 @@ if [ -n "${COLD:-}" ]; then
          "never visited" here means the derived one did not fit either, which the report states.
 
 ' "$COLD" >&2
+fi
+# ⛔ A REPORT AND NOT A GATE, DELIBERATELY, and the decision it must not overturn is §0b's: the box is born on
+# `localhost` because Renan said so and because the addresses of a private network may not live in a versioned
+# file. A birth on this laptop is a CORRECT birth, so this may never make one red — what it may not do is stay
+# quiet while the box holds a claim nobody will type and this machine publishes one that nothing claims.
+if [ -n "${PROMOTION_OWED:-}" ]; then
+  printf '[box-up] ⚠️  REPORT — THE BOX IS UP ON `localhost` AND THIS MACHINE IS PUBLISHED UNDER ANOTHER NAME.
+         Read off `tailscale serve` just now, and not claimed by any tenant of this box:%s
+         A browser opening one of those gets `?error=unknown_host` — "This address is not registered on
+         this instance" — because `forge_control.admin_directory` holds the `localhost` doors this birth
+         wrote and nothing else. That is not a defect: the box is born on `localhost` on purpose (see 0b),
+         and the promotion is a NAMED STEP of the pipeline rather than a mode of this bench. It is simply
+         NOT DONE YET, and this line exists because the birth used to leave `unknown_host` to say so, to
+         whoever opened a browser first:
+
+             bash bin/box-up.sh --promote tailnet
+
+' "$(printf ' %s' $PROMOTION_OWED)" >&2
 fi
 if [ -n "${WARM_UNKNOWN:-}" ]; then
   printf '[box-up] ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: step 14 could not ASK. Nothing above is a claim about

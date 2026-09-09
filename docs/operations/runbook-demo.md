@@ -462,6 +462,27 @@ reivindicada **pela porta**. Então o destino agora é argumento:
 | `bash bin/box-up.sh --promote localhost` | a promoção desfeita — e ela **lê da própria caixa** quais nomes soltar (o mapa host→loja é o registro que a ida escreveu), então uma caixa promovida por um pipeline pode ser despromovida por um |
 | `--tailnet` / `--localhost` | apelidos, mantidos: são o que todo runbook e comentário daqui digita |
 
+★★ **pk29/D1 — e o NASCIMENTO agora diz quando a promoção ficou por fazer.** No nascimento de 09/09 tudo
+ficou verde e o dono abriu `https://<tailnet>:8443/login` e viu **`?error=unknown_host`** — «This address is
+not registered on this instance». Medido: `forge_control.admin_directory` tinha só `localhost:8201` e
+`localhost:8202`. O mecanismo estava certo (a caixa **nasce em `localhost` por decisão**, §0b do `box-up.sh`);
+o que faltava era o nascimento **dizer** que tinha ficado pela metade.
+
+⛔ **A promoção continua NÃO sendo forçada** — nada mudou na decisão, e um nascimento local continua verde. O
+que mudou é que o resumo termina com um **relatório** quando, e só quando, `tailscale serve` publica de fato
+uma porta num nome que o mapa host→loja da caixa **não reivindica**:
+
+```
+[box-up] ⚠️  REPORT — THE BOX IS UP ON `localhost` AND THIS MACHINE IS PUBLISHED UNDER ANOTHER NAME.
+         Read off `tailscale serve` just now, and not claimed by any tenant of this box: https://<tailnet>:8443 …
+             bash bin/box-up.sh --promote tailnet
+```
+
+⚠️ **Ele é derivado dos dois lados e nunca de uma variável estar setada.** `FORGE_TAILNET_HOST` mora no `.env`
+desta máquina esteja ou não algo servindo — um aviso disparado por ela apareceria em todo nascimento local e
+seria aprendido como ruído em uma semana. `bin/promotion-gap.guard.mjs` roda a função de verdade e prova as
+duas direções: **alta** com porta publicada e não reivindicada, **muda** em qualquer outro caso.
+
 ⚠️ **`--promote` sem destino RECUSA e nomeia os destinos** — nunca cai num default. Um passo que só funciona
 porque alguém sabia qual variável exportar não é um passo pronto.
 ⚠️ **O que continua sendo fronteira, e a corrida diz em voz alta:** só o **tailnet** publica uma tabela que

@@ -457,6 +457,15 @@ FORGE_TAILNET_IP=<its tailnet address>      # optional: the safety net for a dev
 bash bin/box-up.sh --promote tailnet        # and `--promote localhost` puts it back
 ```
 
+★★ **pk29/D1 — and the BIRTH now says when that command is still owed.** On 2026-09-09 a birth finished
+green and `https://<tailnet>:8443/login` answered `?error=unknown_host`: the box had claimed `localhost:8201`
+and `localhost:8202` and `tailscale serve` was already in front of it. The decision is unchanged — the box is
+born on `localhost` and the promotion is **not** forced — but the run no longer leaves `unknown_host` to
+explain it. When `tailscale serve` really publishes a door on a name the box's own host → store map does not
+claim, the summary ends with a report naming those doors and the one command that fixes them. It is derived
+from **both** sides and never from `FORGE_TAILNET_HOST` merely being set, which is in `.env` here whether or
+not anything is serving; `bin/promotion-gap.guard.mjs` proves it is loud in that case and mute in every other.
+
 ★ **pk24/§B5 — and the tailnet is one DESTINATION of that step, not its definition.** Online there is no
 tailnet and the box needs the same thing, so the address is an argument: `--promote <hostname>` points this
 box at any address it really answers at, `--promote localhost` undoes it (reading the names to release off
