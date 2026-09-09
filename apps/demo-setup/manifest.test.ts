@@ -14,8 +14,13 @@ const SLOT_OF = {
   header_brand: 'storefront:header.brand',
   drawer_brand: 'storefront:header.drawer_brand',
   footer_brand: 'storefront:footer.brand',
-  account_brand: 'storefront:account.brand',
 } as const;
+
+// ⛔ THE FOURTH MARK LEFT IN pk28 AND THE SLOT DID NOT. `storefront:account.brand` — the login box — is drawn
+// by the CHECKOUT, which we host and nobody forks, so a mark there must be configurable without a fork: it is
+// the PRODUCT's job now (the OOTB `chrome` app), never an instance app's. The vitrine is the opposite, which
+// is why these three stayed. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».
+const GONE_TO_THE_PRODUCT = 'account_brand';
 
 describe('demo-setup manifest', () => {
   it('is an app of ONE instance — the declaration the oven and the fleet both read', () => {
@@ -26,12 +31,12 @@ describe('demo-setup manifest', () => {
     expect(manifest.kind).toBe('app');
   });
 
-  it('★★ declares FOUR blocks — one per place a shop shows its mark, never one placed four times', () => {
+  it('★★ declares THREE blocks — one per place the VITRINE shows a mark, never one placed three times', () => {
     // ⛔ THE RULE THE PREVIOUS DESIGN BROKE, and it is the kernel's: `placement: 'single'` is enforced per
-    // (store, app, component), so one component in two slots is refused with `conflict`. Four components is
-    // what lets a store put its mark in four places at all — and what makes the Compose board say which.
+    // (store, app, component), so one component in two slots is refused with `conflict`. A component per
+    // place is what lets a store put its mark in each of them at all — and what makes the board say which.
     expect(blocks.map((b) => b.component).sort()).toEqual(Object.keys(SLOT_OF).sort());
-    expect(new Set(blocks.map((b) => b.component)).size).toBe(4);
+    expect(new Set(blocks.map((b) => b.component)).size).toBe(3);
     for (const block of blocks) {
       expect(block.placement).toBe('single');
       expect(block.surface).toBe('storefront');
@@ -47,6 +52,27 @@ describe('demo-setup manifest', () => {
       expect(slot, `block ${block.component} is not one this test knows a slot for`).toBeTruthy();
       expect(block.area).toBe(slot.slice('storefront:'.length).split('.')[0]);
     }
+  });
+
+  it('★★ the login box is NOT this app’s — the deployable decides, and the checkout is the one nobody forks', () => {
+    // ⇒ SABOTAGE: put `account_brand` back and this names it in all three places it would have to be declared.
+    //   The block is not a duplicate to be tidied away: it is a capability that moved to the product, and an
+    //   instance app that kept a copy would fight the OOTB `chrome` block for the same slot. Both would live
+    //   there — the kernel's `assertSingleFree` is keyed on (store, app, COMPONENT) and never on the slot
+    //   (packages/core/src/commands/composition.ts:185), so nothing would refuse the pair.
+    expect(blocks.map((b) => b.component)).not.toContain(GONE_TO_THE_PRODUCT);
+    const wiring = (pkg as { forge: { wiring: { blocks: Record<string, unknown> } } }).forge.wiring
+      .blocks;
+    expect(Object.keys(wiring)).not.toContain(GONE_TO_THE_PRODUCT);
+    for (const locale of ['en', 'pt-BR', 'es'] as const) {
+      expect(
+        manifest.i18n?.[locale]?.[`block.${GONE_TO_THE_PRODUCT}.label`],
+        `${locale} still names a block this app does not declare`,
+      ).toBeUndefined();
+    }
+    // …and no block of this app claims the checkout's page. `area` confines by PREFIX, so an `account` area
+    // here would be this app asking for a slot on the screen it just gave up.
+    expect(blocks.map((b) => b.area)).not.toContain('account');
   });
 
   it('⛔ declares NO manifest-default hook — installing must not strip every store of its mark', () => {

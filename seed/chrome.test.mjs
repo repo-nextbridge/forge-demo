@@ -1,7 +1,7 @@
 // A10 (the DEMO half) — THE `chrome` APP BORN INSTALLED, PLACED AND FILLED IN.
 //
 // ⛔ pk26/D2 — AND THE SHOP'S OWN MARK IS NOT ONE OF THEM ANY MORE. `brand` was the fifth block of this app
-// and the only one that was a single slot read in FOUR renders; it is `demo-setup`'s now, four components,
+// and the only one that was a single slot read in FOUR renders; it is `demo-setup`'s now, three components,
 // graded in `seed/demo-setup.test.mjs`. What moved WITH it: the empty-mark refusal, the exclusivity rule and
 // the whitespace note about a glued `text`+`tail`. What stayed here and had to be RE-POINTED rather than
 // deleted: the footer's SIGNATURE rule, which derives the shop's name from the mark — it now reads the file
@@ -35,8 +35,11 @@ const MARKS = JSON.parse(readFileSync(join(SEED, 'demo-setup.json'), 'utf8'));
  *  and confirmed against the `target_override` column of placements a human made on the bench (04/09).
  *
  *  ⛔ THERE WERE FIVE UNTIL pk26/D2, and the fifth is why the split happened: `brand` was ONE slot read in
- *  FOUR renders, so an operator dragged one row and changed four places. It is `demo-setup`'s now — four
- *  components, one per place — and `seed/demo-setup.test.mjs` is where it is graded. */
+ *  FOUR renders, so an operator dragged one row and changed four places. Three of those places are
+ *  `demo-setup`'s now — one component each, graded in `seed/demo-setup.test.mjs`. ⚠️ pk28 — THE FOURTH, the
+ *  login box, is coming BACK to this app: the checkout is the deployable nobody forks, so a mark there has to
+ *  be configurable without one, which makes it the product's. This declaration does not place it yet — the
+ *  block has to exist in the pinned image first, or `composition.place` refuses the birth. */
 const MANIFEST_SLOTS = {
   checkout_header: 'storefront:checkout.header',
   checkout_footer: 'storefront:checkout.footer',
@@ -608,7 +611,7 @@ test('★★ …and the declared FILENAME becomes an ASSET ID in the placement �
         config(store, 'brand'),
         undefined,
         `${store}: this seed placed a \`brand\` block. The shop's mark left this app in pk26/D2 — it is ` +
-          '`demo-setup`\'s, four components, and `seed/demo-setup.mjs` is what places it.',
+          '`demo-setup`\'s, three components, and `seed/demo-setup.mjs` is what places it.',
       );
     }
   });

@@ -11,7 +11,7 @@
 //     seed/demo-setup.json  → apps/demo-setup/block/marks.module.css .logo { height: 1.6em; width: auto }
 //
 // ★★ pk26/D2 SPLIT THE SECOND ONE OUT OF THE FIRST, and this guard had to move with it. The café's mark used
-// to be declared three times in `seed/chrome.json`; the shop's own `brand` block became `demo-setup`'s four
+// to be declared three times in `seed/chrome.json`; the shop's own `brand` block became `demo-setup`'s
 // marks, in a file this guard did not read. A guard that kept reading only `chrome.json` would have stayed
 // GREEN while grading the vitrine's mark not at all — «guard que não importa o sujeito não falha, para de
 // perguntar», which is the same failure this guard was written for, one file to the left.
@@ -108,8 +108,12 @@ const DRESSED = ['cafe', 'forge', 'outlet'];
 const BARE = ['balcao'];
 
 /** How many declared logos the rules below must each grade, spelled once. MEASURED: the café names its mark
- *  in six blocks (two funnel bars + four marks) and the two shoe shops in two bars each. */
-const DECLARED_LOGOS = 10;
+ *  in five blocks (two funnel bars + three marks) and the two shoe shops in two bars each.
+ *
+ *  ⚠️ IT WAS 10 UNTIL pk28, when `demo-setup`'s fourth mark — the login box — left that app: the checkout is
+ *  the deployable nobody forks, so its mark is the product's to configure. The count is spelled here so that
+ *  a declaration losing a logo shortens no loop in silence. */
+const DECLARED_LOGOS = 9;
 
 /** The mark fills at least half the height of its own file.
  *
@@ -307,7 +311,7 @@ test('★★★ the mark is TRIMMED — the drawing fills its own file, because 
     graded,
     DECLARED_LOGOS,
     `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
       'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });
@@ -337,7 +341,7 @@ test('★★ the canvas is a WORDMARK\'s shape, not an artboard\'s', () => {
     graded,
     DECLARED_LOGOS,
     `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
       'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });
@@ -378,7 +382,7 @@ test('★★★ the mark carries its own transparent ground — WITHOUT WHICH TH
     graded,
     DECLARED_LOGOS,
     `${DECLARED_LOGOS} declared logos over three files, across BOTH declarations — the café names its mark ` +
-      'in six blocks (two funnel bars in `chrome`, four marks in `demo-setup`) and the two shoe shops in ' +
+      'in five blocks (two funnel bars in `chrome`, three marks in `demo-setup`) and the two shoe shops in ' +
       'two bars each. A smaller number is this rule grading less than it claims.',
   );
 });

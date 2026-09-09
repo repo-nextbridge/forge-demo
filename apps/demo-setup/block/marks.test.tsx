@@ -1,4 +1,7 @@
-// What the four marks DRAW, and the four things that go wrong silently when they stop drawing it.
+// What the three marks of the SHOP WINDOW draw, and the four things that go wrong silently when they stop.
+//
+// ★ THE FOURTH MARK LEFT IN pk28: the login box is the CHECKOUT's screen, which we host and nobody forks, so
+// its mark is the product's to configure and not an instance app's. Nothing else about these three changed.
 //
 // ★★ EVERY RULE HERE IS ABOUT A FAILURE THAT LEAVES NO TRACE. A mark that stops rendering is a header with
 // no name on it; a logo that lands beside a wordmark deletes the wordmark; a tagline that leaks out of the
@@ -7,7 +10,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AccountBrand, DrawerBrand, FooterBrand, HeaderBrand } from './marks';
+import { DrawerBrand, FooterBrand, HeaderBrand } from './marks';
 
 /** The surface's injected helper, in its honest shape: a store-scoped prefix. */
 const storeHref = (url: string | null | undefined) => `/s/forge${url ?? '/'}`;
@@ -16,12 +19,11 @@ const MARKS = [
   ['HeaderBrand', HeaderBrand, 'header'],
   ['DrawerBrand', DrawerBrand, 'drawer'],
   ['FooterBrand', FooterBrand, 'footer'],
-  ['AccountBrand', AccountBrand, 'account'],
 ] as const;
 
-describe('the four marks', () => {
-  it('★★ each export draws in its OWN place — four components, four positions', () => {
-    // ⇒ SABOTAGE: point two of the four at the same implementation with the same `place` and this names them.
+describe('the three marks', () => {
+  it('★★ each export draws in its OWN place — three components, three positions', () => {
+    // ⇒ SABOTAGE: point two of the three at the same implementation with the same `place` and this names them.
     //   The seed places one component per slot; if two of them were the same drawing under one name, the
     //   kernel would refuse the second placement with `conflict` and one place would silently lose its mark.
     const places = new Set<string>();
@@ -33,7 +35,10 @@ describe('the four marks', () => {
       places.add(place);
       unmount();
     }
-    expect(places.size, 'two of the four marks claim the same place').toBe(4);
+    expect(places.size, 'two of the three marks claim the same place').toBe(3);
+    // ⛔ AND NO EXPORT DRAWS IN THE CHECKOUT'S PLACE. `account` was this app's fourth mark until pk28; a
+    // component still claiming it would be an instance app drawing on a screen the product now owns.
+    expect(places.has('account'), 'the login box is the checkout’s, not the vitrine’s').toBe(false);
   });
 
   it('★★ the wordmark is the word plus a tail painted with the THEME accent', () => {
@@ -89,7 +94,7 @@ describe('the four marks', () => {
 
   it('★★ the mark links into the STORE the shopper is in, never to a bare `/`', () => {
     // MULTISTORE — a bare `/` under `/s/<id>` walks a shopper out of their store, and the mark is the one
-    // link every one of these four places has.
+    // link every one of these places has.
     for (const [name, Mark] of MARKS) {
       const { container, unmount } = render(<Mark config={{ text: 'forge' }} storeHref={storeHref} />);
       expect(container.querySelector('a')?.getAttribute('href'), `${name}`).toBe('/s/forge/');

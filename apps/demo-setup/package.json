@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
-  "description": "Forge extension (DEMO-SETUP): this box's own marks. Four blocks — the store header, the mobile drawer, the store footer and the login box — each placed and configured on its own in Compose, each drawing a logo from the asset library or a wordmark whose tail takes the theme's accent. The footer block also carries the shop's tagline, because that slot's Forge fallback cedes mark and sentence as one node. Written inside this instance and offered to nobody: it is what a customer's own app looks like.",
+  "description": "Forge extension (DEMO-SETUP): this box's own marks IN ITS SHOP WINDOW. Three blocks — the store header, the mobile drawer and the store footer — each placed and configured on its own in Compose, each drawing a logo from the asset library or a wordmark whose tail takes the theme's accent. The footer block also carries the shop's tagline, because that slot's Forge fallback cedes mark and sentence as one node. The login box is NOT here: that screen is the checkout's, the deployable nobody forks, so its mark is a capability of the product and not of this app. Written inside this instance and offered to nobody: it is what a customer's own app looks like.",
   "forge": {
     "origin": "instance",
     "wiring": {
@@ -25,12 +25,6 @@
           "surface": "storefront",
           "module": "./block/marks",
           "export": "FooterBrand",
-          "props": ["config", "storeHref"]
-        },
-        "account_brand": {
-          "surface": "storefront",
-          "module": "./block/marks",
-          "export": "AccountBrand",
           "props": ["config", "storeHref"]
         }
       }

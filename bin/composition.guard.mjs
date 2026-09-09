@@ -31,6 +31,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
@@ -317,4 +318,160 @@ test('★★ an instance app that DECLARES an icon also EXPORTS it — the compo
       `${app.package}: the bytes ${subpath} exports are not the bytes of ${declared}. The module is what the kernel serves; the file is what everything else reads.`,
     );
   }
+});
+
+// ── the pixels an instance app promises the admin ───────────────────────────────────────────────────────
+/**
+ * ★★ AN APP ICON IN THIS BOX IS 128 SQUARE AND FULLY OPAQUE, BECAUSE THE PIXELS UNDER ITS ALPHA ARE BLACK.
+ *
+ * ⚠️ MEASURED HERE, 2026-09-09, BEFORE THE RULE WAS WRITTEN: `demo-setup`'s placeholder icon carried 2 879 of
+ * 16 384 pixels below full alpha — 2 731 of them at alpha 0 with (0,0,0) underneath. Anywhere that fourth
+ * channel is dropped — a flatten, a thumbnail, a composite onto a dark ground, a consumer that decodes RGB —
+ * those pixels paint a BLACK SQUARE while `demo-gate` and `payment-pos` paint the artwork somebody drew. It
+ * is the same image rendering as two different pictures depending on who decodes it.
+ *
+ * ⛔ THE MONOREPO'S OWN GUARD CANNOT SEE THESE APPS — `scripts/publishing/icon-opacity.guard.test.ts` walks
+ * the product's `extensions/` directory, which is exactly why `apps/payment-pos/manifest.test.ts` duplicates
+ * its half of the i18n rule here. This is the same duplication for the same measured reason, and it runs
+ * ALWAYS: it needs no Forge checkout, only this repository's own bytes.
+ *
+ * ★ IT ASSERTS THE PIXELS, NOT THE HEADER. A colour-type check would be the cheap version and the wrong one:
+ * `demo-gate` IS RGBA and every one of its alpha bytes is 255. Carrying an alpha channel is harmless;
+ * carrying transparency is what paints black.
+ */
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+/** The size every app icon is drawn at source: the admin's card renders it at 34px, the sheet at 44px. */
+const ICON_SIDE = 128;
+
+/** Un-filter one PNG scanline in place, spec §9.2. `above` is the already-reconstructed previous line. */
+function unfilter(filter, line, above, target, channels) {
+  for (let x = 0; x < line.length; x += 1) {
+    const left = x >= channels ? target[x - channels] : 0;
+    const up = above[x];
+    const upLeft = x >= channels ? above[x - channels] : 0;
+    let value;
+    switch (filter) {
+      case 0:
+        value = line[x];
+        break;
+      case 1:
+        value = line[x] + left;
+        break;
+      case 2:
+        value = line[x] + up;
+        break;
+      case 3:
+        value = line[x] + ((left + up) >> 1);
+        break;
+      case 4: {
+        const p = left + up - upLeft;
+        const dLeft = Math.abs(p - left);
+        const dUp = Math.abs(p - up);
+        const dUpLeft = Math.abs(p - upLeft);
+        value = line[x] + (dLeft <= dUp && dLeft <= dUpLeft ? left : dUp <= dUpLeft ? up : upLeft);
+        break;
+      }
+      default:
+        throw new Error(`unsupported PNG scanline filter ${filter}`);
+    }
+    target[x] = value & 0xff;
+  }
+}
+
+/**
+ * Decode enough of a PNG to answer "how big is it, and is any pixel transparent?".
+ *
+ * Only what this repository's icons actually are is supported — 8-bit, non-interlaced, truecolour with or
+ * without alpha, and no `tRNS` — and anything else THROWS. A decoder that silently answers "opaque" for an
+ * encoding it did not understand is a guard that passes by not looking.
+ */
+function decodePng(bytes) {
+  assert.deepEqual([...bytes.subarray(0, 8)], PNG_SIGNATURE, 'not a PNG');
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  const bitDepth = bytes[24];
+  const colourType = bytes[25];
+  const interlace = bytes[28];
+  if (bitDepth !== 8 || interlace !== 0 || (colourType !== 2 && colourType !== 6)) {
+    throw new Error(`unsupported PNG: bitDepth ${bitDepth}, colourType ${colourType}, interlace ${interlace}`);
+  }
+
+  const idat = [];
+  let offset = 8;
+  while (offset + 8 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString('ascii', offset + 4, offset + 8);
+    if (type === 'IDAT') idat.push(bytes.subarray(offset + 8, offset + 8 + length));
+    // `tRNS` makes even a truecolour image transparent by naming one colour as the hole. No icon here uses
+    // it, so it is refused rather than guessed: a hole this decoder cannot see is a hole the guard misses.
+    if (type === 'tRNS') throw new Error('unsupported PNG: tRNS transparency');
+    if (type === 'IEND') break;
+    offset += 12 + length;
+  }
+  // Colour type 2 has no fourth channel at all: opaque by construction, nothing to scan.
+  if (colourType === 2) return { width, height, alpha: null };
+
+  const channels = 4;
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * channels;
+  const out = Buffer.alloc(height * stride);
+  const zeroes = Buffer.alloc(stride);
+  let cursor = 0;
+  for (let y = 0; y < height; y += 1) {
+    const filter = raw[cursor];
+    cursor += 1;
+    const line = raw.subarray(cursor, cursor + stride);
+    cursor += stride;
+    const above = y > 0 ? out.subarray((y - 1) * stride, y * stride) : zeroes;
+    unfilter(filter, line, above, out.subarray(y * stride, (y + 1) * stride), channels);
+  }
+  const alpha = new Uint8Array(width * height);
+  for (let i = 0; i < alpha.length; i += 1) alpha[i] = out[i * 4 + 3];
+  return { width, height, alpha };
+}
+
+/** Every instance app that ships icon bytes as a module — derived from the composition, never listed. */
+function iconApps() {
+  return (COMPOSITION.instanceApps ?? [])
+    .map((app) => ({ id: app.id, dir: join(ROOT, app.source) }))
+    .filter((app) => existsSync(join(app.dir, 'icon.ts')));
+}
+
+test('★ the icon rule SEES the apps — a scanner that finds nothing passes everything', () => {
+  const apps = iconApps();
+  assert.equal(
+    apps.length,
+    (COMPOSITION.instanceApps ?? []).length,
+    `every instance app ships an \`icon.ts\`; ${apps.map((a) => a.id).join(', ')} is a shorter list than the composition's`,
+  );
+  assert.ok(apps.length >= 3, 'this box owns three apps — a shorter loop is an app that vanished');
+  for (const app of apps) {
+    const base64 = exportedIconBase64(join(app.dir, 'icon.ts'));
+    assert.ok(
+      base64 && base64.length > 100,
+      `${app.id}: \`icon.ts\` exports no base64 worth decoding`,
+    );
+  }
+});
+
+test('★★ every instance app icon is 128×128 and FULLY OPAQUE — transparency here paints BLACK', () => {
+  // ⇒ SABOTAGE: put back the 1 003-byte placeholder `demo-setup` carried until pk28/D1 and this names the
+  //   app and counts its holes — 2 879 of 16 384 pixels below full alpha, 2 731 of them alpha 0 over black.
+  const transparent = [];
+  for (const app of iconApps()) {
+    const png = decodePng(Buffer.from(exportedIconBase64(join(app.dir, 'icon.ts')), 'base64'));
+    assert.deepEqual(
+      [png.width, png.height],
+      [ICON_SIDE, ICON_SIDE],
+      `${app.id}: the icon is ${png.width}x${png.height}. The admin draws it at 34px and 44px, so ${ICON_SIDE} square is what covers a 3x screen without being resampled up.`,
+    );
+    if (png.alpha === null) continue; // no alpha channel: opaque by construction.
+    const holes = png.alpha.reduce((count, byte) => (byte < 255 ? count + 1 : count), 0);
+    if (holes > 0) transparent.push(`${app.id}: ${holes} of ${png.alpha.length} pixels are not opaque`);
+  }
+  assert.deepEqual(
+    transparent,
+    [],
+    'an icon with transparent pixels paints a BLACK SQUARE anywhere the fourth channel is dropped, because the RGB under those pixels is (0,0,0). Flatten the art onto its own white ground and re-encode BOTH `icon.png` and the base64 in `icon.ts`.',
+  );
 });
