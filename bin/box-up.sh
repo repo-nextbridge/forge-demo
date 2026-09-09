@@ -37,6 +37,9 @@
 #   5. kernel + edge + fronts    now that a tenant exists for them to serve (INCLUDING the coffee fork)
 #   6. seed-box.mjs   × TENANT   the remaining stores, the settings every screen inherits, and — for a
 #                                tenant the dataset is not about — its apps, its freight, its checkout flag
+#  6b. store-host.mjs × TENANT   the ROOT store CLAIMS this box's address in the kernel's directory, so
+#                                `read.store.by_host` answers it. BEFORE 9: that one-shot can write the same
+#                                column (see the step), and before 14, whose address space depends on it
 #   7. totem                     LAST of the six images: it needs the counter store id step 6 resolved
 #   8. seed.mjs       × TENANT   the CURATED data — what a human wrote, and what the assortment publishes
 #   9. seed-demo      × DATASET  the MASSIVE catalogue — run ONLY for the tenant the mounted dataset is
@@ -146,6 +149,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 4|admin-platform-token (the box credential that serves every tenant)
 5|kernel + edge + fronts
 6|seed-box (stores + settings), once per tenant
+6b|the root store claims the address this box publishes itself at
 7|the totem (needs the counter store id step 6 resolved)
 8|the curated data, once per tenant
 9|seed-demo (the massive catalogue), once per DATASET tenant
@@ -1075,6 +1079,65 @@ EOF
   done
   [ "${code:-}" = 200 ] || die "the kernel never answered $origin/health (last: ${code:-none})."
   note "edge $origin/health → 200"
+
+  # ── ★★★ AND THE ROOT STORE RE-CLAIMS THE NEW ADDRESS IN THE DIRECTORY (pk26/d1) ─────────────────────────
+  #
+  # ⚠️ THIS BLOCK'S OWN HEADER HAS PROMISED THIS SINCE §B5 AND DID NOT DO IT: *"`store.host` is what ROUTES:
+  # a hostname this box does not hold is a 404 with nothing saying why"*. True — and until now the promotion
+  # rewrote `FORGE_STORE_HOSTS`, which only the FRONTS read, and never `store.host`, which is what the port
+  # answers `read.store.by_host` from. The sentence described a mechanism this block did not use.
+  #
+  # ★ AFTER THE RECREATE AND AFTER `/health → 200`, and both halves are the point. The command goes through
+  # the port, so the kernel has to be answering — and at THIS line it provably is, at the new address, which
+  # is also the address being declared. Before the recreate the containers still hold the old environment;
+  # before the health check nothing has proved anyone is listening.
+  #
+  # ★ AND IT NEEDS NO NEW ARGUMENT: `.env` has just been rewritten with the new map, so the step derives who
+  # is at the root of the new origin exactly as the birth does, through `bin/box-env.mjs`. If the map and the
+  # origin disagreed, every tenant would answer `not-mine` and the count below refuses — which is one more
+  # thing this promotion grades for free.
+  #
+  # ⚠️ IT DOES NOT `die`. A promotion that claimed its admin doors and moved its map is not undone by a
+  # directory that refused; the shop still answers, because the fronts obey the override. It is INCOMPLETE in
+  # exactly the sense this block already has a word and an exit code for — and it is said where the eye lands
+  # rather than four hundred lines up.
+  #
+  # ⚠️ "COULD NOT ASK" IS NOT "IT IS BROKEN", AND THE TWO ARE COUNTED SEPARATELY — the split `verify-seed`,
+  # `verify-config` and `warm-box` all make, and the step itself makes with exit 2. A promotion run with no
+  # credential in the environment learned NOTHING about the directory, and turning that into a red is how an
+  # operator ends up hunting a defect that is not there. On a box that was really born it cannot happen: step
+  # 0 sources `env-source.sh`, which exports each tenant's seed token out of `.secrets`.
+  address_claims=0
+  address_asked=0
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    if [ -z "$tokval" ]; then
+      note "⚑ no \$$tokvar in the environment — \"$t\" could not be ASKED to claim $origin (re-source env-source.sh)"
+      continue
+    fi
+    # stdout carries the countable word; stderr is the reasoning, and it flows straight to the operator.
+    claim="$(FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" --tenant "$t" --api "$origin")"
+    case $? in
+      2) note "⚑ \"$t\" could not be asked — see the [store-host] line above"; continue ;;
+    esac
+    address_asked=$((address_asked + 1))
+    case "$claim" in *result=declared*|*result=converged*) address_claims=$((address_claims + 1)) ;; esac
+  done
+  if [ "$address_claims" -gt 0 ]; then
+    note "the shop's address · $origin claimed in the directory by $address_claims tenant(s) — read.store.by_host answers it"
+  elif [ "$address_asked" -eq 0 ]; then
+    note "⚑ nothing could ask whether $origin is claimed in the directory — that is a fact about THIS RUN,"
+    note "   not about the box, so it does not change the status. Ask it directly once the tokens are there:"
+    note "   FORGE_SEED_TOKEN=<seed token> node bin/store-host.mjs --tenant <tenant> --api $origin"
+  else
+    promotion_status=1
+    say "⚠️ INCOMPLETE — the shop's address is not in the kernel's directory"
+    note "read.store.by_host still answers 404 for $origin, so this box routes only through the fronts'"
+    note "FORGE_STORE_HOSTS override. The warmer then fills /s/<id>/… pages while a shopper opens / — the"
+    note "exact defect pk26/d1 exists for. The reason is in the [store-host] lines above."
+  fi
+
   # ⚠️ `edge → 200` IS THE LAST GREEN LINE AND IT PROVES THE LEAST — the kernel answers `/health` on a box
   # with no tenant at all. So the run repeats its own verdict here, where the eye lands, and carries it in the
   # STATUS: a promotion that could not claim every door exits 1 even though every other step worked.
@@ -1377,6 +1440,49 @@ if [ -n "$balcao" ]; then
     note "FORGE_TOTEM_STORE_ID → $id (written into .env)"
   fi
 fi
+
+# ── 6b · ★★★ THE ROOT STORE CLAIMS THIS BOX'S ADDRESS IN THE KERNEL'S DIRECTORY ─────────────────────────────
+#
+# ⛔ WHAT WAS MISSING, AND IT WAS THE CAUSE OF THREE THINGS (pk25/d1 §15.2). Step 3b writes the host → store
+# map into `.env`, and that map is read by the FRONTS ONLY — `packages/storefront-kit/src/resolve-store.ts`
+# checks it before it asks the port, and the kernel never sees it. So `read.store.by_host` answered 404 for
+# every hostname this box uses, measured twice, and everything that resolves an address THROUGH THE PORT was
+# wrong while the shop looked perfect: the warmer built `/s/<id>/…` urls for a shop a visitor opens at `/`,
+# the URL inventory could not find the root store, and a 404 from `store.by_host` read as a broken box.
+#
+# ⇒ THE FIX IS DATA, and Renan decided it on 08/09: *the birth declares*. This step drives
+# `tenant.store.update --host` on the store the map names at the root, and `bin/store-host.mjs` carries the
+# whole argument — why the override is not retired (one store may claim ONE authority; the map carries six),
+# why a box born on `localhost` declares `localhost`, and why it waits for the projection instead of assuming.
+#
+# ★ HERE, AND THE POSITION IS FORCED FROM BOTH SIDES. AFTER 6, because the stores have to exist and the map
+# has to have been written. BEFORE 9, because `dist/seed-demo.js` → `configureStore` writes this same column
+# when `FORGE_SEED_STORE_HOST` is set (apps/api/src/seed-storefront.ts) — the A22 trap, one column down: this
+# box sets that variable NOWHERE, and `bin/store-host.test.mjs` keeps it that way, because a second author
+# would silently win and nothing would say so. And well before 14, whose address space depends on the answer.
+#
+# ⚠️ ZERO OF N IS A REFUSAL, NOT A SUCCESS — the promotion's F2 lesson, and the reason this loop counts. The
+# step runs once per tenant because a credential belongs to one tenant, and the tenant that does not own the
+# root store exits 0 saying `not-mine`. Two of those in a row means NOBODY claimed the address, which reads
+# exactly like success in a scrollback and is the defect this step exists to kill.
+say '6b · the root store claims the address this box publishes itself at'
+address_claims=0
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  [ -n "$tokval" ] || die "no \$$tokvar in the environment — step 3 filed it into .secrets; re-source env-source.sh."
+  claim="$(FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" \
+             --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN")" \
+    || die "the root store could not claim $FORGE_PUBLIC_ORIGIN through \"$t\" — the reason is printed above.
+     Until it does, read.store.by_host answers 404 for this box's own address: the warmer fills /s/<id>/…
+     pages while a shopper opens /, and nothing else says a word about it."
+  case "$claim" in *result=declared*|*result=converged*) address_claims=$((address_claims + 1)) ;; esac
+done
+[ "$address_claims" -gt 0 ] || die "not one of this box's tenants owns the store that \$FORGE_STORE_HOSTS puts at the
+     root of $FORGE_PUBLIC_ORIGIN, so NOBODY claimed that address in the directory. Every tenant answered
+     \"not-mine\", which is what a stale map left over from another box looks like: the store id it names does
+     not exist here. Step 3b derives that map from the id provision-ref just returned — re-run the birth."
+note "$address_claims of $(echo "$TENANTS" | wc -w) tenant(s) claimed $FORGE_PUBLIC_ORIGIN · read.store.by_host now answers it"
 
 # ── 7 · THE COUNTER'S TOTEM — and it could not have started at step 5 ───────────────────────────────────────
 #

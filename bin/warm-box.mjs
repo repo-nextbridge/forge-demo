@@ -333,11 +333,17 @@ if (toWarm.length === 0) {
 // different sets of route-cache entries, so warming the second while shoppers arrive on the first fills
 // pages nobody opens — and reports them as this shop's, which is worse than not warming.
 //
-// ⛔ MEASURED ON THIS BOX, 04/09 AND AGAIN 08/09. `read.store.by_host` answers 404 for EVERY hostname the
+// ⛔ MEASURED ON THIS BOX, 04/09 AND AGAIN 08/09. `read.store.by_host` answered 404 for EVERY hostname the
 // bench uses — `localhost`, `localhost:8200`, `127.0.0.1:8200` and the tailnet name. The kernel's
-// `store_directory` is empty because this box resolves hosts through the `FORGE_STORE_HOSTS` OVERRIDE, which
+// `store_directory` was empty because this box resolved hosts through the `FORGE_STORE_HOSTS` OVERRIDE, which
 // `packages/storefront-kit/src/resolve-store.ts` checks first by design and which the warmer's
 // `storeForOrigin` (`apps/storefront/src/lib/warm/targets.ts:38`) cannot see: it asks the port and nothing else.
+//
+// ★★ AND pk26/d1 CLOSED THAT — the past tense above is the change. Step 6b of the birth (`bin/store-host.mjs`)
+// now has the root store CLAIM this box's origin through `tenant.store.update --host`, and the promotion
+// re-claims the new one; so on a box born since, the port and the declaration AGREE and the first branch
+// below is the one that fires. What the two branches mean changed with it: a disagreement is no longer "the
+// feature does not exist yet", it is "step 6b did not take on this box".
 //
 // ★★ SO THIS STEP ASKS BOTH SOURCES, AND THAT IS WHAT CHANGED IN pk25/d1. The port answers who claims the
 // origin in the DIRECTORY; `.env`'s `FORGE_STORE_HOSTS` answers who this box actually SERVES there, and it is
@@ -356,9 +362,10 @@ if (toWarm.length === 0) {
 // ⚠️ AND THIS STEP CANNOT CLOSE THE GAP ITSELF — the address space is the VITRINE's to decide. `/api/warm`
 // takes `store=`, `origin=`, `depth=`, `products=`, `max_duration_ms=` … and NOTHING that names the root
 // store (`apps/storefront/src/app/api/warm/route.ts`), because `resolveTargets` derives each store's base
-// from `storeForOrigin` alone (`apps/storefront/src/lib/warm/targets.ts:88`). What closes it is DATA: a store
-// that claims the origin in the directory (`tenant.store.update` → `host`), and on the day one does, the
-// port's answer and the declaration agree and this branch turns into the first one by itself.
+// from `storeForOrigin` alone (`apps/storefront/src/lib/warm/targets.ts:88`). What closes it is DATA — a store
+// that claims the origin in the directory (`tenant.store.update` → `host`) — and that is step 6b of the
+// birth, not a wish: when it has run, the port's answer and the declaration agree and this branch turns into
+// the first one by itself. So reaching the branches below on a box born since means step 6b did not take.
 const originAuthority = (() => {
   try {
     const u = new URL(api);
@@ -439,7 +446,9 @@ if (warmedAtRoot && servedAtRoot && warmedAtRoot !== servedAtRoot) {
       `this address reaches ${servedAtRoot} at the ROOT, and those pages are a DIFFERENT set of route-cache ` +
       'entries: THIS RUN DID NOT WARM THEM. The warmer asks the port and the override never reaches it ' +
       '(apps/storefront/src/lib/warm/targets.ts), and its door takes no root-store parameter — what closes ' +
-      'this is the store claiming the origin in the directory (`tenant.store.update` → host).',
+      'this is the store claiming the origin in the directory, which is STEP 6b of the birth ' +
+      '(bin/store-host.mjs, `tenant.store.update` → host). Reaching this line means that step did not take ' +
+      'on this box: re-run it, and read what it says.',
   );
 } else if (rootDeclared) {
   noted(

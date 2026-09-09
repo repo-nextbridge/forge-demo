@@ -203,6 +203,7 @@ and whether every shop can be signed in to is not.
 | 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
 | 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
 | 6 | **`seed-box.mjs` × tenant** | the remaining stores, the settings every screen inherits, and — for a tenant the mounted dataset is **not** about — its apps, its freight and its checkout flag |
+| 6b | **`store-host.mjs` × tenant** | the **root store claims this box's address** in the kernel's directory (`tenant.store.update` → `host`), so `read.store.by_host` answers it. Without it the fronts route through their `FORGE_STORE_HOSTS` override and every consumer that asks the PORT — the warmer's address space first — is wrong while the shop looks perfect |
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes |
 | 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`) |

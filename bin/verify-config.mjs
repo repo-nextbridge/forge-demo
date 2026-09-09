@@ -148,6 +148,20 @@ function probeHost(host) {
   });
 }
 
+/** `store.by_host` is the same GLOBAL directory as `admin.by_host`, on the store axis: public, actorless, and
+ *  the thing every consumer that resolves an address THROUGH THE PORT reads — the warmer's address space
+ *  first (`apps/storefront/src/lib/warm/targets.ts`). `null` is "no store claims it", which is a 404. */
+async function storeByHost(authority) {
+  try {
+    const res = await fetch(`${api}/v1/read/store.by_host?host=${encodeURIComponent(authority)}`);
+    if (res.status === 404) return null;
+    if (!res.ok) return { error: res.status };
+    return (await res.json())?.store_id ?? null;
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
 /** `admin.by_host` is a GLOBAL, public, actorless read — the directory itself, not a copy of it. */
 async function adminDoorTenant(authority) {
   try {
@@ -223,6 +237,50 @@ if (storeHostKeys.length === 0) {
     bad(
       'the map and the origin disagree',
       `FORGE_PUBLIC_ORIGIN is ${published.origin} and FORGE_STORE_HOSTS has no key for ${authorityOf(published)}`,
+    );
+  }
+}
+
+// ── 1b · ★★★ …AND THE KERNEL HAS TO KNOW IT TOO (pk26/d1) ────────────────────────────────────────────────
+//
+// ⛔ THE HOLE IN THE RULE ABOVE, AND IT COST THREE MISDIAGNOSES. Every probe in this section carries a `Host`
+// header to the EDGE, so it grades what the FRONTS resolve — and the fronts read `FORGE_STORE_HOSTS`
+// themselves (`packages/storefront-kit/src/resolve-store.ts` checks it before it asks the port). So this
+// whole section was green on a box whose kernel directory was EMPTY: `read.store.by_host` answered 404 for
+// every hostname, measured 04/09 and 08/09, and everything that resolves an address THROUGH THE PORT was
+// wrong while every ✓ above was true. The warmer was the visible casualty — it built `/s/<id>/…` urls for a
+// shop a visitor opens at `/`, so the "95% warm" of past handovers was about pages nobody opens.
+//
+// ★ SO THE SAME RULE IS ASKED OF THE OTHER SIDE, and it is asked INDEPENDENTLY of the step that writes it —
+// `bin/store-host.mjs` (step 6b) declares the address and waits for this same read; this file asks it again
+// at the end of the birth, from the declaration on disk. Neither runs the other, which is the arrangement
+// `bin/prove-doors.mjs` and `bin/warm-box.mjs` already have over the declared-store question.
+say('THE SHOP\'S ADDRESS IN THE KERNEL · what read.store.by_host answers, which is NOT what the fronts read');
+{
+  const authority = authorityOf(published);
+  const servedByMap = storeHosts[authority] ?? storeHosts[PUBLISHED_HOST] ?? null;
+  const inDirectory = await storeByHost(authority);
+  if (inDirectory && typeof inDirectory === 'object') {
+    bad(authority, `read.store.by_host answered HTTP ${inDirectory.error ?? '?'} — this box's directory cannot be read`);
+  } else if (!servedByMap) {
+    noted(authority, 'FORGE_STORE_HOSTS names no store here, so there is nothing the directory should agree with');
+  } else if (inDirectory === servedByMap) {
+    ok(authority, `→ ${inDirectory} in the kernel's directory, the same store FORGE_STORE_HOSTS serves there`);
+  } else if (inDirectory === null) {
+    bad(
+      authority,
+      `FORGE_STORE_HOSTS serves ${servedByMap} here and read.store.by_host answers 404 — NO store claims this ` +
+        "box's own address. The shop still opens (the fronts obey the override), and everything that asks the " +
+        'PORT is wrong: the warmer fills /s/<id>/… pages while a shopper opens /, and the URL inventory cannot ' +
+        'find the root store. Step 6b of the birth (bin/store-host.mjs) is what declares it.',
+    );
+  } else {
+    bad(
+      authority,
+      `read.store.by_host says ${inDirectory} and FORGE_STORE_HOSTS serves ${servedByMap} — TWO ANSWERS about ` +
+        'one address. The fronts obey the second and the warmer obeys the first, so the clean URLs this box ' +
+        'warms belong to a store that does not answer there. One of the two has to move; step 6b writes the ' +
+        'directory from the map, so a disagreement means something else wrote the store\'s host.',
     );
   }
 }

@@ -40,8 +40,15 @@ const NET = 'box.example.test';
  * `storeHosts` — the hostnames the shop really resolves (`Host:` header → 200 or 404), which is how the box
  *                answers rather than how `.env` describes it.
  * `adminDoors` — `authority → tenant`, i.e. what `forge_control.admin_directory` really holds.
+ * `directory`  — `authority → store`, the OTHER half of the same global table (`store_directory`), which is
+ *                what `read.store.by_host` answers and what every consumer resolving an address THROUGH THE
+ *                PORT reads. ⚠️ IT IS SEPARATE FROM `storeHosts` ON PURPOSE: the fronts resolve from the env
+ *                override, so the box can answer 200 at an address no store claims in the kernel — which is
+ *                exactly the state this bench was in until pk26/d1, and the state the check exists to name.
  */
-async function fakeBox({ storeHosts = [], adminDoors = {}, https = false } = {}) {
+async function fakeBox({ storeHosts = [], adminDoors = {}, directory = null, https = false } = {}) {
+  // Unset ⇒ the directory agrees with the map, which is what a box born since step 6b looks like.
+  const storeDirectory = directory ?? Object.fromEntries(storeHosts.map((h) => [h.toLowerCase(), 'sto_ROOT']));
   /** What the TLS handshakes carried, so a test can assert the CLAIMED name never reached one. */
   const sni = [];
   const handler = (req, res) => {
@@ -55,6 +62,12 @@ async function fakeBox({ storeHosts = [], adminDoors = {}, https = false } = {})
       return tenant
         ? json(200, { tenant_id: tenant })
         : json(404, { error: { kind: 'not_found', message: 'not found' } });
+    }
+    if (url.pathname === '/v1/read/store.by_host') {
+      const asked = (url.searchParams.get('host') ?? '').toLowerCase();
+      // The kernel's own rule: the exact authority first, then the bare host.
+      const id = storeDirectory[asked] ?? storeDirectory[asked.replace(/:\d+$/, '')];
+      return id ? json(200, { store_id: id }) : json(404, { error: { kind: 'not_found' } });
     }
     if (url.pathname === '/health') return json(200, { ok: true });
     // The vitrine's root, resolved from the request's Host exactly as the edge does it.
@@ -203,6 +216,58 @@ test('★★ a box promoted onto the tailnet, whole, is SETTLED too', async () =
     const { stdout, status } = await runVerdict({ box, env: envFor('tailnet') });
     assert.equal(status, 0, stdout);
     assert.match(stdout, /VERDICT: settled/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ pk26/d1 · AND THE KERNEL HAS TO KNOW THE ADDRESS TOO ─────────────────────────────────────────────
+//
+// ⛔ EVERY OTHER CHECK OF THE SHOP SECTION CARRIES A `Host:` HEADER TO THE EDGE, so it grades what the FRONTS
+// resolve — and the fronts read `FORGE_STORE_HOSTS` themselves. That is why this whole file was green on a
+// bench whose kernel directory was EMPTY for weeks: `read.store.by_host` answered 404 at every hostname
+// (measured 04/09 and again 08/09) while eight ✓ said the shop answered. The warmer paid for it — it built
+// `/s/<id>/…` urls for a shop a visitor opens at `/`.
+
+test('★★★ the shop answers 200 and NO store claims the address in the kernel ⇒ RED, with the cost named', async () => {
+  // The exact bench of 08/09: the map serves the root store, the edge answers, the directory holds nothing.
+  const box = await fakeBox({ ...wholeLocalhost, directory: {} });
+  try {
+    const { stdout, status } = await runVerdict({ box, env: envFor('localhost') });
+    assert.notEqual(status, 0, `a box whose kernel claims no store at its own address was called settled:\n${stdout}`);
+    assert.match(stdout, /read\.store\.by_host answers 404/, stdout);
+    // …and it names what breaks, in the words of the defect rather than "not ok".
+    assert.match(stdout, /\/s\/<id>\/…/, `the red does not say what it costs:\n${stdout}`);
+    assert.match(stdout, /Step 6b/, `the red does not name the step that declares it:\n${stdout}`);
+    // ⚠️ ANTI-VACUUM: the SHOP section above must still be green, or this test would be passing for the
+    //    wrong reason — the whole point is that the two halves can disagree.
+    assert.match(stdout, /✓ localhost:8200 — → sto_ROOT/, `the front-side checks went red too:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ TWO ANSWERS about one address — the directory and the override name DIFFERENT stores ⇒ RED', async () => {
+  // Worse than cold, and the shape `bin/warm-box.mjs` already refuses to call warm: the warmer builds clean
+  // URLs for the store the DIRECTORY names while a shopper typing that address is served by the other one.
+  const box = await fakeBox({ ...wholeLocalhost, directory: { localhost: 'sto_OTHER', 'localhost:8200': 'sto_OTHER' } });
+  try {
+    const { stdout, status } = await runVerdict({ box, env: envFor('localhost') });
+    assert.notEqual(status, 0, stdout);
+    assert.match(stdout, /TWO ANSWERS about one address/, stdout);
+    assert.match(stdout, /sto_OTHER/, stdout);
+    assert.match(stdout, /sto_ROOT/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ …and a box where the two AGREE says so, naming the store — never a silent ✓', async () => {
+  const box = await fakeBox(wholeTailnet);
+  try {
+    const { stdout, status } = await runVerdict({ box, env: envFor('tailnet') });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /in the kernel's directory, the same store FORGE_STORE_HOSTS serves there/, stdout);
   } finally {
     box.close();
   }
