@@ -20,11 +20,11 @@
     "    not placing. All three gestures are this file's.",
     "",
     "★★ pk26/D2 — AND THERE ARE FOUR OF THEM NOW, BECAUSE THE MARK LEFT THIS APP. `brand` used to be the",
-    "fifth block here, and it was the one that did not obey the rule the other four keep: it was a single slot",
+    "fifth block here, and it was the one that did not obey the rule the other five keep: it was a single slot",
     "read in FOUR renders (the header bar, the mobile drawer, the footer column and the login modal), so an",
-    "operator dragged ONE row in Compose and changed four places, with the board unable to say which. The",
+    "operator dragged ONE row in Compose and changed five places, with the board unable to say which. The",
     "owner named it («o compose não faz sentido, está configurando algo lá que nem sabe onde vai aparecer»),",
-    "pk26/P1 gave each of the four places its own slot, and the mark moved to `demo-setup` — an app of THIS",
+    "pk26/P1 gave each of the five places its own slot, and the mark moved to `demo-setup` — an app of THIS",
     "box, whose declaration is `seed/demo-setup.json`. ⇒ Nothing was lost: the three shops' marks are there,",
     "carried over word for word, and `chrome` is left honestly OOTB — one block per bar, each rendering in",
     "exactly the place its name says. ⚠️ Everything that GRADED a mark moved with it:",
@@ -50,7 +50,7 @@
     "PINNED image first, or `composition.place` refuses the birth with «no block account_brand declared».",
     "",
     "★★ pk19/D1 — THE WORDS THEMSELVES, REWRITTEN TO THE OWNER'S DICTATION (07/09). Everything above is about",
-    "the app being born placed; this pass is about what it SAYS. Four instructions, verbatim: the checkout",
+    "the app being born placed; this pass is about what it SAYS. Five instructions, verbatim: the checkout",
     "footer carries the payment methods on the left and a security line on the right; the account footer carries",
     "a phone on the left and a contact e-mail in the middle; the account header says CARRINHO in the two shoe",
     "stores and stays SACOLA in the café; and the checkout header is logo + step on the left with the way back",
@@ -164,7 +164,8 @@
     "checkout_header": "storefront:checkout.header",
     "checkout_footer": "storefront:checkout.footer",
     "account_header": "storefront:account.header",
-    "account_footer": "storefront:account.footer"
+    "account_footer": "storefront:account.footer",
+    "account_brand": "storefront:account.brand"
   },
   "stores": {
     "forge": {
@@ -191,6 +192,10 @@
         "start_text": "(11) 4000-1000",
         "middle_text": "contato@forge.example",
         "end_text": "forge.store · calçados e acessórios"
+      },
+      "account_brand": {
+        "text": "forge",
+        "tail": ".store"
       }
     },
     "outlet": {
@@ -217,6 +222,10 @@
         "start_text": "(11) 4000-2000",
         "middle_text": "contato@outlet.example",
         "end_text": "forge.outlet"
+      },
+      "account_brand": {
+        "text": "forge",
+        "tail": ".outlet"
       }
     },
     "cafe": {
@@ -242,6 +251,10 @@
         "start_text": "(11) 4000-3000",
         "middle_text": "contato@cafe.example",
         "end_text": "forge.co · café de origem"
+      },
+      "account_brand": {
+        "logo": "forge-co-logo.png",
+        "text": "forge.co"
       }
     },
     "balcao": null

@@ -45,6 +45,10 @@ const MANIFEST_SLOTS = {
   checkout_footer: 'storefront:checkout.footer',
   account_header: 'storefront:account.header',
   account_footer: 'storefront:account.footer',
+  // pk28 — AND HERE IT IS, the fourth mark coming back, exactly as the paragraph above said it would.
+  // The image is baked with it before this declaration places it, which is the order `composition.place`
+  // demands: it validates the component against the INSTALLED manifest and refuses one it does not know.
+  account_brand: 'storefront:account.brand',
 };
 
 /** Which config keys each block declares (`config_schema`). A key this file invents is dropped by the kernel's
@@ -54,6 +58,7 @@ const CONFIG_KEYS = {
   account_header: ['logo', 'back', 'account', 'cart'],
   checkout_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
   account_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
+  account_brand: ['logo', 'text', 'tail'],
 };
 
 const dressed = Object.entries(DATA.stores).filter(([, spec]) => spec !== null);
@@ -62,12 +67,12 @@ test('★★ the slot map is the app’s own — a slot this file invented would
   assert.deepEqual(DATA.slots, MANIFEST_SLOTS);
 });
 
-test('★★★ every dressed store declares ALL FOUR blocks — a half-dressed shop is the state this replaces', () => {
+test('★★★ every dressed store declares ALL FIVE blocks — a half-dressed shop is the state this replaces', () => {
   for (const [handle] of dressed) {
     assert.deepEqual(
       blocksFor(DATA, handle).map((b) => b.component).sort(),
       Object.keys(MANIFEST_SLOTS).sort(),
-      `store "${handle}" does not declare all four chrome blocks`,
+      `store "${handle}" does not declare all five chrome blocks`,
     );
   }
 });
@@ -175,7 +180,10 @@ test('★★ …and a placement that already says the declaration costs NOTHING,
 test('a block nothing has placed yet is PLACED, in the slot the file names', () => {
   const wanted = blocksFor(DATA, 'cafe');
   const plan = planChrome(wanted, []);
-  assert.equal(plan.length, 4);
+  // DERIVED, not typed: this line said `4` and had to be hand-edited the day the fifth block arrived
+  // (pk28, the sign-in mark). What it grades is "every wanted block becomes one step", and that sentence
+  // does not have a number in it.
+  assert.equal(plan.length, wanted.length);
   assert.ok(plan.every((step) => step.action === 'place'));
   assert.equal(
     plan.find((s) => s.component === 'account_header').slot,
@@ -434,6 +442,9 @@ const WORD_KEYS = {
   account_header: ['back', 'account', 'cart'],
   checkout_footer: ['start_text', 'middle_text', 'end_text'],
   account_footer: ['start_text', 'middle_text', 'end_text'],
+  // pk28 — the sign-in mark moved here from the demo's own app: the login box lives in the CHECKOUT image,
+  // which a client never forks, so configuring it cannot require one. `logo` is a media ref, not a word.
+  account_brand: ['text', 'tail'],
 };
 
 test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a space never reaches a screen', () => {

@@ -113,7 +113,7 @@ const BARE = ['balcao'];
  *  ⚠️ IT WAS 10 UNTIL pk28, when `demo-setup`'s fourth mark — the login box — left that app: the checkout is
  *  the deployable nobody forks, so its mark is the product's to configure. The count is spelled here so that
  *  a declaration losing a logo shortens no loop in silence. */
-const DECLARED_LOGOS = 9;
+const DECLARED_LOGOS = 10;
 
 /** The mark fills at least half the height of its own file.
  *
