@@ -26,6 +26,89 @@ const tracingRoot = fileURLToPath(
   existsSync(workspaceRoot) ? new URL('../..', import.meta.url) : new URL('.', import.meta.url),
 );
 
+// ⚠️ DO NOT REMOVE AS DEAD WEIGHT — it looks like a no-op in here, and it is: pnpm links the block packages
+// as symlinks, so their real path is OUTSIDE node_modules and Next already compiles them like first-party
+// source. It is here because this storefront IS the reference implementation a customer COPIES (FRONT-PKG),
+// and there the same packages arrive as installed tarballs, under node_modules for real — which Next skips
+// unless they are listed here. Without the line the copy fails to build ("Module parse failed: Unexpected
+// token" on the first `export type`, then on the first CSS Module import). With it, the copy is born
+// correct. Proven on a Next app outside this monorepo: scripts/publishing/front-consumer.guard.test.ts.
+const transpilePackages = [
+  '@forgecommerce/ext-banners',
+  '@forgecommerce/ext-feed',
+  '@forgecommerce/ext-leads',
+  '@forgecommerce/ext-payment-mercadopago',
+  '@forgecommerce/ext-payment-promissory',
+  '@forgecommerce/ext-payment-reference',
+  '@forgecommerce/ext-payment-zero',
+  '@forgecommerce/ext-recommendations',
+  '@forgecommerce/ext-reviews',
+  '@forgecommerce/ext-shelves',
+  '@forgecommerce/ext-subscriptions',
+  '@forgecommerce/storefront-kit',
+];
+
+// ── ★★ pk29/D2 · THE BLOCK EVERY FORK OF THIS REPOSITORY CARRIES, WORD FOR WORD ─────────────────────────
+//
+// `bin/fork-bundle-freshness.guard.mjs` compares it byte for byte across every fork, because the failure it
+// closes is silent in production and green everywhere else — a copy that drifts would go unnoticed for days.
+//
+// ★ WHAT THIS APP COMPILES LIKE ITS OWN SOURCE, IT MUST ALSO INVALIDATE LIKE ITS OWN SOURCE — AND THE
+// DEFAULT DOES THE OPPOSITE.
+//
+// Measured 2026-09-09 on the image this box was born with. The container answered EVERY request with:
+//
+//     TypeError: (0 , i.isServerActionSubmission) is not a function
+//         at tx (.next/server/src/middleware.js)
+//
+// The kit installed next to it DID export that function. `tsc` was green, `next build` was green, and the
+// emitted middleware carried `function te(e,t,r)` — the THREE-argument `isCacheableRequest` of a kit six
+// days older — while the file on disk had four parameters. The bundle was compiled from a copy webpack
+// never re-read.
+//
+// WHY: webpack validates anything under `snapshot.managedPaths` by the package's VERSION, never by its
+// bytes, and Next marks ALL of `node_modules` managed (`^(.+?[\\/]node_modules[\\/])`). The Forge packages
+// arrive here as local tarballs pinned at one version forever (`bin/vendor-packages.sh`), so the version
+// never moves and the compilation cached in `.next/cache/webpack` is reused across re-vendors, re-installs
+// and image rebuilds alike. `bin/install-storefront.sh` had already learned the npm-shaped half of this
+// lesson (it evicts the vendored entries from the lock so npm re-reads the tarballs); this is the webpack
+// half, and it is why re-baking the image "from zero" did not move the defect.
+//
+// ⚠️ IT IS NOT "`transpilePackages` DID NOT COVER IT". It did: nothing of the kit is in the image's
+// node_modules, the whole thing is bundled. What was bundled was stale.
+//
+// The scopes are DERIVED from `transpilePackages` above — that list already means "compile this like our own
+// code", and this is the other half of the same sentence, so a package added there tomorrow is covered
+// without anybody remembering that this block exists.
+const sourceScopes = [...new Set(transpilePackages.map((name) => name.split('/')[0]))];
+const pathSep = String.raw`[\\/]`;
+const contentCheckedManagedPaths = [
+  new RegExp(
+    String.raw`^(.+?${pathSep}node_modules${pathSep})(?!(?:${sourceScopes.join('|')})${pathSep})`,
+  ),
+];
+
+/**
+ * ★★ AND A MISSING EXPORT BECOMES A BUILD ERROR, WHICH IS WORTH MORE THAN THE FIX ABOVE.
+ *
+ * webpack's default answer to "this module imports a name the module it imports from does not export" is a
+ * WARNING (`exportsPresence: 'auto'`). `next build` prints it and exits 0, and the code it emits keeps the
+ * ORIGINAL name as a property lookup on the namespace object — which is literally the
+ * `(0 , i.isServerActionSubmission)` in the stack trace above — so the app throws in production instead.
+ * At `error`, the same fact is a red build that NAMES the symbol and the module it was looked for in.
+ *
+ * ⚠️ WEBPACK ONLY. A build switched to Turbopack never calls this hook and gets neither half back.
+ */
+function forkWebpack(config) {
+  config.snapshot = { ...config.snapshot, managedPaths: contentCheckedManagedPaths };
+  config.module.parser = {
+    ...config.module.parser,
+    javascript: { ...config.module.parser?.javascript, exportsPresence: 'error' },
+  };
+  return config;
+}
+// ── end of the shared block ─────────────────────────────────────────────────────────────────────────────
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // ★★ D2-C1 — THIS SHOP'S ASSETS GET THEIR OWN NAMESPACE, and the failure it prevents is the silent one.
@@ -52,27 +135,7 @@ const nextConfig = {
 
   // The storefront is a pure read-port consumer; nothing here touches a DB.
   reactStrictMode: true,
-  // ⚠️ DO NOT REMOVE AS DEAD WEIGHT — it looks like a no-op in here, and it is: pnpm links the block packages
-  // as symlinks, so their real path is OUTSIDE node_modules and Next already compiles them like first-party
-  // source. It is here because this storefront IS the reference implementation a customer COPIES (FRONT-PKG),
-  // and there the same packages arrive as installed tarballs, under node_modules for real — which Next skips
-  // unless they are listed here. Without the line the copy fails to build ("Module parse failed: Unexpected
-  // token" on the first `export type`, then on the first CSS Module import). With it, the copy is born
-  // correct. Proven on a Next app outside this monorepo: scripts/publishing/front-consumer.guard.test.ts.
-  transpilePackages: [
-    '@forgecommerce/ext-banners',
-    '@forgecommerce/ext-feed',
-    '@forgecommerce/ext-leads',
-    '@forgecommerce/ext-payment-mercadopago',
-    '@forgecommerce/ext-payment-promissory',
-    '@forgecommerce/ext-payment-reference',
-    '@forgecommerce/ext-payment-zero',
-    '@forgecommerce/ext-recommendations',
-    '@forgecommerce/ext-reviews',
-    '@forgecommerce/ext-shelves',
-    '@forgecommerce/ext-subscriptions',
-    '@forgecommerce/storefront-kit',
-  ],
+  transpilePackages,
   // PERF — the media masters are CONTENT-ADDRESSED (immutable: the provider_key changes when the bytes do), so the
   // next/image derivatives are safe to cache for a year. Without this the optimizer stamps its default 60s
   // (`max-age=60, must-revalidate`) on every /_next/image response, so repeat visits re-fetch and Lighthouse's
@@ -108,6 +171,7 @@ const nextConfig = {
   // NINE, `button[data-nextjs-dev-tools-button]` at 32x32 among them; this one draws ZERO. The version bump
   // that carries the no-JS server-action fix is what put the old spelling out of date, so it dies with it.
   ...(process.env.FORGE_HIDE_DEV_INDICATORS === '1' ? { devIndicators: false } : {}),
+  webpack: forkWebpack,
   ...(standalone
     ? {
         output: 'standalone',
