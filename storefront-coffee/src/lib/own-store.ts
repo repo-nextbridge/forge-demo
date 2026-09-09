@@ -1,4 +1,4 @@
-// WHICH STORE THIS IMAGE IS THE FORK OF — asked by the CMS template registry, and answered in one place.
+// WHICH STORE THIS IMAGE IS THE FORK OF — asked by the EDGE and by the CMS template registry, answered here.
 //
 // ── ⛔ THE TRAP THIS FILE EXISTS FOR: A STORE ID CANNOT BE WRITTEN DOWN HERE ──────────────────────────────
 //
@@ -7,9 +7,9 @@
 // store id is a fresh ULID minted by `provision-ref` on every `bash bin/box-up.sh`, so a `sto_…` typed into
 // a source file is correct exactly until the next birth and then matches nothing, in silence.
 //
-// That is not a hypothesis. `caddy/extra/coffee.local.caddy` shipped with a hand-written id from a bench
-// that no longer existed; the rule matched nothing, every café request fell through to the VANILLA
-// storefront, and the page still looked right because the theme is resolved from the store's own row.
+// That is not a hypothesis. The café's edge rule (`caddy/extra-local/coffee.caddy`) shipped with a
+// hand-written id from a bench that no longer existed; it matched nothing, every café request fell through
+// to the VANILLA storefront, and the page still looked right — the theme is resolved from the store's row.
 // It fooled two people. `bin/box-up.sh` step 3c closed it by GENERATING the rule from the id it had just
 // provisioned, and `FORGE_TOTEM_STORE_ID` (step 6) is the same technique's first consumer.
 //
@@ -19,16 +19,25 @@
 // because any one of them missing is silent: the overlay would simply reach no store and the café would
 // serve the shared body, which is what it served before the axis existed.
 //
+// ── ★★ pk27/D1 — AND SINCE THEN IT ALSO ANSWERS "WHOSE SHOP IS THIS ADDRESS?" ─────────────────────────────
+//
+// `src/middleware.ts` asks this module BEFORE it asks the host. The owner's rule (09/09): the fork IS the
+// store's vitrine, so `/` on this image is that store's home and no request it receives belongs to another
+// shop. Measured on the bench before that line, this container's own `FORGE_STORE_HOSTS` mapped every
+// hostname of the box to the SHOE shop, and a hostname of the café's own resolved to nothing at all — the
+// café store claims no authority in the kernel directory, because `read.store.by_host` gives one store per
+// authority and the box's ROOT store is the one that claims it (`bin/store-host.mjs`).
+//
 // ── WHY IT DEGRADES INSTEAD OF THROWING, WHICH IS THE OPPOSITE OF `totem/src/lib/store.ts` ────────────────
 //
 // The totem refuses to boot without its store, and it is right to: a till pointed at no store is the wrong
-// shop, not a smaller one. Here the store comes from the REQUEST (the `/s/<store>` segment the edge routes),
-// and this variable selects only WHOSE version of an institutional template renders. An absent one costs the
-// café its own `Sobre`; it does not cost anybody a page. Taking the whole vitrine down over a paragraph
-// would be trading a visible defect for an outage.
-//
-// So the loss is made audible instead — once per process, on the first resolution — and the RED lives in
-// `bin/coffee-store-id.guard.mjs`, where a rotted wiring is caught before it reaches a bench.
+// shop, not a smaller one. Here every answer this module gives has a WORSE but working substitute: the edge
+// falls back to resolving the request host, exactly as it did before it asked; the CMS overlay falls back to
+// the body shared with the reference vitrine. An absent variable costs the café its own address and its own
+// `Sobre`; it does not cost anybody a page. Taking the whole vitrine down over a variable `bin/box-up.sh`
+// writes at step 3c would be trading a visible defect for an outage. So the loss is made AUDIBLE instead —
+// once per process, on the first resolution — and the RED lives in `bin/coffee-store-id.guard.mjs`, where a
+// rotted wiring is caught before it reaches a bench.
 
 /** The prefix every store id carries. A handle (`cafe`) pasted into the slot is the mistake this catches. */
 const STORE_ID_PREFIX = 'sto_';
@@ -74,9 +83,10 @@ export function ownStoreProblem(
   const raw = env[OWN_STORE_ENV]?.trim();
   if (!raw)
     return (
-      `${OWN_STORE_ENV} is not set, so this fork's per-store CMS overlay reaches NO store and every ` +
-      'institutional page falls back to the body shared with the reference vitrine. It is written into ' +
-      '.env by bin/box-up.sh (step 3c) and delivered by compose.override.yml.'
+      `${OWN_STORE_ENV} is not set, so this fork does not know which shop it is: its clean addresses fall ` +
+      'back to resolving the request HOST (another store, or none at all) and its per-store CMS overlay ' +
+      'reaches NO store, so every institutional page falls back to the body shared with the reference ' +
+      'vitrine. It is written into .env by bin/box-up.sh (step 3c) and delivered by compose.override.yml.'
     );
   if (raw === PENDING_STORE_SENTINEL)
     return (

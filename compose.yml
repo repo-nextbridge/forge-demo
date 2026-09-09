@@ -19,7 +19,8 @@
 # It is a deployable, and whoever creates a deployable wires it — so its service is NOT guessed at here.
 #
 # The seam is `compose.override.yml`, which `docker compose` merges automatically when the file exists, next
-# to a routing file in `caddy/extra/` (one `*.local.caddy` on the bench, one `*.caddy` in a deployment — both
+# to a routing file the edge imports (`caddy/extra-local/` on the bench, `caddy/extra/` in a deployment — two
+# folders because the two edges read them differently, see caddy/extra-local/README.md; both
 # folders are already mounted below). Adding that front therefore costs C1 two NEW files and no edit to any
 # file committed here, which is the same deal the platform gives this repo about the kernel.
 

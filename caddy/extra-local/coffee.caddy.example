@@ -1,8 +1,16 @@
 # ── EXAMPLE ONLY — the real file is GENERATED and is not in git ─────────────────────────────────────────────
 #
-# `bin/box-up.sh` (step 3c) writes `coffee.local.caddy` next to this one, from the café store id that
-# provisioning just returned. This copy exists so a reader can see the SHAPE without a running box; it is
-# named `.example` so the Caddyfile's `import /etc/caddy/extra/*.local.caddy` does not pick it up.
+# `bin/box-up.sh` (step 3c) writes `coffee.caddy` next to this one, from the café store id that provisioning
+# just returned. This copy exists so a reader can see the SHAPE without a running box; it is named `.example`
+# so `caddy/Caddyfile.local`'s `import /etc/caddy/extra-local/*.caddy` does not pick it up.
+#
+# ⚠️ WHY IT LIVES HERE AND NOT IN `caddy/extra/` (A10). This is a FRAGMENT — bare `handle` blocks, imported
+# from INSIDE the bench's `:80` site block. `caddy/Caddyfile` imports `/etc/caddy/extra/*.caddy` at TOP level,
+# where every file is parsed as a SITE BLOCK, and `*.caddy` MATCHES `coffee.local.caddy`: a `.local.` in the
+# name is a strict subset of the wider glob, never an escape from it. Production therefore imported this
+# fragment at top level and `caddy validate` answered `parsed 'handle' as a site address` — which is not a
+# broken extra host but a DEAD EDGE, with the store, the checkout and the admin down together. One directory,
+# one reader; `bin/caddy-extra-door.guard.mjs` holds it.
 #
 # ⚠️ WHY THE REAL ONE IS NOT VERSIONED, and it is the same defect this whole rule exists to prevent: the
 # store id is a fresh ULID on every birth. A committed copy is correct for exactly one box and a LIE for

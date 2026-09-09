@@ -1,9 +1,13 @@
-// The edge step: resolve the request host -> store, then REWRITE the clean public URL (`/p/<handle>`,
+// The edge step: decide WHICH STORE this request is for, then REWRITE the clean public URL (`/p/<handle>`,
 // `/<category-path>`) to an internal store-scoped path (`/s/<store>/...`). This keeps URLs clean for the
-// crawler while giving Next an ISR cache key that includes the store (so the same handle on two hosts
-// caches independently). Unknown host -> rewrite to /404 (clean not-found). The middleware never touches
-// a DB: host->store is read through the PORT (MS-STORE: `read.store.by_host`, cached in-process, with a
-// local-dev env override), store->tenant stays inside the port.
+// crawler while giving Next an ISR cache key that includes the store. No store for the request -> rewrite to
+// /404 (clean not-found). The middleware never touches a DB: host->store is read through the PORT (MS-STORE:
+// `read.store.by_host`, cached in-process, with a local-dev env override), store->tenant stays inside the port.
+//
+// ★★ pk27/D1 — AND IN THIS FORK THE FIRST QUESTION IS NOT THE HOST. This deployable is ONE shop's vitrine, so
+// the store it serves is the store it is the fork of (`lib/own-store.ts`), and host resolution is what answers
+// only on a box where that variable never arrived. See the block around the resolution below for what was
+// measured; the rule itself is proven in `src/root-is-own-shop.test.ts`.
 //
 // This is ASYNC since MS-STORE: the routing answer became DATA instead of a boot-time env constant, which is
 // exactly what lets a store created in the admin serve immediately, without restarting this process (and, in
@@ -34,6 +38,7 @@ import {
 } from '@forgecommerce/storefront-kit/edge-cache';
 import { storeHasGate } from '@forgecommerce/storefront-kit/gate/directory';
 import { type NextRequest, NextResponse } from 'next/server';
+import { ownStoreId } from './lib/own-store';
 import { isRootRoutePath } from './lib/root-routes';
 import { isResolvableRoute, lookupRouteRedirect, redirectCacheControl } from './lib/route-redirect';
 
@@ -83,8 +88,29 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // resolved, because it costs a set lookup and rewriting one of these is not a slower answer but a 404.
   if (isRootRoutePath(url.pathname)) return NextResponse.next();
 
-  const store = await resolveStoreForHost(req.headers.get('host'));
-  if (!store) return NextResponse.rewrite(new URL('/404', req.url)); // unknown host → clean not-found
+  // ★★ pk27/D1 — THE STORE THIS IMAGE IS THE FORK OF WINS, AND THAT IS THE DIFFERENCE BETWEEN A FORK AND A
+  // CUT OF A MULTI-STORE VITRINE.
+  //
+  // The reference serves every store from one deployable, so asking the HOST which one is the only answer it
+  // can give. This deployable is one shop's — it carries that shop's chrome, its theme and its institutional
+  // pages — so there is no request it can receive that belongs to another store, and the host is not the
+  // question. Measured on the bench 2026-09-09, before this line: `FORGE_STORE_HOSTS` inside this very
+  // container maps EVERY hostname of the box (`localhost`, `127.0.0.1`, this machine's name, its tailnet
+  // name) to the
+  // SHOE shop, so `/` here was the shoe shop's home wearing the café's header; and a request arriving at a
+  // hostname of the café's own — the production shape — answered the clean 404 below, because
+  // `read.store.by_host` gives ONE store per authority and the box's ROOT store is the one that claims it
+  // (bin/store-host.mjs). Wrong shop when the host resolves, no shop when it does not.
+  //
+  // ⚠️ IT IS NOT A FALLBACK. A fallback ("host first, own store when that fails") leaves exactly the bench
+  // case broken, because there the host DOES resolve — to somebody else.
+  //
+  // ★ AND IT IS THE MECHANISM THAT ALREADY EXISTS, not a fourth one: `FORGE_COFFEE_STORE_ID`, written into
+  // `.env` by `bin/box-up.sh` (step 3c) from the id provisioning had just minted, delivered by
+  // `compose.override.yml`, graded end to end by `bin/coffee-store-id.guard.mjs`. `ownStoreId()` degrades to
+  // `undefined` on a box that has not been born, and the host answer below is then exactly what it was.
+  const store = ownStoreId() ?? (await resolveStoreForHost(req.headers.get('host')));
+  if (!store) return NextResponse.rewrite(new URL('/404', req.url)); // no shop for this request → not-found
 
   // DECISIONS — before routing, ask the kernel whether anything knows this path (a legacy URL that should
   // move rather than 404). It happens HERE, and not in the catch-all page where the 404 is detected,

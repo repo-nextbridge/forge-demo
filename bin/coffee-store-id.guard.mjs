@@ -10,7 +10,7 @@
 // FRESH ON EVERY BIRTH. A `sto_…` written into a source file is therefore correct until the next
 // `bash bin/box-up.sh` and wrong forever after, in silence.
 //
-// Not a hypothesis: `caddy/extra/coffee.local.caddy` shipped with a hand-written id from a bench that no
+// Not a hypothesis: the café's edge rule (`caddy/extra-local/coffee.caddy`) shipped with a hand-written id from a bench that no
 // longer existed. The rule matched nothing, every café request fell through to the VANILLA storefront, and
 // the page still LOOKED right because the theme is resolved from the store's own row — it fooled two people.
 // Step 3c of `bin/box-up.sh` closed that by generating the rule from the id it had just provisioned.
@@ -209,7 +209,7 @@ test('⛔ no store id is written by hand anywhere in the image the café ships',
     [],
     `a store id is soldered into the coffee fork's source: ${offenders.join(' · ')}. Store ids are minted ` +
       `fresh on every birth; the id arrives through ${VAR} (bin/box-up.sh step 3c → compose.override.yml → ` +
-      'src/lib/own-store.ts) and nowhere else. This is the defect caddy/extra/coffee.local.caddy had.',
+      'src/lib/own-store.ts) and nowhere else. This is the defect caddy/extra-local/coffee.caddy had.',
   );
 });
 

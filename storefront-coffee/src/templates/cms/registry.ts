@@ -35,7 +35,7 @@
 // whole substance of this file: the key is a store id, and a store id is a ULID minted fresh on every
 // `bash bin/box-up.sh`. It cannot be a literal, so it is read from the environment at RESOLUTION time —
 // see `src/lib/own-store.ts` for the mechanism (box-up writes it, compose delivers it) and for the
-// hand-written id that already rotted once in `caddy/extra/coffee.local.caddy`.
+// hand-written id that already rotted once in the café's edge rule (`caddy/extra-local/coffee.caddy`).
 
 import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
 import { ownStoreId, ownStoreProblem } from '@/lib/own-store';

@@ -214,17 +214,28 @@ sentinela e o passo 6 o reescreve. O que sobra de instrução é só não *apaga
 A vitrine do café é um **fork nosso**, então ela pode dar a **UMA** loja páginas institucionais próprias — a
 vitrine de referência não pode (um `sto_…` no mapa dela seria o dado de um cliente dentro da imagem de todo
 mundo). O id é o mesmo ULID que nasce a cada `box-up`, então ele **não pode ser escrito no fonte**: é
-exatamente o defeito que o `caddy/extra/coffee.local.caddy` teve, quando a regra escrita à mão parou de casar
-e **toda** requisição do café caiu na vitrine vanilla sem ninguém perceber (a página continuava com a cara
+exatamente o defeito que a regra de borda do café (`caddy/extra-local/coffee.caddy`) teve, quando escrita à
+mão parou de casar e **toda** requisição do café caiu na vitrine vanilla sem ninguém perceber (a página continuava com a cara
 certa — o tema vem da linha da loja). O passo **3c** do `box-up`, que já gera aquela regra, agora também
 escreve `FORGE_COFFEE_STORE_ID` no `.env`; o `compose.override.yml` a entrega ao container.
 
+⚠️ **Desde 09/09 essa variável decide MAIS que as páginas institucionais: ela diz QUAL LOJA o fork é.**
+`storefront-coffee/src/middleware.ts` a pergunta **antes** de resolver o host, porque a imagem é a vitrine de
+**uma** loja — `/` nela é a home daquela loja, e não a da loja que o host por acaso nomeia. Medido na bancada
+em 09/09, antes disso: o `FORGE_STORE_HOSTS` do próprio container do café mapeia **todo** hostname da caixa
+(`localhost`, `127.0.0.1`, o nome desta máquina, o do tailnet) para a loja de **tênis**, e nenhum hostname do café
+resolve coisa alguma — `read.store.by_host` dá **uma** loja por autoridade e quem a reivindica é a loja
+**raiz** da caixa (`bin/store-host.mjs`). ⇒ loja errada quando o host resolve, 404 quando não resolve. Não
+aparece na bancada porque a bancada tem **uma origem só**, cuja raiz é da loja de tênis; em produção cada loja
+tem host próprio e `/` é a primeira coisa que o comprador abre.
+
 ⚠️ **Aqui a interpolação é MOLE (`:-`) de propósito, ao contrário da do totem.** Um totem sem loja é a loja
 errada e não deve subir; uma vitrine sem essa variável é a vitrine **como era antes do eixo existir** — todas
-as páginas respondem 200, com o corpo compartilhado com a vitrine de referência. ⇒ **a ausência não tem
-sintoma**, e é por isso que ela é gradada fora da caixa: `bin/coffee-store-id.guard.mjs` prova as quatro
-pernas de uma vez (derivada no `box-up`, declarada no `.env.example`, entregue pelo compose, lida pelo fork)
-e recusa qualquer `sto_…` escrito à mão no fonte do fork.
+as páginas respondem 200 (agora resolvendo a loja pelo host, como antes) e as institucionais saem com o corpo
+compartilhado com a vitrine de referência. ⇒ **a ausência não tem sintoma**, e é por isso que ela é gradada
+fora da caixa: `bin/coffee-store-id.guard.mjs` prova as quatro pernas de uma vez (derivada no `box-up`,
+declarada no `.env.example`, entregue pelo compose, lida pelo fork) e recusa qualquer `sto_…` escrito à mão no
+fonte do fork.
 
 **(e) ⛔ `FORGE_BENCH_BIND` — a porta que responde 200 e perde o carrinho, e o silêncio é do NAVEGADOR.**
 Medido em 08/09/2026, na bancada viva: `docker ps` mostrava as cinco portas em `0.0.0.0`, e

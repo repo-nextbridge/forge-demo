@@ -42,7 +42,7 @@ const nextConfig = {
   // ⚠️⚠️ AND THE EDGE HAS TO STRIP IT — `handle_path`, never `handle`. Measured on the real image in C3: a
   // Next server with an `assetPrefix` set EMITS the prefixed URL into its HTML and then answers 404 to it;
   // it serves those files at `/_next/static/…` and nowhere else. The prefix is an instruction to the edge,
-  // not a route this app owns. See `caddy/extra/coffee.local.caddy`, which carries the other half.
+  // not a route this app owns. See `caddy/extra-local/coffee.caddy`, which carries the other half.
   //
   // ⚠️ IT DOES NOT MOVE `/_next/image` (measured in D2-F3: Next keeps `images.path` at the bare path with a
   // prefix set). This shop never mints such a URL — its photographs go through the derivative door
