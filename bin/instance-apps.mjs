@@ -13,7 +13,8 @@
 //
 // ── WHY AN INSTANCE APP CANNOT SIMPLY BE `npm install`ED, AND WHAT IS DONE INSTEAD ───────────────────────
 //
-// Measured 2026-09-08 on `apps/payment-pos` and `apps/demo-gate`, the two apps this box owns. Their manifests
+// Measured 2026-09-08 on `apps/payment-pos` and `apps/demo-gate`, then the two of them plus `apps/demo-setup`
+// (pk26/D2) — the apps this box owns, and the list is DERIVED so a fourth costs nobody a line. Their manifests
 // are written in the monorepo's vocabulary and NOTHING here or in the oven ever resolves it:
 //
 //     "@forgecommerce/contracts": "workspace:*"     ← a pnpm workspace link; there is no workspace here
@@ -25,7 +26,7 @@
 // which is why this file links the same way the oven does: out of the Forge checkout this box's images were
 // baked from (`bin/release-tree.mjs`), by name, into the app's own `node_modules/` (gitignored, like every
 // other `node_modules` here). No registry is contacted and no resolver runs — measured at 1 ms and 5 ms
-// for this box's two apps.
+// for this box's first two apps, and unchanged in shape by the third.
 //
 // ★ AND THE LINKED SET IS DERIVED TOO — from the app's own `dependencies` + `devDependencies` +
 // `peerDependencies`. An app that adds a dependency tomorrow gets it linked; an app that names a package the

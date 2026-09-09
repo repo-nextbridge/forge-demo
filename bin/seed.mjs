@@ -71,6 +71,10 @@ import { seedOutlet } from '../seed/outlet.mjs';
 // its data, like every other store-shaped slice here. It runs after the counter's store exists because it
 // names stores by handle.
 import { seedChrome } from '../seed/chrome.mjs';
+// pk26/D2 — the `demo-setup` app: THIS BOX'S OWN app, and the one that draws each shop's mark. Same shape and
+// the same hand as `chrome` above (`seed/blocks.mjs`), a separate module because it is a separate app: the
+// mark stopped being the platform's business when pk26/P1 gave the four places their own slots.
+import { seedDemoSetup } from '../seed/demo-setup.mjs';
 // A22 — the shoe brand's logistics REGISTRIES (carriers, pickup points) and its customer CLUSTERS with the
 // promotions that condition on them. Two subjects, two modules, both driven through the port. The audience
 // half runs in the WINDOW phase and its header carries the measurement of why.
@@ -1470,6 +1474,20 @@ if (here('cafe')) {
 // there, with the measurement). LAST of the store-shaped steps, because `seedTotem` above is what creates the
 // counter's store and a handle that does not exist yet cannot be dressed.
 await seedChrome({
+  command,
+  read,
+  readAll,
+  rows,
+  log,
+  fail,
+  uploadAsset: (file) => upload(file, { library: true }),
+});
+// pk26/D2 — AND THE SHOP'S OWN MARK, from this box's own app. It follows `chrome` because the two dress the
+// same stores and one of them uploads the café's logo into the same library; running them side by side keeps
+// the birth's log reading as one gesture per app. ⚠️ SEPARATE CALLS AND NOT ONE LOOP: they are two apps, two
+// installs and two consent records, and a single call that installed "the chrome apps" would be this script
+// inventing a category the kernel does not have.
+await seedDemoSetup({
   command,
   read,
   readAll,

@@ -1,0 +1,67 @@
+{
+  "name": "@forge/ext-demo-setup",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "description": "Forge extension (DEMO-SETUP): this box's own marks. Four blocks — the store header, the mobile drawer, the store footer and the login box — each placed and configured on its own in Compose, each drawing a logo from the asset library or a wordmark whose tail takes the theme's accent. The footer block also carries the shop's tagline, because that slot's Forge fallback cedes mark and sentence as one node. Written inside this instance and offered to nobody: it is what a customer's own app looks like.",
+  "forge": {
+    "origin": "instance",
+    "wiring": {
+      "blocks": {
+        "header_brand": {
+          "surface": "storefront",
+          "module": "./block/marks",
+          "export": "HeaderBrand",
+          "props": ["config", "storeHref"]
+        },
+        "drawer_brand": {
+          "surface": "storefront",
+          "module": "./block/marks",
+          "export": "DrawerBrand",
+          "props": ["config", "storeHref"]
+        },
+        "footer_brand": {
+          "surface": "storefront",
+          "module": "./block/marks",
+          "export": "FooterBrand",
+          "props": ["config", "storeHref"]
+        },
+        "account_brand": {
+          "surface": "storefront",
+          "module": "./block/marks",
+          "export": "AccountBrand",
+          "props": ["config", "storeHref"]
+        }
+      }
+    }
+  },
+  "exports": {
+    "./block/marks": "./block/marks.tsx",
+    "./icon": "./icon.ts",
+    "./manifest": "./manifest.ts"
+  },
+  "files": ["block/marks.tsx", "block/marks.module.css"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@forgecommerce/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

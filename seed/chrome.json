@@ -19,20 +19,32 @@
     "    immediately (packages/core/src/commands/extension.ts). Composing is not installing, and installing is",
     "    not placing. All three gestures are this file's.",
     "",
-    "★ THE FIVE BLOCKS AND THE FIVE SLOTS, read off the app's own manifest and confirmed against the",
+    "★★ pk26/D2 — AND THERE ARE FOUR OF THEM NOW, BECAUSE THE MARK LEFT THIS APP. `brand` used to be the",
+    "fifth block here, and it was the one that did not obey the rule the other four keep: it was a single slot",
+    "read in FOUR renders (the header bar, the mobile drawer, the footer column and the login modal), so an",
+    "operator dragged ONE row in Compose and changed four places, with the board unable to say which. The",
+    "owner named it («o compose não faz sentido, está configurando algo lá que nem sabe onde vai aparecer»),",
+    "pk26/P1 gave each of the four places its own slot, and the mark moved to `demo-setup` — an app of THIS",
+    "box, whose declaration is `seed/demo-setup.json`. ⇒ Nothing was lost: the three shops' marks are there,",
+    "carried over word for word, and `chrome` is left honestly OOTB — one block per bar, each rendering in",
+    "exactly the place its name says. ⚠️ Everything that GRADED a mark moved with it:",
+    "`bin/chrome-logo-crop.guard.mjs` reads both declarations, and this file's footer-signature rule derives",
+    "the mark from the file that now holds it.",
+    "",
+    "★ THE FOUR BLOCKS AND THE FOUR SLOTS, read off the app's own manifest and confirmed against the",
     "`target_override` column of the placements a human made on the bench:",
     "    checkout_header → storefront:checkout.header      account_header → storefront:account.header",
     "    checkout_footer → storefront:checkout.footer      account_footer → storefront:account.footer",
-    "    brand           → storefront:header.brand",
     "",
     "⛔ NOTHING WRITTEN ⇒ NOTHING DRAWN, and that is the app's decision, not a bug to work around. Every field",
     "is optional and there is NO default word anywhere in it — a word nobody wrote would be this app choosing",
     "Portuguese for somebody else's shop. So an unfilled block is an invisible one, which is precisely why a",
     "demo that placed the blocks and left them empty would look like the app does nothing.",
     "",
-    "⚠️ `brand` REPLACES THE THEME'S WORDMARK rather than standing beside it (the kit's header cedes the mark",
-    "when something is placed in that slot). So a `brand` block with an empty config would DELETE the mark",
-    "from every page of the shop. Each entry below therefore carries either a logo or a word — never neither.",
+    "⚠️ AND THE REFUSAL THAT USED TO STAND HERE MOVED WITH THE MARK. «A brand block with an empty config",
+    "would DELETE the mark from every page of the shop» is still true and is still enforced — in",
+    "`seed/demo-setup.mjs`'s `markless()`, over the four slots that now carry it, one of which this app never",
+    "had. No block left in this file replaces a wordmark.",
     "",
     "★★ pk19/D1 — THE WORDS THEMSELVES, REWRITTEN TO THE OWNER'S DICTATION (07/09). Everything above is about",
     "the app being born placed; this pass is about what it SAYS. Four instructions, verbatim: the checkout",
@@ -69,11 +81,11 @@
     "    `account-header.tsx:34-45` does the same with a divider between the mark and the way back. A logo and",
     "    a written word coexist; neither erases the other.",
     "",
-    "⛔ AND THE LOGO GOES IN THE TWO BARS ONLY — NEVER IN `brand`. That block is the one place where the two",
-    "are still exclusive: `extensions/chrome/brand.tsx:40-50` draws `logo.url ? <img> : (text + tail)`, so a",
-    "logo in the shop's header would DELETE the wordmark the owner asked for in the same breath. The vitrine's",
-    "mark is TEXT on purpose — it re-tints itself with the theme's accent (`.tail` is `var(--color-accent)`,",
-    "chrome.module.css:148) and a raster does not.",
+    "⛔ AND THE LOGO GOES IN THE TWO BARS ONLY — never in the shop's own mark. There the two are EXCLUSIVE (a",
+    "picture is drawn INSTEAD of the words), so a logo in the shoe shops' header would DELETE the wordmark the",
+    "owner asked for in the same breath. The vitrine's mark is TEXT on purpose — it re-tints itself with the",
+    "theme's accent and a raster does not. ★ pk26/D2: that rule is now enforced where the mark lives,",
+    "`seed/demo-setup.test.mjs`, and these two bars keep their pictures.",
     "",
     "★★ pk21/D3 — THE FUNNEL'S FOOTER GETS A PICTURE, WHICH IS THE HALF OF THIS APP THE DEMO HAD NEVER SHOWN.",
     "Verbatim, 07/09: «compra segura precisa usar o do app, precisa preencher pois quero mostrar isso na demo».",
@@ -131,7 +143,8 @@
     "CAPITALISATION. pk20 lowercased the two shops' headers and left the footers of the same shops signing off",
     "as «Forge Outlet» and «Forge · calçados e acessórios» — one shop, two spellings of one name, a click apart.",
     "Those two `account_footer.end_text` are the footer's SIGNATURE and are now the mark itself",
-    "(`forge.outlet`, `forge.store · calçados e acessórios`), graded against the `brand` block rather than pinned",
+    "(`forge.outlet`, `forge.store · calçados e acessórios`), graded against the shop's own mark — which since",
+    "pk26/D2 is read out of `seed/demo-setup.json`, a CROSS-APP rule and deliberately so — rather than pinned",
     "as literals. ⚠️ THE RÉGUA WAS READ OFF THE STORE THE OWNER SAID WAS ALREADY RIGHT: the café already signed",
     "`forge.co · café de origem`.",
     "",
@@ -148,16 +161,11 @@
     "checkout_header": "storefront:checkout.header",
     "checkout_footer": "storefront:checkout.footer",
     "account_header": "storefront:account.header",
-    "account_footer": "storefront:account.footer",
-    "brand": "storefront:header.brand"
+    "account_footer": "storefront:account.footer"
   },
   "stores": {
     "forge": {
       "_why": "The reference shoe store. ★ pk20/D1 — IT NOW WEARS ITS MARK IN TWO PLACES AND IN TWO MEDIA, which is one decision and not two: the VITRINE keeps the mark as TEXT (`forge` + `.store`, the tail painted with the theme's accent) because that is the half that re-tints itself when the theme moves, and the CHECKOUT and ACCOUNT bars carry the same mark as a PICTURE, because those two bars have had room for a logo AND the way back since R4. The owner's two corrections are both here: minúsculo (`Forge` was a capital nobody had asked for) and the mark reaching the funnel at all («não aparece o logo no checkout e minha conta»). ★ pk19: `cart` is `Carrinho` because that is what this store's VITRINE already says (empty `vocabulary` in seed/catalog.json ⇒ the kit's default); it said `Sacola` here, which made one store use two words for one thing. ★ pk21/D3: the checkout footer's right-hand area is now a PICTURE, drawn in this footer's ink — #4b4d52 on the vanilla theme's white — with «Compra Segura» kept as its description; ★★ pk22/D4 REPLACED that picture with the LOCKUP (`compra-segura-lockup-escuro.png`: the padlock AND the words, in this shop's Urbanist at the checkout page's own size), because the image WINS the text and the padlock alone left the funnel with no promise in writing — the owner picked that shape out of three on 07/09 («b está bom»); and the account footer signs off with this shop's own mark instead of a capitalised one (`Forge · calçados e acessórios` → `forge.store · calçados e acessórios`).",
-      "brand": {
-        "text": "forge",
-        "tail": ".store"
-      },
       "checkout_header": {
         "logo": "forge-store-logo.png",
         "back": "Voltar à loja",
@@ -184,10 +192,6 @@
     },
     "outlet": {
       "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent (carmine here, copper on the reference), so ONE placement makes the outlet look like the outlet without a line of code. ★★ pk20/D1 — AND THE TAIL IS `.outlet`, WITH A POINT, BECAUSE A SPACE CANNOT SURVIVE THE TRIP. It used to be `\" Outlet\"` and the shop's header read `ForgeOutlet`, glued: `wordOf` trims every configured word (`extensions/chrome/logic.ts:38`) and `brand.tsx` concatenates `text` and `tail` with nothing between them, so the separator has to be a CHARACTER. The point is also the shape the sibling stores' marks already have (`forge.store`, `forge.co`), which is what makes this the right mark rather than a workaround for a trim. The funnel's mark is the same wordmark as a picture, in this theme's own ink (#e4e6ea on #17181a, themes/outlet/tokens.css:117-120). ⚠️ pk19 TOOK THE SEAL OUT OF THE HEADER AND THE THREE INSTITUTIONAL SENTENCES OUT OF THE FOOTER: the owner called that content bad and dictated its replacement, and a store-specific promise («produtos originais com nota fiscal») is exactly the kind of claim he moved to one shared security line. The outlet keeps its own voice where he did not touch it — the way back, which stays «Voltar ao Outlet» because it is a sentence about the SHOP and not the mark. ★★ pk21/D3 CORRECTED THE OTHER HALF OF THAT SENTENCE: the footer's right-hand mark was still `Forge Outlet`, the exact glued capital pk20 removed from the header of the same shop, and it is now `forge.outlet`. And the checkout footer gains the seal in THIS theme's ink — #e4e6ea, because the escuro file would be dark art on this shop's #17181a footer. ★★ pk22/D4 made that seal the LOCKUP (`compra-segura-lockup-claro.png`), and it is a SECOND file rather than the forge's because it carries this shop's own face too: `themes/outlet/tokens.css:103` sets `--font-sans` to Figtree where the reference theme sets Urbanist, and the art was rendered inside this shop's checkout page.",
-      "brand": {
-        "text": "forge",
-        "tail": ".outlet"
-      },
       "checkout_header": {
         "logo": "forge-outlet-logo.png",
         "back": "Voltar ao Outlet",
@@ -214,10 +218,6 @@
     },
     "cafe": {
       "_why": "★ THE STORE THIS ITEM WAS REALLY ABOUT. Its vitrine is a FORK and wears its own chrome; its CHECKOUT and its ACCOUNT screens are ours, hosted, and until this file they wore the reference mark — the café's buyers reached the payment step under somebody else's wordmark. This is the one entry with a LOGO, because it is the one store whose logo this repository actually has: `seed/photos/forge-co-logo.png`, the same mark the forked storefront imports as a bundled file (storefront-coffee/src/components/coffee/CoffeeChrome.tsx). The fork owns its copy; the hosted funnel needs it as an ASSET, which is what `logo` is — a `type:'id'` reference the kernel resolves to a url at read time. ★ pk19: the one store whose `cart` STAYS `Sacola` — the owner named it («na de café deixa como está») and the dataset agrees with him: `cafe` is the only store that declares `vocabulary.cart = Sacola` in seed/catalog.json, so here the account header and the vitrine already said the same word. ★★ pk25/D2 — AND THE FILE BEHIND THAT `logo` WAS THE ARTBOARD EXPORT, WHICH IS WHY THE MARK LOOKED MINUSCULE. The bar sizes a logo BY HEIGHT ALONE (`.logo { height: 2em; width: auto }`, extensions/chrome/chrome.module.css:22-26, with the reason written beside it), so the FILE'S proportion decides how much ink the shopper sees. `seed/photos/forge-co-logo.png` was 1536x1024 with the wordmark sitting as an 856x231 island in the middle — 22.6% of the file's height — so at 2em the mark drew 0.451em tall. It is now the cut the owner delivered (898x273, same 856x231 of ink, 84.6% of the height, 1.692em drawn): SAME PIXELS, 3.75x the mark. ⚠️ AND THE CAUSE WAS A HALF-DONE FIX, not a bad export: the fork bundles its own copy of this same mark and s3-11 trimmed THAT one (storefront-coffee/.../forge-co-logo.png, 858x233) and wrote a guard to keep it trimmed, while this copy was left behind and graded by nobody — one shop drawing one mark correctly in its vitrine and a third of the size in its checkout. `bin/chrome-logo-crop.guard.mjs` now grades every declared `logo` by PROPORTION (never by filename) and ties the two copies of the café's mark together.",
-      "brand": {
-        "logo": "forge-co-logo.png",
-        "text": "forge.co"
-      },
       "checkout_header": {
         "logo": "forge-co-logo.png",
         "back": "Voltar à loja",

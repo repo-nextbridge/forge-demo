@@ -1,9 +1,13 @@
 // A10 (the DEMO half) — THE `chrome` APP BORN INSTALLED, PLACED AND FILLED IN.
 //
-// ★★ WHAT IS WORTH TESTING, and none of it is "the file has five keys":
-//   · a `brand` block with an empty config DELETES the shop's mark. The slot REPLACES the theme's wordmark
-//     and the app draws nothing when nothing is configured, so the failure is a header with no mark on every
-//     page and nothing anywhere going red;
+// ⛔ pk26/D2 — AND THE SHOP'S OWN MARK IS NOT ONE OF THEM ANY MORE. `brand` was the fifth block of this app
+// and the only one that was a single slot read in FOUR renders; it is `demo-setup`'s now, four components,
+// graded in `seed/demo-setup.test.mjs`. What moved WITH it: the empty-mark refusal, the exclusivity rule and
+// the whitespace note about a glued `text`+`tail`. What stayed here and had to be RE-POINTED rather than
+// deleted: the footer's SIGNATURE rule, which derives the shop's name from the mark — it now reads the file
+// that holds it, because nothing else in this repository compares the two.
+//
+// ★★ WHAT IS WORTH TESTING, and none of it is "the file has four keys":
 //   · a block PLACED and EMPTY is invisible — the app writes no default word anywhere on purpose. So «the
 //     app is born configured» is a claim about CONTENT, and a test that only counted placements would stay
 //     green on exactly the state the achado complained about (`"back":"a"`, `"seal":"c"`);
@@ -17,20 +21,27 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { blocksFor, imagesOf, markless, planChrome, seedChrome } from './chrome.mjs';
+import { blocksFor, imagesOf, planChrome, seedChrome } from './chrome.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(readFileSync(join(SEED, 'chrome.json'), 'utf8'));
 const BOX = JSON.parse(readFileSync(join(SEED, 'box.json'), 'utf8'));
+// ★★ pk26/D2 — THE SHOP'S OWN MARK LEFT THIS APP, and one rule in this file still needs it: the account
+// footer SIGNS the shop, and it must sign with the name the mark spells. That is now a CROSS-FILE fact, so
+// it is read from the file that holds it rather than assumed.
+const MARKS = JSON.parse(readFileSync(join(SEED, 'demo-setup.json'), 'utf8'));
 
-/** The five blocks the app declares, and the slot each is allowed in — read off `extensions/chrome/manifest.ts`
- *  and confirmed against the `target_override` column of placements a human made on the bench (04/09). */
+/** The four blocks the app declares, and the slot each is allowed in — read off `extensions/chrome/manifest.ts`
+ *  and confirmed against the `target_override` column of placements a human made on the bench (04/09).
+ *
+ *  ⛔ THERE WERE FIVE UNTIL pk26/D2, and the fifth is why the split happened: `brand` was ONE slot read in
+ *  FOUR renders, so an operator dragged one row and changed four places. It is `demo-setup`'s now — four
+ *  components, one per place — and `seed/demo-setup.test.mjs` is where it is graded. */
 const MANIFEST_SLOTS = {
   checkout_header: 'storefront:checkout.header',
   checkout_footer: 'storefront:checkout.footer',
   account_header: 'storefront:account.header',
   account_footer: 'storefront:account.footer',
-  brand: 'storefront:header.brand',
 };
 
 /** Which config keys each block declares (`config_schema`). A key this file invents is dropped by the kernel's
@@ -38,7 +49,6 @@ const MANIFEST_SLOTS = {
 const CONFIG_KEYS = {
   checkout_header: ['logo', 'back', 'title', 'seal'],
   account_header: ['logo', 'back', 'account', 'cart'],
-  brand: ['logo', 'text', 'tail'],
   checkout_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
   account_footer: ['start_text', 'start_image', 'middle_text', 'middle_image', 'end_text', 'end_image'],
 };
@@ -49,12 +59,12 @@ test('★★ the slot map is the app’s own — a slot this file invented would
   assert.deepEqual(DATA.slots, MANIFEST_SLOTS);
 });
 
-test('★★★ every dressed store declares ALL FIVE blocks — a half-dressed shop is the state this replaces', () => {
+test('★★★ every dressed store declares ALL FOUR blocks — a half-dressed shop is the state this replaces', () => {
   for (const [handle] of dressed) {
     assert.deepEqual(
       blocksFor(DATA, handle).map((b) => b.component).sort(),
       Object.keys(MANIFEST_SLOTS).sort(),
-      `store "${handle}" does not declare all five chrome blocks`,
+      `store "${handle}" does not declare all four chrome blocks`,
     );
   }
 });
@@ -91,18 +101,6 @@ test('★★ no config key is invented — every one is in the block’s own `co
   }
 });
 
-test('⛔ a `brand` block with neither a logo nor a word would DELETE the shop’s mark', () => {
-  assert.deepEqual(markless(DATA), []);
-  // …and the refusal is capable of red, which is the only reason to trust it.
-  assert.deepEqual(
-    markless({
-      slots: MANIFEST_SLOTS,
-      stores: { x: { brand: {} }, y: { brand: { tail: '   ' } } },
-    }),
-    ['x', 'y'],
-  );
-});
-
 test('★★ every picture the declaration names is a file this repository actually has', () => {
   const files = imagesOf(DATA);
   assert.ok(files.length > 0, 'no store uses a logo — the `type:id` half of the app is then undemonstrated');
@@ -122,7 +120,7 @@ test('★ the picture list is DERIVED from the configs, not typed beside them', 
     imagesOf({
       slots: MANIFEST_SLOTS,
       stores: {
-        a: { brand: { logo: 'one.png' }, checkout_footer: { end_image: 'two.png' } },
+        a: { account_header: { logo: 'one.png' }, checkout_footer: { end_image: 'two.png' } },
         b: { checkout_header: { logo: 'one.png' } },
       },
     }),
@@ -174,11 +172,11 @@ test('★★ …and a placement that already says the declaration costs NOTHING,
 test('a block nothing has placed yet is PLACED, in the slot the file names', () => {
   const wanted = blocksFor(DATA, 'cafe');
   const plan = planChrome(wanted, []);
-  assert.equal(plan.length, 5);
+  assert.equal(plan.length, 4);
   assert.ok(plan.every((step) => step.action === 'place'));
   assert.equal(
-    plan.find((s) => s.component === 'brand').slot,
-    'storefront:header.brand',
+    plan.find((s) => s.component === 'account_header').slot,
+    'storefront:account.header',
   );
 });
 
@@ -236,7 +234,6 @@ test('★★ the picture list is SCOPED to the tenant’s own stores — a libra
  *  same shape already worked once in this file for `cart: 'Sacola'`. */
 const DICTATED = {
   forge: {
-    brand: { text: 'forge', tail: '.store' },
     checkout_header: { logo: 'forge-store-logo.png', back: 'Voltar à loja', seal: '' },
     checkout_footer: {
       start_text: 'Pix · Cartão de crédito',
@@ -254,7 +251,6 @@ const DICTATED = {
     },
   },
   outlet: {
-    brand: { text: 'forge', tail: '.outlet' },
     // ★★ pk21/D3 — «Voltar ao Outlet» STAYS, and the capital is the decision. See the régua below.
     checkout_header: { logo: 'forge-outlet-logo.png', back: 'Voltar ao Outlet', seal: '' },
     checkout_footer: {
@@ -271,8 +267,8 @@ const DICTATED = {
     },
   },
   cafe: {
-    // ★ THE STORE HE DID NOT TOUCH, pinned so that "já está certo" survives the next pass.
-    brand: { logo: 'forge-co-logo.png', text: 'forge.co' },
+    // ★ THE STORE HE DID NOT TOUCH, pinned so that "já está certo" survives the next pass. ★★ pk26/D2 — its
+    // MARK is pinned in `seed/demo-setup.test.mjs` now, for the same reason and by the same table.
     checkout_header: { logo: 'forge-co-logo.png', seal: '' },
     checkout_footer: {
       start_text: 'Pix · Cartão de crédito',
@@ -431,7 +427,6 @@ test('★★ no contact detail is a REAL one — this dataset shipped the owner�
 
 /** The word fields of each block, by component — the ones `wordOf` reads. `logo` is an asset ref, not a word. */
 const WORD_KEYS = {
-  brand: ['text', 'tail'],
   checkout_header: ['back', 'title', 'seal'],
   account_header: ['back', 'account', 'cart'],
   checkout_footer: ['start_text', 'middle_text', 'end_text'],
@@ -459,12 +454,7 @@ test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a spa
           raw.trim(),
           `store "${handle}", block ${block.component}: "${key}" is ${JSON.stringify(raw)} — it carries ` +
             'leading or trailing whitespace, and `wordOf` TRIMS every word before it is drawn ' +
-            '(extensions/chrome/logic.ts:38). The space is deleted, not rendered' +
-            (block.component === 'brand'
-              ? `, and \`brand.tsx\` concatenates text+tail with nothing between them, so this mark reaches ` +
-                `the shop's header as "${(block.config.text ?? '').trim()}${(block.config.tail ?? '').trim()}" ` +
-                '— glued. Separate the two with a PRINTABLE character (a point), never with a space.'
-              : '.'),
+            '(extensions/chrome/logic.ts:38). The space is deleted, not rendered.',
         );
       }
     }
@@ -477,8 +467,10 @@ test('★★★ every dressed shop wears its OWN mark in BOTH bars the owner nam
   // app writes no default anywhere, so a bar with no `logo` renders a bar with no mark and nothing goes red.
   //
   // ⚠️ AND THE MARK IS THE STORE'S OWN FILE. Two shops sharing one is the exact state this app exists to
-  // remove — the README's own words: "our wordmark, in somebody else's shop". `brand` is deliberately NOT
-  // included: there the logo would REPLACE the text (brand.tsx:40-50), which is what the owner asked us to fix.
+  // remove — the README's own words: "our wordmark, in somebody else's shop". ★ pk26/D2: the SHOP's mark is
+  // no longer one of the blocks this rule can reach, and it never wanted to be — there a logo REPLACES the
+  // words, which is the opposite of the two bars, where a logo and the way back stand side by side since R4.
+  // Its own exclusivity rule lives in `seed/demo-setup.test.mjs`.
   const BARS = ['checkout_header', 'account_header'];
   const seen = new Map();
   for (const [handle, blocks] of Object.entries(DICTATED)) {
@@ -609,56 +601,17 @@ test('★★ …and the declared FILENAME becomes an ASSET ID in the placement �
             'a ref the kernel cannot resolve, so no `logo_url` is stamped and the bar draws no mark.',
         );
       }
-      // ⛔ AND NOTHING SLIPPED INTO `brand` ON THE WAY THROUGH: a logo there REPLACES the wordmark.
+      // ⛔ AND NOTHING SLIPPED INTO A MARK ON THE WAY THROUGH — which since pk26/D2 is a stronger statement
+      // than it used to be: this app has no block that can carry one. A `brand` placement coming out of THIS
+      // seed would be `chrome` reaching into an app that is no longer its own.
       assert.equal(
-        config(store, 'brand')?.logo,
+        config(store, 'brand'),
         undefined,
-        `${store}/brand was placed WITH a logo. \`brand.tsx:40-50\` draws \`logo.url ? <img> : (text + tail)\`, ` +
-          'so that placement deletes the very wordmark this pass exists to write.',
+        `${store}: this seed placed a \`brand\` block. The shop's mark left this app in pk26/D2 — it is ` +
+          '`demo-setup`\'s, four components, and `seed/demo-setup.mjs` is what places it.',
       );
-      assert.equal(config(store, 'brand')?.text, 'forge');
     }
-    assert.equal(config('sto_forge', 'brand').tail, '.store');
-    assert.equal(config('sto_outlet', 'brand').tail, '.outlet');
   });
-});
-
-test('⛔ in `brand`, the picture and the words are EXCLUSIVE — so each shop declares the one it draws', () => {
-  // ★ THE POINT THE WHOLE ITEM TURNS ON. `extensions/chrome/brand.tsx:40-50` is `logo.url ? <img> : (text +
-  // tail)` — the shop's header draws ONE of the two, never both. So dropping the new marks into `brand` as
-  // well as into the bars would have DELETED `forge.store` and `forge.outlet` from every page of the vitrine,
-  // which is the other half of what the owner asked for on the same day. The two shoe shops therefore keep a
-  // WORD mark (it re-tints itself with the theme's accent — `.tail` is `var(--color-accent)`, and a raster
-  // does not), and the café keeps the PICTURE it already had.
-  //
-  // ⚠️ NEITHER BRANCH IS A SKIP. Which of the two a store wants is read off the dictation table, and the
-  // opposite case is asserted rather than passed over: a `logo` that appears beside a wordmark and a wordmark
-  // that quietly loses its picture are the same class of silent change.
-  for (const [handle, blocks] of Object.entries(DICTATED)) {
-    if (blocks === null) {
-      assert.equal(DATA.stores[handle], null, `"${handle}" is skipped by name here and must be null in the data`);
-      continue;
-    }
-    const brand = blocksFor(DATA, handle).find((b) => b.component === 'brand')?.config ?? {};
-    const wordmark = typeof blocks.brand?.tail === 'string';
-    if (wordmark) {
-      assert.equal(
-        brand.logo,
-        undefined,
-        `store "${handle}", block brand: a logo is configured beside the words. brand.tsx:40-50 draws the ` +
-          `IMAGE OR the words, never both — so this deletes "${brand.text ?? ''}${brand.tail ?? ''}" from ` +
-          'every page of the shop. The mark belongs in `checkout_header` and `account_header`, where the app ' +
-          'has had a position for it AND for the way back since R4.',
-      );
-    } else {
-      assert.equal(
-        typeof brand.logo,
-        'string',
-        `store "${handle}", block brand: the dictation says this shop's mark is a PICTURE (no tail), and ` +
-          'the declaration carries none. The block would fall back to the words, silently.',
-      );
-    }
-  }
 });
 
 // ══ pk21/D3 — THE SEAL, AND THE SHOP'S NAME SPELLED ONE WAY ══════════════════════════════════════════════
@@ -729,10 +682,16 @@ test('★★★ a picture in a footer area never travels alone — the word besi
 });
 
 test('★★★ the shop signs its footer with its OWN mark, spelled the way its header spells it', () => {
-  // ★ THE RULE IS DERIVED FROM `brand` AND NOT TYPED TWICE. The header's mark is `text + tail`
-  // (`brand.tsx:46-49` concatenates them, and `wordOf` trims each), so the mark of a shop is a fact this file
-  // already holds. The footer's right-hand area is where the same shop signs its name — so it must START with
-  // that mark, and anything after it is the shop's own descriptor.
+  // ★ THE RULE IS DERIVED FROM THE MARK AND NOT TYPED TWICE. A shop's mark is `text + tail` concatenated
+  // (each trimmed), so the mark of a shop is a fact that is DECLARED somewhere and never re-typed here. The
+  // footer's right-hand area is where the same shop signs its name — so it must START with that mark, and
+  // anything after it is the shop's own descriptor.
+  //
+  // ⚠️ AND SINCE pk26/D2 THE TWO HALVES LIVE IN TWO FILES OWNED BY TWO APPS, which is exactly why this rule
+  // had to move rather than be deleted: `seed/demo-setup.json` holds the mark and `seed/chrome.json` holds
+  // the signature, and NOTHING else in this repository compares them. A shopper crossing from the header to
+  // this footer does not change page. (Its twin lives in `seed/demo-setup.test.mjs`, asked from the other
+  // side — one of the two files can lose a store, and each rule catches the loss in its own.)
   //
   // ⚠️ IT WOULD HAVE GONE RED ON BOTH SHOE SHOPS BEFORE THIS PASS («Forge Outlet», «Forge · calçados e
   // acessórios») AND GREEN ON THE CAFÉ («forge.co · café de origem») — the store the owner told us was
@@ -745,9 +704,12 @@ test('★★★ the shop signs its footer with its OWN mark, spelled the way its
       continue;
     }
     const configs = Object.fromEntries(blocksFor(DATA, handle).map((b) => [b.component, b.config ?? {}]));
-    const brand = configs.brand ?? {};
+    const brand = blocksFor(MARKS, handle).find((b) => b.component === 'header_brand')?.config ?? {};
     const mark = `${(brand.text ?? '').trim()}${(brand.tail ?? '').trim()}`;
-    assert.ok(mark.length > 0, `store "${handle}" has no wordmark in \`brand\` to sign anything with`);
+    assert.ok(
+      mark.length > 0,
+      `store "${handle}" has no wordmark in seed/demo-setup.json to sign anything with`,
+    );
     const signature = configs.account_footer?.end_text ?? '';
     assert.ok(
       signature === mark || signature.startsWith(`${mark} `),
