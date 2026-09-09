@@ -1,13 +1,13 @@
 {
-  "forgeVersion": "v0.3.0-pre.b3025963c",
+  "forgeVersion": "v0.3.0-pre.8ad75f6c0",
   "node": {
     "minMajor": 24,
     "engines": ">=24"
   },
   "provenance": {
     "origin": "local build",
-    "built_from": "v03/integra@b3025963c",
-    "built_at": "2026-09-08T12:44:46Z",
+    "built_from": "v03/integra@8ad75f6c0",
+    "built_at": "2026-09-09T01:39:09Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -17,12 +17,14 @@
     "id": "demo-instance",
     "apps": [
       "demo-gate",
+      "demo-setup",
       "payment-pos",
       "banners",
       "channel-push",
       "channel-sms-twilio",
       "channel-whatsapp",
       "chrome",
+      "content",
       "demo-data",
       "feed",
       "leads",
@@ -40,10 +42,10 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:209fbec76fbf491da92a783eb8f8b7a387cfa60c4035588f8c17ae1077e6dad0",
-    "storefront": "forge-demo-storefront@sha256:0aef9ecfb4663aecfdf330998f372d15bfb09ad2b81606d6f251a499cac09b9f",
-    "checkout": "forge-demo-checkout@sha256:b2a809448d1630f74b9c5e63587a063c133bd6c77e445a8df390e166c9a42f9f",
-    "admin": "forge-demo-admin@sha256:221f6a2fc307b151e9d019673c34a6d631d8a94cc6e0ce8cbd49ea2b8416f1dd"
+    "kernel": "forge-demo-kernel@sha256:980367aba3a5e6348ad45b0e2f70a547d1f9a56b6b963f7b1c363176f24f0f00",
+    "storefront": "forge-demo-storefront@sha256:14803fa94e2c1d57b8268fcd16ca8803e101f703183e93935092ad5785f12e96",
+    "checkout": "forge-demo-checkout@sha256:8f28874de015857e1cc854e26774e0b01f187bd69ab9d5df9874d285feb756de",
+    "admin": "forge-demo-admin@sha256:b8ebadbe7d7d6624d7098170a76dd232ea0edb7276806c694779b5d89e7a0cfb"
   },
   "extensions": [],
   "dataset": {
