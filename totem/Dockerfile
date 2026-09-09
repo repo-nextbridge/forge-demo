@@ -32,9 +32,18 @@ COPY .next/static ./totem/.next/static
 
 EXPOSE 3000
 
-# Liveness only: any HTTP response means the server is up. This never depends on the store being reachable —
-# a counter whose kernel is briefly down is still a running process, and restarting it would not help.
+# Liveness, graded on the SERVER'S HALF of the status: 5xx is unhealthy, everything below it is an answer. This
+# never depends on the store being reachable — a counter whose kernel is briefly down is still a running
+# process, and restarting it would not help, so the probe never asks about anything but this server.
+#
+# ⚠️ NOT `r.ok`: a bare "/" is routed by the app itself and a 404 there is a legitimate answer from a server
+# that is up (measured 2026-09-09 on the sibling fork), so `r.ok` would paint a healthy container red.
+#
+# ⚠️ AND NOT `.then(() => exit(0))`, which is what this line used to be. Discarding the response makes `then`
+# resolve for 200, 404 and 500 alike, so the ONLY way the container could ever go unhealthy was a refused
+# connection — measured on the bench, the sibling fork reported itself healthy for 15 hours while it answered
+# 500 to every request, its own probe included. `bin/container-health.guard.mjs` now RUNS this line.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(()=>process.exit(0)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "totem/server.js"]

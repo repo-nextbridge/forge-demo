@@ -546,6 +546,27 @@ resposta que falta**.
 | a **composição** | `bash bin/verify-composition.sh` | o que a lock pediu × o que o container declara |
 | as **portas** | passo 14-bis | toda porta de toda loja, aberta de verdade |
 | este runbook | `bash bin/test.sh` | a lista da §3.1 contra o compose, nos dois sentidos |
+| a **coluna health** | `docker ps` | pk28/d2 — desde 09/09 ela é um veredicto, e não era |
+
+★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**
+A sonda dos dois (`totem/Dockerfile`, `storefront-coffee/Dockerfile`) descartava a resposta —
+`fetch(url).then(() => process.exit(0))` — e `then` resolve para 200, 404 e **500** igualmente, então o único
+jeito de o contêiner ficar vermelho era a conexão ser recusada. **Medido em 09/09 na bancada viva:**
+`forge-preseed-storefront-coffee-1` esteve `health=healthy` / `FailingStreak=0` por **15 horas** enquanto o
+middleware dele estourava em toda requisição — **118 stack traces em 20 min**, uma a cada ~10,2 s, que é o
+`--interval` da própria sonda. Com o `Host` que a sonda usa (`curl -H 'Host: 127.0.0.1:3000'`) a resposta
+medida era **HTTP 500**. ⇒ a sonda era o tráfego que **produzia** o erro e a autoridade que chamava o
+contêiner de saudável.
+
+⚠️ **E o conserto NÃO é `r.ok`.** Um `/` cru com um `Host` que loja nenhuma reivindica responde **404**
+(medido no mesmo dia: `Host: cafe.localhost` → 404), então `r.ok` pintaria de vermelho um contêiner
+perfeitamente saudável. A régua é a **metade do servidor**, `r.status < 500`: `200 → saudável`,
+`404 → saudável`, **`500` e `503` → doente**, conexão recusada → doente. `bin/container-health.guard.mjs`
+**executa** a linha real de cada Dockerfile contra um servidor local que responde cada um desses status — um
+regex sozinho aprova uma comparação invertida, que se lê como conserto.
+
+⇒ **Na prática, para quem opera:** um `(unhealthy)` nesses dois contêineres passou a querer dizer alguma
+coisa — antes de 09/09, `(healthy)` ali não queria.
 
 A regra única do passo 15 é **posse de um endereço**: *esta caixa se publica em UM endereço, e toda face que
 ela declara tem de estar publicada ali*. Cada face é comparada com **o que a caixa responde** — nunca com uma
