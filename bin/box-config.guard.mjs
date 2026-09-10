@@ -325,6 +325,10 @@ function runPromotion({
   // would be measuring a box-up this repository does not ship. It passes here because `bin/test.sh` refuses
   // to run this suite on a node under the floor in the first place.
   writeFileSync(join(dir, 'bin/require-node.sh'), read('bin/require-node.sh'));
+  // ★★ AND THE REAL VERDICT, for the same reason and not as a stub: the promotion's EXIT STATUS is derived
+  // there (pk30/§2), so a fixture that stubbed it would grade a box-up whose status means nothing. Every
+  // `expectStatus` below is this module's answer, over the facts the run really measured.
+  writeFileSync(join(dir, 'bin/promotion-verdict.mjs'), read('bin/promotion-verdict.mjs'));
   // ⚠️ AND THE PIN IT READS, because the floor is not typed anywhere any more: `require-node.sh` takes it
   // from `forge.lock` (pk8/d2). A fixture without one would exercise the "this pin states no floor" branch
   // — a real branch, but not the one a born box is on, and its notice would land in the output measured here.
@@ -594,6 +598,42 @@ test('★★ pk6·D2 — `--localhost` releases BOTH spellings and puts the box 
   assert.equal(env.FORGE_GATE_ADMIN_URL, '');
   const siblings = JSON.parse(env.FORGE_ADMIN_SIBLINGS.replace(/^'|'$/g, ''));
   assert.deepEqual(siblings.map((s) => s.url).sort(), ['http://localhost:8201', 'http://localhost:8202']);
+});
+
+test('★★★ pk30/§2 — the way BACK exits 0 on the FIRST pass and never reports an admin-door count', () => {
+  // ⛔ THE DEFECT, MEASURED ON THE BOX 09/09. `--promote localhost` exited non-zero on its first pass with
+  // `the promotion is INCOMPLETE: 0 of 0 admin door(s) claimed. See the REFUSED line(s) above.` — and that
+  // sentence could not have been the cause: on this direction `$claimed` and `$expected` are STRUCTURALLY zero
+  // (the loop that fills them is inside the `out` branch), so it was a fixed string printed over a failure in
+  // the SHOP'S ADDRESS check, pointing the operator at REFUSED lines that were never printed.
+  //
+  // ★ `expectStatus: 0` IS THE DEFAULT AND IT WAS ALREADY TRUE HERE — which is itself the measurement: the
+  // repo's own fixture has always demoted this box to exit 0, so `0 of 0` was never what graded the direction.
+  // What this test adds is the sentence: the verdict may not mention a door count on a direction that owes none.
+  const { stdout } = runPromotion({ mode: 'localhost', serve: SERVE_PUBLISHING });
+  assert.match(stdout, /the promotion is COMPLETE/, stdout);
+  assert.match(stdout, /no admin door to claim on the way back/, stdout);
+  assert.doesNotMatch(
+    stdout,
+    /admin door\(s\) claimed/,
+    `the way back is reporting an admin-door count again:\n${stdout}`,
+  );
+  assert.doesNotMatch(stdout, /See the REFUSED line\(s\) above/, stdout);
+});
+
+test('★★★ pk30/§2 — …and the way OUT still REDS when it claims fewer doors than it owes, naming them', () => {
+  // ⚠️ THE HALF THAT KEEPS THE REPAIR HONEST. Deriving the expectation per destination must not soften the
+  // other direction: a promotion outwards that left one brand's admin unclaimed is still INCOMPLETE, still
+  // exits 1, and still says `N of M`. `setFails` makes the directory refuse the café's door.
+  const { stdout } = runPromotion({
+    mode: 'tailnet',
+    serve: SERVE_PUBLISHING,
+    setFails: ['*forgecafe*'],
+    expectStatus: 1,
+  });
+  assert.match(stdout, /the promotion is INCOMPLETE/, stdout);
+  assert.match(stdout, /the admin doors: 2 of 4 claimed/, stdout);
+  assert.match(stdout, /unknown_admin_host/, stdout);
 });
 
 // ── pk24·§B5 · THE PROMOTION IS A NAMED STEP WITH A DESTINATION, AND THE TAILNET IS ONE OF THEM ───────────

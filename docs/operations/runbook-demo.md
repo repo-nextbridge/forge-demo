@@ -483,6 +483,30 @@ desta máquina esteja ou não algo servindo — um aviso disparado por ela apare
 seria aprendido como ruído em uma semana. `bin/promotion-gap.guard.mjs` roda a função de verdade e prova as
 duas direções: **alta** com porta publicada e não reivindicada, **muda** em qualquer outro caso.
 
+★★★ **pk30/§2 — e a VOLTA parou de culpar as portas por outra coisa.** Medido nesta caixa em 09/09:
+`bash bin/box-up.sh --promote localhost` saiu **não-zero na primeira passada** dizendo
+
+```
+[box-up] the promotion is INCOMPLETE: 0 of 0 admin door(s) claimed. See the REFUSED line(s) above.
+```
+
+e **`0 de 0` não podia ser a causa**: na volta esses dois contadores são **zero por construção** — o laço que
+os preenche está dentro do ramo da **ida** (a volta não reivindica porta nenhuma, ela **solta**). Aquela frase
+era um texto fixo impresso por cima de uma falha de **outro** exame — o **endereço da loja** no diretório do
+kernel — e mandava o operador ler linhas `REFUSED` que nunca foram impressas.
+
+⇒ O veredicto agora é **derivado do destino** (`bin/promotion-verdict.mjs`), e o rigor não muda:
+
+| destino | quantas portas de admin ele DEVE reivindicar | o que o faz vermelho |
+|---|---|---|
+| `tailnet` / `<hostname>` | uma por tenant × cada grafia do nome | reivindicar **menos** do que devia — continua vermelho, nomeando as portas |
+| `localhost` (a volta) | **zero** — as portas de `localhost` são escritas no **nascimento**, do `seed/box.json` | o **endereço da loja** não estar no diretório |
+
+O endereço da loja é graduado nas **duas** direções, porque as duas o movem; e fatos que não descrevem uma
+promoção saem **2** (*"não deu para graduar"*), que nenhum chamador pode publicar como verde.
+⚠️ **Por que isto importa mais do que parece:** `--promote localhost` é o caminho de **voltar atrás**, e um
+caminho de volta que falha na primeira tentativa é o que um operador usa **com pressa, no pior momento**.
+
 ⚠️ **`--promote` sem destino RECUSA e nomeia os destinos** — nunca cai num default. Um passo que só funciona
 porque alguém sabia qual variável exportar não é um passo pronto.
 ⚠️ **O que continua sendo fronteira, e a corrida diz em voz alta:** só o **tailnet** publica uma tabela que
@@ -568,6 +592,20 @@ resposta que falta**.
 | as **portas** | passo 14-bis | toda porta de toda loja, aberta de verdade |
 | este runbook | `bash bin/test.sh` | a lista da §3.1 contra o compose, nos dois sentidos |
 | a **coluna health** | `docker ps` | pk28/d2 — desde 09/09 ela é um veredicto, e não era |
+| a **home do admin** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk30/§11 — a ordem dos widgets, contra o que o dataset declara |
+
+★★ **pk30/§11 — a ORDEM DOS WIDGETS da home do admin, e ela era decidida pela ordem de instalação dos apps.**
+Achado dele em 10/09, usando os dois admins: *"o bloco de últimas assinaturas na demo ainda está vindo no topo,
+o admin de café está certo mas o de sapato está errado."* Instalar um app **auto-coloca** os widgets dele no
+**fim** de `admin:admin.home.widgets` — então a posição de um widget **É** a ordem em que o app dele foi
+instalado. `forgeco` instalou `subscriptions` primeiro, `forgecafe` instalou por último, e **nenhum dos dois
+tinha decidido nada**: um deles calhou de bater com o que ele queria.
+⇒ A ordem agora é **declarada** (`admin_widgets` do dataset montado — a mesma chave que o passo do kernel lê) e
+**aplicada a TODOS os tenants** no passo 11. Essa metade nenhum one-shot conseguia fazer: `dist/seed-demo.js`
+roda só para o tenant **do dataset**, então o quadro do café nunca tinha sido tocado por nada.
+⚠️ O veredicto é **por tenant** e grada o **prefixo**: a cauda mantém a ordem relativa que tinha, porque
+ninguém decidiu sobre ela. Uma declaração sobre um quadro **vazio** é vermelho **nomeando o tenant**, nunca uma
+linha dizendo que não havia o que comparar.
 
 ★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**
 A sonda dos dois (`totem/Dockerfile`, `storefront-coffee/Dockerfile`) descartava a resposta —

@@ -213,7 +213,7 @@ and whether every shop can be signed in to is not.
 | 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`) |
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
-| 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
+| 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **admin home's widget order**, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
 | 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
 | 14 | **`warm-box.mjs` × tenant** | every store the **port** says has a public page (`storefront_enabled`), warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
@@ -480,6 +480,18 @@ images a phone cannot fetch, and nothing logs an error) and `FORGE_GATE_ADMIN_UR
 list against the new hostname, claims each tenant's admin door **through the port** (`admin-host.js`, the same
 two platform commands `provision-ref` drives — never a second write path), and recreates the services that
 read all of it at boot. Idempotent and reversible; it touches no store, product or order.
+
+★★★ **pk30/§2 — and the way BACK no longer blames the doors for something else.** Measured on this box on
+09/09: `--promote localhost` exited **non-zero on its first pass** saying `the promotion is INCOMPLETE: 0 of 0
+admin door(s) claimed. See the REFUSED line(s) above.` — and `0 of 0` could not have been the cause. On the way
+back those two counters are **structurally zero** (the claim loop is inside the `out` branch: the way back
+claims nothing, it **releases**), so that sentence was a fixed string printed over a failure in a completely
+different check — the **shop's address** in the kernel's directory — pointing the operator at REFUSED lines
+that were never printed. The verdict is now derived from the **destination** (`bin/promotion-verdict.mjs`): the
+way out owes a claim per tenant per spelling and claiming fewer **stays red**; the way back owes **none**, so a
+door count never appears there; the shop's address is graded on **both**, because both directions move it; and
+facts that do not describe a promotion at all exit **2**, which no caller may publish as green. A way back that
+fails on its first try is what an operator reaches for **in a hurry, at the worst moment**.
 
 ⛔ **It does not CONFIGURE `tailscale`.** Getting the machine onto the network is your gesture; this only
 wires the box to the fact that it is.
@@ -1084,6 +1096,18 @@ birth itself is graded rather than merely finished. It prints the four shops aga
 (never a bare count), **the negative** — no free-shipping promotion and no freight born for the counter —
 **whose catalogue and whose words** the tenant is holding, the four cuts of the stock screen with a count in
 each, and the placeholder art in the Asset Library.
+
+★★ **pk30/§11 — and the ADMIN HOME's widget order is graded PER TENANT, because "some tenant is right" is how
+it hid.** On 10/09 he used both admins and reported it: *"o bloco de últimas assinaturas na demo ainda está
+vindo no topo, o admin de café está certo mas o de sapato está errado."* Installing an app **auto-places** its
+widgets at the **end** of `admin:admin.home.widgets`, so a widget's position *is* the order its app was
+installed in — `forgeco` installed `subscriptions` first, `forgecafe` installed it last, and neither had
+decided anything. ⇒ The order is now **declared** (the mounted dataset's `admin_widgets` — the same key the
+kernel's own step reads) and **applied to every tenant** by step 11, which is the half no one-shot could do:
+`dist/seed-demo.js` runs for the **dataset** tenant alone, so the coffee shop's board had never been touched by
+anything. This verifier grades the **prefix** against that declaration, one tenant per run — the tail keeps the
+relative order it had, because nobody decided about it. A declaration over an **empty** board is a RED that
+names the tenant, never a line saying there was nothing to compare.
 
 ⚠️ **The catalogue check reads `products_admin`, not the shop window, and that is the point.** The footwear
 products that reached the coffee tenant on 02/09 were *unpublished*, so every count taken through the public

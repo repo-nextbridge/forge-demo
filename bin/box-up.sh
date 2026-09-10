@@ -1036,7 +1036,21 @@ EOF
   # read, from the start — so it listed every door `seed/box.json` DECLARES whatever the directory answered.
   # A door in this list is a promise that a browser opening it reaches an admin that will hold a session; the
   # only thing that can make that promise true is the claim having been accepted, so the claim is what speaks.
-  promotion_status=0
+  # ★★★ 10/09 — THE FACTS, RECORDED WHERE THEY ARE MEASURED; THE VERDICT IS DERIVED FROM THEM AT THE END.
+  #
+  # ⛔ WHAT THIS REPLACES, MEASURED ON THIS BOX. `--promote localhost` exited non-zero on its first pass with
+  # `the promotion is INCOMPLETE: 0 of 0 admin door(s) claimed. See the REFUSED line(s) above.` — and `0 of 0`
+  # could not have been the reason: on the way back `$claimed` and `$expected` are STRUCTURALLY zero, because
+  # the loop that fills them is inside the `out` branch below. The only check that can redden the way back is
+  # the shop's ADDRESS, four hundred lines down, and the closing sentence blamed admin doors for it and sent
+  # the operator looking for REFUSED lines that did not exist.
+  #
+  # ⇒ So the status is no longer accumulated into a flag whose sentence is written somewhere else. Each check
+  #   records ITS OWN fact, and `bin/promotion-verdict.mjs` derives the closing sentence and the exit code from
+  #   the destination — which is the only place that knows how many doors a destination OWES. Its header
+  #   carries the measurement and why the way out stays red when it claims fewer than it owes.
+  unreachable_count=0
+  address_state=unasked
   if [ "$PROMOTE_DIR" = out ]; then
     say 'the doors, as a browser opens them'
     note "vitrine   $origin"
@@ -1075,7 +1089,7 @@ totem $totem_door
 $(printf '%s' "$claimed_doors")
 EOF
       if [ -n "$unreachable" ]; then
-        promotion_status=1
+        unreachable_count="$(printf '%s' "$unreachable" | grep -c .)"
         say '⚠️ INCOMPLETE — door(s) with no `tailscale serve` publication'
         while read -r label door; do
           [ -n "${door:-}" ] || continue
@@ -1093,7 +1107,9 @@ EOF
     # left one brand's admin unreachable is not a promotion that worked, and every wrapper reads the status
     # before it reads the prose.
     if [ -n "$refused_doors" ]; then
-      promotion_status=1
+      # ⚠️ NO FLAG HERE. `$claimed < $expected` IS this fact, and the verdict below derives it from the two
+      # numbers — one fact with one author. A flag beside them is a second answer to the same question, and the
+      # second answer is the one that went on being printed for a direction that never filled the numbers.
       say "⚠️ INCOMPLETE — $claimed of $expected admin door(s) claimed"
       while read -r t door; do
         [ -n "${t:-}" ] || continue
@@ -1173,28 +1189,42 @@ EOF
     case "$claim" in *result=declared*|*result=converged*) address_claims=$((address_claims + 1)) ;; esac
   done
   if [ "$address_claims" -gt 0 ]; then
+    address_state=claimed
     note "the shop's address · $origin claimed in the directory by $address_claims tenant(s) — read.store.by_host answers it"
   elif [ "$address_asked" -eq 0 ]; then
+    address_state=unasked
     note "⚑ nothing could ask whether $origin is claimed in the directory — that is a fact about THIS RUN,"
     note "   not about the box, so it does not change the status. Ask it directly once the tokens are there:"
     note "   FORGE_SEED_TOKEN=<seed token> node bin/store-host.mjs --tenant <tenant> --api $origin"
   else
-    promotion_status=1
+    address_state=absent
     say "⚠️ INCOMPLETE — the shop's address is not in the kernel's directory"
     note "read.store.by_host still answers 404 for $origin, so this box routes only through the fronts'"
     note "FORGE_STORE_HOSTS override. The warmer then fills /s/<id>/… pages while a shopper opens / — the"
     note "exact defect pk26/d1 exists for. The reason is in the [store-host] lines above."
   fi
 
-  # ⚠️ `edge → 200` IS THE LAST GREEN LINE AND IT PROVES THE LEAST — the kernel answers `/health` on a box
-  # with no tenant at all. So the run repeats its own verdict here, where the eye lands, and carries it in the
-  # STATUS: a promotion that could not claim every door exits 1 even though every other step worked.
-  if [ "$promotion_status" -ne 0 ]; then
-    printf '\n[box-up] the promotion is INCOMPLETE: %s of %s admin door(s) claimed. See the REFUSED line(s) above.\n' \
-      "$claimed" "$expected" >&2
-  fi
-  printf '\n' >&2
-  exit "$promotion_status"
+  # ── ★★★ THE VERDICT, DERIVED FROM THE DESTINATION (pk30/§2) ──────────────────────────────────────────────
+  #
+  # ⚠️ `edge → 200` IS THE LAST GREEN LINE AND IT PROVES THE LEAST — the kernel answers `/health` on a box with
+  # no tenant at all. So the run states its verdict here, where the eye lands, and carries it in the STATUS.
+  #
+  # ⛔ AND IT IS NO LONGER ONE SENTENCE FOR BOTH DIRECTIONS. The way out OWES a claim per tenant per spelling;
+  # the way back owes NONE (localhost's doors are written at birth, from seed/box.json — this direction only
+  # releases the promoted spellings). Printing `N of M admin door(s) claimed` over the way back was printing two
+  # structural zeroes as the cause of a failure in a different check: measured 09/09, and it is what made the
+  # undo look broken on a box whose only real problem was the shop's address in the directory.
+  #
+  # ★ THE RULE IS A MODULE BECAUSE IT IS GRADEABLE THERE. `bin/promotion-verdict.mjs` takes its whole subject
+  # from these four facts and nothing else, so `bin/promotion-verdict.guard.mjs` proves both directions — and
+  # the way out STAYING red when it claims fewer doors than it owes — in milliseconds instead of from a real
+  # promotion. It exits 2 when the facts do not describe a promotion at all, which no caller may publish green.
+  node "$HERE/bin/promotion-verdict.mjs" \
+    --direction "$PROMOTE_DIR" \
+    --doors-claimed "$claimed" --doors-expected "$expected" \
+    --doors-unreachable "$unreachable_count" \
+    --address "$address_state"
+  exit $?
 fi
 
 # ── 0c · ★★ THE DATASET THIS BOX WOULD SEED FROM IS THE ONE ITS IMAGES WERE BUILT WITH (pk7·D2) ────────────

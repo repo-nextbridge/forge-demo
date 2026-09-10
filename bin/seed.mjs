@@ -92,6 +92,10 @@ import { priceOutlet } from '../seed/outlet.mjs';
 // its own beside the catalogue's, and it runs AFTER it for a reason the commands enforce: a shelf sourced from
 // a category and a promotion targeting a handle both resolve against products that have to be published first.
 import { seedVitrine } from '../seed/vitrine.mjs';
+// ★ THE ADMIN HOME'S WIDGET ORDER — tenant-wide, from the dataset's own declaration, and it runs for EVERY
+// tenant because the one-shot that applies it upstream runs only for the tenant the dataset is ABOUT. Its
+// header carries the measurement of the two boards and of why one of them was right by accident.
+import { seedAdminWidgets } from '../seed/widgets.mjs';
 // THE STOREFRONT CACHE BUST — the box's, and the LAST thing every phase does. It used to be a private step
 // of `seed/vitrine.mjs`, which made the whole box's cache correctness a side effect of one shop's seeder and
 // covered one store of four. Its own header carries the measurement and the two doors it cannot reach.
@@ -1635,6 +1639,30 @@ await seedCommerce({
   fail,
 });
 
+
+// ── ★★ THE ADMIN HOME'S WIDGET ORDER — AFTER EVERY INSTALL OF THIS RUN, AND THAT IS THE WHOLE PLACEMENT ───
+//
+// Installing an app AUTO-PLACES its widgets at the END of this slot, so an order written before an install is
+// an order with a stranger appended to it. The last installs of a tenant's birth happen in THIS phase
+// (`seedVitrine` → `installApps`) and in step 9 between the two phases — so the only line from which the
+// board is complete is this one, in the phase that runs last.
+//
+// ⚠️ ONE PASS PER TENANT AND NOT PER SHOP: `admin:` placements carry a NULL store in the kernel, so this is a
+// TENANT's board. The store id below is only the argument `composition.reorder` takes; the kernel resolves the
+// scope from the SLOT and never from it. Any store of this tenant is therefore the right one, and this takes
+// the first one the box really holds rather than one this file believes in.
+const widgetStore = rows(await read('stores')).find((s) => commerceExpect().includes(s.handle));
+if (widgetStore) {
+  await seedAdminWidgets({ tenant, store: widgetStore.id, command, read, rows, log, fail });
+} else {
+  // ⛔ NOT SKIPPABLE IN SILENCE. Every check in this script that needs a store of this tenant would be in the
+  // same position, and `assertCredentialTenant` above has already proved the credential sees this tenant — so
+  // reaching here means the box lost the stores between that line and this one.
+  fail(
+    `admin home — this box holds no store of "${tenant}" (${commerceExpect().join(', ')}), so the widget ` +
+      'order has nothing to be written against. Nothing else in this phase could have worked either.',
+  );
+}
 
 // ⛔ LAST — same word, same guard, same reason as the end of the curated phase above.
 await purgeStorefrontCache({ api, read, rows, log });
