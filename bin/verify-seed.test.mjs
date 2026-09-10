@@ -1102,3 +1102,143 @@ test('★ a dataset dir that holds no storefront.json says "I could not look", n
     rmSync(mount, { recursive: true, force: true });
   }
 });
+
+// ── ★★★ THE ADMIN HOME'S WIDGET ORDER (pk30/§11) ─────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, from his screen on 10/09: *"o bloco de últimas assinaturas na demo ainda está vindo no topo, o
+// admin de café está certo mas o de sapato está errado."* Measured on the live box, the two boards came back in
+// DIFFERENT orders because installing an app auto-places its widgets at the END of the slot — so a widget's
+// position IS the order its app was installed in, and `forgeco` happened to install `subscriptions` first.
+//
+// ★★ SO EVERY TEST HERE IS ABOUT ONE TENANT AT A TIME, and the red has to NAME it. "Does some tenant look
+// right?" is green on the box of 10/09 and proves nothing — which is the whole reason the check lives in this
+// per-tenant verifier and not in the one-shot that only ever visits the dataset's own tenant.
+
+/** The seven the dataset declares, in the order he left them. Hand-written for the same reason `DATASET_HOME`
+ *  is: the real file is a monorepo file a machine running this suite may not have. */
+const DECLARED_WIDGETS = [
+  'admin-dashboard/revenue',
+  'admin-dashboard/recent_orders',
+  'admin-dashboard/shipping',
+  'admin-dashboard/order_status',
+  'admin-dashboard/stores_sales',
+  'admin-dashboard/promos',
+  'admin-dashboard/stock',
+];
+const ADMIN_SLOT = 'admin:admin.home.widgets';
+/** A board, spelled as `<app>/<component>` names in the order it is placed in. */
+const boardRows = (names) =>
+  names.map((name, i) => compositionRow(name.split('/')[0], name.split('/')[1], ADMIN_SLOT, i));
+/** A dataset that declares the seven AND the shop window the other section grades. */
+const datasetWithWidgets = () => ({ ...DATASET_HOME, admin_widgets: DECLARED_WIDGETS });
+
+test('★★ the widget order the dataset declares, found on the board — the verifier settles and NAMES the tenant', async () => {
+  const box = footwearBox();
+  box.composition[FORGE] = [
+    ...datasetHomeRows(),
+    ...boardRows([...DECLARED_WIDGETS, 'subscriptions/latest_subscriptions']),
+  ];
+  const mount = mountedDataset(datasetWithWidgets());
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✓ forgeco's admin home opens with — admin-dashboard\/revenue/, stdout);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★★ SABOTAGE — ONE tenant\'s board is broken and the red NAMES that tenant and the widget on top', async () => {
+  // THE BOX OF 10/09, exactly: `subscriptions` first because its app was installed first. Every other check in
+  // this file is green about that box, which is why this needed a check of its own.
+  const box = footwearBox();
+  box.composition[FORGE] = [
+    ...datasetHomeRows(),
+    ...boardRows(['subscriptions/latest_subscriptions', ...DECLARED_WIDGETS]),
+  ];
+  const mount = mountedDataset(datasetWithWidgets());
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's admin home/, stdout);
+    assert.match(stdout, /subscriptions\/latest_subscriptions/, stdout);
+    assert.match(stdout, /never applied to this tenant/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★★ ANTI-VACUUM — a board with NO widget is a RED that names the tenant, never "nothing to compare"', async () => {
+  // ⛔ The failure this house keeps paying for: a check that passes because it found nothing. A declaration of
+  // seven widgets over an empty slot has to accuse, and it has to say WHOSE cockpit is empty.
+  const box = footwearBox();
+  box.composition[FORGE] = datasetHomeRows();
+  const mount = mountedDataset(datasetWithWidgets());
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's admin home — carries NO placed widget/, stdout);
+    assert.match(stdout, /admin:admin\.home\.widgets/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('⛔ a widget hook nobody PLACED is not on the board — it cannot fill the declaration', async () => {
+  // `read.extension_composition` answers a manifest's declared hooks with `placement_id: null`, and
+  // `composition.reorder` writes positions BY PLACEMENT ID: one of those would update no row and report
+  // success. A verifier that counted them would call a half-applied order settled.
+  const box = footwearBox();
+  box.composition[FORGE] = [
+    ...datasetHomeRows(),
+    ...boardRows(DECLARED_WIDGETS).map((row, i) =>
+      i === 0 ? { ...row, placement_id: null, has_placement: false } : row,
+    ),
+  ];
+  const mount = mountedDataset(datasetWithWidgets());
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's admin home/, stdout);
+    assert.match(stdout, /admin-dashboard\/revenue/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★ a dataset that declares no admin_widgets is REPORTED, never judged', async () => {
+  // The one case where silence is a decision: the board keeps whatever order the installs left it in, and
+  // saying so is different from saying it is correct.
+  const box = footwearBox();
+  box.composition[FORGE] = [...datasetHomeRows(), ...boardRows(DECLARED_WIDGETS)];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /declares no admin_widgets/, stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});

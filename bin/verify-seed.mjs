@@ -63,6 +63,15 @@ import { datasetDir, DATASET_DIR_ENV } from '../seed/forge.mjs';
 // ★ AND THE THREE SUBSCRIBERS, from the module that signs them. A second list of names typed here would go
 // stale agreeing with itself — the failure this whole file is written against.
 import { SUBSCRIBERS } from '../seed/subscriptions.mjs';
+// ★ 10/09 — AND THE ADMIN HOME'S WIDGET ORDER, from the module the SEED writes it with. Same rule, one place:
+// a second copy of "which widgets come first" here would be the declaration this slice exists to stop having
+// two of. Its header carries the measurement of the two boards.
+import {
+  ADMIN_WIDGETS_SLOT,
+  declaredAdminWidgets,
+  widgetName,
+  widgetPrefixProblem,
+} from '../seed/widgets.mjs';
 
 const SEED = join(dirname(fileURLToPath(import.meta.url)), '..', 'seed');
 const read = (name) => JSON.parse(readFileSync(join(SEED, name), 'utf8'));
@@ -1090,6 +1099,70 @@ say('THE HOME — the blocks of the shop window, and the slot each one is really
     });
   }
 }
+say();
+// ── 3d. ★★★ THE ADMIN HOME'S WIDGET ORDER — PER TENANT, because "some tenant is right" is how this hid ─────
+//
+// ⛔ THE DEFECT, reported by the owner on 10/09 from the screen: *"o bloco de últimas assinaturas na demo ainda
+// está vindo no topo, o admin de café está certo mas o de sapato está errado."* Measured on the live box, the
+// two boards came back in DIFFERENT orders — `forgeco` with `subscriptions` at position 0 and `forgecafe` with
+// it at 7 — because installing an app auto-places its widgets at the end, so a widget's position IS the order
+// its app was installed in. One of the two tenants happened to land on what he wanted.
+//
+// ★★ SO THE CHECK IS PER TENANT AND NEVER "DOES SOME TENANT LOOK RIGHT". This verifier already runs once per
+// tenant, which is what makes that free — and it is the whole reason this check belongs here and not in a
+// one-shot: nothing that runs for the DATASET tenant alone can grade the tenant the dataset is not about.
+//
+// ⚠️ IT GRADES THE PREFIX, NOT THE WHOLE BOARD. The declaration names the widgets somebody decided about;
+// everything else keeps the relative place it had, so the two tenants legitimately END differently. Demanding
+// the whole list would be inventing a decision nobody made — see `widgetPrefixProblem`.
+say("THE ADMIN HOME — the widget order this tenant's board really opens with");
+await checking(async () => {
+  const { declared, why, from } = declaredAdminWidgets();
+  if (declared === null) {
+    say(`  · ${why}, so nothing declares an order for ${tenant}'s admin home; reported and not judged.`);
+    return;
+  }
+  if (declared.length === 0) {
+    say(`  · ${from} declares no admin_widgets; this board keeps its install order. Not judged.`);
+    return;
+  }
+  // ⚠️ ANY store of this tenant: `admin:` placements carry a NULL store in the kernel, so the argument only
+  // has to belong to the tenant. A tenant with no store at all was already refused far above.
+  const anyStore = seen[0];
+  if (anyStore === undefined) {
+    bad(`${tenant}'s admin home`, 'this credential sees no store, so the board could not be read');
+    return;
+  }
+  const comp$ = of('extension_composition');
+  const entries = rows(await internal('extension_composition', { store: storeIdOf(anyStore) }));
+  // PLACED ONLY, and ordered the way the admin packs them — `position`, then nothing else. The same filter
+  // section 3c makes, for the same reason: the editor's model also answers hooks nobody placed.
+  const board = entries
+    .filter((e) => comp$(e, 'target') === ADMIN_WIDGETS_SLOT && comp$(e, 'placement_id') !== null)
+    .map((e) => ({
+      extension_id: comp$(e, 'extension_id'),
+      component: comp$(e, 'component'),
+      position: comp$(e, 'position'),
+    }))
+    .sort((a, b) => a.position - b.position);
+  // ⛔ ANTI-VACUUM, AND IT IS THE HALF THAT MATTERS. A board with no widget makes every comparison below
+  // vacuously true, and this file's whole thesis is that a check which passes because it found nothing is
+  // worse than no check. A declaration naming seven widgets over an empty board is a RED that names the
+  // tenant, never a line that says "nothing to compare".
+  if (board.length === 0) {
+    bad(
+      `${tenant}'s admin home`,
+      `carries NO placed widget in ${ADMIN_WIDGETS_SLOT} while ${from} declares ${declared.length} ` +
+        `(${declared.join(', ')}) — the cockpit is empty and this check graded nothing. \`admin-dashboard\` ` +
+        'is what places them',
+    );
+    return;
+  }
+  const problem = widgetPrefixProblem(board, declared);
+  if (problem) bad(`${tenant}'s admin home`, problem);
+  else ok(`${tenant}'s admin home opens with`, board.slice(0, declared.length).map(widgetName).join(' · '));
+});
+
 say();
 // ── 4. the placeholders ─────────────────────────────────────────────────────────────────────────────────
 say('THE PLACEHOLDER ART — findable in one gesture');

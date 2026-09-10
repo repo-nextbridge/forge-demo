@@ -438,8 +438,27 @@ test('★★★ the PROMOTION re-claims the new address, after the recreate and 
       'the port; a box mid-recreate answers nothing, and the promotion would report a failure of its own making.',
   );
   // …and a directory that refused makes the promotion INCOMPLETE rather than silently fine.
-  const tail = boxUp.slice(claim, claim + 1400);
-  assert.match(tail, /promotion_status=1/, 'a promotion whose address never reached the directory still exits 0.');
+  //
+  // ⚠️ THIS ASSERTION MOVED ON 10/09 AND THE REASON IS WORTH THE THREE LINES. It used to look for
+  // `promotion_status=1` — a flag this block set and a sentence four hundred lines away printed. That flag WAS
+  // the pk30/§2 defect: on the way back it was the only thing that could be set, and the sentence it reached
+  // reported `0 of 0 admin door(s) claimed`, blaming a check that direction never runs. The property this test
+  // is really about is unchanged, so it is now asked of the two things that carry it: this block RECORDS the
+  // fact, and `bin/promotion-verdict.mjs` derives the status from it (both directions proved in
+  // `bin/promotion-verdict.guard.mjs`).
+  const tail = boxUp.slice(claim, claim + 4200);
+  assert.match(
+    tail,
+    /\n    address_state=absent\n/,
+    'a promotion whose address never reached the directory no longer records that fact, so nothing downstream ' +
+      'can turn it into a non-zero exit.',
+  );
+  assert.match(
+    tail,
+    /node "\$HERE\/bin\/promotion-verdict\.mjs"[\s\S]*--address "\$address_state"/,
+    'the recorded address state is not handed to the verdict — a promotion whose address never reached the ' +
+      'directory would exit 0.',
+  );
 });
 
 // ── 5 · THE PROSE THAT WAS FALSE, AND MUST NOT COME BACK ──────────────────────────────────────────────────
