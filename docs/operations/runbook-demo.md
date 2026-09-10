@@ -593,6 +593,7 @@ resposta que falta**.
 | este runbook | `bash bin/test.sh` | a lista da §3.1 contra o compose, nos dois sentidos |
 | a **coluna health** | `docker ps` | pk28/d2 — desde 09/09 ela é um veredicto, e não era |
 | a **home do admin** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk30/§11 — a ordem dos widgets, contra o que o dataset declara |
+| os **blocos dos apps** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk31/§6 — todo bloco que um app instalado **declara** está vivo em alguma loja |
 
 ★★ **pk30/§11 — a ORDEM DOS WIDGETS da home do admin, e ela era decidida pela ordem de instalação dos apps.**
 Achado dele em 10/09, usando os dois admins: *"o bloco de últimas assinaturas na demo ainda está vindo no topo,
@@ -606,6 +607,22 @@ roda só para o tenant **do dataset**, então o quadro do café nunca tinha sido
 ⚠️ O veredicto é **por tenant** e grada o **prefixo**: a cauda mantém a ordem relativa que tinha, porque
 ninguém decidiu sobre ela. Uma declaração sobre um quadro **vazio** é vermelho **nomeando o tenant**, nunca uma
 linha dizendo que não havia o que comparar.
+
+★★ **pk31/§6 — OS BLOCOS DOS APPS, e a linha nova existe por causa de uma resposta ERRADA nossa, não de uma
+caixa errada.** A pergunta era se o `confirmation_note` do app `subscriptions` — a frase que quem assina lê no
+recibo — tinha sido colocado na demo. Respondemos **contando**: o app declara 5 blocos, o café mostrava 4,
+logo faltava esse. **Medido no banco da caixa de 11/09: ele estava colocado e habilitado nas QUATRO lojas dos
+dois tenants**, e o `read.extensions` o publica em `storefront:checkout.confirmation`. O 5º bloco é o
+`latest_subscriptions`, que é `admin:` e nasce **uma vez por TENANT** com loja nula — 4 + 1 **é** 5.
+⇒ O que faltava era **a pergunta**: os blocos default de um app são escritos pelo **kernel**
+(`extension.install`), e toda outra seção do verificador grada algo que um seed **deste** repo escreve — então
+ninguém nunca tinha lido essa tabela. A regra é **derivada** do próprio `read.extension_composition` (que
+responde o hook declarado mesmo sem colocação) e o veredicto é **por BLOCO e por TENANT**, não por loja: *um
+bloco que não está vivo em NENHUMA loja é uma capacidade que a caixa carrega e não mostra a ninguém*.
+⚠️ **Por tenant de propósito**, e o Outlet é o motivo: `seed/outlet.mjs` **remove** a prateleira que o install
+deixa em `storefront:list.*` (ele pediu uma PLP limpa). Isso é decisão, não defeito — e uma regra por loja
+precisaria de uma **lista de exceções digitada** para se calar. "Vivo em algum lugar" não precisa de nenhuma, e
+um bloco colocado em lugar nenhum continua sem conseguir se esconder.
 
 ★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**
 A sonda dos dois (`totem/Dockerfile`, `storefront-coffee/Dockerfile`) descartava a resposta —
