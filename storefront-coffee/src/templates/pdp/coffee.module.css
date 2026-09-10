@@ -6,11 +6,11 @@
 }
 
 .top {
-  padding: clamp(26px, 4vw, 44px) clamp(18px, 4vw, 32px) clamp(46px, 7vw, 72px);
+  padding: clamp(26px, 4vw, 44px) var(--space-page-gutter) clamp(46px, 7vw, 72px);
 }
 
 .wrap {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
 }
 
@@ -473,11 +473,11 @@
 /* ── The rich half: photos, seals, the spec panel, the producer story ───────────────────────────────────── */
 .rich {
   background: var(--color-surface-sunken);
-  padding: clamp(52px, 7vw, 88px) clamp(18px, 4vw, 32px);
+  padding: clamp(52px, 7vw, 88px) var(--space-page-gutter);
 }
 
 .richGrid {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
@@ -577,7 +577,7 @@
 
 /* ── The product's own review wall ──────────────────────────────────────────────────────────────────────── */
 .reviews {
-  padding: clamp(52px, 7vw, 88px) clamp(18px, 4vw, 32px);
+  padding: clamp(52px, 7vw, 88px) var(--space-page-gutter);
 }
 
 .reviewsHead {

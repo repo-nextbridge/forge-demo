@@ -10,6 +10,21 @@
 :root {
   --font-sans:
     var(--font-urbanist), -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+
+  /* ★ pk31 §9 — THE PAGE GUTTER: how far this shop's content stays from the edge of the window, and the only
+   * place that number is written. `--size-container` (the base theme) says how WIDE the centred column is;
+   * the base theme has no word for the inset around it, so the café adds one here and says why.
+   *
+   * It is here rather than in `themes/coffee-store/tokens.css` on purpose. That file is inlined from store
+   * data at RUNTIME, so a box seeded before it gained the token would render `var()` with nothing behind it —
+   * and CSS drops an undefined custom property in SILENCE, which in this case means a page with no side
+   * padding at all. This stylesheet ships inside the build that references it, so the two cannot disagree.
+   *
+   * Why the value: the design's own inset, already carried by nine of the shop's ten page edges. The tenth
+   * was the sticky header, at `clamp(14px, 3vw, 32px)` — 4px further out on a phone and 7px at 700px, since
+   * the two clamps only converge above ~1070px where both reach 32px. One number, one place, no drift;
+   * `src/page-gutter.guard.test.ts` grades it by deriving both sides from the source. */
+  --space-page-gutter: clamp(18px, 4vw, 32px);
 }
 
 *,

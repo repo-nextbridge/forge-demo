@@ -68,7 +68,8 @@ export function planRepoint(refs, want) {
 
 /**
  * ★ THE THREE STORY SLOTS AND THEIR REAL DIMENSIONS, derived from the grid that draws them rather than
- * guessed — `coffee.module.css`: `.richGrid` is `max-width: 1240px` in two columns with a ~32px gap, so the
+ * guessed — `coffee.module.css`: `.richGrid` is `max-width: var(--size-container)` (1240px, the base theme's
+ * own token since pk31 §9 made the café stop spelling that number by hand) in two columns with a ~32px gap, so the
  * gallery column is ~604px; `.galleryWide` spans both at `4 / 3` and `.gallerySquare` is `1 / 1` at half the
  * column minus the 16px gap (~294px). Doubled for a 2× screen, which is what `MediaImage` will ask for.
  *

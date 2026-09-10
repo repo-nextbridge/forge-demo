@@ -12,11 +12,11 @@
 /* ── The hero ───────────────────────────────────────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
-  padding: clamp(28px, 4vw, 44px) clamp(18px, 4vw, 32px) clamp(56px, 8vw, 96px);
+  padding: clamp(28px, 4vw, 44px) var(--space-page-gutter) clamp(56px, 8vw, 96px);
 }
 
 .wrap {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
 }
 
@@ -212,7 +212,7 @@
 
 /* ── The subscription section ───────────────────────────────────────────────────────────────────────────── */
 .band2 {
-  padding: clamp(56px, 8vw, 88px) clamp(18px, 4vw, 32px);
+  padding: clamp(56px, 8vw, 88px) var(--space-page-gutter);
   background: var(--color-surface-sunken);
 }
 
@@ -370,7 +370,7 @@
 
 /* ── The products ───────────────────────────────────────────────────────────────────────────────────────── */
 .products {
-  padding: clamp(56px, 8vw, 100px) clamp(18px, 4vw, 32px);
+  padding: clamp(56px, 8vw, 100px) var(--space-page-gutter);
 }
 
 .productsHead {
@@ -520,12 +520,12 @@
 
 /* ── The trust strip ────────────────────────────────────────────────────────────────────────────────────── */
 .trust {
-  padding: clamp(26px, 4vw, 34px) clamp(18px, 4vw, 32px) clamp(24px, 4vw, 30px);
+  padding: clamp(26px, 4vw, 34px) var(--space-page-gutter) clamp(24px, 4vw, 30px);
   background: var(--color-surface-sunken);
 }
 
 .trustRow {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
   display: flex;
   overflow-x: auto;
@@ -557,7 +557,7 @@
 /* ── The review wall ────────────────────────────────────────────────────────────────────────────────────── */
 .reviews {
   clear: both;
-  padding: clamp(52px, 7vw, 84px) clamp(18px, 4vw, 32px) clamp(56px, 8vw, 88px);
+  padding: clamp(52px, 7vw, 84px) var(--space-page-gutter) clamp(56px, 8vw, 88px);
   background: var(--color-surface-sunken);
 }
 

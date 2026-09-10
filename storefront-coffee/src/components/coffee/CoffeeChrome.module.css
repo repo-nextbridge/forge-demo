@@ -29,9 +29,9 @@
 }
 
 .headerInner {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
-  padding: 6px clamp(14px, 3vw, 32px);
+  padding: 6px var(--space-page-gutter);
   min-height: 52px;
   display: flex;
   align-items: center;
@@ -195,11 +195,11 @@
 .footer {
   background: var(--color-ink);
   color: color-mix(in srgb, var(--color-canvas) 70%, transparent);
-  padding: clamp(28px, 5vw, 40px) clamp(18px, 4vw, 32px);
+  padding: clamp(28px, 5vw, 40px) var(--space-page-gutter);
 }
 
 .footerInner {
-  max-width: 1240px;
+  max-width: var(--size-container);
   margin: 0 auto;
   display: flex;
   align-items: center;
