@@ -215,13 +215,41 @@ test('NO node at all is refused whether or not the pin states a floor — it is 
   // ⚠️ The PATH here holds nothing, so `jq` is not reachable either. That is the real cron environment, and
   // it is why this refusal is decided BEFORE the lock is read: a box with no node cannot be born no matter
   // what the pin says, and the operator must be told about the PATH rather than about a JSON tool.
+  //
+  // ★★ AND THE NAME OF THE TOOL IS LOOKED FOR AS A WORD, NOT AS THREE LETTERS ANYWHERE IN THE BLOB. Measured
+  // on 2026-09-10, integrating pk31: this test went red once and passed five re-runs, and the cause was not
+  // the refusal. `mkdtempSync` had named the directory `/tmp/forge-node-floor-empty-zSYjqw`, the refusal
+  // prints the PATH it searched (deliberately — that is the whole point of this case), and `/jq/` found the
+  // `jq` inside `zSYjqw`. ⇒ a guard that greps a message for a bare substring also greps every path, id and
+  // random suffix the message carries, so it is red by luck roughly once in a thousand births and names
+  // something that never happened. `\bjq\b` still catches the regression this exists for — a refusal that
+  // talks about the JSON tool writes it as `jq`, with punctuation or space around it.
   const empty = mkdtempSync(join(tmpdir(), 'forge-node-floor-empty-'));
   for (const lock of [fakeLock({ minMajor: 24, engines: '>=24' }), fakeLock(undefined)]) {
     const { code, err } = runCheck(empty, lock);
     assert.equal(code, 1, 'a box with no node on PATH was allowed to start');
     assert.ok(/PATH/.test(err), `the refusal does not mention the PATH it searched:\n${err}`);
-    assert.ok(!/jq/.test(err), `the operator is told about jq when the problem is that there is no node:\n${err}`);
+    assert.ok(!/\bjq\b/.test(err), `the operator is told about jq when the problem is that there is no node:\n${err}`);
   }
+});
+
+test('★★ the cron refusal is graded by WORD — a PATH that happens to spell the tool does not redden it', () => {
+  // ⛔ THE ANTI-VACUUM FOR THE FIX ABOVE, and it is the failure that actually happened rather than one
+  // imagined: the directory is named so that the refusal's PATH line contains the three letters, and the
+  // refusal is still about node.
+  //
+  // ★★ AND IT IS THIS TEST, NOT THE ONE ABOVE, THAT HOLDS THE DECISION — measured, because the first
+  // sabotage I tried PASSED. Reverting `\bjq\b` to `/jq/` in the cron case above changes nothing here and is
+  // red only on the run where `mkdtempSync` happens to spell the letters, which is once in about a thousand:
+  // a regression nobody can reproduce is a regression nobody fixes. Revert the regex on the LAST LINE OF
+  // THIS TEST and it is red every time. That is the difference between a deliberate word boundary and a
+  // lucky one.
+  const empty = mkdtempSync(join(tmpdir(), 'forge-node-floor-zSYjqw-'));
+  const { code, err } = runCheck(empty, fakeLock({ minMajor: 24, engines: '>=24' }));
+  assert.equal(code, 1, 'a box with no node on PATH was allowed to start');
+  assert.ok(err.includes(empty), `the refusal does not print the PATH that carries the letters:\n${err}`);
+  assert.ok(/jq/.test(err), 'the fixture failed to put the three letters into the refusal at all');
+  assert.ok(!/\bjq\b/.test(err), `the refusal talks about the JSON tool when there is no node:\n${err}`);
 });
 
 // ── 3 · ONE TRUTH: the number is typed NOWHERE in this repository ────────────────────────────────────────
