@@ -1,5 +1,10 @@
-/* DEMO-GATE — the full-screen gate screen, faithful to design-base/Forge Demo.dc.html. A deliberate, fixed dark
- * surface (not a themed light/dark component), so literal design values are correct here. No bundled font rule,
+/* DEMO-GATE — the full-screen gate screen as it ships today. A deliberate, fixed dark surface (not a themed
+ * light/dark component), so literal design values are correct here.
+ *
+ * ⚠️ IT IS NOT THE `showGate` HALF OF design-base/gate.dc.html, and the comment here used to claim it was (it
+ * named a design file that the owner's 10/09 layout superseded and that is now deleted). This is the layout that
+ * PRECEDED the hub: one storefront card and one admin card. The head of `gate.tsx` says what the hub needs before
+ * it can be ported; the screen that DID land from that file is `arch.module.css`. No bundled font rule,
  * no CDN, no imported font: the H1 uses the theme's own type stack (Urbanist self-hosted), inherited from the
  * storefront body — the design's own display face is intentionally dropped (spec item 8). Responsive is pure CSS
  * (@media 760px), the breakpoint of the design's own matchMedia. */

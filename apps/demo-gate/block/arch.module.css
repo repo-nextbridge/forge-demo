@@ -1,0 +1,343 @@
+/* DEMO-GATE — the architecture screen, faithful to design-base/gate.dc.html (the `showArch` half). A deliberate,
+ * fixed dark surface like the gate's own, one shade deeper (#0B0C0D against #17181A) so the switch between the two
+ * reads as a move, not a reload. Literal design values are therefore correct here: this is not a themed
+ * light/dark component.
+ *
+ * No font rule of any kind — the screen rides the storefront body's own type stack (Urbanist), and
+ * `gate.font-guard.test.ts` walks this file to hold that: the only `font-family` allowed in the block is
+ * `inherit`. The design's own `'Fraunces'` and `ui-monospace` declarations belong to the FIRST screen's café
+ * cards and are not ported.
+ *
+ * ⚠️ THE ONE PLACE THE DESIGN WOULD HAVE CRAMPED A PHONE. Inside each tenant card the canvas declares
+ * `grid-template-columns:1fr 1fr` with NO minimum, and the width that reaches a row is worth doing by hand
+ * because the design cannot show it. At a 360 px viewport, adding up THIS file's own cascade:
+ *
+ *     360 − 2×16 (.screen padding, clamp bottoms out)  = 328 px of shell
+ *     328 − 2×16 (.tenant padding, same)               = 296 px inside the tenant card
+ *     (296 − 12) / 2 (.shops two columns + the gap)    = 142 px per shop cell
+ *     142 − 2×14 (.shop padding)                       = 114 px of TEXT
+ *
+ * At 12.5 px that is roughly 18 characters a line, and 7 of the 12 rows are longer than that — "Totem
+ * (aplicação exclusiva)" is 27, EN's "(an application of its own)" the same — so every card would wrap two and
+ * three lines deep. Nothing is clipped (the cells are `1fr`, the text wraps), which is exactly why the design
+ * could not reveal it. Stacking below 560 px gives each cell the full 296 px — ~47 characters — and every row
+ * is one line again; at 560 px the two-column cell is back to 213 px of text (~34 characters), which the
+ * longest row fits. The owner tests the phone himself; this is what he will not have to find. */
+
+.screen {
+  min-height: 100vh;
+  /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh fallback, then 100dvh where supported (mobile chrome) */
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background: #0b0c0d;
+  color: #ffffff;
+  padding: clamp(32px, 5vw, 64px) clamp(16px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shell {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  animation: archIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The fade the owner asked for, on BOTH directions of the switch: each screen animates itself in as it mounts
+ * (the other one is unmounted, so there is nothing to animate out). */
+@keyframes archIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: clamp(22px, 3vw, 34px);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(22px, 3vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.lede {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #6e6a63;
+  text-wrap: pretty;
+}
+.ledeStrong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.tenants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 16px;
+}
+
+.tenant {
+  padding: clamp(16px, 2vw, 22px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tenantShoes {
+  border: 1px solid rgba(194, 65, 12, 0.35);
+}
+.tenantCafe {
+  border: 1px solid rgba(47, 59, 48, 0.6);
+}
+
+.tenantLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.labelShoes {
+  color: #c2410c;
+}
+.labelCafe {
+  color: #8fa98c;
+}
+
+.shops {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.shop {
+  background: #17181a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px;
+}
+
+.shopLabel {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #b9b4ac;
+}
+.value {
+  color: #ffffff;
+  font-weight: 600;
+}
+.valueOutlet {
+  color: #e11d48;
+  font-weight: 600;
+}
+.valueCafe {
+  color: #8fa98c;
+  font-weight: 600;
+}
+.rowMuted {
+  color: #6e6a63;
+}
+
+/* The "flows into" arrow between a tenant's shops and its admin, and between the tenants and the stack. */
+.flow {
+  display: flex;
+  justify-content: center;
+  color: #4a4742;
+}
+.flowWide {
+  padding: 10px 0;
+}
+
+.admin {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.adminShoes {
+  background: rgba(194, 65, 12, 0.12);
+  border: 1px solid rgba(194, 65, 12, 0.35);
+}
+.adminCafe {
+  background: rgba(47, 59, 48, 0.3);
+  border: 1px solid rgba(47, 59, 48, 0.6);
+}
+
+/* The icon takes its own colour from the row it sits in (stroke="currentColor" + a colour set here), which is
+ * why the glyph can be the tenant's accent while the label beside it stays white. */
+.iconMuted {
+  color: #8a8478;
+}
+.iconShoes {
+  color: #c2410c;
+}
+.iconCafe {
+  color: #8fa98c;
+}
+
+/* ── The stack under both tenants: surfaces → the port → the kernel → data → infra ─────────────────────────── */
+
+.stack {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.surfaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+.surface {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b9b4ac;
+}
+.surfaceLast {
+  border-right: none;
+}
+
+.port {
+  background: #17181a;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.portDot {
+  width: 8px;
+  height: 8px;
+  background: #c2410c;
+  display: block;
+  flex: none;
+}
+
+.kernel {
+  background: #e7e4de;
+  padding: 16px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.kernelName {
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f1011;
+}
+.kernelParts {
+  font-size: 12.5px;
+  color: #5c574f;
+}
+
+.data {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.datum {
+  padding: 13px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+  font-weight: 600;
+  color: #b9b4ac;
+}
+.datumLast {
+  border-right: none;
+}
+
+.infra {
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 13px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.infraName {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.infraParts {
+  font-size: 12.5px;
+  color: #6e6a63;
+}
+
+/* ── The switch between the two screens, used by BOTH of them ───────────────────────────────────────────────
+ * One class and one component (`ArchSwitch`) on purpose: the design draws the two affordances identically apart
+ * from the arrow's direction, and two copies of these rules would let them drift apart one commit at a time. */
+
+.switchWrap {
+  display: flex;
+  justify-content: center;
+}
+.switchWrapOpen {
+  margin-top: clamp(28px, 4vw, 44px);
+}
+.switchWrapClose {
+  margin-top: clamp(24px, 3vw, 36px);
+}
+
+.switch {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a8478;
+  transition: color 0.2s;
+}
+.switch:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 560px) {
+  .shops {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

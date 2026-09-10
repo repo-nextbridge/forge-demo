@@ -20,6 +20,7 @@ a:hover{color:#C2410C}
 @keyframes dmIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 </style>
 </helmet>
+<sc-if value="{{ showGate }}" hint-placeholder-val="{{ true }}">
 <div style="min-height:100vh;min-height:100dvh;box-sizing:border-box;background:#0F1011;display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,56px) clamp(16px,3vw,32px)">
 <div style="width:100%;max-width:1080px;animation:dmIn .6s cubic-bezier(.22,1,.36,1) both">
 
@@ -48,7 +49,7 @@ a:hover{color:#C2410C}
 <div style="display:inline-flex;align-items:baseline;font-size:19px;letter-spacing:-.02em"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#C2410C">.</span></span><span style="font-weight:500;color:#C2410C">store</span></div>
 <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#0F1011;background:#E7E4DE;padding:3px 7px">Referência</div>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">O storefront serve uma loja de verdade: 2 790 produtos, 44 427 SKUs, busca, PLP, PDP, carrinho, checkout e conta.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">Uma loja completa com 2 777 produtos → 44 399 SKUs.</p>
 <a href="{{ storeUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,color .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">Abrir a loja<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
 </div>
 
@@ -57,7 +58,7 @@ a:hover{color:#C2410C}
 <div style="display:inline-flex;align-items:baseline;font-size:19px;letter-spacing:-.02em"><span style="font-weight:700;color:#FFFFFF">forge<span style="color:#E11D48">.</span></span><span style="font-weight:500;color:#E11D48">outlet</span></div>
 <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#FFFFFF;background:#9F1239;padding:3px 7px">Segunda loja</div>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">Multi-loja não é multi-tenant: mesmos produtos e pedidos, com tema, preços e publicação próprios.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#B9B4AC;text-wrap:pretty">Multi-loja: 55 produtos do mesmo catálogo, tema e preços próprios.</p>
 <a href="{{ outletUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#FFFFFF;border:1px solid rgba(255,255,255,.24);transition:background .2s,color .2s,border-color .2s" style-hover="background:#FFFFFF;border-color:#FFFFFF;color:#17181A">Abrir o outlet<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
 </div>
 
@@ -82,7 +83,7 @@ a:hover{color:#C2410C}
 <div style="font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;letter-spacing:-.01em;color:#241C14">forge<span style="color:#A9793F">.</span>co</div>
 <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F3EDE3;background:#2F3B30;padding:3px 7px">Storefront forkado</div>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">A vitrine é substituível e o kernel não: repositório e imagem próprios, assinatura recorrente, com o nosso checkout inteiro por trás.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">Outro storefront mas o mesmo checkout, repositório e imagem próprios.</p>
 <a href="{{ cafeUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#241C14;border:1px solid rgba(36,28,20,.28);transition:background .2s,color .2s,border-color .2s" style-hover="background:#2F3B30;border-color:#2F3B30;color:#F3EDE3">Abrir a loja<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
 </div>
 
@@ -91,7 +92,7 @@ a:hover{color:#C2410C}
 <div style="font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;letter-spacing:-.01em;color:#241C14">forge<span style="color:#A9793F">.</span>co balcão</div>
 <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#2F3B30;background:#DCD3C4;padding:3px 7px">Totem</div>
 </div>
-<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">O degrau final: um totem de balcão que não usa storefront nem checkout. Aplicação própria falando direto com a porta.</p>
+<p style="margin:0;font-size:14px;line-height:1.6;color:#4A3F32;text-wrap:pretty">Totem de balcão: aplicação exclusiva própria falando direto com a porta.</p>
 <a href="{{ balcaoUrl }}" target="_blank" style="align-self:flex-start;display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:600;padding:11px 18px;color:#241C14;border:1px solid rgba(36,28,20,.28);transition:background .2s,color .2s,border-color .2s" style-hover="background:#2F3B30;border-color:#2F3B30;color:#F3EDE3">Abrir o totem<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a>
 </div>
 
@@ -117,14 +118,120 @@ a:hover{color:#C2410C}
 <a href="Forge%20Home.dc.html" style="font-size:13px;font-weight:600;color:#8A8478" style-hover="color:#FFFFFF">← voltar para forgecommerce.pro</a>
 </div>
 
+<div style="margin-top:clamp(28px,4vw,44px);display:flex;justify-content:center">
+<button type="button" onClick="{{ openArch }}" style="background:none;border:none;cursor:pointer;font-family:'Urbanist',sans-serif;display:inline-flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8A8478;transition:color .2s" style-hover="color:#FFFFFF">Entenda a arquitetura<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></button>
+</div>
+
 </div>
 </div>
+</sc-if>
+
+<sc-if value="{{ showArch }}" hint-placeholder-val="{{ false }}">
+<div id="arquitetura" style="min-height:100vh;min-height:100dvh;box-sizing:border-box;background:#0B0C0D;padding:clamp(32px,5vw,64px) clamp(16px,3vw,32px);display:flex;align-items:center;justify-content:center;animation:dmIn .5s cubic-bezier(.22,1,.36,1) both">
+<div style="width:100%;max-width:1080px;margin:0 auto">
+
+<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:clamp(22px,3vw,34px)">
+<h2 style="margin:0;font-size:clamp(22px,3vw,32px);line-height:1.1;letter-spacing:-.03em;font-weight:700;color:#FFFFFF">A arquitetura da demo</h2>
+<p style="margin:0;font-size:13px;line-height:1.55;color:#6E6A63;text-wrap:pretty">Quatro vitrines diferentes, dois admins da mesma imagem, um <strong style="color:#FFFFFF;font-weight:700">kernel</strong>!</p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px">
+
+<div style="border:1px solid rgba(194,65,12,.35);padding:clamp(16px,2vw,22px);display:flex;flex-direction:column;gap:12px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#C2410C">Tenant 1 · Sapatos</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="background:#17181A;border:1px solid rgba(255,255,255,.1);padding:14px">
+<div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:10px;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8478" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1"></rect><path d="M6 18h5"></path><path d="M8.5 13v5"></path><rect x="17" y="9" width="5" height="11" rx="1"></rect></svg>Loja 1</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.35;color:#B9B4AC">
+<div>Storefront <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+<div>Checkout <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+<div>Tema <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+</div>
+</div>
+<div style="background:#17181A;border:1px solid rgba(255,255,255,.1);padding:14px">
+<div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:10px;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8478" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1"></rect><path d="M6 18h5"></path><path d="M8.5 13v5"></path><rect x="17" y="9" width="5" height="11" rx="1"></rect></svg>Loja 2</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.35;color:#B9B4AC">
+<div>Storefront <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+<div>Checkout <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+<div>Tema <strong style="color:#E11D48;font-weight:600">outlet</strong></div>
+</div>
+</div>
+</div>
+<div style="display:flex;justify-content:center;color:#4A4742"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></div>
+<div style="background:rgba(194,65,12,.12);border:1px solid rgba(194,65,12,.35);padding:12px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:#FFFFFF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1"></rect><path d="M6 18h5"></path><path d="M8.5 13v5"></path><rect x="17" y="9" width="5" height="11" rx="1"></rect></svg>Um admin para as duas lojas</div>
+</div>
+
+<div style="border:1px solid rgba(47,59,48,.6);padding:clamp(16px,2vw,22px);display:flex;flex-direction:column;gap:12px">
+<div style="font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8FA98C">Tenant 2 · Café</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div style="background:#17181A;border:1px solid rgba(255,255,255,.1);padding:14px">
+<div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:10px;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8478" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1"></rect><path d="M6 18h5"></path><path d="M8.5 13v5"></path><rect x="17" y="9" width="5" height="11" rx="1"></rect></svg>Loja 1</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.35;color:#B9B4AC">
+<div>Storefront <strong style="color:#8FA98C;font-weight:600">forkado</strong></div>
+<div>Checkout <strong style="color:#FFFFFF;font-weight:600">vanilla</strong></div>
+<div>Tema <strong style="color:#8FA98C;font-weight:600">café</strong></div>
+</div>
+</div>
+<div style="background:#17181A;border:1px solid rgba(255,255,255,.1);padding:14px">
+<div style="font-size:14px;font-weight:700;color:#FFFFFF;margin-bottom:10px;display:flex;align-items:center;gap:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8478" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="16" rx="1"></rect><path d="M10 6h4"></path><path d="M12 18v3"></path><path d="M8 21h8"></path></svg>Loja 2</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.35;color:#B9B4AC">
+<div>Totem <strong style="color:#8FA98C;font-weight:600">(aplicação exclusiva)</strong></div>
+<div style="color:#6E6A63">Sem storefront</div>
+<div style="color:#6E6A63">Sem checkout</div>
+</div>
+</div>
+</div>
+<div style="display:flex;justify-content:center;color:#4A4742"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></div>
+<div style="background:rgba(47,59,48,.3);border:1px solid rgba(47,59,48,.6);padding:12px 14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;color:#FFFFFF"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8FA98C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="9" rx="1"></rect><path d="M6 18h5"></path><path d="M8.5 13v5"></path><rect x="17" y="9" width="5" height="11" rx="1"></rect></svg>Um admin para as duas lojas</div>
+</div>
+
+</div>
+
+<div style="display:flex;justify-content:center;padding:10px 0;color:#4A4742"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg></div>
+
+<div style="border:1px solid rgba(255,255,255,.14)">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))">
+<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14);border-right:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#B9B4AC">API</div>
+<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14);border-right:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#B9B4AC">CLI</div>
+<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14);border-right:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#B9B4AC">MCP</div>
+<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14);border-right:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#B9B4AC">SDK</div>
+<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:600;color:#B9B4AC">Docs</div>
+</div>
+<div style="background:#17181A;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.14)">
+<span style="font-size:13.5px;font-weight:700;color:#FFFFFF">Porta única de comandos</span>
+<span style="width:8px;height:8px;background:#C2410C;display:block"></span>
+</div>
+<div style="background:#E7E4DE;padding:16px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:10px">
+<span style="font-size:clamp(16px,2vw,20px);font-weight:700;letter-spacing:-.02em;color:#0F1011">Kernel</span>
+<span style="font-size:12.5px;color:#5C574F">catálogo · carrinho · checkout · pedido · pagamento · estoque</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));border-top:1px solid rgba(255,255,255,.14)">
+<div style="padding:13px 14px;border-right:1px solid rgba(255,255,255,.14);font-size:13px;font-weight:600;color:#B9B4AC">PostgreSQL</div>
+<div style="padding:13px 14px;font-size:13px;font-weight:600;color:#B9B4AC">Redis</div>
+</div>
+<div style="border-top:1px solid rgba(255,255,255,.14);padding:13px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:10px">
+<span style="font-size:13px;font-weight:700;color:#FFFFFF">Infra</span>
+<span style="font-size:12.5px;color:#6E6A63">docker · gcp · opentelemetry</span>
+</div>
+</div>
+
+<div style="margin-top:clamp(24px,3vw,36px);display:flex;justify-content:center">
+<button type="button" onClick="{{ closeArch }}" style="background:none;border:none;cursor:pointer;font-family:'Urbanist',sans-serif;display:inline-flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8A8478;transition:color .2s" style-hover="color:#FFFFFF"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>Voltar para as demos</button>
+</div>
+
+</div>
+</div>
+</sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;storeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.store.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;outletUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.store.forgecommerce.pro/s/outlet&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;adminShoesUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://admin.store.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant sapatos&quot;},&quot;cafeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.cafe.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;},&quot;balcaoUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://demo.cafe.forgecommerce.pro/balcao&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;},&quot;adminCafeUrl&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;https://admin.cafe.forgecommerce.pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tenant café&quot;}}">
 class Component extends DCLogic {
-  state = { lang: 'pt' };
+  state = { lang: 'pt', view: 'gate' };
   renderVals() {
     return {
+      showGate: this.state.view === 'gate',
+      showArch: this.state.view === 'arch',
+      openArch: () => { this.setState({ view: 'arch' }); window.scrollTo(0, 0); },
+      closeArch: () => { this.setState({ view: 'gate' }); window.scrollTo(0, 0); },
       langs: ['pt', 'en', 'es'].map(code => ({
         code,
         color: this.state.lang === code ? '#FFFFFF' : '#6E6A63',

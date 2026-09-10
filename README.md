@@ -1378,6 +1378,20 @@ than laying a second past on top. Wipe and re-run to rebuild it.
 `storefront:gate` with the full-screen "Demo store" interstitial and the ribbon under it, and it renders on
 **the reference storefront — the one the Outlet runs unforked.**
 
+**It has TWO screens since pk30.** The first says what to open; the second — *"A arquitetura da demo"*, opened
+by the affordance at its foot and closed by the one at its own — says **why that is hard**, for a visitor who
+has never heard the word multi-tenant: the two tenants side by side with their two shops each (which storefront
+is forked, which theme each wears), one admin under both, and the stack they all stand on (API · CLI · MCP ·
+SDK · Docs → the single command port → the kernel → PostgreSQL/Redis → infra). Both screens are PT/EN/ES, on
+the one selector the gate already had, and both are embedded copy — `config_schema` stays `[]`.
+
+⚠️ **The FIRST screen is not yet the owner's 10/09 layout, and the reason is a contract, not a backlog.** That
+layout is a HUB over six destinations; `dismissGate()` (`packages/storefront-kit/src/gate/actions.ts:15`, in the
+Forge monorepo) sets the dismissal cookie and returns `void`, so a gate can say *"let me through HERE"* and
+cannot say *"let me through and take me to /s/outlet"*. Five of the six destinations would therefore land the
+visitor on a gate again. The head of `apps/demo-gate/block/gate.tsx` carries the full note; the architecture
+screen needs no URL, which is why it did not have to wait.
+
 **That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
 ONE box could not be on a composition list at all, and both front registries are built from that list — so
 this app could load, install and fill its slot in the data, and show nothing. The Outlet had no gate. The

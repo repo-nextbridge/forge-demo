@@ -1,8 +1,9 @@
 'use client';
 
-// The demo-gate block — the full-screen "Demo store" interstitial, faithful to design-base/Forge Demo.dc.html.
-// A client component so the footer PT/EN/ES selector switches live and `?lang=` on the URL can win over the
-// server's Accept-Language guess. Responsive is pure CSS (@media 760px). The two paths:
+// The demo-gate block — the full-screen "Demo store" interstitial, and the switch into the SECOND screen
+// (`./arch`, "A arquitetura da demo"). A client component so the footer PT/EN/ES selector switches live, so
+// `?lang=` on the URL can win over the server's Accept-Language guess, and so the two screens can trade places
+// without a navigation (`view` below). Responsive is pure CSS (@media 760px). The two paths:
 //   · "Open the store" → a <form> posting the `dismiss` Server Action (sets the dismissal cookie); the SAME route
 //     then renders the real store (deep link preserved — the gate covers the route, never redirects to home).
 //   · "Open the admin"  → a top-level link to the admin origin's `/enter` route, which redeems the operator
@@ -10,9 +11,19 @@
 // The two mini-mockups are static decoration ported verbatim from the design (inline styles); the frame, text,
 // buttons and footer are the CSS module. The H1 uses the theme's own font (Urbanist) — the design's own display
 // face is dropped (no bundled or fetched font).
+//
+// ⚠️ THIS SCREEN IS NOT THE ONE IN `design-base/gate.dc.html`, AND THAT IS A KNOWN GAP, NOT AN OVERSIGHT. The
+// owner's 10/09 layout replaces this first screen with a HUB: two tenant cards and six destinations (store,
+// outlet, coffee shop, counter totem, and one admin per tenant). Porting it needs a decision nobody in this
+// repository can take alone, because the slot's contract cannot express it: `dismissGate()` — the `dismiss` prop,
+// `packages/storefront-kit/src/gate/actions.ts:15` in the Forge monorepo — sets a cookie and returns void, so a
+// gate can say "let me through HERE" and cannot say "let me through and take me to /s/outlet". With six
+// destinations, five of them are links that land on a gate again. The SECOND screen has no such problem (no URLs
+// at all), which is why it ships now and the hub waits for that decision.
 
 import { useEffect, useState } from 'react';
-import { GATE_LANG_COOKIE, type Lang, resolveLang, STRINGS } from '../i18n';
+import { ARCH, GATE_LANG_COOKIE, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
+import { ArchScreen, ArchSwitch } from './arch';
 import styles from './gate.module.css';
 
 const ArrowIcon = () => (
@@ -226,8 +237,19 @@ export type GateBlockProps = {
   dismiss: () => Promise<void>;
 };
 
+/** Which of the gate's two screens is on. One at a time: the other is unmounted, so each fades itself in. */
+type View = 'gate' | 'arch';
+
 export function GateBlock({ siteUrl, adminUrl, initialLang, dismiss }: GateBlockProps) {
   const [lang, setLang] = useState<Lang>(initialLang);
+  const [view, setView] = useState<View>('gate');
+
+  /** Move between the screens. The new screen is a whole page tall, so the visitor has to start at ITS top —
+   *  without this, opening the architecture from the foot of the gate lands mid-diagram. */
+  const show = (next: View) => {
+    setView(next);
+    window.scrollTo(0, 0);
+  };
 
   // `?lang=` on the URL wins (the marketing site links with the locale). Read it on mount; the strings are all
   // embedded, so the switch is instant (no network).
@@ -249,6 +271,10 @@ export function GateBlock({ siteUrl, adminUrl, initialLang, dismiss }: GateBlock
 
   const t = STRINGS[lang];
   const adminHref = adminUrl ? `${adminUrl.replace(/\/$/, '')}/enter` : undefined;
+
+  // The second screen REPLACES the first rather than sitting under it: the switch is a move between two
+  // full-height pages, and the language the visitor chose travels with them.
+  if (view === 'arch') return <ArchScreen lang={lang} onClose={() => show('gate')} />;
 
   return (
     <div className={styles.backdrop}>
@@ -327,7 +353,7 @@ export function GateBlock({ siteUrl, adminUrl, initialLang, dismiss }: GateBlock
               <path d="M2 12h20" />
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
             </svg>
-            {(['pt', 'en', 'es'] as const).map((code) => (
+            {LANGS.map((code) => (
               <button
                 key={code}
                 type="button"
@@ -339,6 +365,8 @@ export function GateBlock({ siteUrl, adminUrl, initialLang, dismiss }: GateBlock
             ))}
           </div>
         </div>
+
+        <ArchSwitch label={ARCH[lang].open} direction="open" onClick={() => show('arch')} />
       </div>
     </div>
   );
