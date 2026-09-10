@@ -1164,6 +1164,96 @@ await checking(async () => {
 });
 
 say();
+// ── 3e. ★★ THE APPS' OWN BLOCKS — A CAPABILITY THE BOX CARRIES AND SHOWS NOWHERE (pk31/§6) ───────────────
+//
+// ⛔ WHY THIS EXISTS, and it is a measurement about THIS FILE rather than about the box. pk31/§6 asked
+// whether the `subscriptions` app's `confirmation_note` block — the one sentence a shopper who just signed a
+// subscription reads on the receipt — had ever been placed on the demo. The answer was derived by COUNTING:
+// the app declares five blocks, the café showed four, so one was missing and it must be that one.
+//
+// ★ IT WAS WRONG, AND IT WAS WRONG IN THE ONLY WAY A COUNT CAN BE. The fifth block is `latest_subscriptions`,
+// an `admin:` one, and an admin placement is seeded ONCE PER TENANT with a NULL store (MULTISTORE M3) — so
+// four store-scoped rows plus one tenant-scoped row IS all five. `confirmation_note` was placed and enabled
+// on every store of both tenants all along (`hook_placement`, measured on the box of 2026-09-11), and the
+// public `read.extensions` publishes it at `storefront:checkout.confirmation`.
+//
+// ⇒ SO THE DEFECT WAS THAT NOBODY COULD ASK. Every other section of this file grades something a seed of this
+//   repository WRITES; an app's default placements are written by the KERNEL (`extension.install` →
+//   `seedDefaultPlacements`), and nothing here ever looked at them. A question answered by counting rows in
+//   two different scopes is a question answered by guessing, and it cost a whole slice's premise.
+//
+// ★★ THE RULE, AND IT IS DERIVED — never a list of block names, which would rot the day an app adds one.
+//   `read.extension_composition` answers EVERY DECLARED HOOK of this tenant's ACTIVE installs, resolved
+//   against each store's placement, including the ones nobody placed (`placement_id: null`) and the ones an
+//   operator switched off. So the declaration and the reality arrive in the same answer, from the box.
+//
+//   A block is LIVE where it has a placement id and is enabled. The verdict is per BLOCK and not per store:
+//   **a block that is live in NO store of this tenant is a capability this box carries and shows nowhere.**
+//
+// ⚠️ PER TENANT AND NOT PER STORE, DELIBERATELY, and the Outlet is the reason. `seed/outlet.mjs` REMOVES the
+//   `shelves/shelf` instance that `extension.install` drops into `storefront:list.*` — he asked for a PLP
+//   with nothing on it. That is a decision, not a defect, and a check that demanded every declared block in
+//   every store would go red on it and would need an exception list to shut up. An exception list typed here
+//   is the thing this house keeps being bitten by. "Live somewhere" needs none: the shoe shop still shows a
+//   shelf, so the capability is demonstrated, and a block nobody placed ANYWHERE still cannot hide.
+//
+// ⚠️ `storefront:` ONLY. The `admin:` half is section 3d's question and it is a stricter one (it grades the
+//   ORDER, not merely the presence), so grading it loosely here would be a second, weaker answer to a
+//   question that already has a better one.
+say('THE APPS — every block an installed app declares, and whether any store really shows it');
+await checking(async () => {
+  const comp$ = of('extension_composition');
+  /** `<app>/<component>` → { target declared by the app, the handles where it is LIVE } */
+  const blocks = new Map();
+  for (const handle of seen) {
+    const entries = rows(await internal('extension_composition', { store: storeIdOf(handle) }));
+    for (const e of entries) {
+      const target = comp$(e, 'target');
+      if (!target.startsWith('storefront:')) continue;
+      const name = `${comp$(e, 'extension_id')}/${comp$(e, 'component')}`;
+      const block = blocks.get(name) ?? { name, target, live: [] };
+      // A declared hook with no placement, and one an operator switched off, are the same thing on a page:
+      // nothing. `position` is 3c/3d's business; presence is this one's.
+      if (comp$(e, 'placement_id') !== null && comp$(e, 'enabled') === true) block.live.push(handle);
+      blocks.set(name, block);
+    }
+  }
+  // ⛔ ANTI-VACUUM, and it is the half that matters here exactly as it does in 3d: with no block in the
+  // answer every verdict below is vacuously true, and this whole section exists because a question nobody
+  // could ask produced a confident wrong answer. A tenant whose apps declare NOTHING is a box where every
+  // shopper-facing app block is missing at once — far likelier a credential or a read that stopped
+  // publishing than a deliberate arrangement — so it accuses instead of settling.
+  if (blocks.size === 0) {
+    bad(
+      `${tenant}'s apps`,
+      'read.extension_composition named NO storefront block for any store of this tenant. Either no app is ' +
+        'installed (and then the shop has no reviews, no shelves, no payment options) or this check graded ' +
+        'nothing at all — both are unsettled, neither is a demo',
+    );
+    return;
+  }
+  const dark = [...blocks.values()].filter((b) => b.live.length === 0);
+  if (dark.length > 0) {
+    bad(
+      `${tenant}'s apps`,
+      `${dark.length} declared block(s) live in NO store: ` +
+        `${dark.map((b) => `${b.name} @ ${b.target.replace('storefront:', '')}`).join(' · ')}. ` +
+        'The app is installed, the kernel placed it at install and somebody removed or disabled it in every ' +
+        'store — so the capability ships with this box and no visitor can ever see it',
+    );
+    return;
+  }
+  ok(
+    `${tenant}'s apps`,
+    `${blocks.size} declared block(s), each live in at least one store: ` +
+      [...blocks.values()]
+        .map((b) => `${b.name}(${b.live.length})`)
+        .sort()
+        .join(' · '),
+  );
+});
+
+say();
 // ── 4. the placeholders ─────────────────────────────────────────────────────────────────────────────────
 say('THE PLACEHOLDER ART — findable in one gesture');
 await checking(async () => {

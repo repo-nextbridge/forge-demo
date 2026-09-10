@@ -216,6 +216,9 @@ function declaredBox() {
       pii: null,
     })),
     productStores: {},
+    // ★ pk31/§6 — THE APPS' BLOCKS, on both shops. Until 3e nothing here answered this read for the coffee
+    // tenant at all, which is how "is `confirmation_note` placed?" became a question nobody could ask.
+    composition: { [CAFE]: appBlockRows(), [BALCAO]: appBlockRows() },
     // ★ THE CAFÉ'S SEVEN, derived from the function the seed writes them with — never a second list of the
     // same slugs. It published ZERO until pk15/d1, which the section reported as a line and did not judge;
     // now it is declared, so the same line is a verdict. The COUNTER still declares none, and that store is
@@ -316,6 +319,39 @@ const datasetHomeRows = (declared = DATASET_HOME) => [
 ];
 
 /**
+ * ★★ pk31/§6 — THE APPS' OWN STOREFRONT BLOCKS, as `read.extension_composition` answers them for a store
+ * where the install has just run. `extension.install` materializes every hook the manifest declares, so these
+ * rows are the KERNEL's work and not a seed's — which is exactly why no section of the verifier looked at
+ * them until 3e, and why counting them by hand produced the wrong answer about `confirmation_note`.
+ *
+ * ⚠️ HAND-WRITTEN, for the same reason `DECLARED_WIDGETS` is: the manifests are monorepo files a machine
+ * running this suite may not have. They are the ones measured on the live box of 2026-09-11 — the four
+ * shopper-facing blocks of `subscriptions` plus the two of `reviews`. The FIFTH subscriptions block
+ * (`latest_subscriptions`) is deliberately NOT here: it is an `admin:` hook, seeded once per TENANT with a
+ * null store, and mistaking it for a store block is the whole defect 3e was written after.
+ */
+const APP_BLOCKS = [
+  ['subscriptions', 'plan_picker', 'storefront:pdp.below_buybox'],
+  ['subscriptions', 'cart_plans', 'storefront:checkout.summary'],
+  ['subscriptions', 'my_subscriptions', 'storefront:account.top'],
+  ['subscriptions', 'confirmation_note', 'storefront:checkout.confirmation'],
+  ['reviews', 'reviews', 'storefront:pdp.below_gallery'],
+  ['reviews', 'order_review', 'storefront:order.below_items'],
+  // `recommendations` is here for a second reason beyond being real: the "unplaced default" test below stages
+  // `recommendations/related` with a null placement in ONE store, and 3e's verdict is per TENANT — so the
+  // sibling store holding it LIVE is what makes that staging a statement about the Outlet's window instead of
+  // an accusation about the app. Drop these two lines and that test goes red for the right rule.
+  ['recommendations', 'related', 'storefront:pdp.below_cross_sell'],
+  ['recommendations', 'bought-together', 'storefront:pdp.below_buybox'],
+];
+/** Those blocks as one store's rows. `extra` stages a block the box does NOT really show (`placement_id: null`
+ *  for a hook nobody placed, `enabled: false` for one an operator switched off). */
+const appBlockRows = (extra = () => ({})) =>
+  APP_BLOCKS.map(([app, component, target], i) =>
+    compositionRow(app, component, target, i, extra(`${app}/${component}`)),
+  );
+
+/**
  * THE FOOTWEAR TENANT, as the frozen reads would answer it — the box the institutional-page section is about.
  *
  * ★ IT IS THE MINIMUM THAT MAKES THAT TENANT SETTLE, and every number in it is derived: the Outlet's fifty-five
@@ -375,7 +411,12 @@ function footwearBox() {
     })),
     productStores: {},
     // ★ 08/09 — THE SHOP WINDOWS, per store id, as `read.extension_composition` answers them.
-    composition: { [OUTLET]: outletHomeRows(), [FORGE]: datasetHomeRows() },
+    // ★ pk31/§6 — the apps' own blocks ride ALONGSIDE the window: 3c filters on `storefront:home.`
+    // and 3e on every `storefront:` target, so one answer feeds two different questions.
+    composition: {
+      [OUTLET]: [...outletHomeRows(), ...appBlockRows()],
+      [FORGE]: [...datasetHomeRows(), ...appBlockRows()],
+    },
     pages: [
       ...outletPages().map((spec) => pageRow(OUTLET, spec)),
       // The Forge store's own seven, with the dataset's titles. Nothing here grades them.
@@ -1237,6 +1278,160 @@ test('★ a dataset that declares no admin_widgets is REPORTED, never judged', a
     });
     assert.match(stdout, /declares no admin_widgets/, stdout);
     assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+// ── ★★ THE APPS' OWN BLOCKS (pk31/§6) ────────────────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT THESE EXIST FOR IS A WRONG ANSWER THIS HOUSE GAVE, not a wrong box. pk31/§6 reported that the
+// `subscriptions` app's `confirmation_note` — the sentence a shopper who just signed a subscription reads on
+// the receipt — *"está publicado e chega VAZIO na demo"*, derived by counting: five declared blocks, four
+// rows, so the missing one is that one.
+//
+// ★ MEASURED ON THE LIVE BOX (2026-09-11, `hook_placement` in both tenant schemas): `confirmation_note` was
+// placed and ENABLED on all four stores, and `read.extensions` publishes it at
+// `storefront:checkout.confirmation` position 2 for the `forge` store. The fifth block is
+// `latest_subscriptions`, an `admin:` hook seeded ONCE PER TENANT with a null store — so four plus one IS
+// five. The count was right and the subtraction was wrong.
+//
+// ⇒ WHAT WAS ACTUALLY MISSING WAS THE QUESTION. Nothing in this verifier had ever read an app's declared
+//   blocks, because they are the KERNEL's work (`extension.install` → `seedDefaultPlacements`) and every other
+//   section grades what a seed of this repository writes. These four tests are that question, and the rule is
+//   derived from the same read that declares it — never from a list of block names, which would go stale the
+//   day an app ships a sixth.
+
+test("★★ every block the tenant's apps declare is live in at least one store — the verifier settles", async () => {
+  const box = footwearBox();
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✓ forgeco's apps — 10 declared block\(s\), each live in at least one store/, stdout);
+    // ★ THE ONE THE SLICE WAS ABOUT, named in the settled line rather than merely counted.
+    assert.match(stdout, /subscriptions\/confirmation_note\(2\)/, stdout);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★★ SABOTAGE — the block pk31/§6 thought was missing really IS placed nowhere, and the red NAMES it', async () => {
+  // The box the brief described, staged for the first time: the hook is declared (the app is installed, so the
+  // editor's model answers it) and no store has a placement for it. ⚠️ Counting rows per store cannot see this
+  // — `read.extension_composition` answers the unplaced hook too, which is why the filter is on
+  // `placement_id`, and why the old count of four-out-of-five could be arithmetically right and still wrong.
+  const dark = (name) =>
+    name === 'subscriptions/confirmation_note' ? { placement_id: null, has_placement: false, active: false } : {};
+  const box = footwearBox();
+  box.composition[FORGE] = [...datasetHomeRows(), ...appBlockRows(dark)];
+  box.composition[OUTLET] = [...outletHomeRows(), ...appBlockRows(dark)];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's apps/, stdout);
+    assert.match(stdout, /1 declared block\(s\) live in NO store/, stdout);
+    assert.match(stdout, /subscriptions\/confirmation_note @ checkout\.confirmation/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★ SABOTAGE — a block SWITCHED OFF in every store is the same silence as one never placed', async () => {
+  // The other way a capability goes dark, and the reason the filter asks two things instead of one: an
+  // operator who disabled the block left a placement id behind. On the page the two are indistinguishable.
+  const off = (name) => (name === 'reviews/reviews' ? { enabled: false, active: false } : {});
+  const box = footwearBox();
+  box.composition[FORGE] = [...datasetHomeRows(), ...appBlockRows(off)];
+  box.composition[OUTLET] = [...outletHomeRows(), ...appBlockRows(off)];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's apps/, stdout);
+    assert.match(stdout, /reviews\/reviews @ pdp\.below_gallery/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test("⛔ a block live in ONE store and absent from the other SETTLES — that is the Outlet's own decision", async () => {
+  // ★ WHY THE VERDICT IS PER TENANT AND NOT PER STORE, and it is not a softening. `seed/outlet.mjs` REMOVES
+  // the `shelves/shelf` instance `extension.install` drops into `storefront:list.*` — he asked for a PLP with
+  // nothing on it (that file's own comment: *"Nothing is placed in `list.*`"*). A per-store rule would accuse
+  // that decision and would then need an exception list typed here to shut up, which is the failure mode this
+  // house keeps paying for. "Live somewhere" needs none, and a block placed NOWHERE still cannot hide.
+  const box = footwearBox();
+  box.composition[OUTLET] = [
+    ...outletHomeRows(),
+    ...appBlockRows((name) =>
+      name === 'reviews/order_review' ? { placement_id: null, has_placement: false, active: false } : {},
+    ),
+  ];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✓ forgeco's apps/, stdout);
+    assert.match(stdout, /reviews\/order_review\(1\)/, stdout);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★★ ANTI-VACUUM — a tenant whose apps name NO storefront block is a RED, never a green silence', async () => {
+  // ⛔ The shape of every cheap guard in this house: it passes because it found nothing. An empty answer here
+  // means either that not one app is installed — no reviews, no shelves, no payment options, which is not a
+  // demo — or that this check graded zero blocks while printing a tick. Both are unsettled.
+  const box = footwearBox();
+  box.composition[FORGE] = datasetHomeRows().filter((r) => !r.target.startsWith('storefront:'));
+  box.composition[OUTLET] = [];
+  const mount = mountedDataset();
+  const face = await serve(box);
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /✗ forgeco's apps — read\.extension_composition named NO storefront block/, stdout);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★ a read that stops publishing `enabled` is the verifier\'s wrong question, never the box\'s defect', async () => {
+  // The species this whole file exists for: `enabled` is the name 3e compares, and a read that stopped
+  // publishing it must produce a ⚑ about the question — never a ✗ about a box whose blocks are all placed.
+  const box = footwearBox();
+  const mount = mountedDataset();
+  const face = await serve(box, { drop: { read: 'extension_composition', key: 'enabled' } });
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', {
+      FORGE_SEED_DATASET_DIR: mount.dir,
+    });
+    assert.match(stdout, /⚑ WRONG QUESTION — read\.extension_composition does not publish `enabled`/, stdout);
+    assert.equal(code, 2, stdout);
   } finally {
     face.close();
     mount.close();

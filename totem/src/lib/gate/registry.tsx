@@ -8,9 +8,18 @@
 // images, writing the wiring from the app's own `forge.wiring` block.
 //
 // The totem does not go through that oven. It is a fork, built by `bin/build-totem.sh` like the coffee
-// vitrine — so if this file did not exist, the counter's host would be the ONE host of this instance with no
-// gate on it, while every other one is covered. That is precisely what the brief refuses: "o host do totem é
-// tão protegido quanto os outros".
+// vitrine — so without this file the counter's host would have no gate on it at all. That is precisely what
+// the brief refuses: "o host do totem é tão protegido quanto os outros".
+//
+// ⛔⛔ AND THE SENTENCE THAT USED TO FOLLOW — *"while every other one is covered"* — WAS FALSE, MEASURED
+// 2026-09-11 (pk31/§2). The coffee vitrine is the other fork, built by `bin/build-coffee.sh` outside the same
+// oven, and it has no file like this one: `storefront-coffee/src/app/s/[store]/layout.tsx:22` resolves the gate
+// through `@forgecommerce/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and held empty by the
+// kit's own guard, and `storefront-coffee/src/lib/extensions/generated/registry.tsx` is the product's
+// composition (no gate in it). So that host finds the app filling the slot, resolves no implementation, and
+// degrades to "no gate" in silence — the exact failure this file was written to avoid, one fork to the left.
+// ⇒ It is NOT fixed here: the repair is the coffee fork's own registry plus its dependency and build staging,
+// which is a slice of its own. Naming it is what stops the next reader believing the old sentence.
 //
 // ⚠️ THE ENTRY IS NOT INVENTED — IT IS COPIED FROM THE APP'S OWN DECLARATION. `apps/demo-gate/package.json`
 // carries `forge.wiring.gate.interstitial` = `./block/entry` × `GateInterstitial` and `…ribbon` = the same
