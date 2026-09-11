@@ -594,6 +594,7 @@ resposta que falta**.
 | a **coluna health** | `docker ps` | pk28/d2 — desde 09/09 ela é um veredicto, e não era |
 | a **home do admin** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk30/§11 — a ordem dos widgets, contra o que o dataset declara |
 | os **blocos dos apps** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk31/§6 — todo bloco que um app instalado **declara** está vivo em alguma loja |
+| os **apps desta caixa nos FRONTS desta caixa** | `bash bin/test.sh` (`bin/front-app-reach.guard.mjs`) | pk32/d1 — todo componente de front que um app **nosso** declara, alcançável pelo front que tem de desenhá-lo |
 
 ★★ **pk30/§11 — a ORDEM DOS WIDGETS da home do admin, e ela era decidida pela ordem de instalação dos apps.**
 Achado dele em 10/09, usando os dois admins: *"o bloco de últimas assinaturas na demo ainda está vindo no topo,
@@ -623,6 +624,42 @@ bloco que não está vivo em NENHUMA loja é uma capacidade que a caixa carrega 
 deixa em `storefront:list.*` (ele pediu uma PLP limpa). Isso é decisão, não defeito — e uma regra por loja
 precisaria de uma **lista de exceções digitada** para se calar. "Vivo em algum lugar" não precisa de nenhuma, e
 um bloco colocado em lugar nenhum continua sem conseguir se esconder.
+
+★★★ **pk32/d1 — UM APP DESTA CAIXA SÓ APARECE NUM FRONT DESTA CAIXA SE ALGUÉM LIGAR OS DOIS, e até 11/09
+nada dizia quando ninguém tinha ligado.** A UI de um app tem **duas metades**: a **declaração** (a colocação, a
+composição, o config) é **dado** — atravessa a porta e chega a **qualquer** front, nosso ou dele, sem build
+nenhum; a **implementação** (o componente React) tem de estar **compilada no bundle de quem desenha**. Um app de
+plataforma atravessa a segunda metade porque viaja como **pacote** (`bin/vendor-packages.sh` põe o tarball
+dentro do fork). Um app **desta caixa** viaja como **diretório de fonte** (`composition.json` →
+`instanceApps[].source: ./apps/<id>`), então **um fork que não o nomeia não consegue importá-lo** — e um bloco
+que ele não importa é um bloco que ele silenciosamente não desenha.
+
+⇒ **O que o operador precisa saber, e são TRÊS gestos, não um.** Derivados do fork que já faz isto: o `totem/`
+alcança o `apps/demo-gate` com os três, e cada um tem um jeito próprio de falhar:
+
+| gesto | onde | o que acontece sem ele |
+|---|---|---|
+| 1 · a dependência | `<fork>/package.json` → `"@forge/ext-<id>": "file:../apps/<id>"` (npm instala um **symlink**) | o import não resolve; nada renderiza |
+| 2 · `transpilePackages` | `<fork>/next.config.mjs` | o app viaja como `.tsx` + CSS Modules ⇒ o build morre no 1º `export type` (*"Module parse failed: Unexpected token"*) |
+| 3 · `outputFileTracingRoot` | `<fork>/next.config.mjs` → `'..'` | o build passa **verde** e a **imagem** sai sem o módulo: o tracer nunca copia arquivo de cima da raiz dele |
+| 4 · o registro | `<fork>/src/lib/extensions/generated/` — **GERADO** | o app está instalado e compilável e **ninguém o desenha** |
+
+⛔ **E um tarball NÃO é o caminho** — a tentativa óbvia, medida em 11/09 e descartada: um app desta caixa escreve
+as dependências no vocabulário do monorepo (`workspace:*`, `catalog:`) e `npm pack` despacha isso literal, então
+instalar o tarball morre com `npm error code EUNSUPPORTEDPROTOCOL · Unsupported URL Type "workspace:"`. A
+dependência de **diretório** não tem esse problema (o npm faz link e nunca resolve as specs dela) e já está
+commitada e travada no `totem/package-lock.json`. ⇒ **o gêmeo front-side do `bin/pack-apps.sh` não é um script
+de empacotar: não há o que empacotar.** O kernel precisa de artefato porque **lê** manifestos de um diretório
+montado no boot; um front precisa de um **módulo que o bundler resolva**, e isso são as quatro linhas acima.
+
+⚠️ **O que ainda NÃO fecha, e está dito em voz alta:** o gesto 4 é uma **superfície gerada** e **nada neste
+repositório a regera** — `bin/build-coffee.sh` e `bin/build-totem.sh` não mencionam codegen, e entre os 18
+tarballs de `storefront-coffee/vendor/` não há `codegen`. Então o `storefront-coffee` hoje **não alcança** o
+`demo-setup` (as três marcas da loja) nem o `demo-gate` (a portaria), e as duas coisas estão **declaradas como
+divergência** no topo de `bin/front-app-reach.guard.mjs`, com o motivo e quem deve a ferramenta. A divergência é
+**impressa em toda rodada** e uma que deixar de casar com um achado **fica vermelha** — é por isso que ela não
+consegue virar permanente em silêncio. ⛔ Soldar o import à mão **não** é o conserto: foi o que
+`totem/src/lib/gate/registry.tsx` fez, e a prosa daquele arquivo já estava mentindo quando a pk31/d1 a leu.
 
 ★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**
 A sonda dos dois (`totem/Dockerfile`, `storefront-coffee/Dockerfile`) descartava a resposta —
