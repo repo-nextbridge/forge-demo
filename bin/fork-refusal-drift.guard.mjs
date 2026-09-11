@@ -96,10 +96,36 @@ const FORKS = surfaceForks(TREE);
 const code = (source) => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 /**
+ * ★★ NEXT'S BOUNDARY FILES ARE NOT ROUTES, AND THIS RULE IS ABOUT ROUTES — corrected pk32/d3.
+ *
+ * `error.tsx`, `global-error.tsx` and `not-found.tsx` answer no URL: they render INSIDE one, after it has
+ * already decided to fail. "Did this route refuse before answering?" is not a question about them, and the
+ * reserved names are Next's own, so this is a property of the framework rather than a list somebody typed.
+ *
+ * ⛔ IT IS A CORRECTION OF A FALSE ACCUSATION, MEASURED 2026-09-10. pk31/p1 taught the reference's
+ * `src/app/error.tsx` to branch on `isCeilingRefusalDigest(error.digest)` — a kit binding deciding an early
+ * return out of an exported function, which is exactly the SHAPE this file calls a refusal. It is not one: the
+ * value comes from the `digest` Next hands the boundary, nothing is asked of the port, and a boundary that
+ * does not branch serves an apology rather than something "nobody should be served". The drift went unseen
+ * only because this fork had no boundary at all, so the route answered NOT CHECKED; the day pk32/d3 gave it
+ * one, this guard failed naming `src/app/error.tsx → isCeilingRefusalDigest` — a fork that asks the SAME
+ * question, through a weld, because the kit ships `src/ceiling-digest.ts` and does not publish the subpath.
+ *
+ * ⇒ a red here would have been about the guard's own over-capture, and `DIVERGENCES` could not carry it: that
+ * mechanism prints "does NOT refuse on X", which would be a false sentence on every run.
+ *
+ * ★ AND WHAT GRADES A BOUNDARY INSTEAD IS STRICTLY STRONGER, in each fork's own suite:
+ * `storefront-coffee/src/busy-boundary.guard.test.tsx` and `totem/src/busy-boundary.guard.test.tsx` RENDER
+ * every boundary they find on disk with a ceiling refusal and with a 503 and grade the bodies — which is the
+ * lesson pk31/p1 paid for, where reading the source left an unused import satisfying the rule.
+ */
+const BOUNDARY_FILES = new Set(['error.tsx', 'global-error.tsx', 'not-found.tsx']);
+
+/**
  * Every route module of a surface that NO store-scoped layout can refuse for: `src/app/**` minus every path
- * that contains a `[store]` segment. The subtraction is the whole jurisdiction, written as a subtraction on
- * purpose — the two sibling guards own the paths this one drops, and a new tree tomorrow lands on exactly one
- * side of the line without anybody choosing.
+ * that contains a `[store]` segment, minus Next's boundary files (above — they are not routes). The
+ * subtraction is the whole jurisdiction, written as a subtraction on purpose — the two sibling guards own the
+ * paths this one drops, and a new tree tomorrow lands on exactly one side of the line without anybody choosing.
  */
 function unframedRoutes(base) {
   const app = join(base, 'src', 'app');
@@ -113,7 +139,10 @@ function unframedRoutes(base) {
     }
   };
   walk(app);
-  return out.filter((rel) => !rel.split(sep).includes('[store]')).sort();
+  return out
+    .filter((rel) => !rel.split(sep).includes('[store]'))
+    .filter((rel) => !BOUNDARY_FILES.has(rel.split(sep).at(-1)))
+    .sort();
 }
 
 /** The VALUE bindings a file takes from the kit, as `local name → exported name`. `import type` is skipped:
@@ -279,6 +308,32 @@ for (const fork of FORKS) {
         'and must be re-derived — or the tree above is not the one that was baked.',
     );
     for (const [rel, asked] of jurisdiction) say(`${fork.surface.dir}/${rel} refuses on: ${asked.join(', ')}`);
+  });
+
+  test(`⛔ the boundary exclusion is SURGICAL — ${fork.surface.dir} still answers for its real routes`, (t) => {
+    if (!TREE.path) {
+      t.skip('NOT CHECKED — without the release tree there is nothing to derive a jurisdiction from');
+      return;
+    }
+    // ⚠️ A NARROWING PROVES ITSELF OR IT IS A SWITCH-OFF WEARING A COMMENT. `BOUNDARY_FILES` took three names
+    // out of the sweep; these two assertions are what keep that from having taken the subject with them.
+    const routes = [...jurisdiction.keys()];
+    assert.ok(
+      routes.some((rel) => jurisdiction.get(rel).some((q) => q.endsWith('storeFlags'))),
+      `no unframed route of ${fork.surface.dir} refuses on \`storeFlags\` any more. That is THE case this file ` +
+        'was written for (the sitemap handing a crawler the URLs of a store with no public page), so either ' +
+        'the reference moved it or the jurisdiction above narrowed past its own subject. Routes found: ' +
+        `${routes.join(', ') || 'none'}`,
+    );
+    const boundaries = routes.filter((rel) => BOUNDARY_FILES.has(rel.split(sep).at(-1)));
+    assert.deepEqual(
+      boundaries,
+      [],
+      'a Next boundary file is back in the jurisdiction of a rule about ROUTES. A boundary answers no URL — ' +
+        'it renders inside one that already failed — so "did it refuse before answering?" is not a question ' +
+        `about it. What grades a boundary is each fork's own render guard (busy-boundary.guard.test.tsx). ` +
+        `Leaked: ${boundaries.join(', ')}`,
+    );
   });
 
   test(`${fork.dir}: every declared divergence still names a refusal the reference makes`, () => {

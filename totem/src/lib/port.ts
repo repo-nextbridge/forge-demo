@@ -25,16 +25,44 @@
 // all it does not forge an address to spread the bucket — that would be defeating a security cap with an
 // invented IP, and it is refused here on purpose (tech lead, 2026-09-01).
 
+import { ceilingRefusalDigest } from '@/lib/ceiling-digest';
+// ⚠️ `@/lib/ceiling-digest` AND NOT `@forgecommerce/storefront-kit/ceiling-digest`: the kit ships that module
+// and does not publish the subpath, so a fork installing it from a tarball cannot import it. The weld's header
+// carries the measurement, the product file:line and the guard that proves the two agree.
 import { createCommandClient } from '@forgecommerce/storefront-kit/command-client';
 import { commandBaseUrl, readBaseUrl } from '@forgecommerce/storefront-kit/config';
 import { createReadClient } from '@forgecommerce/storefront-kit/read-client';
 import { shopperIp } from '@forgecommerce/storefront-kit/shopper-ip';
 
-/** The port refused this caller for going too fast. Carries the port's OWN number — never a guess. */
+/**
+ * The port refused this caller for going too fast. Carries the port's OWN number — never a guess.
+ *
+ * ★★★ pk32/d3 — AND IT NOW CARRIES A `digest`, WHICH IS THE ONLY WAY THE REFUSAL SURVIVES A SERVER RENDER.
+ *
+ * MEASURED while writing the counter's error boundary, and it is the answer to "does the kit's ceiling digest
+ * reach this fork?": **it does not, and `totemFetch` below is why.** The kit gives a 429 a well-known digest
+ * inside `ReadPortError` (`storefront-kit/src/read-client.ts:1003`), but `totemFetch` intercepts status 429
+ * BEFORE the kit ever reads the response — deliberately, so the counter can see the `Retry-After` the kit's
+ * `CommandFailed` throws away. The price went unnoticed: what the kit would have labelled arrives here as a
+ * plain `Error`, and a plain Error reaching `app/error.tsx` in production has had its class, its name and its
+ * message stripped. `digest` is the one field Next preserves (`if (!err.digest)` in
+ * next/dist/server/app-render/create-error-handler.js), so without this line the counter's boundary cannot tell
+ * "ten taps in a minute" from "the kernel is down" — and would apologise for both.
+ *
+ * ⇒ the LABEL is the kit's vocabulary, the interception stays ours. One meaning of "not now" across both forks
+ * and the product — and `@/lib/ceiling-digest` is a weld rather than an import only because the kit does not
+ * publish the subpath to a tarball, which its own header measures and its guard keeps honest.
+ *
+ * ⚠️ The digest carries `retryAfterSeconds`, which is the port's header when it sent one and the oracle cap's
+ * declared window (60 s) when it did not — the same number this class has always reported to the screen. So
+ * this counter never says "em alguns instantes"; it always has a figure, because its cap always does.
+ */
 export class PortRateLimited extends Error {
+  readonly digest: string;
   constructor(readonly retryAfterSeconds: number) {
     super(`the port refused this call for ${retryAfterSeconds}s (rate limited)`);
     this.name = 'PortRateLimited';
+    this.digest = ceilingRefusalDigest(String(retryAfterSeconds));
   }
 }
 
