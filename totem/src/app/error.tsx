@@ -7,9 +7,9 @@
 // It branches on the one cause the counter CAN know, and the label travels in the digest — see
 // `lib/port.ts`, where `PortRateLimited` now carries one: `totemFetch` intercepts 429 before the kit can label
 // it, so without that line a rate-limited RENDER arrives here indistinguishable from a dead kernel. The
-// predicate and the wait come from `@/lib/ceiling-digest` — the kit's vocabulary, welded in because the kit does
-// not publish the subpath to a tarball (that file's header carries the measurement). Same words the reference
-// fronts and the coffee vitrine branch on.
+// predicate and the wait come from `@forgecommerce/storefront-kit/ceiling-digest` — the kit's vocabulary, the
+// same words the reference fronts and the coffee vitrine branch on. ★ Until `pk32/p1` published that subpath it
+// was a weld here, because the kit listed it in `exports` and not in `publishConfig.exports`.
 //
 // ⛔ NO `global-error.tsx` — deliberately, and the reference does not have one either. A global boundary
 // replaces the root layout, which on this fork is where the typefaces and the demo gate are mounted: the counter
@@ -20,7 +20,7 @@
 import {
   ceilingRefusalWaitSeconds,
   isCeilingRefusalDigest,
-} from '@/lib/ceiling-digest';
+} from '@forgecommerce/storefront-kit/ceiling-digest';
 import { CounterBusy, CounterDown } from '@/components/CounterFault';
 
 export default function CounterError({

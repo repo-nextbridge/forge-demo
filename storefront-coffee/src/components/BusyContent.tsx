@@ -19,16 +19,16 @@
 //   · `digest` is the one field Next preserves on the way to a boundary, so the refusal survives production,
 //     where the message does not.
 //
-// ⇒ the LABEL arrives. ⚠️ What does NOT arrive is the kit's module for READING it: `./ceiling-digest` is in the
-// kit's `exports` and missing from its `publishConfig.exports`, so a tarball cannot import it and this fork
-// reads the digest through `@/lib/ceiling-digest` — a weld whose header carries the product file:line and whose
-// guard proves it answers exactly what the kit answers, on every run, off the vendored bytes.
+// ⇒ the LABEL arrives, and so does the kit's module for READING it. ★ It did not always: `./ceiling-digest` sat
+// in the kit's `exports` and missing from its `publishConfig.exports`, so a tarball could not import it and this
+// fork read the digest through a weld. `pk32/p1` published the subpath, so there is ONE definition again — the
+// kit's — and one wording of "not now" across the product and both forks.
 //
 // This page never spells 429 and never invents a number: `ceilingWaitSentence(null)` is the vague sentence for a
 // port that published no delay, because a promise the shop cannot keep is the same species of lie as the white
 // error page this file replaces.
 
-import { ceilingWaitSentence } from '@/lib/ceiling-digest';
+import { ceilingWaitSentence } from '@forgecommerce/storefront-kit/ceiling-digest';
 import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { ErrorActions } from './ErrorActions';

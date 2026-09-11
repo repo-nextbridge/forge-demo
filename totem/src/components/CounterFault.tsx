@@ -20,13 +20,12 @@
 // "this one is not yours to fix" (`lib/refusal-log.ts` carries the measurement behind that sentence).
 //
 // ⚠️ THE WAIT SENTENCE IS NOT THIS FILE'S. `ceilingWaitSentence` is the one wording of how long "not now" lasts
-// across the product and both forks — reached here through `@/lib/ceiling-digest`, a weld the kit's own module
-// is driven against on every run (see that file and its guard). A second wording here would be two shops. The
-// HEADLINE is the counter's own, and deliberately so.
+// across the product and both forks — reached here by importing the kit itself. A second wording here would be
+// two shops. The HEADLINE is the counter's own, and deliberately so.
 
 'use client';
 
-import { ceilingWaitSentence } from '@/lib/ceiling-digest';
+import { ceilingWaitSentence } from '@forgecommerce/storefront-kit/ceiling-digest';
 import styles from './CounterFault.module.css';
 
 export function CounterBusy({

@@ -10,7 +10,7 @@
 import {
   ceilingRefusalWaitSeconds,
   isCeilingRefusalDigest,
-} from '@/lib/ceiling-digest';
+} from '@forgecommerce/storefront-kit/ceiling-digest';
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { BusyContent } from '@/components/BusyContent';
 import { ErrorContent } from '@/components/ErrorContent';

@@ -25,10 +25,10 @@
 // all it does not forge an address to spread the bucket — that would be defeating a security cap with an
 // invented IP, and it is refused here on purpose (tech lead, 2026-09-01).
 
-import { ceilingRefusalDigest } from '@/lib/ceiling-digest';
-// ⚠️ `@/lib/ceiling-digest` AND NOT `@forgecommerce/storefront-kit/ceiling-digest`: the kit ships that module
-// and does not publish the subpath, so a fork installing it from a tarball cannot import it. The weld's header
-// carries the measurement, the product file:line and the guard that proves the two agree.
+import { ceilingRefusalDigest } from '@forgecommerce/storefront-kit/ceiling-digest';
+// ★ From the KIT, which a fork could not do until 2026-09-11: the module was in the kit's `exports` and absent
+// from its `publishConfig.exports`, so a tarball could not import it. `pk32/p1` published it and added the guard
+// that makes the next missing subpath red instead of silent.
 import { createCommandClient } from '@forgecommerce/storefront-kit/command-client';
 import { commandBaseUrl, readBaseUrl } from '@forgecommerce/storefront-kit/config';
 import { createReadClient } from '@forgecommerce/storefront-kit/read-client';
@@ -50,8 +50,7 @@ import { shopperIp } from '@forgecommerce/storefront-kit/shopper-ip';
  * "ten taps in a minute" from "the kernel is down" — and would apologise for both.
  *
  * ⇒ the LABEL is the kit's vocabulary, the interception stays ours. One meaning of "not now" across both forks
- * and the product — and `@/lib/ceiling-digest` is a weld rather than an import only because the kit does not
- * publish the subpath to a tarball, which its own header measures and its guard keeps honest.
+ * and the product — one definition, the kit's, reached by import since `pk32/p1` published the subpath.
  *
  * ⚠️ The digest carries `retryAfterSeconds`, which is the port's header when it sent one and the oracle cap's
  * declared window (60 s) when it did not — the same number this class has always reported to the screen. So

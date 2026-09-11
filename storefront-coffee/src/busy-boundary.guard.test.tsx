@@ -23,7 +23,7 @@ import { join, relative, sep } from 'node:path';
 import {
   ceilingRefusalDigest,
   ceilingWaitSentence,
-} from '@/lib/ceiling-digest';
+} from '@forgecommerce/storefront-kit/ceiling-digest';
 import { render } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -150,7 +150,7 @@ test('★★ a 429 from the port, labelled by the vendored kit, lands on the caf
   expect(
     thrown.digest,
     'the vendored kit stopped labelling a ceiling refusal, so nothing downstream of it can tell busy from ' +
-      'broken — re-vendor against a tree that carries `storefront-kit/src/ceiling-digest.ts`',
+      'broken — re-vendor against a tree whose kit labels a ceiling refusal and publishes `./ceiling-digest`',
   ).toBe('forge.read.ceiling;40');
 
   const StoreError = (await import('./app/s/[store]/(storefront)/error')).default;
