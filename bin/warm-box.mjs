@@ -275,7 +275,41 @@ const spec = (BOX.tenants ?? []).find((t) => t.id === tenant);
 if (!spec) wrongQuestion(`seed/box.json declares no tenant "${tenant}" — this step has no declaration to filter with.`);
 const declared = new Map((spec.stores ?? []).map((s) => [s.handle, s]));
 
+/**
+ * ── ★★★ pk33 · DOES THIS STORE HAVE A GATE IN FRONT OF IT, AND WHAT DOES THAT COST THE WARMING? ─────────
+ *
+ * ⛔ THE MEASUREMENT, AND IT IS A DEFECT OF THE PRODUCT RATHER THAN OF THIS BOX. The warmer runs INSIDE the
+ * vitrine (`POST /api/warm` → `apps/storefront/src/lib/warm/run.ts` in the Forge monorepo) and its fetcher
+ * sets exactly ONE header — `user-agent: <the warmer's>` (`withWarmerUserAgent`, and `runPass` beside it).
+ * It carries NO COOKIE. So on a store with a gate, every page it visits answers **the gate**: a small static
+ * interstitial, 200, from the same container. ⇒ the shop's route cache, its ISR entries and its image
+ * derivatives are NOT filled, and the image pass — which derives its list from `imageUrlsFrom(visit.body)` —
+ * finds nothing at all, because a gate screen has no `next/image` in it.
+ *
+ * ⚠️ AND THE RUN STILL COMES BACK GREEN, which is why this is said here rather than left to be noticed. Every
+ * visit is a 200 and every page "warmed"; nothing in the report can tell the gate from the shop. A step that
+ * reports success over work it did not do is the one shape this repository keeps paying for.
+ *
+ * ⛔ IT IS NOT FIXED HERE, AND IT CANNOT BE: this step drives the endpoint over HTTP and the fetches happen
+ * inside the other repository's process. The repair is one header on the warmer's own fetcher
+ * (`apps/storefront/src/lib/warm/run.ts`, the Forge monorepo), and a slice names one repo. What IS repaired is
+ * the silence.
+ */
+const GATE_TARGET = 'storefront:gate';
+const gateFillerOf = async (storeId) => {
+  try {
+    const res = await fetch(`${api}/v1/read/extensions?store=${encodeURIComponent(storeId)}`);
+    if (!res.ok) return undefined;
+    const list = await res.json();
+    if (!Array.isArray(list)) return undefined;
+    return list.find((e) => (e.hooks ?? []).some((h) => h.target === GATE_TARGET))?.extension_id ?? null;
+  } catch {
+    return undefined;
+  }
+};
+
 const toWarm = [];
+const gated = [];
 for (const row of rows) {
   // ⚠️ BOTH FACTS, AND IN THIS ORDER. "Nothing declares this store" and "the port says it has no page" are
   // independent, and folding them would let one hide the other: an undeclared store that is also off the
@@ -290,6 +324,18 @@ for (const row of rows) {
     // one that failed. The reason is the PORT's now, not a paragraph in a file that can go stale against it.
     skipped(row.handle, reason);
     continue;
+  }
+  const filler = await gateFillerOf(row.id);
+  if (filler) {
+    gated.push(row.handle);
+    noted(
+      row.handle,
+      `A GATE ("${filler}") STANDS IN FRONT OF THIS STORE, and the warmer carries no dismissal cookie — so ` +
+        'every page below warms the GATE, not the shop. The visits will all answer 200 and this report will ' +
+        'say "warm": it cannot tell the two apart. ⇒ treat this store as COLD whatever the numbers say. The ' +
+        'repair is one header on the warmer\'s own fetcher, in the product (apps/storefront/src/lib/warm/' +
+        'run.ts); step 14-bis is what proves the gate is really there.',
+    );
   }
   toWarm.push(row);
 }

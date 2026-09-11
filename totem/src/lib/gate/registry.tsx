@@ -13,13 +13,29 @@
 //
 // ⛔⛔ AND THE SENTENCE THAT USED TO FOLLOW — *"while every other one is covered"* — WAS FALSE, MEASURED
 // 2026-09-11 (pk31/§2). The coffee vitrine is the other fork, built by `bin/build-coffee.sh` outside the same
-// oven, and it has no file like this one: `storefront-coffee/src/app/s/[store]/layout.tsx:22` resolves the gate
+// oven, and it has no file like this one: `storefront-coffee/src/app/s/[store]/layout.tsx` resolves the gate
 // through `@forgecommerce/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and held empty by the
-// kit's own guard, and `storefront-coffee/src/lib/extensions/generated/registry.tsx` is the product's
-// composition (no gate in it). So that host finds the app filling the slot, resolves no implementation, and
-// degrades to "no gate" in silence — the exact failure this file was written to avoid, one fork to the left.
-// ⇒ It is NOT fixed here: the repair is the coffee fork's own registry plus its dependency and build staging,
-// which is a slice of its own. Naming it is what stops the next reader believing the old sentence.
+// kit's own guard, and `storefront-coffee/src/lib/extensions/generated/registry.tsx` is a 2026-09-01 cut of the
+// product's composition with no gate in it. So that host finds the app filling the slot and resolves no
+// implementation.
+//
+// ⚠️ WHAT FOLLOWED *THAT* HAS NOW ROTTED TOO, AND IT IS CORRECTED RATHER THAN REMOVED, because the correction
+// is the whole news. It used to end «and degrades to "no gate" in silence — the exact failure this file was
+// written to avoid». THE SILENCE IS GONE: pk32 made `storefront:gate` a STRUCTURAL target, so a front that
+// cannot draw what fills it REFUSES THE PAGE, visibly (`CompositionGapNotice`), and the café's layout mounts
+// that branch today. A shop nobody can open is a better answer than a front door nobody put up — and it is
+// still not a gate.
+//
+// ★★★ SO pk33 SPENT THE DIFFERENCE THE WAY HE ASKED (11/09: *"o fork é do cliente, 100% liberdade"*): the app
+// is installed for BOTH tenants at birth, and `seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement from
+// the café alone. The counter — this file — keeps its gate and draws it. ⇒ the café is now gateless BY
+// DECLARATION rather than by accident: the port, the admin and the screen agree, and nobody meets a refusal
+// screen where a coffee shop should be. The reason lives where a reader will trip over it: the declared
+// divergence `{ fork: 'storefront-coffee', app: 'demo-gate' }` at the top of `bin/front-app-reach.guard.mjs`,
+// printed on every run, RED the day it stops matching a finding.
+// ⇒ The real repair is still owed and still somebody else's: the café's own registry plus its dependency and
+// build staging, which needs the fork to be able to regenerate a GENERATED surface. Naming it is what stops the
+// next reader believing either of the two sentences this paragraph has already outlived.
 //
 // ⚠️ THE ENTRY IS NOT INVENTED — IT IS COPIED FROM THE APP'S OWN DECLARATION. `apps/demo-gate/package.json`
 // carries `forge.wiring.gate.interstitial` = `./block/entry` × `GateInterstitial` and `…ribbon` = the same

@@ -82,7 +82,19 @@ const DIVERGENCES = [
       'registry`, whose map is EMPTY and whose header tells a forker to weld his entry into that very file — ' +
       'which a `pack:surface` fork CANNOT do, because it installs the kit as a tarball and owns no copy of it. ' +
       '⇒ reported upstream, not patchable from here (repo boundary): ' +
-      'packages/storefront-kit/src/gate/registry.tsx:20-26 and :42-48.',
+      'packages/storefront-kit/src/gate/registry.tsx:20-26 and :42-48. ' +
+      '★★★ pk33 — AND THE CONSEQUENCE IS NO LONGER LEFT TO THE BOX. The gate app is installed at birth for ' +
+      'BOTH tenants now, and an install is TENANT-wide: it would place the gate on the café too, whose front ' +
+      'is this fork. Since pk32 a structural slot a build cannot draw REFUSES the page, so that would be a ' +
+      'coffee shop whose every page reads «Esta loja está temporariamente indisponível». ⇒ ' +
+      '`seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement from the café alone (the counter, whose ' +
+      'front is the totem, keeps its gate and draws it), `seed/box.json` declares `gate: false` + the reason ' +
+      'on that store, and `bin/prove-doors.mjs` grades the declaration against the port AND against the ' +
+      'screen. So the café is gateless BY DECLARATION rather than by accident — which is his own rule ' +
+      '(11/09: «o fork é do cliente, 100% liberdade» ⇒ the instance removes the placement). ⛔ THIS ENTRY ' +
+      'STILL STANDS, and it is what keeps the arrangement temporary: it is printed on every run and goes RED ' +
+      'the day it stops matching a finding. The day this fork can regenerate its registry, the removal, the ' +
+      '`gate: false` and this entry go together.',
   },
 ];
 
