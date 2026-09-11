@@ -56,8 +56,24 @@ const STORE_HANDLE = 'cafe';
  * `read.payment_methods` for the counter answered reference/mercadopago/zero and the totem could not
  * charge — `checkout.place_order` refused with `payment_app_unavailable` AFTER `cart.set_payment_method`
  * had answered 200. Composed is not installed, and the admin's "Available / Install" was telling the
- * truth nobody read. */
-const APPS = ['subscriptions', 'reviews', 'payment-pos'];
+ * truth nobody read.
+ *
+ * ★★★ pk33 — `demo-gate` JOINED THIS LIST, and it is HIS decision rather than a tidy-up (11/09): *"sim a
+ * portaria vem instalada no nascimento da demo"*, and *"sapatos, outlet, café, totem"* — the whole demo, the
+ * counter included. Until this slice NOTHING in the birth installed it: not `bin/seed-box.mjs`, not
+ * `seed/vitrine.mjs`, not `seed/outlet.mjs`, not this file. The app's own README said "Install the app for the
+ * tenant", i.e. a HAND GESTURE somebody had to remember, and on the bench of 11/09 nobody had — the demo had
+ * been served with its front door wide open for days with every birth green underneath.
+ *
+ * ⚠️ IT IS HERE AND NOT IN `seed/box.json` FOR THE REASON `payment-pos` IS: installing is per TENANT, this is
+ * the only file that installs for `forgecafe`, and the gesture that follows it (`dropGateOnTheCafe`) has to
+ * be able to run in the same breath — a placement removed by a different file, in a different phase, from the
+ * install that created it is two owners for one decision. */
+export const APPS = ['subscriptions', 'reviews', 'payment-pos', 'demo-gate'];
+
+/** ★★★ THE GATE'S SLOT, and the store whose fork cannot draw what fills it — see `dropGateOnTheCafe`. */
+const GATE_TARGET = 'storefront:gate';
+const GATE_APP = 'demo-gate';
 
 /** ★ THE CURATION. Five in, one out, and the one that is out is out ON PURPOSE (`seed/catalog.json` calls it
  *  a rotating lot). Written as the handles that ARE subscribable rather than as the one that is not: a
@@ -307,6 +323,7 @@ export async function seedCoffee(port) {
   log(`coffee — store ${store.handle} (${store.id}), theme "${store.theme_key ?? 'vanilla'}"`);
 
   await installApps(port);
+  await dropGateOnTheCafe(port, store);
   await markSubscribable(port, store);
   await subscriberPromotions(port, store);
   await seedPages(port, store);
@@ -328,6 +345,57 @@ async function installApps({ command, read, rows, log }) {
     }
     await command('extension.install', { extension_id: id });
     log(`coffee — app ${id} installed`);
+  }
+}
+
+// ── 1-bis. the gate this store's fork cannot draw ───────────────────────────────────────────────────────
+/**
+ * ★★★ THE INSTALL ABOVE FANS OUT TO EVERY STORE OF THIS TENANT, AND ONE OF THE TWO CANNOT DRAW WHAT IT PLACED.
+ * This removes the gate's placement from the CAFÉ and leaves the counter's alone. It is a DECLARATION, not a
+ * workaround, and the owner's own rule is what it spells (11/09): *"o fork é do cliente, 100% liberdade"* — an
+ * instance whose fork does not draw a block REMOVES the placement, so that the port, the admin and the screen
+ * all say the same thing. The pattern already exists and is in use one file away (`seed/outlet.mjs`, which
+ * removes the shelf `extension.install` drops into the PLP because he asked for a clean one).
+ *
+ * ── WHY THE CAFÉ AND NOT THE COUNTER, MEASURED ──────────────────────────────────────────────────────────
+ *
+ * `extension.install` is TENANT-wide and `seedDefaultPlacements` writes one `hook_placement` row per STORE for
+ * every storefront hook a manifest declares (`packages/core/src/commands/extension.ts`), so installing for
+ * `forgecafe` places the gate on `cafe` AND on `balcao`. The two stores have different fronts and only one of
+ * them owns a gate registry:
+ *
+ *   · `balcao` — the totem, `totem/src/lib/gate/registry.tsx`: a real entry for `demo-gate`. It DRAWS.
+ *   · `cafe`   — the forked vitrine, whose layout resolves through the KIT's registry, which is `{}` by
+ *                design and held empty by the kit's own guard. It CANNOT.
+ *
+ * ⚠️ AND SINCE pk32 "cannot" NO LONGER MEANS "serves the shop quietly". `storefront:gate` is a STRUCTURAL
+ * target, so a fork that finds the slot filled and resolves no implementation REFUSES THE PAGE, visibly
+ * (`CompositionGapNotice` — "Esta loja está temporariamente indisponível"). That refusal is right and it is
+ * the improvement that slice made; what it is NOT is a working café. Leaving the placement on this store would
+ * hand the owner a coffee shop whose every page is a refusal screen, on the bench he is about to test.
+ *
+ * ⇒ so the café is born WITHOUT the gate, ON PURPOSE and ON THE RECORD, and the reason is not this file's
+ * secret: `bin/front-app-reach.guard.mjs` carries `{ fork: 'storefront-coffee', app: 'demo-gate' }` as a
+ * DECLARED DIVERGENCE, printed on every run, and a waiver that stops matching a finding goes RED. The day the
+ * café's fork can regenerate its registry, that entry goes and this function goes with it.
+ *
+ * ⛔ IT REMOVES AND NEVER RE-PLACES. A reinstall does not put the row back either: the kernel remembers an
+ * offered default in `default_placement_seed`, so this is convergent rather than a tug of war.
+ */
+async function dropGateOnTheCafe({ command, read, rows, log }, store) {
+  const placed = rows(await read('extension_composition', { store: store.id })).filter(
+    (row) => row.extension_id === GATE_APP && row.target === GATE_TARGET,
+  );
+  if (placed.length === 0) {
+    log(`coffee — ${GATE_APP} has no ${GATE_TARGET} placement on "${store.handle}" (nothing to remove)`);
+    return;
+  }
+  for (const row of placed) {
+    await command('composition.remove', { store: store.id, placement_id: row.placement_id });
+    log(
+      `coffee — removed the ${GATE_TARGET} placement of ${GATE_APP} from "${store.handle}": this fork has no ` +
+        'gate registry, and a structural slot it cannot draw REFUSES the page. The counter keeps its gate.',
+    );
   }
 }
 

@@ -32,6 +32,19 @@ it:
 
 1. **Install the app for the tenant.** Its manifest declares the hook targeting `storefront:gate`, so
    installing it is what makes the store ask for a gate at all.
+
+   > ⚠️ **In THIS repository that is no longer a hand gesture, and the correction is the whole news.** Until
+   > 2026-09-11 this line was the only place the install was described, so it was a step somebody had to
+   > remember — and nobody did: the demo served its shops with the front door open for days while every birth
+   > reported green. The birth installs it now (`seed/vitrine.json` → `apps` for the shoe brand,
+   > `seed/coffee.mjs` → `APPS` for the coffee shop), `bin/gate-at-birth.guard.mjs` keeps that true in the test
+   > loop, and step 14-bis opens every door of every store on **both sides of the dismissal cookie** — the gate
+   > without it, the shop with it — so a box where this screen is missing is red at birth, naming the store.
+   >
+   > ⚠️ **An install is TENANT-wide** and the kernel places the block on **every store of the tenant**, which
+   > is why one of the four is deliberately taken back out: `seed/coffee.mjs::dropGateOnTheCafe` removes the
+   > placement from `cafe`, whose forked vitrine carries no gate registry and would therefore refuse the page
+   > rather than draw it. That store declares `gate: false` in `seed/box.json`, with the reason.
 2. **One import + one entry** in that storefront's `src/lib/extensions/gate-registry.tsx`:
 
 ```tsx

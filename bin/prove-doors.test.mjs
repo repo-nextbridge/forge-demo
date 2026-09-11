@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { candidates, checkout } from './release-tree.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STEP = join(ROOT, 'bin/prove-doors.mjs');
@@ -64,6 +65,42 @@ const CAFE_STORES = [
 const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: true }));
 
 /**
+ * ── ★★★ pk33 · THE GATE, AS THIS BOX WOULD ANSWER IT ────────────────────────────────────────────────────
+ *
+ * `seed/box.json` declares every store gated unless it says `gate: false`, and exactly one does: `cafe`,
+ * whose forked vitrine owns no gate registry (the reason is written out in that file and in
+ * `seed/coffee.mjs`). So a healthy box answers `demo-gate` on `read.extensions` for every store but that one.
+ *
+ * ★ THE MARKS ARE THE REAL ONES. `data-testid="demo-gate"` is what `apps/demo-gate/block/gate.tsx` renders and
+ * `apps/demo-gate/block/marks.test.tsx` pins to the manifest id; `data-testid="composition-gap"` is the
+ * PRODUCT's visible refusal of a structural slot a build cannot draw. A fixture that invented its own strings
+ * would grade the probe against a box no deployable can be.
+ */
+const GATE_APP = 'demo-gate';
+const GATE_TARGET = 'storefront:gate';
+const DEFAULT_GATES = (handle) => (handle === 'cafe' ? null : GATE_APP);
+
+const gateBody = (app) =>
+  `<html><body><div data-testid="${app}"><h1>Loja demo.</h1></div></body></html>`;
+const gapBody = (app) =>
+  `<html><body><div data-testid="composition-gap" data-extension="${app}"></div></body></html>`;
+/**
+ * The shop. DIFFERENT per door on purpose: two doors answering the same bytes would hide a probe that
+ * compared the wrong pair.
+ *
+ * ★★★ AND IT CARRIES THE RIBBON, WHICH IS THE POINT OF THIS FUNCTION AND NOT DECORATION. A store whose gate
+ * is DISMISSED renders the gate app's persistent bar at the foot of the page, and its mark is
+ * `data-testid="demo-gate-ribbon"` — the interstitial's mark plus a suffix. ⛔ A probe that looked for
+ * `data-testid="demo-gate` without the CLOSING QUOTE would match it, conclude the gate is unescapable, and
+ * redden every door of a perfectly healthy box. (This house has paid for that class of bug twice this week:
+ * `/jq/` matched inside a temp path, `/demo/` matched `demorou`.) Every green below is therefore also a
+ * standing proof that the match is exact.
+ */
+const shopBody = (handle, path) =>
+  `<html><body><main data-testid="shop">${handle}${path || '/'}</main>` +
+  `<form data-testid="${GATE_APP}-ribbon"></form></body></html>`;
+
+/**
  * A box that answers.
  *
  * `shut` names the door paths this box will 404 instead of serving — that is the defect being reproduced:
@@ -84,6 +121,12 @@ function fakeBox({
   shutFor = {},
   stillServes = [],
   pageServedBy = {},
+  gates = DEFAULT_GATES,
+  ignoresCookie = false,
+  neverLetsGo = false,
+  refusesGate = [],
+  leaksGate = [],
+  extensionsRefuses = false,
 } = {}) {
   /**
    * ★★ pk22 — THE FAKE VITRINE IS NOW HONEST ABOUT A STORE WITH NO PUBLIC PAGE, and without this the whole
@@ -115,6 +158,28 @@ function fakeBox({
         .end(JSON.stringify({ actor_id: 'act_test', tenant_id: credentialTenant, scopes: [] }));
       return;
     }
+    // ★★★ pk33 — THE ANONYMOUS READ THE STORE LAYOUT ITSELF MAKES. No credential: a visitor's browser carries
+    // none, and the probe asks exactly the question the front asks or it is grading a different fact.
+    if (url.pathname === '/v1/read/extensions') {
+      // A port that answers 5xx to the read the store layout makes: the front cannot resolve a gate either,
+      // so this is a box where nobody knows whether there is a front door.
+      if (extensionsRefuses) {
+        res.writeHead(503, { 'content-type': 'application/json' }).end('{"error":{"kind":"unavailable"}}');
+        return;
+      }
+      const store = idOf.get(url.searchParams.get('store') ?? '');
+      const app = store ? gates(store.handle) : null;
+      res
+        .writeHead(200, { 'content-type': 'application/json' })
+        .end(
+          JSON.stringify(
+            app
+              ? [{ extension_id: app, hooks: [{ component: 'gate', target: GATE_TARGET, position: 0 }] }]
+              : [],
+          ),
+        );
+      return;
+    }
     if (url.pathname === '/v1/read/internal/stores') {
       if (req.headers.authorization !== `Bearer ${TOKEN}`) {
         res.writeHead(401).end('{}');
@@ -131,6 +196,9 @@ function fakeBox({
     const path = m[2] ?? '';
     const store = idOf.get(m[1]);
     // The vitrine's own refusal, from the vitrine, for a store the port says has no public page.
+    // ⚠️ BEFORE THE GATE, AND THAT ORDER IS THE DEPLOYABLE'S: both the reference vitrine and the café's fork
+    // mount `requirePublicStorefront` in the store layout ABOVE the gate branch, so a store with no public
+    // page is refused before any gate could render — and the refusal is the same with or without the cookie.
     if (path === '' && offTheStreet(m[1]) && !stillServes.includes(store?.handle)) {
       res
         .writeHead(404, { 'x-forge-served-by': pageServedBy[store?.handle] ?? 'storefront' })
@@ -148,11 +216,37 @@ function fakeBox({
       return;
     }
     const by = mislead.includes(path) ? 'storefront' : path === '' ? 'storefront' : 'checkout';
-    if (path === '/account') {
-      res.writeHead(307, { location: `/s/${m[1]}/account/login`, 'x-forge-served-by': by }).end('');
+    // ── ★★★ pk33 · THE GATE, AND THE SHAPE IS THE ONE MEASURED ON THE LIVE DEMO (2026-09-11) ──────────────
+    //
+    // With no dismissal cookie the interstitial COVERS the route — including `/account`, which answers 200
+    // with the gate instead of its 307, because the page component (and its `redirect()`) never renders. With
+    // the cookie the door answers exactly what it always did. Both facts were curled against
+    // https://demo.forgecommerce.pro before this fixture was written; see `bin/prove-doors.mjs`'s header.
+    const app = gates(store?.handle);
+    const dismissed = /(^|;\s*)forge_gate_dismissed=1(;|$)/.test(req.headers.cookie ?? '');
+    // A gate SCREEN on a store the port says nobody gates: a front pinned to an image whose registry still
+    // welds the entry, or a placement removed in the data and cached in the front. Nothing about the
+    // declaration can see it — only the body can.
+    if (!app && leaksGate.includes(store?.handle)) {
+      res.writeHead(200, { 'x-forge-served-by': by }).end(gateBody(GATE_APP));
       return;
     }
-    res.writeHead(200, { 'x-forge-served-by': by }).end('');
+    if (app && refusesGate.includes(store?.handle)) {
+      // The front cannot DRAW the gate the port declares: the structural-gap refusal, on every door.
+      res.writeHead(200, { 'x-forge-served-by': by }).end(gapBody(app));
+      return;
+    }
+    if (app && (!dismissed || neverLetsGo) && !ignoresCookie) {
+      res.writeHead(200, { 'x-forge-served-by': by }).end(gateBody(app));
+      return;
+    }
+    if (path === '/account') {
+      res
+        .writeHead(307, { location: `/s/${m[1]}/account/login`, 'x-forge-served-by': by })
+        .end(shopBody(store?.handle ?? '?', path));
+      return;
+    }
+    res.writeHead(200, { 'x-forge-served-by': by }).end(shopBody(store?.handle ?? '?', path));
   });
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -454,4 +548,213 @@ test('★★★ SABOTAGE, THE PURE VACUUM: a run that graded ZERO doors is not a
   assert.match(out, /NO DOOR OF forgecafe WAS OPENED/);
   assert.match(out, /proves nothing about this tenant/);
   assert.doesNotMatch(out, /VERDICT: every door of \w+ answers as it must/);
+});
+
+// ────────────────────────────────────────────────────────────────────────────────────────────────────────
+// ★★★ pk33 · THE GATE — BOTH SIDES OF THE DISMISSAL COOKIE
+//
+// ⛔ THE SILENCE THIS ENDS, MEASURED 2026-09-11: `apps/demo-gate` was installed by NO step of the birth, and
+// had not been for days, with every birth green. Nothing anywhere verified that the gate APPEARS — this step
+// graded the status code and the container, and both are identical whether a visitor meets the "Loja demo."
+// screen or walks straight into the shop.
+//
+// ★ EVERY TEST BELOW GRADES A BODY, never a status. That is not a preference: the gate answers 200 from the
+// same container as the shop, so a status code cannot see the difference at all.
+// ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+test('★★★ the gate is proved on BOTH sides — the ✓ line says so, door by door', async () => {
+  const box = await fakeBox();
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 0, out);
+  // Not "somewhere in the report": the verdict has to be readable per door, or a reader cannot tell which
+  // doors were proved and which were merely opened.
+  for (const door of ['/', '/checkout', '/account', '/account/login']) {
+    const label = `forge${door}`;
+    const line = out.split('\n').find((l) => l.includes(`✓ ${label} `));
+    assert.ok(line, `no ✓ line for ${label}:\n${out}`);
+    assert.match(line, /gate ✓ \(demo-gate without the cookie, the shop with it\)/, line);
+  }
+  assert.match(out, /door\(s\) proved on BOTH sides of `forge_gate_dismissed`/, out);
+});
+
+test('★★★ SABOTAGE — THE GATE IS NOT INSTALLED ⇒ red naming every store, which is the defect that ran for days', async () => {
+  // Exactly the box of 2026-09-11: the app composed into the image, filling nothing, and four shops open to
+  // the street. Every other step on this box was green through all of it.
+  const box = await fakeBox({ gates: () => null });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  for (const handle of ['forge', 'outlet']) {
+    const line = out.split('\n').find((l) => l.includes(`✗ ${handle} `) && l.includes('NO APP FILLS'));
+    assert.ok(line, `the store with no front door is not named: ${handle}\n${out}`);
+    assert.match(line, /storefront:gate/, `the red does not name the slot: ${line}`);
+    assert.match(line, /seed\/box\.json/, `the red does not name the declaration it disagrees with: ${line}`);
+  }
+  assert.doesNotMatch(out, /VERDICT: every door of forgeco answers as it must/);
+});
+
+test('★★★ SABOTAGE — THE BOX IGNORES THE COOKIE (the shop on both sides) ⇒ red: a visitor meets no gate', async () => {
+  // ⚠️ THIS IS ALSO THE SHAPE OF A PROBE THAT SENT THE DISMISSAL COOKIE ON BOTH SIDES. Graded from the
+  // outside the two are the same box: both sides answer the shop. If this went green, the whole two-sided
+  // proof would be one side twice.
+  const box = await fakeBox({ ignoresCookie: true });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
+  assert.ok(line, `the door that shows no gate is not named:\n${out}`);
+  assert.match(line, /NO GATE ON THIS DOOR/, line);
+  assert.match(line, /forge_gate_dismissed/, `the red does not name the cookie it sent: ${line}`);
+});
+
+test('★★★ SABOTAGE — THE GATE WILL NOT LET GO (the gate on both sides) ⇒ red: the shop is unreachable', async () => {
+  // The mirror, and the reason rule 1 alone is not enough: a probe that only demanded the gate would sign a
+  // green over a demo nobody can get INTO.
+  const box = await fakeBox({ neverLetsGo: true });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
+  assert.ok(line, `the door that never opens is not named:\n${out}`);
+  assert.match(line, /THE GATE WILL NOT LET GO/, line);
+});
+
+test('★★ SABOTAGE — the front CANNOT DRAW the declared gate ⇒ its own red, not "no gate"', async () => {
+  // A different failure and it needs a different sentence: the port declares a gate, the front has no
+  // implementation, and `storefront:gate` is STRUCTURAL, so the page is refused rather than opened
+  // (`CompositionGapNotice`). Telling an operator "no gate on this door" here would send them to fix the
+  // seed, which is the one thing that is right.
+  const box = await fakeBox({ refusesGate: ['forge'] });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
+  assert.ok(line, `the refused door is not named:\n${out}`);
+  assert.match(line, /CANNOT DRAW the gate the port declares/, line);
+  assert.doesNotMatch(line, /NO GATE ON THIS DOOR/, `two different defects must not share one sentence: ${line}`);
+  // …and the store whose front is fine is untouched in the same run.
+  assert.match(out, /✓ outlet\/ .* gate ✓/, out);
+});
+
+test('★★★ the café is gateless BY DECLARATION — a green, announced, with the reason from the file', async () => {
+  // His decision is that the whole demo is gated; this store is the ONE exception, and the exception is in
+  // `seed/box.json` where a reader meets it, not buried in a seed. A green that says nothing about it would
+  // be indistinguishable from a gate that went missing.
+  const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 0, out);
+  const line = out.split('\n').find((l) => l.includes('ⓘ cafe ') && l.includes('no gate'));
+  assert.ok(line, `the gateless store is not announced:\n${out}`);
+  assert.match(line, /BY DECLARATION/, line);
+  assert.match(line, /storefront-coffee/, `the announcement does not carry the file's own reason: ${line}`);
+  // …and the COUNTER, whose front is the totem, keeps its gate on the three doors it still serves.
+  assert.match(out, /✓ balcao\/account\/login .* gate ✓ \(demo-gate/, out);
+  // ⚠️ AND ITS VITRINE PAGE IS EXEMPT, NOT GATED: `requirePublicStorefront` refuses above the slot.
+  assert.match(out, /⊘ balcao\/ .* gate n\/a \(refused above the slot\)/, out);
+
+  // ★ THE DECLARATION IS REALLY IN THE FILE — a test that only read the probe's output would stay green if
+  // the key were dropped and the default (gated) silently took over.
+  const declared = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'))
+    .tenants.find((t) => t.id === CAFE_TENANT)
+    .stores.find((s) => s.handle === 'cafe');
+  assert.equal(declared.gate, false, 'seed/box.json no longer declares the café gateless.');
+  assert.match(declared._gate_why ?? '', /storefront-coffee/, 'the exception carries no written reason.');
+});
+
+test('★★ SABOTAGE — the café is declared gateless and the PORT gates it anyway ⇒ red', async () => {
+  // The removal never ran, or a reinstall put the placement back. The screen would be the structural-gap
+  // refusal on every page of the coffee shop, and the declaration is the only thing that knows better.
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: CAFE_STORES,
+    gates: () => GATE_APP,
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ cafe ') && l.includes('gate: false'));
+  assert.ok(line, `the disagreement between the file and the port is not named:\n${out}`);
+  assert.match(line, /dropGateOnTheCafe/, `the red does not name who was supposed to remove it: ${line}`);
+});
+
+test('★★ SABOTAGE — a gate SCREEN reaches a store the port says nobody gates ⇒ red (the negative control)', async () => {
+  // ⚠️ THE CONTROL IS DERIVED, not typed: the mark it looks for is every gate this TENANT really carries,
+  // learned from the port in the same run (here, the counter's). Nothing in the declaration can see this —
+  // the port says "no gate on the café" and the café serves one anyway, which is a front pinned to an image
+  // that still welds the entry.
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: CAFE_STORES,
+    leaksGate: ['cafe'],
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ cafe/ '));
+  assert.ok(line, `the gate that leaked onto a gateless store is not named:\n${out}`);
+  assert.match(line, /declared gateless and a gate screen/, line);
+  assert.match(line, /demo-gate/, `the red does not name the screen it found: ${line}`);
+});
+
+test('★★ the port refusing `read.extensions` is a RED that names the store, never a silent abstention', async () => {
+  // Every gate assertion hangs off this one read. A run that could not make it would otherwise print ✓ lines
+  // for doors it graded on half the question — the exact shape of "green because it did not look".
+  const box = await fakeBox({ extensionsRefuses: true });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  assert.match(out, /✗ forge .*read\.extensions could not be asked anonymously/, out);
+});
+
+// ── ★★ THE COOKIE NAME IS THE KIT'S, AND IT IS DERIVED FROM THE KIT ─────────────────────────────────────
+//
+// `bin/prove-doors.mjs` writes `forge_gate_dismissed` out as a literal — `bin/` runs on bare node and cannot
+// import from a package the forks install as a tarball. A literal that nothing compares is a guess with a
+// shelf life: the probe would keep sending a cookie nothing reads, BOTH sides would answer the gate, and rule
+// 2 would go red naming the wrong thing. So the string is compared against the kit's own frozen constant.
+test('★★ the dismissal cookie this probe sends IS the kit\'s frozen name', (t) => {
+  const base = candidates().map((c) => checkout(c)).find(Boolean);
+  if (!base) {
+    t.skip(
+      'no Forge checkout on this machine — set FORGE_MONOREPO=<a forge checkout>. Without it the cookie name ' +
+        'in bin/prove-doors.mjs is compared against nothing, which is how a frozen constant drifts in silence.',
+    );
+    return;
+  }
+  const kit = readFileSync(join(base.path, 'packages/storefront-kit/src/cookies.ts'), 'utf8');
+  const declared = kit.match(/GATE_DISMISSED_COOKIE\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(
+    declared,
+    `packages/storefront-kit/src/cookies.ts declares no GATE_DISMISSED_COOKIE at ${base.path}. This guard ` +
+      'derives its whole answer from that line; without it there is nothing to compare and a green would mean ' +
+      'nothing.',
+  );
+  const mine = readFileSync(STEP, 'utf8').match(/GATE_DISMISSED_COOKIE\s*=\s*'([^']+)'/)?.[1];
+  assert.equal(
+    mine,
+    declared,
+    `bin/prove-doors.mjs sends \`${mine}\` and the kit sets \`${declared}\`. A probe whose cookie nothing ` +
+      'reads grades the gate on both sides and calls the gate unescapable.',
+  );
+});
+
+test('★★★ the RIBBON is not the GATE — the match is exact, and a healthy box stays green because of it', async () => {
+  // ⛔ THE SUBSTRING TRAP, ASSERTED RATHER THAN REASONED ABOUT. `demo-gate-ribbon` starts with `demo-gate`,
+  // and the two marks are the OPPOSITE states: the interstitial means "this visitor has not been through",
+  // the ribbon means "this visitor has". A probe matching the id without its closing quote would read every
+  // dismissed page as the gate refusing to let go.
+  const box = await fakeBox();
+  // ⛔ ANTI-VACUUM FIRST: the fixture must really be serving the ribbon, or the green below means nothing.
+  const dismissed = await fetch(`${box.api}/s/sto_FORGE/checkout`, {
+    headers: { cookie: 'forge_gate_dismissed=1' },
+  }).then((r) => r.text());
+  assert.match(dismissed, /data-testid="demo-gate-ribbon"/, `the fixture serves no ribbon:\n${dismissed}`);
+  assert.doesNotMatch(dismissed, /data-testid="demo-gate"/, 'the dismissed page must not carry the gate mark');
+
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 0, out);
+  assert.doesNotMatch(out, /THE GATE WILL NOT LET GO/, out);
 });

@@ -25,6 +25,7 @@ import { useEffect, useState } from 'react';
 import { ARCH, GATE_LANG_COOKIE, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import { ArchScreen, ArchSwitch } from './arch';
 import styles from './gate.module.css';
+import { GATE_MARK } from './marks';
 
 const ArrowIcon = () => (
   <svg
@@ -277,7 +278,9 @@ export function GateBlock({ siteUrl, adminUrl, initialLang, dismiss }: GateBlock
   if (view === 'arch') return <ArchScreen lang={lang} onClose={() => show('gate')} />;
 
   return (
-    <div className={styles.backdrop}>
+    // ⚠️ `data-testid` IS LOAD-BEARING HERE, not test scaffolding: it is the only handle a probe on the other
+    // side of the wire has for "the visitor met the gate" (the class names are build hashes). See `./marks`.
+    <div className={styles.backdrop} data-testid={GATE_MARK}>
       <div className={styles.shell}>
         <div className={styles.frame}>
           <div className={styles.header}>

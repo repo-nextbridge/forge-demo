@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Lang } from '../i18n';
 import { STRINGS } from '../i18n';
+import { GATE_RIBBON_MARK } from './marks';
 import styles from './ribbon.module.css';
 
 export function GateRibbon({ lang, reopen }: { lang: Lang; reopen: () => Promise<void> }) {
@@ -49,6 +50,10 @@ export function GateRibbon({ lang, reopen }: { lang: Lang; reopen: () => Promise
       ref={ref}
       action={reopen}
       className={styles.ribbon}
+      // ⚠️ The other half of `./marks`: this is what says "the visitor is through the gate and the gate is
+      // still installed". A probe that only looked for the absence of the interstitial could not tell that
+      // apart from a store with no gate at all.
+      data-testid={GATE_RIBBON_MARK}
       data-armed={armed || undefined}
       data-revealed={revealed || undefined}
     >

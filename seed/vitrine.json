@@ -14,7 +14,7 @@
   "store": "forge",
   "dataset": "demo",
 
-  "apps": ["banners"],
+  "apps": ["banners", "demo-gate"],
   "_apps_why": [
     "The apps this window needs that a fresh box would not already carry. `shelves`, `reviews`,",
     "`subscriptions` and `banners` itself are installed on this bench already (measured); the entry stays",
@@ -23,7 +23,23 @@
     "",
     "★ `banners` IS SAFE TO INSTALL ON A SHARED TENANT AND `recommendations` IS NOT — see `_apps_held`. The",
     "difference is `manifest.contact.hooks`: `banners` declares NONE, so installing it places nothing anywhere",
-    "and every tile in this window is a deliberate placement."
+    "and every tile in this window is a deliberate placement.",
+    "",
+    "★★★ pk33 — `demo-gate` IS HERE, AND THE TENANT-WIDE FAN-OUT IS WHY IT IS WANTED RATHER THAN TOLERATED.",
+    "His decision (11/09): *\"sim a portaria vem instalada no nascimento da demo\"*, and the demo is",
+    "*\"sapatos, outlet, café, totem\"* — so BOTH stores of this tenant get the gate, which is exactly what",
+    "installing it here does: it declares ONE storefront hook (`storefront:gate`) and `seedDefaultPlacements`",
+    "writes a row per store. `forge` and `outlet` are both served by the reference vitrine and the checkout we",
+    "host, and both images COMPOSE this app (`composition.json` → `instanceApps`), so both can draw it.",
+    "",
+    "⚠️ THIS IS THE ONLY DOOR INTO `forgeco`, AND THAT IS NOT A PREFERENCE. `seed/box.json` REFUSES an `apps`",
+    "list on a tenant that declares `dataset: true` (`bin/seed-box.mjs::assertOneOwner`) — the dataset one-shot",
+    "owns that gesture there — so the shoe brand's installs have to come from a window seed, and this is it.",
+    "",
+    "⛔ AND UNTIL pk33 NOTHING IN THE BIRTH INSTALLED IT AT ALL. The app's README said \"Install the app for the",
+    "tenant\": a hand gesture somebody had to remember, which on the bench of 11/09 nobody had. The demo served",
+    "its front door open for days with every birth green underneath — and it could, because nothing anywhere",
+    "verified that the gate APPEARS. Step 14-bis does now, on both sides of the dismissal cookie."
   ],
 
   "_apps_held": {

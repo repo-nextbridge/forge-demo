@@ -162,6 +162,8 @@ async function fakeBox({
   credentialTenant = 'forgecafe',
   whoamiStatus = 200,
   plan = { pages: 400, images: 20_000, msPerUrl: 100 },
+  /** ★ pk33 — store handle → the extension filling `storefront:gate`. `{}` is a box with no gate anywhere. */
+  gates = {},
 } = {}) {
   const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
@@ -190,6 +192,15 @@ async function fakeBox({
     if (url.pathname === '/v1/read/internal/stores') {
       if (storesStatus !== 200) return json(storesStatus, { error: { kind: 'forbidden' } });
       return json(200, stores);
+    }
+    // ★ pk33 — the ANONYMOUS read the store layout makes, which is where a gate is visible at all.
+    if (url.pathname === '/v1/read/extensions') {
+      const store = stores.find((row) => row.id === url.searchParams.get('store'));
+      const app = store ? gates[store.handle] : undefined;
+      return json(
+        200,
+        app ? [{ extension_id: app, hooks: [{ component: 'gate', target: 'storefront:gate', position: 0 }] }] : [],
+      );
     }
     if (url.pathname === '/api/warm') {
       if (warm === 'absent') return json(404, { error: 'not found' });
@@ -1028,6 +1039,49 @@ test('★★ a whoami the face refuses is THIS STEP\'s question failing — exit
     const { stdout, status } = await runStep({ box });
     assert.equal(status, 2, stdout);
     assert.match(stdout, /read\.internal\.whoami answered 401/, `the refusal does not name the read:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ pk33 · A GATED STORE IS WARMED INTO THE GATE, AND THE REPORT SAYS SO ─────────────────────────────
+//
+// ⛔ MEASURED IN THE PRODUCT: the warmer runs inside the vitrine and its fetcher sets one header —
+// `user-agent` (`apps/storefront/src/lib/warm/run.ts`, `withWarmerUserAgent` + `runPass`). No cookie. So on a
+// store with a gate every visit answers the interstitial: 200, from the same container, with no `next/image`
+// in it — the shop's caches stay cold and the image pass finds nothing. ⚠️ AND THE RUN STILL SAYS «warm»,
+// because nothing in it can tell the two bodies apart. That is the disease this house chases: a signal that
+// does not know it does not know.
+//
+// ⇒ the repair is one header, in the OTHER repository, and a slice names one repo. What is repaired here is
+// the SILENCE, and these two tests are what keep it repaired.
+
+test('★★★ a store with a GATE in front of it is named, and the report says the warming warmed the gate', async () => {
+  const box = await fakeBox({ warm: 'ok', gates: { cafe: 'demo-gate' } });
+  try {
+    const { stdout, status } = await runStep({ box });
+    // ⚠️ A REPORT AND NOT A RED, deliberately: warming has never graded this birth (see this file's header),
+    // and turning a product defect into a failed birth would teach people to skip the step.
+    assert.equal(status, 0, stdout);
+    const line = stdout.split('\n').find((l) => l.includes('cafe') && l.includes('A GATE'));
+    assert.ok(line, `the gated store is not named:\n${stdout}`);
+    assert.match(line, /demo-gate/, `the notice does not name the gate the port declared: ${line}`);
+    assert.match(line, /no dismissal cookie/, `the notice does not say WHY it warms the wrong thing: ${line}`);
+    assert.match(line, /COLD/, `the notice does not tell the operator what to believe: ${line}`);
+    assert.match(line, /warm\/run\.ts/, `the notice does not name where the repair lives: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ ANTI-VACUUM — a box with NO gate says nothing about gates, so the notice means something', async () => {
+  // The other half, and it is the half that makes the first one a measurement: this notice must come from the
+  // port's answer, never from the step having learned to print a warning.
+  const box = await fakeBox({ warm: 'ok' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, stdout);
+    assert.doesNotMatch(stdout, /A GATE \(/, `a box with no gate anywhere still warns about one:\n${stdout}`);
   } finally {
     box.close();
   }

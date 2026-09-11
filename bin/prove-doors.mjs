@@ -50,6 +50,45 @@
 // and it refuses to call a run that graded ZERO doors a green, because that is the shape all of those
 // failures decay into.
 //
+// ★★★ pk33 — AND IT NOW GRADES **BOTH SIDES OF THE GATE'S COOKIE**, which is the half nobody had.
+//
+// ⛔ THE SILENCE, MEASURED 2026-09-11. `apps/demo-gate` — the demo's front door, the "Loja demo." screen a
+// visitor must meet before the shop — was installed by NO step of the birth: not `bin/seed-box.mjs`, not
+// `seed/vitrine.mjs`, not `seed/coffee.mjs`, not `seed/outlet.mjs`. The app's own README said "Install the app
+// for the tenant", i.e. a hand gesture somebody had to remember, and on the bench nobody had. It had been
+// missing for DAYS with every birth green underneath — because NOTHING ANYWHERE VERIFIED THAT THE GATE
+// APPEARS. This step opened all sixteen doors and graded the status code and the container: both are identical
+// whether the visitor meets the gate or walks straight into the shop, because the gate answers 200 and so does
+// the shop.
+//
+// ★ SO EVERY DOOR IS NOW OPENED TWICE — once WITHOUT the dismissal cookie and once WITH it — and the two
+// answers are graded against each other:
+//   · without the cookie ⇒ the body must BE the gate (`data-testid="<the extension the port names>"`);
+//   · with the cookie    ⇒ the body must be the SHOP, and today's status/front rules are unchanged;
+//   · and the two bodies must DIFFER, asserted directly, because a probe that accepts any body on both sides
+//     proves only that the process is alive.
+// ⇒ the two ways this could go quietly blind are therefore both red by construction: a probe that sent the
+// cookie on both sides fails the first rule, one that sent it on neither fails the second.
+//
+// ★ WHAT IS EXPECTED IS DERIVED FROM HIS DECISION, NOT FROM A LIST: **every store has a gate** (11/09,
+// «sapatos, outlet, café, totem»), and a store that must NOT is the EXCEPTION and declares itself in
+// `seed/box.json` with `gate: false` + the reason. Today there is exactly one — `cafe`, whose forked vitrine
+// owns no gate registry and therefore cannot draw one (see that file, and `seed/coffee.mjs`). The declaration
+// is graded against the PORT (`read.extensions`, the same anonymous read the front itself makes) and against
+// the SCREEN, so uninstalling the app reddens this step by name instead of vanishing.
+//
+// ⚠️ THE VITRINE PAGE OF A STORE THAT IS OFF THE STREET IS EXEMPT, and it is measured rather than assumed:
+// both the reference vitrine and the café's fork mount `requirePublicStorefront` in the store layout ABOVE the
+// gate branch, so the 404 happens before any gate could render. A ⊘ door is graded as it always was.
+//
+// ★★ MEASURED ON https://demo.forgecommerce.pro (2026-09-11) BEFORE ANY OF THIS WAS WRITTEN, because the one
+// thing that could have sunk the design is whether a gate really covers a door that REDIRECTS:
+//     /account          no cookie → 200 (the gate)      with cookie → 307 (the login)
+//     /account/login    no cookie → 200 (the gate)      with cookie → 200 (the form)
+//     /checkout   /     no cookie → 200 (the gate)      with cookie → 200 (the shop)
+// The gate COVERS the route rather than redirecting to home, so the page component — and its `redirect()` —
+// never runs. That is what lets the no-cookie side demand the gate on all four doors alike.
+//
 // ★★ pk22 — AND IT NO LONGER SKIPS A WHOLE STORE FOR THE SAKE OF ONE DOOR. `storefront_enabled: false` says
 // the reference VITRINE has no page for the store; it says nothing about the checkout, the account or the
 // LOGIN, which are a different deployable (`apps/checkout`, which mounts `requireStore` and never
@@ -162,6 +201,59 @@ if (credentialTenant !== tenant) {
   );
 }
 
+/**
+ * ── ★★★ pk33 · THE GATE HALF — THREE SOURCES, AND NONE OF THEM IS A LIST TYPED HERE ──────────────────────
+ *
+ * The DECLARATION is `seed/box.json` (every store is gated unless it says `gate: false`), the PORT is
+ * `read.extensions` — the very read the store layout makes — and the SCREEN is the body of each door. The
+ * three are asked against each other, which is the same shape the `status` cross-check below already uses.
+ */
+const GATE_TARGET = 'storefront:gate';
+
+/**
+ * ⚠️ THE COOKIE NAME IS THE KIT'S AND IT IS FROZEN — `packages/storefront-kit/src/cookies.ts` in the Forge
+ * monorepo, held by `cookies.contract.test.ts` there. It is written out here because this repository has no
+ * way to import from the kit at runtime (the forks install it as a tarball; `bin/` runs on bare node), and
+ * `bin/prove-doors.test.mjs` DERIVES it from a Forge checkout and goes red if the two ever part company.
+ * ⛔ Never retype it from memory: the probe would send a cookie nothing reads and grade the gate on both
+ * sides, which is the exact vacuum this slice exists to close.
+ */
+const GATE_DISMISSED_COOKIE = 'forge_gate_dismissed';
+const GATE_DISMISSED_VALUE = '1';
+
+/**
+ * The mark of a rendered screen, in the markup. ★ THE GATE'S IS BUILT FROM THE EXTENSION ID THE PORT NAMED —
+ * nothing here knows the demo's app by name — and the app asserts the other end against its own manifest
+ * (`apps/demo-gate/block/marks.test.tsx`). The closing quote is load-bearing: without it `demo-gate` would
+ * also match `demo-gate-ribbon`, and the two are the opposite states.
+ */
+const mark = (id) => `data-testid="${id}"`;
+/** The PRODUCT's visible refusal of a structural slot this build cannot draw
+ *  (`packages/storefront-kit/src/extensions/CompositionGapNotice.tsx`). A different failure, so a different ✗. */
+const GAP_MARK = mark('composition-gap');
+
+/**
+ * Which extension fills `storefront:gate` for this store, ANONYMOUSLY — the same face, the same question and
+ * the same answer the store layout resolves the gate from. Asking the operator face instead would grade a
+ * different fact from the one a visitor's browser acts on.
+ *
+ * `null` = the port names nobody. `undefined` = this run could not ask, which is never a green (the caller
+ * turns it into a ✗ that names the store).
+ */
+const gateFillerOf = async (storeId) => {
+  let res;
+  try {
+    res = await fetch(`${api}/v1/read/extensions?store=${encodeURIComponent(storeId)}`);
+  } catch {
+    return undefined;
+  }
+  if (!res.ok) return undefined;
+  const list = await res.json().catch(() => undefined);
+  if (!Array.isArray(list)) return undefined;
+  const filling = list.find((ext) => (ext.hooks ?? []).some((h) => h.target === GATE_TARGET));
+  return filling?.extension_id ?? null;
+};
+
 // ── 3 · WHICH STORES — and the port is asked WITHOUT `x-forge-tenant`, deliberately. This face ignores that
 // header (see above), and sending it would suggest to the next reader that the tenant travels in the
 // question. It does not: it travelled in the token, and question 2 is what proved which one.
@@ -218,6 +310,42 @@ say();
 
 /** Doors actually opened by this run. A verdict over zero of them is not a verdict — see the vacuum below. */
 let opened = 0;
+/** ★ pk33 — doors whose TWO sides of the dismissal cookie were compared. Its own vacuum, below. */
+let gatesGraded = 0;
+
+/**
+ * ── ★ WHICH STORE HAS WHICH GATE, ASKED FOR ALL OF THEM BEFORE THE FIRST DOOR IS OPENED ─────────────────
+ *
+ * It is a pre-pass and not a line inside the loop, for one reason: a store declared GATELESS is graded
+ * against the gates this tenant really carries (the negative control below), and that set is only complete
+ * once every store has been asked. Derived from the box, never typed.
+ *
+ * `undefined` = could not ask (never a green — the loop turns it into a ✗ naming the store).
+ */
+const fillerOf = new Map();
+for (const row of rows) fillerOf.set(row.id, await gateFillerOf(row.id));
+/** Every extension that really fills the gate slot somewhere on this tenant. */
+const gatesSeen = new Set([...fillerOf.values()].filter((id) => typeof id === 'string'));
+
+/**
+ * One door, opened once. `withCookie` is the whole experiment: the SAME request, the same manual redirect
+ * handling, differing only in the kit's dismissal cookie — so any difference in the answer is the gate's.
+ * ⚠️ The BODY is read, and it has to be: the gate and the shop both answer 200 from the same container, and
+ * a status code cannot tell a front door from a shop floor.
+ */
+const openDoor = async (url, withCookie) => {
+  const res = await fetch(url, {
+    redirect: 'manual',
+    ...(withCookie
+      ? { headers: { cookie: `${GATE_DISMISSED_COOKIE}=${GATE_DISMISSED_VALUE}` } }
+      : {}),
+  });
+  return {
+    code: res.status,
+    servedBy: res.headers.get('x-forge-served-by') ?? '',
+    body: await res.text().catch(() => ''),
+  };
+};
 
 for (const row of rows) {
   // Probed anyway — a store the box holds is a store a visitor can reach — and NAMED, because a store no
@@ -236,6 +364,59 @@ for (const row of rows) {
   // and must keep answering, or the person who paid at the counter cannot open the order they just paid for.
   const { servable, reason } = servability(row);
   const base = `${api}/s/${row.id}`;
+
+  // ── ★★★ pk33 · DOES THIS STORE HAVE A FRONT DOOR, AND DOES EVERYBODY AGREE? ─────────────────────────────
+  //
+  // ★ THE DEFAULT IS **YES**, AND IT IS HIS DECISION RATHER THAN A CONVENIENCE (11/09): the demo is «sapatos,
+  // outlet, café, totem» and all of it is gated. So nothing here lists the gated stores — a list would go
+  // quietly stale the day a fifth store is born. What is listed is the EXCEPTION, in `seed/box.json`, with the
+  // reason beside it, exactly as `status` is.
+  const declaredGate = declared.get(row.handle);
+  const wantsGate = declaredGate?.gate !== false;
+  const filler = fillerOf.get(row.id);
+  if (filler === undefined) {
+    // Never a silent pass: without this answer every gate assertion below would abstain, and abstaining looks
+    // exactly like passing in a report made of ✓ lines.
+    bad(
+      row.handle,
+      'read.extensions could not be asked anonymously for this store, so this run cannot say whether it has a ' +
+        'front door. That read is the one the store layout itself makes; if it is broken here it is broken for ' +
+        'the shopper too.',
+    );
+  } else if (wantsGate && filler === null) {
+    // ⛔ THE DEFECT THIS WHOLE HALF EXISTS FOR: the gate simply not installed, which is how the demo ran for
+    // days. Nothing else on this box says so — every other step grades data the gate does not touch.
+    bad(
+      row.handle,
+      `NO APP FILLS \`${GATE_TARGET}\` FOR THIS STORE. Every store of this demo is gated unless seed/box.json ` +
+        'declares `gate: false` on it, and this one does not. Either nothing installed the gate app for this ' +
+        "tenant (`seed/vitrine.json`'s `apps` for the shoe brand, `seed/coffee.mjs`'s for the coffee shop), or " +
+        'its placement was removed from this store. A shop whose front door is missing looks exactly like a ' +
+        'shop, which is why this is asserted and not eyeballed.',
+    );
+  } else if (!wantsGate && filler !== null) {
+    bad(
+      row.handle,
+      `seed/box.json declares \`gate: false\` on this store — ${declaredGate?._gate_why ?? 'no reason written'} — ` +
+        `and the port answers that "${filler}" fills \`${GATE_TARGET}\` here. The declaration and the box ` +
+        'disagree: either the placement was never removed (`seed/coffee.mjs::dropGateOnTheCafe`) or something ' +
+        'put it back. A front that cannot draw a structural slot REFUSES the page, so this is a shop nobody ' +
+        'can open.',
+    );
+  } else if (filler === null) {
+    noted(
+      row.handle,
+      `no gate, BY DECLARATION — seed/box.json says \`gate: false\`: ${declaredGate?._gate_why ?? 'no reason written'}`,
+    );
+  }
+  /** The extension whose screen the no-cookie side must show, or null when this store is declared gateless. */
+  const gateOf = filler ?? null;
+  const gateMark = gateOf ? mark(gateOf) : null;
+  /** ⚠️ A RUN THAT COULD NOT ASK GRADES NEITHER SIDE, and it has already been named by the ✗ above. Without
+   *  this, an unanswerable read would fall into the GATELESS branch and accuse the store of a second, made-up
+   *  defect — «declared gateless and a gate reached it» — over a question nobody answered. */
+  const gateKnown = filler !== undefined;
+
   for (const door of DOORS) {
     // The one door servability moves. Everything else about the probe is identical: same request, same
     // header check — only the answer being demanded is the opposite one.
@@ -243,17 +424,20 @@ for (const row of rows) {
     const expect = shut ? door.shutExpect : door.expect;
     const expectedBy = shut ? door.shutBy : door.by;
     const what = shut ? door.shutWhat : door.what;
-    let code = 0;
-    let servedBy = '';
+    const label = `${row.handle}${door.path || '/'}`;
+    // ★★★ pk33 — THE SAME DOOR, TWICE. `through` is the shopper who has already been past the gate, and its
+    // answer is what every rule that existed before this slice grades: the status, the front, the ⊘. `atTheDoor`
+    // is the first-time visitor, and it is graded on its BODY.
+    let atTheDoor;
+    let through;
     try {
-      const res = await fetch(`${base}${door.path}`, { redirect: 'manual' });
-      code = res.status;
-      servedBy = res.headers.get('x-forge-served-by') ?? '';
+      atTheDoor = await openDoor(`${base}${door.path}`, false);
+      through = await openDoor(`${base}${door.path}`, true);
     } catch (error) {
-      bad(`${row.handle}${door.path || '/'}`, `could not be reached: ${error.message}`);
+      bad(label, `could not be reached: ${error.message}`);
       continue;
     }
-    const label = `${row.handle}${door.path || '/'}`;
+    const { code, servedBy } = through;
     if (!expect.includes(code)) {
       bad(
         label,
@@ -282,6 +466,102 @@ for (const row of rows) {
       bad(label, `${what} answered ${code} but was served by "${servedBy}", not "${expectedBy}" — the edge sent it to the wrong front`);
       continue;
     }
+    // ── ★★★ pk33 · AND NOW THE GATE, WHICH IS THE ONLY THING HERE A STATUS CODE CANNOT SEE ────────────────
+    //
+    // Every assertion below reads a BODY. The gate answers 200 and so does the shop; they come from the same
+    // container and carry the same `x-forge-served-by`. The one difference that reaches this process is what
+    // is in the markup, and the marks are not typed here — `mark()` builds the gate's from the extension id
+    // the PORT just named, and the app asserts the same string against its own manifest.
+    if (shut) {
+      // ⚠️ EXEMPT, AND MEASURED RATHER THAN ASSUMED. Both the reference vitrine and the café's fork mount
+      // `requirePublicStorefront` in the store layout ABOVE the gate branch, so a store with no public page
+      // 404s before any gate could render — on BOTH sides of the cookie. Asserting that the refusal is
+      // cookie-blind is the useful statement here: a gate that could be dismissed INTO a page the merchant
+      // switched off would be a way around the refusal.
+      if (atTheDoor.code !== through.code) {
+        bad(
+          label,
+          `the vitrine's refusal of this store CHANGES WITH THE DISMISSAL COOKIE — ${atTheDoor.code} without ` +
+            `it, ${through.code} with it. «No public page» is not something a visitor may dismiss.`,
+        );
+        continue;
+      }
+    } else if (!gateKnown) {
+      // Named once, above. Nothing else is claimed about this store's doors.
+    } else if (gateMark) {
+      // 1 · THE FIRST-TIME VISITOR MUST MEET THE GATE. This is the assertion whose absence let the app sit
+      //     uninstalled for days under a green birth.
+      if (!atTheDoor.body.includes(gateMark)) {
+        bad(
+          label,
+          atTheDoor.body.includes(GAP_MARK)
+            ? // A DIFFERENT FAILURE AND IT DESERVES ITS OWN SENTENCE: the port says a gate is here and the
+              // front that answered cannot draw it, so it refuses the page instead of opening the shop. That
+              // refusal is correct behaviour and a broken store — the fix is the FRONT, never this step.
+              `the front that answers this door CANNOT DRAW the gate the port declares ("${gateOf}"): it ` +
+                'rendered the structural-gap refusal instead of the shop. This store either needs that gate ' +
+                'removed from its placement (`seed/box.json` → `gate: false`, with the reason) or a front ' +
+                'that carries the implementation.'
+            : `NO GATE ON THIS DOOR. The port says "${gateOf}" fills \`${GATE_TARGET}\` for this store, and a ` +
+                `request carrying no \`${GATE_DISMISSED_COOKIE}\` cookie answered ${atTheDoor.code} with a body ` +
+                `that does not contain \`${gateMark}\` — so a first-time visitor walks straight into the shop. ` +
+                'The gate is declared and not rendered: the front is pinned to an image that does not carry ' +
+                'the implementation, or the slot stopped being mounted in that layout.',
+        );
+        continue;
+      }
+      // 2 · AND THE VISITOR WHO IS THROUGH MUST GET THE SHOP. Without this the probe would go green against
+      //     a box where the gate is unescapable, and — worse — a probe that sent the cookie on BOTH sides
+      //     would satisfy rule 1 for free. This is the assertion that makes that mistake red.
+      if (through.body.includes(gateMark)) {
+        bad(
+          label,
+          `THE GATE WILL NOT LET GO. A request carrying \`${GATE_DISMISSED_COOKIE}=${GATE_DISMISSED_VALUE}\` — ` +
+            'the cookie the gate\'s own "Abrir a loja" sets — still answered the gate screen, so a visitor who ' +
+            'came through it cannot reach this door at all.',
+        );
+        continue;
+      }
+      // 3 · ⛔ THE ANTI-VACUUM, ASSERTED DIRECTLY AND ON PURPOSE REDUNDANT. Rules 1 and 2 cannot both hold
+      //     over identical bytes — one demands the mark, the other forbids it — so on a healthy box this line
+      //     never fires, and that is the point of writing it down: it is the guard on the two guards above.
+      //     The day somebody weakens either of them into «contains something plausible», the claim this whole
+      //     half rests on — that the two sides of the cookie are DIFFERENT ANSWERS — stops being checked by
+      //     anything else. `bin/prove-doors.test.mjs` drives it with a box that ignores the cookie.
+      //     ⚠️ It is asserted rather than reasoned about for the same reason `opened === 0` is, fifty lines
+      //     down: every way this step can go blind decays into a report of ✓ lines that measured nothing.
+      if (atTheDoor.body === through.body) {
+        bad(
+          label,
+          'the two sides of the dismissal cookie answered the SAME BODY, byte for byte. This run cannot tell ' +
+            'the gate from the shop on this door, so nothing it says about either is a measurement.',
+        );
+        continue;
+      }
+      gatesGraded++;
+    } else {
+      // ★ THE PERMANENT NEGATIVE CONTROL, AND IT IS DERIVED. A store declared `gate: false` must show no gate
+      // and no refusal — on either side. The mark it is checked against is not this store's (it has none): it
+      // is every gate this TENANT really carries, learned from the port a few lines up. So the control is a
+      // fact about this box rather than a string somebody typed, and it goes red if the removal ever stops
+      // removing.
+      const intruder = [...gatesSeen].map(mark).find((m) => atTheDoor.body.includes(m) || through.body.includes(m));
+      if (intruder) {
+        bad(
+          label,
+          `this store is declared gateless and a gate screen (\`${intruder}\`) reached this door anyway.`,
+        );
+        continue;
+      }
+      if (atTheDoor.body.includes(GAP_MARK) || through.body.includes(GAP_MARK)) {
+        bad(
+          label,
+          'this store is declared gateless and the front REFUSED the page with the structural-gap notice — it ' +
+            'still believes a slot is filled that the port says nobody fills.',
+        );
+        continue;
+      }
+    }
     // A door proved SHUT is a graded door: it counts, so «this run asked nothing» stays the only meaning of
     // zero, and it prints as ⊘ so nobody reads it as a page that opened.
     opened++;
@@ -290,7 +570,17 @@ for (const row of rows) {
     // had to reconcile them. One door, one line, and the line carries the PORT's words.
     (shut ? closed : ok)(
       label,
-      `${what} → ${code}${servedBy ? ` · ${servedBy}` : ''}${shut ? ` — ${reason}` : ''}`,
+      `${what} → ${code}${servedBy ? ` · ${servedBy}` : ''}${shut ? ` — ${reason}` : ''}` +
+        // ⚠️ THE GATE VERDICT RIDES ON THE SAME LINE, because a reader has to be able to see WHICH doors were
+        // proved on both sides. A ✓ that is silent about the gate is what this step used to print for a box
+        // with no gate at all.
+        (shut
+          ? ' · gate n/a (refused above the slot)'
+          : !gateKnown
+          ? ' · gate NOT ASKED (see the ✗ above)'
+          : gateMark
+            ? ` · gate ✓ (${gateOf} without the cookie, the shop with it)`
+            : ' · no gate, declared'),
     );
   }
   say();
@@ -348,6 +638,27 @@ for (const [handle, decl] of declared) {
 //
 // Every way this step can go blind decays into the same shape — an empty report under a green verdict — so
 // the count is asserted directly instead of trusting that the reasons above are exhaustive.
+// ── ★★★ pk33 · AND THE GATE HALF HAS A VACUUM OF ITS OWN ────────────────────────────────────────────────
+//
+// Every ✗ above names a store; none of them names the shape where NOBODY was graded on both sides. That can be
+// honest — a tenant every store of which declares `gate: false` — so it is a ⓘ and not a ✗, but it is SAID,
+// because a report full of ✓ lines over zero cookie comparisons reads exactly like a report that proved the
+// gate. A ✗ is not needed to catch the dangerous version of this: a store that WANTS a gate and has none is
+// already red by name, one store at a time.
+if (gatesGraded === 0) {
+  noted(
+    `NO DOOR OF ${tenant} WAS PROVED ON BOTH SIDES OF THE GATE`,
+    'not one store of this tenant carries a gate this run could compare with and without the dismissal ' +
+      'cookie. If that is a surprise, it is the finding: `seed/box.json` declares every store gated unless ' +
+      'it says `gate: false`.',
+  );
+} else {
+  say(
+    `  ⓘ ${gatesGraded} door(s) proved on BOTH sides of \`${GATE_DISMISSED_COOKIE}\` — the gate without it, ` +
+      'the shop with it, and the two bodies asserted DIFFERENT.',
+  );
+}
+
 if (opened === 0) {
   bad(
     `NO DOOR OF ${tenant} WAS OPENED`,
