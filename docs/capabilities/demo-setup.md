@@ -119,6 +119,29 @@ still counts as a *fill* in the slot — and because fills are counted before th
 slot then draws **nothing at all**, not even the `forge.` fallback. The only hand that removes it is
 `composition.remove`. A birth from zero never writes it in the first place, which is what this box gets.
 
+## ⚠️ THE CAFÉ IS DECLARED AND THE CAFÉ'S VITRINE CANNOT DRAW IT — measured 2026-09-11 (pk32/d1)
+
+`seed/demo-setup.json` places all three marks on **four** stores, `cafe` among them. The café is served by
+`storefront-coffee/`, which is a **fork** of the reference vitrine — and a fork reaches an app of this box only
+if somebody wires the two together. It is not wired: the fork's `package.json` does not name
+`@forge/ext-demo-setup`, its `next.config.mjs` does not transpile it, and no file of it imports
+`@forge/ext-demo-setup/block/marks`. So the placement is real, it is `enabled`,
+`read.extension_composition` publishes it, the admin shows the app's card — **and the café's pages draw the
+fork's own mark instead, saying nothing to anybody.**
+
+★ **It is still a defect even though the page looks right.** The café has chrome of its own (`CoffeeChrome`)
+and a mark of its own, so the shop is not visibly broken; the fork's owner is entitled to *decide* he does not
+want this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
+it by name on every run, and the decision — today: "waiting on the regeneration tool" — is written there as a
+declared divergence rather than implied by silence.
+
+⚠️ **Why it is not simply wired yet:** the file that connects an app to a front is
+`storefront-coffee/src/lib/extensions/generated/registry.tsx`, a **generated** surface (its own first line says
+*do not edit*), and nothing in this repository regenerates it — `bin/build-coffee.sh` mentions no codegen and
+the 18 tarballs in `storefront-coffee/vendor/` carry none. The tool is owed by the product (pk32/p1-parto).
+Welding the import by hand is what `totem/src/lib/gate/registry.tsx` did, and that file's prose had already
+rotted by the time pk31/d1 read it.
+
 ## Graded by
 
 - `apps/demo-setup/manifest.test.ts` — three blocks, their areas, no default hook, no scope, the tagline on
@@ -130,3 +153,7 @@ slot then draws **nothing at all**, not even the `forge.` fallback. The only han
   place, and the filename becoming an asset id.
 - `bin/chrome-logo-crop.guard.mjs` — every declared logo in **both** declarations, by proportion, off the
   PNG's own pixels.
+- `bin/front-app-reach.guard.mjs` — whether a front of this box can actually DRAW each of the three, derived
+  from `composition.json` + `forge.wiring` against each front's manifest, Next config and source. The rule
+  itself is graded on fixtures in `bin/front-apps.test.mjs`, because this tree is healthy wherever its
+  declared divergences are and a rule proven only against a healthy tree is a rule proven to be quiet.
