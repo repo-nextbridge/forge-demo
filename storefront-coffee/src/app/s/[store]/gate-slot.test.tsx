@@ -102,19 +102,30 @@ test('no extension fills the slot → the route renders as-is, and no cookie is 
   expect(resolveGateMock).not.toHaveBeenCalled();
 });
 
-test('the slot is filled but this build has no implementation → the route renders as-is, still static', async () => {
-  // The reference storefront's own case: the app is installed for the tenant, but the front that renders
-  // it lives in that instance's own copy. It must degrade to "no gate", never to a blank page.
+test('★★ the slot is filled and this build cannot draw it → the shopper is REFUSED, not served the shop', async () => {
+  // ⛔ THIS TEST USED TO ASSERT THE DEFECT, and that is worth keeping in writing. Its name was "the route
+  // renders as-is, still static" and its body demanded `html` contain the page — i.e. it DEMANDED the silent
+  // degrade that let this fork serve ten days of shop while the port published a gate placement nobody could
+  // draw. The assertion was the bug, green the whole time. (pk32/p2 found the identical twin in the product's
+  // own `gate-slot.test.tsx`; this is the fork's half of the same lie.)
+  //
+  // ★ `storefront:gate` is a STRUCTURAL target — the kit decides which targets may not go missing quietly, in
+  // `@forgecommerce/storefront-kit/extensions/composition-gap` — so an implementation this build lacks is a
+  // refusal the shopper READS, never a page that pretends the declaration was not there.
   extensionsMock.mockResolvedValue([gateHook('some-gate')]);
   resolveGateMock.mockReturnValue(undefined);
 
   const html = await renderLayout();
 
-  expect(html).toContain('the store');
   expect(resolveGateMock).toHaveBeenCalledWith('some-gate');
+  expect(html, 'a declared gate this build cannot draw must say so').toContain('composition-gap');
+  expect(
+    html,
+    'and it must NOT serve the shop underneath it, which is what made this invisible',
+  ).not.toContain('the store');
   expect(
     cookiesMock,
-    'an unrenderable gate must not cost a cookie read either',
+    'an undrawable gate must not cost a cookie read either — the refusal is static',
   ).not.toHaveBeenCalled();
 });
 

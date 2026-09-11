@@ -18,6 +18,11 @@
 
 import { readClient } from '@forgecommerce/storefront-kit/config';
 import { GATE_DISMISSED_COOKIE } from '@forgecommerce/storefront-kit/cookies';
+import { CompositionGapNotice } from '@forgecommerce/storefront-kit/extensions/CompositionGapNotice';
+import {
+  GATE_TARGET,
+  isStructuralTarget,
+} from '@forgecommerce/storefront-kit/extensions/composition-gap';
 import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
 import { resolveGate } from '@forgecommerce/storefront-kit/gate/registry';
 import {
@@ -28,8 +33,6 @@ import {
 import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
 import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
-
-const GATE_TARGET = 'storefront:gate';
 
 export default async function StoreLayout({
   children,
@@ -107,17 +110,25 @@ export default async function StoreLayout({
       </>
     );
 
-  // Installed, but this build has no implementation registered for it — the reference storefront's own case,
-  // since a gate belongs to the instance that wants one. Degrade to "no gate": the route renders, and it is
-  // still static (no cookie read below).
+  // Installed, and this build has no implementation registered for it. ⛔ IT DOES NOT DEGRADE SILENTLY ANY MORE:
+  // until pk32/p2 this branch returned the route as if nothing had been declared, and that is exactly how this
+  // fork served ten days of shop with a gate placed, enabled and published by the port — the port said yes, the
+  // admin showed the app, and the page said nothing. `storefront:gate` is a STRUCTURAL target (the kit decides
+  // which are), so the absence of its implementation is a refusal the shopper sees rather than a shop that
+  // pretends. ★ The shape is the reference's, not ours: the same two lines, the same kit rules, so
+  // `bin/store-mount-drift.guard.mjs` can keep asking whether this fork fell behind.
+  //
+  // ⚠️ Still static: no cookie is read on this path.
   const gate = resolveGate(filling.extension_id);
-  if (!gate)
+  if (!gate) {
+    const gap = { target: GATE_TARGET, extensionId: filling.extension_id };
     return (
       <>
         {theme}
-        {children}
+        {isStructuralTarget(gap.target) ? <CompositionGapNotice gap={gap} /> : children}
       </>
     );
+  }
 
   // A gate WILL render — now (and only now) the cookie is read, making this instance dynamic.
   const cookieStore = await cookies();
