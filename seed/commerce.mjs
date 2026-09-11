@@ -443,9 +443,25 @@ export const appAction = (post) => async (extension_id, action, input) => {
  *
  * The seed is three moments, not one: `--phase curated` → the one-shots INSIDE the box → `--phase window`.
  * The one-shots are what create the demo's ORDERS — `seed-history` writes dozens of them, dated. So a
- * silencing that ran in the window would run AFTER those orders were emitted, and the decision to send is
- * taken at EMIT (measured: an order placed while silenced produced no notification even after the channel
- * was re-armed and the dispatcher had 70 further seconds). Silencing late is silencing nothing.
+ * silencing that ran in the window would run AFTER those orders were emitted. Silencing late is silencing
+ * nothing.
+ *
+ * ⚠️⚠️ AND THE REASON THAT USED TO BE GIVEN HERE WAS TRUE OF A BOX IN STEP AND OF NO OTHER — CORRECTED
+ * 2026-09-10 (caderno pk32 §12). This header claimed "the decision to send is taken at EMIT", with a
+ * measurement behind it: an order placed while silenced produced no notification even after the channel was
+ * re-armed and the dispatcher had 70 further seconds. The measurement is real; the conclusion was too wide.
+ *
+ * Measured in the kernel: `packages/core/src/notification/dispatch.ts:393` decides `channel_disabled` from
+ * `args.toggles`, and those toggles are read WHEN THE CONSUMER RUNS — not when the event enters the outbox.
+ * ⇒ the fence holds only while the relay is CAUGHT UP, which is what the 70-second measurement quietly
+ * assumed. On the birth of 2026-09-10 the box owed 129 907 events and the phase-11 re-arm landed long BEFORE
+ * `notification.send` reached the history: 56 of every 67 sends then failed `550` at the provider (the
+ * history's buyers are `@example.com`), the serial relay cycle went from ~1 s to ~75 s, every other consumer
+ * was pinned at 100 events a cycle, and `inventory.availability` — the consumer that decides whether a card
+ * says ESGOTADO — was ~12 HOURS away. Silencing the channel took it to 2 150 events/min and 24 minutes.
+ *
+ * ⇒ TIME IS PART OF THIS FENCE, so `awaitNotificationRelay` (below) makes the re-arm wait for the consumer
+ * instead of assuming it arrived. A prose that is true of the happy box only is how this went unseen.
  *
  * ⚠️ AND THE CONSEQUENCE IS A TRADE-OFF TAKEN DELIBERATELY: the re-arm lives in the OTHER phase, so a
  * `finally` cannot span the two; they are two processes. If the window phase never runs, the box stays mute.
@@ -475,8 +491,13 @@ export async function silenceBuyerChannels({ expect, command, read, log, fail })
  * run in this cycle. Then the channels are armed, and the live order mails a real person. The sequence in
  * the README never does that; a human debugging one phase might. Said here because the failure is silent to
  * whoever causes it and loud to whoever receives it.
+ *
+ * ⚠️ `sleep` IS INJECTED FOR THE TESTS AND FOR NOTHING ELSE, the same reason `signSubscriptions` takes one:
+ * the wait before the re-arm has a ten-minute budget, so the sentence it prints when the budget runs out
+ * could not be driven end to end on the real clock. Undefined is the seed's own timer, which is what
+ * `bin/seed.mjs` passes.
  */
-export async function seedCommerce({ expect, command, read, log, fail, post }) {
+export async function seedCommerce({ expect, command, read, log, fail, post, sleep }) {
   const stores = await provenStores({ expect, read, log, fail });
 
   const absent = await appsNotInstalled(read, REQUIRED_APPS);
@@ -503,8 +524,9 @@ export async function seedCommerce({ expect, command, read, log, fail, post }) {
       action: appAction(post),
       buyerEmail,
       placeOrder: (args) => placeOneOrder({ command, read, log, ...args }),
+      sleep,
     });
-    await awaitQueueDrained({ read, log });
+    await awaitNotificationRelay({ read, log, sleep });
   } finally {
     const on = channelPlan(stores, { enabled: true });
     await toggleChannels(command, on);
@@ -537,28 +559,177 @@ async function provenStores({ expect, read, log, fail }) {
 }
 
 /**
- * ⏳ WAIT FOR THE NOTIFICATION QUEUE BEFORE RE-ARMING — and the wait is part of the gesture, not a courtesy
- * paid when the batch happens to be small.
- *
- * ⚠️ MY OWN MEASUREMENT SAYS THIS SHOULD NOT BE NEEDED, and it is here anyway. The enabled check is taken at
- * EMIT, not at dispatch: an order placed while its channel was silenced produced no record even after the
- * channel was re-armed and the dispatcher had seventy further seconds. By that rule, orders placed inside the
- * fence can never mail, whenever the queue drains.
- *
- * But the cost of being wrong is asymmetric. If the rule is subtler than I measured — a second path, a retry,
- * a future change — the price is real e-mail to a real person, and it cannot be un-sent; the price of waiting
- * is a few seconds of a seed nobody is watching. And the assumption "the queue empties by now" is exactly
- * what bit this wave once already, with 1466 items in it. So: wait, and say what was seen.
- *
- * It waits for the record count to hold STILL, not for a status vocabulary this file has not verified — a
- * dispatched notification writes a row, so a count that stops growing is a dispatcher that stopped working.
+ * The kernel's outbox subscription that turns an `order.*` event into a message
+ * (`packages/core/src/notification/consumer.ts`: `notificationConsumerName`). The ONE name this file spells,
+ * because it is the subject of the wait below — and `awaitNotificationRelay` refuses to conclude anything
+ * when the box does not publish a consumer by that name, rather than reading an absence as "caught up".
  */
-async function awaitQueueDrained({ read, log, polls = 6, waitMs = 2_000 }) {
+const NOTIFICATION_CONSUMER = 'notification.send';
+
+/** How far behind the whole relay may be and still be called a drained notification queue. Zero: the wait is
+ *  about ONE consumer, and the number it owes is the number it owes. */
+const CAUGHT_UP = 0;
+
+/**
+ * ⏳⏳ THE RE-ARM WAITS FOR `notification.send` TO CATCH UP — it no longer assumes it did.
+ *
+ * ── WHY THE OLD WAIT WAS NOT ENOUGH (measured 2026-09-10, caderno pk32 §12) ───────────────────────────────
+ *
+ * `awaitQueueDrained` below watches the NOTIFICATION RECORD COUNT and gives up after 12 s. On the birth of
+ * 2026-09-10 it did exactly what it says it does: the count was still moving, it printed "re-arming anyway
+ * and saying so", and the channel came back on with the whole 180-day history still unconsumed. The box then
+ * spent hours trying to mail `@example.com` buyers, 56 of every 67 refused `550`, and because the relay cycle
+ * is serial that one consumer held `inventory.availability` ~12 hours behind — a shelf saying ESGOTADO with
+ * stock. The count was never the wrong metric; it was the wrong SUBJECT. A count can only say "is anything
+ * being written", never "has this consumer reached the events I fenced".
+ *
+ * ── WHAT MAKES THE RIGHT QUESTION ASKABLE (pk31/p1) ───────────────────────────────────────────────────────
+ *
+ * `read.relay_depth` on the internal face answers per consumer, for THIS tenant (the face resolves the schema
+ * from the credential), with `remaining`, `dead_lettered` and a `state`. Measured against the bench box on
+ * 2026-09-10: 200, eleven consumers, `notification.send` among them by that exact name.
+ *
+ * ⛔ AND IT IS NOT `settled`. `settled` folds every consumer together, so waiting on it here would have waited
+ * for the 57 003 events of `inventory.availability` as well — the twelve hours this wait exists to avoid. The
+ * shop's honesty and the postman are different deadlines and only one of them fences an e-mail.
+ *
+ * ★ `null` IS AN ANSWER AND IT IS NOT ZERO. `unregistered` (the relay has not met this consumer in this schema
+ * yet) keeps the wait going; `inactive` (the schema lacks the tables the consumer declares) ends it, because
+ * there is no dispatcher here to outrun. Neither is reported as "nothing owed".
+ *
+ * ★ `dead_lettered` ENDS THE WAIT TOO, and says the number. A delivery in the dead letter is one nobody will
+ * ever make: waiting for it is waiting forever, and on this box it is the `550` population by construction.
+ *
+ * ⛔⛔ AND THIS WHOLE FUNCTION IS PROVISIONAL — it is the safety net, not the fix. The fix is the kernel
+ * learning to REGISTER an order instead of PLACING one (caderno pk32 §13, the owner's decision of 2026-09-10):
+ * `apps/api/src/seed-history.ts` does not write orders, it DRIVES THE PORT — `checkout.place_order`,
+ * `order.mark_paid`, `order.shipment.mark_ready_for_pickup` — so the history's orders really are placements
+ * and really do deserve a confirmation e-mail. When the ACT carries the fact ("this already happened, in
+ * another system, in another month"), every consumer derives its own answer from the EVENT and the answer no
+ * longer depends on WHEN the consumer gets there. ⇒ the temporal fence stops being necessary and this
+ * function is deleted without a replacement. Until then, a birth needs a deterministic wait.
+ *
+ * @param polls / waitMs the budget, in the shape `seed/subscriptions.mjs` already uses: 300 × 2 s = 10 min.
+ */
+async function awaitNotificationRelay({ read, log, sleep, polls = 300, waitMs = 2_000 }) {
+  const nap = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const depthOf = async () => {
+    // `commerceRead` answers `null` on 404, which is how an older pinned kernel says "I do not publish this".
+    const depth = await read('internal/relay_depth');
+    if (!depth || !Array.isArray(depth.consumers)) return { absent: true };
+    const row = depth.consumers.find((c) => c.consumer === NOTIFICATION_CONSUMER);
+    // ⚠️ ANTI-VACUUM. A box whose consumer set does not carry this name is a box this wait cannot grade, and
+    // `undefined` must never pass for `remaining: 0` — that is the shape of green this whole fence lost to
+    // once already. Reported as `missing`, never as caught up.
+    return row ? { row, named: depth.consumers.map((c) => c.consumer) } : { missing: true, named: depth.consumers.map((c) => c.consumer) };
+  };
+
+  const first = await depthOf();
+  if (first.absent) {
+    log(
+      'commerce — ⚠️ this kernel does not publish `read.relay_depth` (the internal read answered 404), so the ' +
+        're-arm cannot be fenced on the consumer and falls back to watching the record count. That fallback ' +
+        'is blind to a deep queue: see caderno pk32 §12. Pin a kernel that carries pk31/p1.',
+    );
+    return awaitQueueDrained({ read, log, sleep });
+  }
+  if (first.missing) {
+    log(
+      `commerce — ⚠️ \`read.relay_depth\` answered without a \`${NOTIFICATION_CONSUMER}\` consumer (it named ` +
+        `${first.named.length}: ${first.named.join(', ')}). The wait before the re-arm CANNOT be made, and an ` +
+        'absent row is not an empty queue. Either the kernel renamed the consumer — in which case this file ' +
+        'names the wrong one — or this schema has no dispatcher at all.',
+    );
+    return;
+  }
+
+  const waited = (attempts) => Math.round((attempts * waitMs) / 1000);
+  let attempts = 0;
+  let row = first.row;
+  for (let attempt = 0; attempt <= polls; attempt += 1) {
+    if (attempt > 0) {
+      await nap(waitMs);
+      attempts += 1;
+      const again = await depthOf();
+      // The consumer answered once and then stopped being published: a box that changed under the seed. Not
+      // reported as the previous answer — a stale row repeated is the oldest way a wait lies.
+      if (!again.row) {
+        log(
+          `commerce — ⚠️ \`read.relay_depth\` stopped naming ${NOTIFICATION_CONSUMER} after ` +
+            `${waited(attempts)}s of waiting (${again.absent ? 'the read itself is gone' : `it now names ${(again.named ?? []).join(', ')}`}). ` +
+            'The re-arm proceeds unfenced, and this line is the only record that it was not proven.',
+        );
+        return;
+      }
+      row = again.row;
+    }
+    if (row.state === 'inactive') {
+      log(
+        `commerce — ${NOTIFICATION_CONSUMER} is not active in this schema (missing ` +
+          `${(row.missing_tables ?? []).join(', ') || 'tables it declares'}); there is no dispatcher here to ` +
+          'outrun, so the re-arm is safe and nothing was waited for',
+      );
+      return;
+    }
+    if (row.state === 'dead_lettered') {
+      log(
+        `commerce — ${NOTIFICATION_CONSUMER} has nothing left it can deliver: ${row.dead_lettered} ` +
+          'delivery(ies) are in the dead letter and nobody will ever make them. Waiting for those is waiting ' +
+          'forever, so the re-arm proceeds — and the number is printed because it is the provider refusing ' +
+          'this box, not the box being idle.',
+      );
+      return;
+    }
+    if (row.state === 'settled' && row.remaining === CAUGHT_UP) {
+      log(
+        `commerce — ${NOTIFICATION_CONSUMER} caught up after ${waited(attempts)}s (0 owed, ` +
+          `${row.dead_lettered ?? 0} dead-lettered); safe to re-arm`,
+      );
+      return;
+    }
+    // Every 30 s, what it is still short of — a number that shrinks, never a spinner. `null` says so as null:
+    // `unregistered` has no count to print and printing 0 would invent one.
+    if (attempt > 0 && attempt % Math.max(1, Math.round(30_000 / waitMs)) === 0)
+      log(
+        `commerce — still waiting on ${NOTIFICATION_CONSUMER} after ${waited(attempts)}s: ` +
+          `state=${row.state}, remaining=${row.remaining ?? 'null (no number to give)'}. Everything the ` +
+          'one-shots placed is inside the silence fence, and this wait is what keeps it there.',
+      );
+  }
+
+  // ⛔ THE CEILING, AND IT SAYS WHAT IS LEFT UNDONE. The `finally` of `seedCommerce` re-arms regardless — a
+  // seed that hung here would leave the box mute, which is the worse of the two failures (the header above
+  // argues it). So the honest ending is to name the exposure rather than to pass over it.
+  log(
+    `commerce — ⛔ the ${waited(polls)}s budget ran out and ${NOTIFICATION_CONSUMER} is NOT caught up ` +
+      `(state=${row.state}, remaining=${row.remaining ?? 'null'}). The channel is being re-armed anyway, so ` +
+      'those events WILL be dispatched with it armed: the fence of the curated phase did not hold for them. ' +
+      'This is the race caderno pk32 §12 measured. If the destinations are fictional the provider refuses ' +
+      'them one by one and the relay stays slow; the permanent answer is §13 (the kernel REGISTERING an ' +
+      'order instead of placing one), not a bigger budget here.',
+  );
+}
+
+/**
+ * ⏳ THE OLD WAIT, NOW THE FALLBACK FOR A BOX THAT CANNOT BE ASKED THE RIGHT QUESTION.
+ *
+ * ⚠️ IT IS KEPT AND IT IS NOT TRUSTED. It watches the notification RECORD COUNT and gives up after 12 s,
+ * which is what it was written to do: "wait, and say what was seen". What 2026-09-10 showed is that a count
+ * holding still proves nothing about the events this seed fenced, and that the 12 s gave up exactly when the
+ * queue was deepest. `awaitNotificationRelay` above asks the consumer itself; this runs only when the box does
+ * not publish `read.relay_depth`, and the caller says so out loud when it falls through to here.
+ *
+ * The original reasoning, kept because the asymmetry it names is still the reason a wait exists at all: the
+ * price of being wrong is real e-mail to a real person and cannot be un-sent, while the price of waiting is a
+ * few seconds of a seed nobody is watching.
+ */
+async function awaitQueueDrained({ read, log, sleep, polls = 6, waitMs = 2_000 }) {
+  const nap = sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const count = async () => ((await read('internal/notifications', { limit: 1 }))?.total ?? 0);
   let last = await count();
   let still = 0;
   for (let i = 0; i < polls && still < 2; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    await nap(waitMs);
     const now = await count();
     still = now === last ? still + 1 : 0;
     last = now;

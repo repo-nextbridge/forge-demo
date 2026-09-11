@@ -440,6 +440,47 @@ recusam** com `validation_failed` (todos os que mintam segredo), e este seed cha
 
 ---
 
+### 4.2 ★★★ O passo da janela **espera o correio alcançar** antes de religar o e-mail do comprador — e o que fazer quando ele desiste
+
+**Medido no nascimento de 10/09, e é a causa do «ESGOTADO» com estoque.** A caixa se declarou nascida
+(roteiro com 24 ✓, 16 portas provadas, `verify-config: settled`) e a face interna respondeu **129 907 eventos
+por entregar** em `forgeco` — `inventory.availability`, que é justamente o consumidor que decide se o card diz
+ESGOTADO, devia **57 003**. A velocidade inicial era **29 eventos/min**: ~**12 horas** de loja mentindo.
+
+**A cadeia, medida:** o seed silencia o e-mail do comprador **antes** do passado (fase 8) e religa **depois** da
+janela (fase 11) — correto. O que ninguém tinha visto é que *a cerca depende do relógio*: o kernel decide
+`channel_disabled` **quando o consumidor roda** (`packages/core/src/notification/dispatch.ts:393`), não quando o
+evento entra no outbox. Com a fila funda, o religar chegou **antes** de o consumidor alcançar os 180 dias de
+histórico ⇒ a caixa passou a tentar mandar pedidos fictícios para endereços `@example.com` e o provedor recusou
+**56 de cada 67 com `550`**. Como o ciclo do relay é **serial**, cada envio lento atrasava **todo** consumidor:
+com o canal calado, as projeções foram a **2 150/min** e a fila drenou em **24 min** em vez de 12 h.
+
+⇒ **Desde a pk32/d3 o passo da janela pergunta antes de religar.** Ele consulta `read.relay_depth` (face
+interna, pk31/p1) e espera **só o consumidor `notification.send`** — nunca `settled`, que somaria as 57 003 do
+estoque e esperaria as mesmas 12 horas. Orçamento **10 min** (300 × 2 s), com uma linha de progresso a cada
+30 s. O que você vê no log, e o que cada linha quer dizer:
+
+| linha | significado | o que fazer |
+|---|---|---|
+| `notification.send caught up after Ns (0 owed, …)` | a cerca valeu até o fim | nada |
+| `still waiting on notification.send after Ns: state=draining, remaining=N` | está alcançando; `N` encolhe | deixar correr |
+| `nothing left it can deliver: N delivery(ies) are in the dead letter` | o provedor recusou `N` envios (os `@example.com`) e ninguém vai refazê-los | nada — não é caixa ociosa, é recusa do provedor |
+| `⛔ the 600s budget ran out and notification.send is NOT caught up` | **o religar aconteceu com eventos ainda na fila**: aqueles **vão** ser despachados com o canal armado | ler a próxima linha |
+| `⚠️ this kernel does not publish read.relay_depth` | a imagem pinada é anterior à pk31/p1 | pinar um kernel que a carregue — a cerca voltou a ser cega |
+| `⚠️ read.relay_depth answered without a notification.send consumer` | o kernel renomeou o consumidor | é defeito de produto, não da caixa: relatar |
+
+⛔ **Quando o orçamento estoura, a caixa NÃO fica muda** — o religar acontece de todo jeito, porque uma caixa
+muda é a pior das duas falhas (ninguém recebe nada e ninguém nota por um dia). O que muda é que a linha acima
+existe: se ela apareceu, **houve exposição** e ela está nomeada. Numa bancada com destinatários fictícios isso
+é inofensivo; numa caixa com e-mail real de alguém, não é, e a resposta é **parar e avisar**, não subir o teto.
+
+📌 **E isto é rede de segurança, não o conserto.** O conserto é o kernel saber **REGISTRAR** um pedido em vez de
+**colocar** um (caderno pk32 §13, decisão do dono em 10/09): os pedidos do passado são colocações de verdade —
+`apps/api/src/seed-history.ts` dirige a porta (`checkout.place_order`, `order.mark_paid`, …) e só as **datas**
+são ficção — então eles realmente merecem confirmação. Quando o **ato** carregar o fato *"isto já aconteceu,
+noutro sistema, noutro mês"*, cada consumidor deriva a própria resposta **do evento** e a resposta deixa de
+depender de **quando** alguém pergunta. Aí esta espera é jogada fora sem dor.
+
 ## 5. O reset (passo 6) — e a promoção **entra no mesmo laço**
 
 ```bash
@@ -702,3 +743,40 @@ o veredicto final do nascimento estava reprovando toda caixa online.
 ⚠️ **A sonda é `node:http`, nunca `fetch`** — o undici **descarta em silêncio** um header `host`. Medido:
 `fetch(origem, {headers:{host:'nope.invalid'}})` respondeu **200** onde `node:http` respondeu **404**. Uma
 sonda feita com `fetch` teria gradado todo hostname como resolvido, em toda caixa, para sempre.
+
+### 6.1 ★★★ Uma loja **OCUPADA** não é uma loja quebrada — e agora os dois forks sabem dizer isso
+
+⛔ **Até 10/09, qualquer erro no café e no balcão era a página branca do Next.** Medido neste repo, depois de
+assar: `find storefront-coffee/src totem/src -name 'error.tsx' -o -name 'global-error.tsx'` → **vazio**, e
+`grep -rl busy-boundary` nos dois → **vazio**. O `bin/fork-refusal-drift.guard.mjs` já dizia isso em voz alta,
+por rota (*"storefront-coffee: NOT CHECKED — no src/app/error.tsx"*). ⇒ um estouro de teto de leitura aparecia
+como *"Application error: a server-side exception has occurred"*, em inglês, 16px, sem chrome da loja, sem
+português e sem dizer quando voltar. As cinco fronteiras que o produto ganhou na pk31/p1 são **do produto**; um
+fork é um **corte** e não herda o que não foi cortado.
+
+**Desde a pk32/d3 cada fork tem a sua, na voz dele:**
+
+| fork | rotas com fronteira | 429 (teto de leitura) | outro erro |
+|---|---|---|---|
+| `storefront-coffee` | a raiz sem loja, a árvore cacheada `c/[store]`, a árvore dinâmica `s/[store]` | *"Muita gente no café agora"* + **quando voltar** + 3 portas (tentar de novo · loja · buscar cafés) | *"Não foi possível carregar esta página"* + **Código: `<digest>`** |
+| `totem` | a única rota do balcão | *"O balcão recebeu muitos pedidos ao mesmo tempo"* + **quando voltar** + UM botão gigante | *"O balcão não conseguiu abrir a tela de pedidos"* + **Código** + *"peça direto com um atendente"* |
+
+⚠️ **O STATUS CONTINUA 500 NOS DOIS CASOS, E ISSO NÃO TEM CONSERTO AQUI.** Um Server Component do App Router
+não tem como publicar 429 (não existe `tooManyRequests()` ao lado de `notFound()`). ⇒ **uma sonda que lê só o
+status vai reportar a loja como quebrada estando ela apenas cheia.** Quem precisa distinguir **lê o corpo**:
+`data-testid="busy-boundary"` (ocupada) × `data-testid="error-boundary"` (quebrada). É a mesma régua que o
+passo 14-bis adotou na pk29/p3 — *uma prova que não sabe diferenciar a página certa do pedido de desculpas do
+app prova só que o processo está vivo*.
+
+⇒ **Na prática, para quem opera:** um 500 durante o passo 14 (aquecimento) cujo corpo diz *"Muita gente…"* é a
+caixa **se** estourando o próprio teto anônimo, não um defeito — é exatamente o que a §4 descreve sobre o custo
+do aquecedor. Um 500 cujo corpo traz **Código:** é um defeito, e esse código é o que se procura no
+`docker compose logs`.
+
+⚠️ **E uma dívida de produto ficou nomeada, não consertada:** o `@forgecommerce/storefront-kit` **embarca**
+`src/ceiling-digest.ts` (o vocabulário de "não agora") e **não publica** o subcaminho —
+`packages/storefront-kit/package.json` tem `./ceiling-digest` em `exports` e **não** em `publishConfig.exports`
+(91 chaves contra 92). Dentro do monorepo o import resolve; **de um tarball, não**. Os dois forks daqui o
+carregam como **solda** (`src/lib/ceiling-digest.ts`), com um guard que os prova idênticos ao módulo vendorizado
+a cada corrida e fica **vermelho no dia em que o kit publicar o subcaminho** — que é o dia de apagar a solda.
+⛔ Isso é conserto no **outro repositório**, de uma linha, e uma fatia nomeia um repo só.

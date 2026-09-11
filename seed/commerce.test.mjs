@@ -344,29 +344,222 @@ test('★ a missing config row is defaults, not death', async () => {
 });
 
 // ── ⏳ THE FENCE INCLUDES THE WAIT ───────────────────────────────────────────────────────────────────────
-test('★ the pass waits for the notification queue to hold still BEFORE re-arming', async () => {
+//
+// ★★★ pk32/d3 — AND THE WAIT IS NOW ON THE CONSUMER, NOT ON A COUNT. The block below is the old rule, kept
+// because it still grades the FALLBACK path (a box that does not publish `read.relay_depth` answers 404 and
+// this is what it falls back to); everything after it grades the rule that replaced it. What 2026-09-10
+// measured — caderno pk32 §12 — is that a count holding still says nothing about the events this seed fenced.
+test('★ a box with no `read.relay_depth` still waits on the record count before re-arming', async () => {
   const order = [];
-  let notifications = 10;
+  const notifications = 10;
   const read = async (name) => {
     if (name === 'internal/stores') return [{ handle: 'cafe', id: 'c' }];
     if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
     if (name === 'internal/extension_config') return null;
+    if (name === 'internal/relay_depth') return null; // the 404 of a kernel without pk31/p1
     if (name === 'internal/notifications') { order.push('poll'); return { total: notifications }; }
     if (name === 'products') return { items: [] };
     return [];
   };
+  const said = [];
   await seedCommerce({
     expect: ['cafe'],
     read,
     command: async (n) => { if (n === 'notification.channel.set_enabled') order.push('toggle'); return {}; },
-    log: () => {},
+    log: (line) => said.push(line),
     fail: (m) => { throw new Error(m); },
     post: async () => ({}),
+    sleep: async () => {},
   });
   // Every poll must come before the first re-arm toggle.
   const firstToggle = order.indexOf('toggle');
   assert.ok(order.includes('poll'), 'the queue was never polled');
   assert.ok(order.indexOf('poll') < firstToggle, 'the wait must precede the re-arm');
+  // ⚠️ AND THE FALLBACK IS NOT SILENT. A box being fenced by the blind mechanism has to say so, or the
+  // degradation is indistinguishable from the fence working.
+  assert.ok(
+    said.some((l) => l.includes('relay_depth') && l.includes('404')),
+    'the box fell back to the blind count wait and never said why',
+  );
+});
+
+// ── ★★★ pk32/d3 · THE RE-ARM WAITS FOR `notification.send` TO CATCH UP ──────────────────────────────────
+//
+// THE MEASURED DEFECT (caderno pk32 §12, bench birth of 2026-09-10): the curated phase silences the buyer's
+// order mail BEFORE the one-shots write 180 days of history, and the window phase re-arms it at the end. But
+// `packages/core/src/notification/dispatch.ts:393` reads the channel toggle WHEN THE CONSUMER RUNS, so the
+// fence only holds while the relay is caught up. That box owed 129 907 events; the re-arm landed first; the
+// box then tried to mail 180 days of `@example.com` buyers, 56 of every 67 refused `550`, and the serial relay
+// held `inventory.availability` ~12 HOURS behind — a shelf saying ESGOTADO with stock in the warehouse.
+//
+// ⚠️ THE OLD WAIT WAS PRESENT AND DID NOT SEE IT. It polled the notification record COUNT for 12 s and printed
+// "the queue was still moving … re-arming anyway". The subject was wrong, not the gesture.
+
+/** A `read` for the commerce pass whose `relay_depth` answers from `depths`, one entry per poll (the last one
+ *  repeats forever). `polled` counts the asks, so a test can prove the wait actually waited. */
+function relayDepthBox(depths, trace = []) {
+  let i = 0;
+  return async (name) => {
+    if (name === 'internal/stores') return [{ handle: 'cafe', id: 'c' }];
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null;
+    if (name === 'internal/notifications') { trace.push('count'); return { total: 0 }; }
+    if (name === 'internal/relay_depth') {
+      trace.push('depth');
+      return depths[Math.min(i++, depths.length - 1)];
+    }
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+}
+
+/** One `relay_depth` answer: the consumers named, plus the totals the kernel publishes beside them. */
+const depth = (consumers) => ({
+  consumers,
+  remaining: consumers.every((c) => typeof c.remaining === 'number')
+    ? consumers.reduce((n, c) => n + c.remaining, 0)
+    : null,
+  dead_lettered: 0,
+  settled: consumers.every((c) => c.state === 'settled'),
+});
+const POST = { state: 'draining', consumer: 'notification.send', dead_lettered: 0 };
+const SHELF = { consumer: 'inventory.availability', remaining: 57_003, dead_lettered: 0, state: 'draining' };
+
+/** Run the commerce pass against one scripted box and hand back what it said and in which order it acted. */
+async function runPass(read, trace = [], extra = {}) {
+  const said = [];
+  await seedCommerce({
+    expect: ['cafe'],
+    read,
+    command: async (n) => { if (n === 'notification.channel.set_enabled') trace.push('toggle'); return {}; },
+    log: (line) => said.push(line),
+    fail: (m) => { throw new Error(m); },
+    post: async () => ({}),
+    sleep: async () => {},
+    ...extra,
+  });
+  return { said, trace, log: said.join('\n') };
+}
+
+test('★★★ the re-arm waits for `notification.send` to reach 0 — and the toggle comes after', async () => {
+  const trace = [];
+  const read = relayDepthBox(
+    [
+      depth([{ ...POST, remaining: 1_419 }]),
+      depth([{ ...POST, remaining: 600 }]),
+      depth([{ ...POST, remaining: 0, state: 'settled' }]),
+    ],
+    trace,
+  );
+  const { trace: order, log } = await runPass(read, trace);
+  const firstToggle = order.indexOf('toggle');
+  assert.ok(firstToggle > 0, 'the channels were never re-armed');
+  // THE WHOLE RULE: it kept asking until the consumer said zero, and every ask is before the re-arm.
+  const asks = order.filter((step, i) => step === 'depth' && i < firstToggle).length;
+  assert.equal(asks, 3, `the wait asked ${asks} time(s) before re-arming — it must ask until the answer is 0`);
+  assert.ok(order.lastIndexOf('depth') < firstToggle, 'a depth was read AFTER the re-arm — the fence is open');
+  assert.match(log, /notification\.send caught up/);
+});
+
+test('⛔ it never waits on `settled`: a shelf 57 003 events behind must not hold the re-arm for 12 hours', async () => {
+  // The exact box of 2026-09-10. `settled` is false and stays false; the postman is done. Waiting on the
+  // whole relay here is the twelve hours this fence exists to avoid, so the pass must re-arm at once.
+  const trace = [];
+  const read = relayDepthBox([depth([{ ...POST, remaining: 0, state: 'settled' }, SHELF])], trace);
+  const { trace: order, log } = await runPass(read, trace);
+  assert.equal(order.filter((s) => s === 'depth').length, 1, 'it polled again for a consumer that was done');
+  assert.ok(order.indexOf('toggle') > 0);
+  assert.match(log, /notification\.send caught up/);
+});
+
+test('⛔ the ceiling is finite, and when it blows the run SAYS what was left undone', async () => {
+  // A box where the dispatcher never catches up — which is what a bench full of `@example.com` buyers is, by
+  // construction: every send fails `550` and the relay crawls. A wait with no ceiling hangs a birth; a ceiling
+  // that passes over the exposure in silence is the defect this whole slice is about.
+  const trace = [];
+  const read = relayDepthBox([depth([{ ...POST, remaining: 887 }])], trace);
+  const { trace: order, log } = await runPass(read, trace);
+  assert.ok(order.indexOf('toggle') > 0, 'the wait hung instead of ending — a mute box is the other failure');
+  assert.match(log, /budget ran out/);
+  assert.match(log, /remaining=887/, 'it ended without naming what is still owed');
+  assert.match(log, /WILL be dispatched with it armed/, 'it ended without naming the consequence');
+  // ⛔ AND IT MUST NOT CLAIM THE OPPOSITE. The success sentence here would be the silence that cost 12 hours.
+  // ⚠️ Matched with `after` on purpose: the refusal line itself contains the words "is NOT caught up", and a
+  // bare /caught up/ would redden the very sentence it is asking for — the substring trap of the pk32 adendo.
+  assert.doesNotMatch(log, /caught up after/);
+});
+
+test('★ `null` is not zero: `unregistered` keeps waiting instead of reading an absence as done', async () => {
+  const trace = [];
+  const read = relayDepthBox(
+    [
+      depth([{ consumer: 'notification.send', remaining: null, dead_lettered: null, state: 'unregistered' }]),
+      depth([{ ...POST, remaining: 0, state: 'settled' }]),
+    ],
+    trace,
+  );
+  const { trace: order, log } = await runPass(read, trace);
+  assert.equal(order.filter((s) => s === 'depth').length, 2, 'it accepted "no idea" as "nothing owed"');
+  assert.match(log, /caught up/);
+});
+
+test('★ `inactive` ENDS the wait and says why — there is no dispatcher in this schema to outrun', async () => {
+  const trace = [];
+  const read = relayDepthBox(
+    [
+      depth([
+        {
+          consumer: 'notification.send',
+          remaining: null,
+          dead_lettered: null,
+          state: 'inactive',
+          missing_tables: ['notification_channel'],
+        },
+      ]),
+    ],
+    trace,
+  );
+  const { trace: order, log } = await runPass(read, trace);
+  assert.equal(order.filter((s) => s === 'depth').length, 1, 'it waited for a consumer that is not even here');
+  assert.match(log, /not active in this schema/);
+  assert.match(log, /notification_channel/, 'it did not name which table is missing');
+});
+
+test('★ `dead_lettered` ends the wait and prints the number — nobody will ever make those deliveries', async () => {
+  // This is the `550` population with a name: the provider refused each one, the delivery is `failed`, and
+  // `remaining` is 0 precisely because nothing will move. Waiting on it is waiting forever.
+  const trace = [];
+  const read = relayDepthBox(
+    [depth([{ consumer: 'notification.send', remaining: 0, dead_lettered: 56, state: 'dead_lettered' }])],
+    trace,
+  );
+  const { log } = await runPass(read, trace);
+  assert.match(log, /56 delivery\(ies\) are in the dead letter/);
+});
+
+test('⛔ ANTI-VACUUM: a depth with no `notification.send` row refuses to conclude anything', async () => {
+  // The shape of green this house keeps losing to. `find` returning `undefined` must never read as
+  // `remaining: 0` — if the kernel renames the consumer, this file is wrong and has to say so.
+  const trace = [];
+  const read = relayDepthBox([depth([SHELF, { ...POST, consumer: 'notification.dispatch', remaining: 0 }])], trace);
+  const { log } = await runPass(read, trace);
+  assert.match(log, /answered without a `notification\.send` consumer/);
+  assert.match(log, /notification\.dispatch/, 'it did not name what the box DOES publish');
+  assert.doesNotMatch(log, /caught up after/, 'it concluded the queue was drained from a row that does not exist');
+});
+
+// ★★ THE SOURCE SIDE OF THE SAME RULE: the prose of this fence was TRUE OF A CAUGHT-UP BOX ONLY, and that is
+// why nobody saw the race for two waves. A comment that describes a world that does not exist is a defect.
+test('⛔ the silencing header no longer claims the send decision is taken at EMIT, full stop', () => {
+  const source = readFileSync(new URL('./commerce.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(
+    source,
+    /the decision to send is\n \* taken at EMIT/,
+    'the header still states as unconditional what `dispatch.ts:393` makes conditional on the relay being ' +
+      'caught up. That sentence is why the 2026-09-10 birth mailed 180 days of fictional orders.',
+  );
+  assert.match(source, /dispatch\.ts:393/, 'the correction must cite where the toggle is actually read');
+  assert.match(source, /pk32 §13/, 'the provisional wait must name what replaces it');
 });
 
 // ── ★★ A47 · THE REVIEW WALL — six per product, and a queue that still has something on it ──────────────

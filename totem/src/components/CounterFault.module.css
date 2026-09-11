@@ -1,0 +1,95 @@
+/* The counter's FAULT SCREEN — the body of `app/error.tsx`, at the counter's scale.
+ *
+ * It is its own stylesheet rather than three more classes in `Totem.module.css` because the shapes it needs are
+ * a COLUMN (the panel's own `.primaryWide` is a row item, `flex: 1.15`, and stretches absurdly in a column),
+ * and because a boundary that imported the till's stylesheet would drag the whole counter's CSS into the chunk
+ * Next loads when the counter is already failing.
+ *
+ * Same tokens, same typefaces, same 1080x1920 panel: the screen is bolted to a wall and the person in front of
+ * it has no browser chrome to escape with, so the type is the counter's type and the tap target is a hand's. */
+
+.frame {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--totem-frame);
+  overflow: hidden;
+  font-family: var(--totem-text);
+}
+
+.panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--totem-width);
+  height: var(--totem-height);
+  overflow: hidden;
+  background: var(--totem-header);
+  transform-origin: center center;
+  transform: translate(-50%, -50%) scale(var(--totem-scale, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 80px;
+  text-align: center;
+}
+
+.mark {
+  font-family: var(--totem-display);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--totem-sand);
+  margin-bottom: 8px;
+}
+
+.title {
+  font-family: var(--totem-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--totem-bg);
+  max-width: 820px;
+}
+
+.note {
+  font-size: 26px;
+  line-height: 1.45;
+  color: rgba(243, 237, 227, 0.7);
+  max-width: 760px;
+}
+
+/* The wait, and the only line on this screen that is a published fact rather than a choice of words. */
+.wait {
+  font-size: 30px;
+  font-weight: 500;
+  color: var(--totem-sand);
+}
+
+.retry {
+  margin-top: 16px;
+  height: 120px;
+  padding: 0 72px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--totem-amber);
+  color: var(--totem-card);
+  font-family: var(--totem-display);
+  font-size: 38px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.retry:active {
+  transform: scale(0.99);
+}
+
+/* The code, for whoever is called to the counter — small, and never the headline. */
+.code {
+  font-size: 20px;
+  color: rgba(243, 237, 227, 0.45);
+}
