@@ -27,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
+import { APP_BLOCKS } from './app-blocks.mjs';
 import { COFFEE_PROMOTIONS, coffeePages, expectedCoffees } from '../seed/coffee.mjs';
 import { poolProducts } from '../seed/pool.mjs';
 import { outletPages } from '../seed/outlet.mjs';
@@ -318,33 +319,12 @@ const datasetHomeRows = (declared = DATASET_HOME) => [
     .map((b, i) => compositionRow('shelves', 'shelf', b.slot, i)),
 ];
 
-/**
- * ★★ pk31/§6 — THE APPS' OWN STOREFRONT BLOCKS, as `read.extension_composition` answers them for a store
- * where the install has just run. `extension.install` materializes every hook the manifest declares, so these
- * rows are the KERNEL's work and not a seed's — which is exactly why no section of the verifier looked at
- * them until 3e, and why counting them by hand produced the wrong answer about `confirmation_note`.
+/** The apps' own storefront blocks — `APP_BLOCKS`, imported at the top of this file. It left this suite on
+ *  2026-09-12 (pk34/D3) so that `bin/app-blocks.guard.mjs` could grade it against the manifests of the pinned
+ *  release without importing a test file: it had spent a day green while asserting a slot the owner had moved.
+ *  Its reasons — why it is hand-written, and why the `admin:` hooks are deliberately absent — live with it.
  *
- * ⚠️ HAND-WRITTEN, for the same reason `DECLARED_WIDGETS` is: the manifests are monorepo files a machine
- * running this suite may not have. They are the ones measured on the live box of 2026-09-11 — the four
- * shopper-facing blocks of `subscriptions` plus the two of `reviews`. The FIFTH subscriptions block
- * (`latest_subscriptions`) is deliberately NOT here: it is an `admin:` hook, seeded once per TENANT with a
- * null store, and mistaking it for a store block is the whole defect 3e was written after.
- */
-const APP_BLOCKS = [
-  ['subscriptions', 'plan_picker', 'storefront:pdp.below_buybox'],
-  ['subscriptions', 'cart_plans', 'storefront:checkout.summary'],
-  ['subscriptions', 'my_subscriptions', 'storefront:account.top'],
-  ['subscriptions', 'confirmation_note', 'storefront:checkout.confirmation'],
-  ['reviews', 'reviews', 'storefront:pdp.below_gallery'],
-  ['reviews', 'order_review', 'storefront:order.below_items'],
-  // `recommendations` is here for a second reason beyond being real: the "unplaced default" test below stages
-  // `recommendations/related` with a null placement in ONE store, and 3e's verdict is per TENANT — so the
-  // sibling store holding it LIVE is what makes that staging a statement about the Outlet's window instead of
-  // an accusation about the app. Drop these two lines and that test goes red for the right rule.
-  ['recommendations', 'related', 'storefront:pdp.below_cross_sell'],
-  ['recommendations', 'bought-together', 'storefront:pdp.below_buybox'],
-];
-/** Those blocks as one store's rows. `extra` stages a block the box does NOT really show (`placement_id: null`
+ *  Those blocks as one store's rows. `extra` stages a block the box does NOT really show (`placement_id: null`
  *  for a hook nobody placed, `enabled: false` for one an operator switched off). */
 const appBlockRows = (extra = () => ({})) =>
   APP_BLOCKS.map(([app, component, target], i) =>
