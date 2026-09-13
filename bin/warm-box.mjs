@@ -771,10 +771,16 @@ const namedFailures = (lines) => {
 // ⚠️ AND THE MEASUREMENT KILLED THE OBVIOUS EXPLANATION. It is NOT `host:port` against a bare `host`.
 // Measured over the bytes the bench served (`/`, `/tenis`, `/b/taft`, past the gate, one absolute image src
 // each): the addresses are `https://$FORGE_TAILNET_HOST/v1/media/…`, the KERNEL's master url on the
-// box's OWN origin. The vitrine's classifier compares origins first and would have matched — then it checks
-// the PATH against its three image doors, `/v1/media/` is none of them, and the fall-through names the HOST
-// for a problem that is about the DOOR (apps/storefront/src/lib/warm/images.ts:17, :78, :86). Same host,
-// different door. ⛔ That half is the PRODUCT's and is the slice `pk34/p5`; nothing here reaches into it.
+// box's OWN origin. The vitrine's classifier compared origins first and matched — then it checked the PATH
+// against its three image doors, `/v1/media/` is none of them, and the fall-through named the HOST for a
+// problem that is about the DOOR. Same host, different door.
+//
+// ★★ AND `pk34/p5` CLOSED THAT AT THE SOURCE — the past tense above is that change. The vitrine now answers
+// the origin question first and once, so `foreignHosts` carries only somebody else's hosts and OUR own
+// doorless addresses come back in `unwarmablePaths`, printed by its own sentence further down.
+// ⛔ THE GRADING BELOW STAYS ANYWAY, and it is not belt-and-braces: this box pins its fronts BY DIGEST, so
+// the image that answers can be OLDER than p5 and still report this box's own host as foreign. On that
+// image this block is the only thing standing between the operator and the false accusation.
 //
 // ── WHICH SOURCE ANSWERS «THIS BOX SERVES H», AND WHY IT TAKES BOTH ─────────────────────────────────────
 // ⛔ THE TWO DISAGREE ON THE REAL BOX, measured the same day, asked of the same bench:
@@ -816,6 +822,27 @@ const servesHost = (host) => {
 /** Can this run say «this box does NOT serve H» at all? Only the declaration lists every host it answers on. */
 const canGradeHosts = Boolean(declaration);
 
+// ── ★★★ pk34/d2 (reopened) · THE THIRD COLUMN, AND WHY READING ONLY `failed` WOULD NOW LIE ──────────────
+//
+// ⛔ `pk34/p5` SPLIT OCCUPIED FROM BROKEN IN THE VITRINE. `failed` means only «the box did not answer»; the
+// urls the box REFUSED because it is at its read ceiling come back in a new `busy` (and `busyNamedNoTime`,
+// which is how many of those named no time to come back). The demo's birth of 2026-09-12 published
+// `failed=83` over a shop that had answered "muita gente navegando agora" 83 times — that number is about to
+// shrink, correctly. ⇒ A STEP THAT READ ONLY `failed` WOULD THEN PRINT `failed=0` OVER PAGES STILL COLD:
+// a false red traded for a FALSE GREEN, which is strictly worse, because nobody investigates a green.
+//
+// ⚠️ AND ABSENT IS NOT ZERO. This box pins its fronts BY DIGEST, so the image that is up can be older than
+// the field and publish no `busy` at all — and that box is exactly the one whose `failed` still swallows the
+// refusals. `busy ?? 0` renders the two identically. It is the same rule the host half of this slice already
+// obeys: there are three answers, and «I cannot say» is one of them.
+
+/**
+ * `busy` as the report published it — a number, or `null` when the answering image does not carry the column.
+ *
+ * ⛔ Never `?? 0`. See above: "nobody counted" and "none were busy" are different sentences.
+ */
+const busyOf = (o) => (Number.isFinite(o?.busy) ? o.busy : null);
+
 /** One pass of one store, in the words the pass itself uses. Returns whether it was whole. */
 const passLine = (label, pass) => {
   if (!pass) return true;
@@ -823,18 +850,33 @@ const passLine = (label, pass) => {
   const done = pass.done ?? 0;
   const failed = pass.failed ?? [];
   const skipped = pass.skipped ?? 0;
+  const busy = busyOf(pass);
+  const busyColumn = busy === null ? 'BUSY not published by this image' : `${busy} came back BUSY`;
   say(
     `      ${label.padEnd(7)} ${done} of ${planned} answered · ${failed.length} did NOT answer · ` +
-      `${skipped} never visited · p95 ${pass.p95 ?? 0}ms`,
+      `${busyColumn} · ${skipped} never visited · p95 ${pass.p95 ?? 0}ms`,
   );
   if (failed.length > 0) say(`              did not answer: ${namedFailures(failed)}`);
+  if (busy !== null && busy > 0) {
+    // ★ TWO NUMBERS BECAUSE THEY ARE TWO INSTRUCTIONS. One says the box's ceiling refuses without telling
+    //   anyone when to come back; the other says the run did not have time left to wait out the `Retry-After`
+    //   it WAS given. Folding them into one total would name a problem and no action.
+    const noTime = pass.busyNamedNoTime ?? 0;
+    const tooLong = busy - noTime;
+    say(
+      `              came back BUSY: ${busy} url(s) were REFUSED, not broken — the box is at its read ceiling, ` +
+        `and they are STILL COLD. ${noTime} named no time to come back (no Retry-After, so nothing could wait ` +
+        `for them) · ${tooLong} asked for longer than this run had left.`,
+    );
+  }
   if (skipped > 0) {
     say(
       `              never visited: ${skipped} url(s) were never TRIED — the run's own ceiling arrived first. ` +
         'That is the vitrine\'s DEFAULT_MAX_DURATION_MS, not this script\'s --deadline-ms.',
     );
   }
-  return failed.length === 0 && skipped === 0;
+  // ⚠️ A pass whose image cannot count busy is not asserted WHOLE — it is a pass this run cannot grade.
+  return failed.length === 0 && skipped === 0 && busy === 0;
 };
 
 const names = toWarm.map((s) => `${s.handle}=${s.id}`).join(' · ');
@@ -845,7 +887,9 @@ if (!run) {
   cold(
     'the run',
     `still running after this step's deadline — ${p.warmed ?? 0} warmed, ` +
-      `${p.failed ?? 0} failed of ${p.planned ?? 0} planned so far. A birth may not hang on a poll; the run ` +
+      `${p.failed ?? 0} failed, ` +
+      `${busyOf(p) === null ? 'busy not published by this image' : `${busyOf(p)} busy`} ` +
+      `of ${p.planned ?? 0} planned so far. A birth may not hang on a poll; the run ` +
       `itself carries on and \`GET ${api}/api/warm\` still answers for it.`,
   );
 } else if (run.state === 'failed') {
@@ -853,7 +897,11 @@ if (!run) {
   cold('the run', `could not be planned, so nothing was measured: ${run.error ?? 'no reason given'}`);
 } else {
   const r = run.report ?? {};
-  const line = `planned=${r.planned ?? 0} warmed=${r.warmed ?? 0} failed=${r.failed ?? 0} p95=${r.p95 ?? 0}ms (${r.p95Pass ?? '?'} pass) · ${names}`;
+  const runBusy = busyOf(r);
+  const busyTotal = `busy=${runBusy === null ? '? (this image does not publish the column)' : runBusy}`;
+  const line =
+    `planned=${r.planned ?? 0} warmed=${r.warmed ?? 0} failed=${r.failed ?? 0} ${busyTotal} ` +
+    `p95=${r.p95 ?? 0}ms (${r.p95Pass ?? '?'} pass) · ${names}`;
   if ((r.planned ?? 0) === 0) {
     // ⚠️ THE VACUUM, AND IT WAS GREEN UNTIL pk21. A run that finished `ok` having planned NOTHING printed
     //    `✓ the stores — planned=0 warmed=0` and `VERDICT: warm`, exit 0 — a box that warmed nothing reading
@@ -866,8 +914,34 @@ if (!run) {
         'warmer and it enumerated nothing, so NOTHING about this box was warmed and nothing about it was ' +
         'measured — read this as "the warmer could not build a plan", never as "warm".',
     );
-  } else if (run.state === 'ok') ok('the stores', line);
-  else cold('the stores', `${line}${(r.reasons ?? []).length ? ` — ${r.reasons.join(' · ')}` : ''}`);
+  } else if (runBusy !== null && runBusy > 0) {
+    // ⛔ THIS STEP GRADES THE COLUMN ITSELF, and does not wait for the vitrine's `state` to do it. The run
+    //    that produced this branch said `state: ok` and `failed: 0`; a step that trusted those two would
+    //    print «warm» over pages the box REFUSED to serve. Busy is not a failure and it is not a success —
+    //    those urls are still cold, and the verdict has to be able to say so.
+    cold(
+      'the stores',
+      `${line} — ${runBusy} url(s) came back BUSY: the box REFUSED them at its read ceiling rather than ` +
+        'failing, so they are neither broken nor warm — they are STILL COLD. The per-pass lines below say ' +
+        'how many named no time to come back. ⚠️ This is not a bug hunt: it is a ceiling, and the warming ' +
+        'itself spends the same budget a shopper does.' +
+        ((r.reasons ?? []).length ? ` — ${r.reasons.join(' · ')}` : ''),
+    );
+  } else if (run.state === 'ok') {
+    ok('the stores', line);
+    if (runBusy === null) {
+      // ⚠️ SAID ONCE, AND IT DOES NOT COST THE VERDICT. An image older than pk34/p5 publishes no `busy`, and
+      //    on that image a refused url is still counted in `failed` — so nothing is being hidden, it is only
+      //    being named with the wrong word. Turning this into a shortfall would make the step red on every
+      //    box that has not been rebaked, and a step that is always red is a step people skip.
+      noted(
+        'the third column',
+        'this run CANNOT SAY how many urls came back BUSY: the vitrine image that answered does not publish ' +
+          '`busy` (it predates pk34/p5), so a url the box REFUSED is still counted as one that did not ' +
+          'answer. Read `failed` above as "did not answer OR was refused". Rebake the fronts to split them.',
+      );
+    }
+  } else cold('the stores', `${line}${(r.reasons ?? []).length ? ` — ${r.reasons.join(' · ')}` : ''}`);
 
   // ★ THE BREAKDOWN, per store and per pass. It is printed on a GREEN run too: an operator who only ever sees
   //   this shape when something is wrong cannot tell a shape that is wrong from a shape they have not seen.
@@ -903,10 +977,28 @@ if (!run) {
       if (ours.length > 0) {
         say(
           `              images left UNWARMED at an address this box DOES serve: ${ours.join(' · ')} — so these ` +
-            'are not somebody else\'s CDN, they are this box\'s own images and nothing warmed them. The list ' +
-            'is the vitrine\'s (apps/storefront/src/lib/warm/images.ts), which this step only relays: measured ' +
-            '2026-09-12, what lands in it here is the kernel\'s master url, same origin, outside the three ' +
-            'image doors the vitrine can warm.',
+            'are not somebody else\'s CDN, they are this box\'s own images and nothing warmed them. ⚠️ A ' +
+            'vitrine of pk34/p5 or later never reports this: it names our own doorless addresses in ' +
+            '`unwarmablePaths` instead (the line below). Seeing THIS line means the image that answered ' +
+            'predates that split — rebake the fronts, and the same fact arrives as a path rather than as an ' +
+            'accusation against this box\'s own host.',
+        );
+      }
+      // ★★★ pk34/p5 ANSWERED THE HALF THIS STEP COULD ONLY DESCRIBE. Until that slice, an address on our OWN
+      //     origin that the warmer had no door for fell out of the classifier as a foreign HOST — which is
+      //     the false accusation the block above exists to grade. The vitrine now publishes the two facts
+      //     apart, so this step relays them apart: a host is somebody else's bytes, a path is ours through a
+      //     door that does not exist. ⚠️ The block above STAYS: this box pins its fronts by digest, and an
+      //     image older than p5 still reports our own host in `foreignHosts`.
+      const unwarmable = store.images.unwarmablePaths ?? [];
+      if (unwarmable.length > 0) {
+        say(
+          `              our OWN addresses the warmer has no door for: ${unwarmable.slice(0, SAMPLE).join(' · ')}` +
+            `${unwarmable.length > SAMPLE ? ` · …and ${unwarmable.length - SAMPLE} more` : ''} ` +
+            `(${unwarmable.length} in total). Nothing is wrong with the host — the markup reached PAST the ` +
+            'media doors, so those images are served full-size and nothing warms them. Measured on this ' +
+            "bench 2026-09-12: the shelf banner emitting the kernel's master url `/v1/media/<key>` instead " +
+            'of the storefront\'s `/api/media/<key>`.',
         );
       }
       if (ungraded.length > 0) {

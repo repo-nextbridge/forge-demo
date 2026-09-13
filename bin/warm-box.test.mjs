@@ -67,14 +67,37 @@ const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: t
  * `failed` is a url that ANSWERED BADLY; `skipped` is a url the run's ceiling arrived before it was TRIED.
  * They are the two halves the birth of 04/09 folded into one number, and they are different repairs.
  */
-const pass = ({ planned, done, failed = [], skipped = 0, p95 = 120 }) => ({
+const pass = ({ planned, done, failed = [], skipped = 0, p95 = 120, busy = 0, busyNamedNoTime = 0 }) => ({
   planned,
   done,
   p95,
   failed,
   hits: done,
   skipped,
+  // ★★★ pk34/p5 — THE THIRD COLUMN. `done + failed + busy + skipped === planned` is the product's own
+  // invariant: a url the box REFUSED is neither warm nor broken, and `failed` stopped swallowing it.
+  busy,
+  busyNamedNoTime,
 });
+
+/**
+ * ★ THE SAME REPORT AS AN IMAGE THAT PREDATES pk34/p5 WOULD SEND IT — the column simply is not there.
+ *
+ * ⛔ NOT `busy: 0`. This box pins its fronts BY DIGEST, so the running image can be older than the field, and
+ * "nobody counted" is a different sentence from "none were busy". A fixture that sent 0 would let the step
+ * default to 0 and nothing here would ever notice.
+ */
+const withoutBusyColumn = (value) => {
+  if (Array.isArray(value)) return value.map(withoutBusyColumn);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([k]) => k !== 'busy' && k !== 'busyNamedNoTime')
+        .map(([k, v]) => [k, withoutBusyColumn(v)]),
+    );
+  }
+  return value;
+};
 
 /**
  * ★★★ A BOX WHOSE PLAN IS BIGGER THAN THE CEILING IT IS GIVEN — which is this box's every real birth.
@@ -171,6 +194,17 @@ async function fakeBox({
    * box serves. `[]` is a run whose images were all at the vitrine's own doors.
    */
   foreignHosts = [],
+  /**
+   * ★★★ pk34/p5 — OUR OWN addresses through a path the warmer has no door for
+   * (`StoreReport.images.unwarmablePaths`). A different fact from `foreignHosts` and a different fix:
+   * nothing is wrong with the host, the markup reached past the media doors.
+   */
+  unwarmablePaths = [],
+  /** Visits the box REFUSED in the PAGES pass, and how many of those named no time to come back. */
+  busy = 0,
+  busyNamedNoTime = 0,
+  /** `false` ⇒ the report is sent the way an image built BEFORE pk34/p5 sends it: with no `busy` at all. */
+  publishesBusy = true,
 } = {}) {
   const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
@@ -241,8 +275,9 @@ async function fakeBox({
                     state: 'ok',
                     report: {
                       planned,
-                      warmed: planned,
+                      warmed: planned - busy,
                       failed: 0,
+                      busy,
                       p95,
                       p95Pass: 'warm',
                       thresholdMs: null,
@@ -253,8 +288,14 @@ async function fakeBox({
                           planned,
                           sections: {},
                           short: [],
-                          pages: pass({ planned, done: planned, p95 }),
-                          images: { ...pass({ planned: 0, done: 0 }), foreignHosts, declared: 0, cut: false },
+                          pages: pass({ planned, done: planned - busy, p95, busy, busyNamedNoTime }),
+                          images: {
+                            ...pass({ planned: 0, done: 0 }),
+                            foreignHosts,
+                            unwarmablePaths,
+                            declared: 0,
+                            cut: false,
+                          },
                           verify: undefined,
                         },
                       ],
@@ -358,6 +399,7 @@ async function fakeBox({
                         : { state: 'failed', report: null, error: 'no store claims the host "127.0.0.1"' },
           };
         }
+        if (!publishesBusy && run.settleTo) run = { ...run, settleTo: withoutBusyColumn(run.settleTo) };
         return json(202, { ok: true, started: true, run: { ...run, settleTo: undefined } });
       }
       asked.gets += 1;
@@ -1123,9 +1165,13 @@ test('★★ ANTI-VACUUM — a box with NO gate says nothing about gates, so the
 // ⚠️ AND THE BRIEF'S SUSPICION WAS WRONG, which is why this file measures rather than repeats it: it was NOT
 // `host:port` against bare `host`. Measured over the bytes the bench served (`/`, `/tenis`, `/b/taft`, past
 // the gate): the addresses are `https://$FORGE_TAILNET_HOST/v1/media/…` — the KERNEL's master url on the
-// box's OWN origin, which the vitrine's classifier drops into `foreign` because the PATH is not one of its
-// three image doors (apps/storefront/src/lib/warm/images.ts:17, :78, :86). Same host, different door. The
-// product half is `pk34/p5`; what is repaired HERE is the sentence this repository prints about it.
+// box's OWN origin, which the vitrine's classifier dropped into `foreign` because the PATH is not one of its
+// three image doors. Same host, different door.
+//
+// ★★ `pk34/p5` HAS SINCE CLOSED IT AT THE SOURCE: our own doorless addresses come back in `unwarmablePaths`,
+// and the last test of this file is the one that keeps them relayed. ⛔ THE TESTS BELOW STAY ANYWAY — this
+// box pins its fronts BY DIGEST, so an image older than that split still reports this box's own host as
+// foreign, and on that image this grading is the only thing between the operator and the false accusation.
 
 test('★★★ a host this box SERVES is never reported as one it does not serve', async () => {
   const box = await fakeBox({ warm: 'ok', foreignHosts: ['127.0.0.1'], directory: { '127.0.0.1': 'sto_CAFE' } });
@@ -1144,8 +1190,11 @@ test('★★★ a host this box SERVES is never reported as one it does not serv
     assert.match(line, /127\.0\.0\.1/, `the line does not name the host: ${line}`);
     // 3 · with the SOURCE that decided it, so a reader can ask the box the same question.
     assert.match(line, /FORGE_STORE_HOSTS/, `the line does not name what it graded the claim against: ${line}`);
-    // 4 · and it points at the repository that classifies, because this one only relays the field.
-    assert.match(line, /warm\/images\.ts/, `the line does not name where the classification lives: ${line}`);
+    // 4 · and it says what seeing this line MEANS now that pk34/p5 exists: the image that answered predates
+    //     the split, and the same fact arrives as `unwarmablePaths` on a rebaked front. A reader who cannot
+    //     act on a line is a reader who learns to skip it.
+    assert.match(line, /unwarmablePaths/, `the line does not name the field that replaces it: ${line}`);
+    assert.match(line, /predates|rebake/i, `the line does not say what seeing it means: ${line}`);
   } finally {
     box.close();
   }
@@ -1259,6 +1308,131 @@ test('★★ THE PORT IS THE OTHER SOURCE — a host the DIRECTORY claims is not
     const line = stdout.split('\n').find((l) => l.includes('UNWARMED'));
     assert.ok(line, `the host the directory claims got no line at all:\n${stdout}`);
     assert.match(line, /read\.store\.by_host/, `the line does not name the source that answered: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ pk34/d2 (reopened) · BUSY IS A THIRD COLUMN, AND THIS STEP HAS TO BE ABLE TO SAY IT ──────────────
+//
+// ⛔ THE RISK, AND IT RUNS THE OTHER WAY FROM THE ONE ABOVE. `pk34/p5` split OCCUPIED from BROKEN in the
+// vitrine: `failed` now means only «the box did not answer», and the urls the box REFUSED (it is at its read
+// ceiling) come back in a new `busy`. The demo's birth of 2026-09-12 published `failed=83` on a shop that had
+// answered "muita gente navegando agora" 83 times — so that number is about to shrink, correctly.
+//
+// ⇒ AND A STEP THAT READS ONLY `failed` WOULD THEN PRINT `failed=0` OVER PAGES THAT ARE STILL COLD. That
+// trades a false red for a FALSE GREEN, which is strictly worse: nobody investigates a green. The whole point
+// of the column is that a busy url is neither warm nor broken, and the report has to be able to say all
+// three things.
+//
+// ⚠️ AND THE COMPATIBILITY IS HONEST, NOT DEFAULTED. This box pins its fronts BY DIGEST: the image that is up
+// can be older than `p5` and publish no `busy` at all. ⛔ Absent is NOT zero — it is «this run cannot say»,
+// exactly the third sentence the host half of this slice already owes the reader.
+
+test('★★★ a run with BUSY urls and ZERO failures does not read as warm — the false green is refused', async () => {
+  const box = await fakeBox({
+    warm: 'ok',
+    busy: 4,
+    busyNamedNoTime: 3,
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    // 1 · ⛔ NOTHING may read as "it came out warm". The vitrine said `state: ok` and `failed: 0`; the only
+    //     thing standing between that and a green verdict is this step reading the third column.
+    assert.doesNotMatch(stdout, /VERDICT: warm/, `4 busy urls and the box still reads as warm:\n${stdout}`);
+    // 2 · …and the number is PRINTED, never merely implied by the absence of a green.
+    assert.match(stdout, /busy=4/, `the totals line does not carry the third column:\n${stdout}`);
+    // 3 · with the split the product publishes, because the two halves are different instructions.
+    const line = stdout.split('\n').find((l) => l.includes('BUSY') && l.includes('3'));
+    assert.ok(line, `the busy urls are not explained at all:\n${stdout}`);
+    assert.match(line, /Retry-After|no time to come back/i, `the split is not named: ${line}`);
+    // 4 · ⛔ AND IT IS NOT COUNTED AS A FAILURE. `failed` is the vitrine's word for "did not answer".
+    assert.match(stdout, /failed=0/, `busy leaked back into failed:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ the per-pass line carries BUSY beside "did NOT answer", never inside it', async () => {
+  const box = await fakeBox({
+    warm: 'ok',
+    busy: 2,
+    busyNamedNoTime: 0,
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    const line = stdout.split('\n').find((l) => l.trim().startsWith('pages'));
+    assert.ok(line, `there is no per-pass line at all:\n${stdout}`);
+    assert.match(line, /0 did NOT answer/, `the failure column moved or vanished: ${line}`);
+    assert.match(line, /2 came back BUSY/, `the pass line has no busy column: ${line}`);
+    assert.match(line, /never visited/, `the skipped column was lost: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ an image that does NOT publish `busy` is told apart from one that published ZERO', async () => {
+  // ⛔ THE DEFAULT THAT WOULD HIDE IT. `r.busy ?? 0` reads identically for both, and the box that cannot
+  //    count is exactly the box whose `failed` still swallows the refusals — a reader has to know which one
+  //    they are looking at.
+  const older = await fakeBox({ warm: 'ok', publishesBusy: false, directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout } = await runStep({ box: older, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.doesNotMatch(stdout, /busy=0/, `an image that publishes no busy column was reported as zero:\n${stdout}`);
+    const line = stdout.split('\n').find((l) => /busy/i.test(l));
+    assert.ok(line, `the missing column is not mentioned at all:\n${stdout}`);
+    assert.match(line, /cannot say|does not publish/i, `the step does not say it cannot tell: ${line}`);
+  } finally {
+    older.close();
+  }
+});
+
+test('★★ ANTI-VACUUM — a run that published busy=0 SAYS zero, and stays warm', async () => {
+  // The other half, and it is what makes the two above measurements: the sentences must come from the field.
+  const box = await fakeBox({ warm: 'ok', directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /VERDICT: warm/, `a run with no busy urls lost its green:\n${stdout}`);
+    assert.match(stdout, /busy=0/, `a published zero is not printed:\n${stdout}`);
+    assert.doesNotMatch(stdout, /cannot say.*busy|busy.*cannot say/i, `a published zero read as unknown:\n${stdout}`);
+    // ⚠️ THE COLUMN STAYS — that is what a column is, and an operator who only sees it when something is
+    //    wrong cannot tell a shape that is wrong from one they have not seen. What must NOT appear is the
+    //    EXPLANATION, which is the part that only means something when the number is non-zero.
+    assert.match(stdout, /0 came back BUSY/, `the zero column is not printed:\n${stdout}`);
+    assert.doesNotMatch(
+      stdout,
+      /were REFUSED, not broken/,
+      `a run with zero busy urls still explains busy:\n${stdout}`,
+    );
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ OUR OWN address through a door the warmer has none for is named APART from a foreign host', async () => {
+  // ★ pk34/p5 CLOSED THE HALF THIS SLICE COULD ONLY DESCRIBE. The vitrine now answers the two facts
+  //   separately: `foreignHosts` is somebody else's bytes, `unwarmablePaths` is OURS through a path with no
+  //   warmable door — measured cause on this bench, the shelf banner emitting the kernel's master url
+  //   `/v1/media/<key>` instead of the theme's `/api/media/<key>`. Two facts, two fixes, two sentences.
+  const box = await fakeBox({
+    warm: 'ok',
+    foreignHosts: ['cdn.somebody-else.test'],
+    unwarmablePaths: ['/v1/media/local/tenant_x/banner-shelf.jpg'],
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    const ours = stdout.split('\n').find((l) => l.includes('/v1/media/local/tenant_x/banner-shelf.jpg'));
+    assert.ok(ours, `the unwarmable path is dropped on the floor:\n${stdout}`);
+    assert.doesNotMatch(ours, /does not serve/, `our own path was reported as a host we do not serve: ${ours}`);
+    // …and the genuinely foreign host keeps its own, different line.
+    const theirs = stdout.split('\n').find((l) => l.includes('does not serve'));
+    assert.ok(theirs, `the foreign host lost its line:\n${stdout}`);
+    assert.match(theirs, /cdn\.somebody-else\.test/, `the foreign host is not named: ${theirs}`);
+    assert.ok(!theirs.includes('/v1/media/'), `the two facts were printed as one: ${theirs}`);
   } finally {
     box.close();
   }
