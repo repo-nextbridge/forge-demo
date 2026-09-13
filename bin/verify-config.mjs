@@ -48,7 +48,7 @@ import { hostname as machineHostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { declaredFaces } from './box-domains.mjs';
+import { declaredFaces, isBenchAddress } from './box-domains.mjs';
 import { readDeclaration } from './box-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -386,26 +386,44 @@ say();
 // and it is also QUIETER: the box comes up, five faces serve, and the sixth answers on a name nothing
 // resolves. Nothing else on this box would ever say so. This does, by name.
 //
-// ★ AND IT NEVER GRADES A LOCALHOST BIRTH AS BROKEN. The bench is born on `localhost` and the promotion is a
-// NAMED step (§0b); a box that names NONE of its faces is a bench, and a bench is told so in one line. What
-// is a ✗ is the half-named box — some faces addressed and others not — because that is the shape nobody
-// chose: somebody was promoting this box and stopped.
+// ★ AND IT NEVER GRADES A LOCALHOST BIRTH AS BROKEN — which this file CLAIMED before it was true. The bench
+// is born on `localhost` and the promotion is a NAMED step (§0b), and the three states are read off the
+// ADDRESSES, never off which variables happen to be set: a face answering at loopback is not published.
+// ⛔ THE FIRST VERSION READ THE VARIABLES, and the birth of 2026-09-13 printed the consequence four times —
+// `FORGE_DOMAIN` and `FORGE_ADMIN_DOMAIN` have been `localhost` in `.env.example` since the first box, so
+// the bench looked HALF PROMOTED and the four newer faces took a ✗ that means «somebody stopped midway».
+// ⚠️ The test that should have caught it passed a fixture with all six EMPTY — a shape no bench has. A case
+// that grades a state nothing produces is a green that means nothing.
+// What is a ✗ is the half-PUBLISHED box — some faces at real hostnames and others not — because that is the
+// shape nobody chose: somebody was promoting this box and stopped.
 say('THE FACES THIS BOX DECLARES · one hostname per store and per tenant admin (seed/box.json)');
 {
   const faces = declaredFaces(BOX);
-  const named = faces.filter((f) => (declared[f.env] ?? '').trim());
+  // ★ A face counts as ADDRESSED only when its value is a PUBLISHED address. `FORGE_DOMAIN` and
+  // `FORGE_ADMIN_DOMAIN` are not new: `.env.example` has shipped them as `localhost` since the first box,
+  // so a bench never names ZERO faces — it names two. Grading the VALUE rather than the VARIABLE is what
+  // separates a bench from an abandoned promotion. Measured on the birth of 2026-09-13: without this the
+  // bench came out with 4 ✗ that belong to a different shape entirely.
+  const published = (f) => {
+    const v = (declared[f.env] ?? '').trim();
+    return v !== '' && !isBenchAddress(v);
+  };
+  const named = faces.filter(published);
+  const onBench = faces.filter((f) => isBenchAddress(declared[f.env] ?? ''));
   if (faces.length === 0) {
     bad('seed/box.json', 'declares no face at all — this box has no address it can be published at.');
   } else if (named.length === 0) {
     noted(
-      `none of the ${faces.length} faces is addressed`,
-      'every FORGE_*_DOMAIN is empty, which is what a LOCALHOST BIRTH leaves. The deployment addresses are ' +
-        'in seed/box.json and the promotion is what fills them; nothing here is wrong.',
+      `none of the ${faces.length} faces is published`,
+      `${onBench.length} of them answer at loopback and the rest are empty, which is what a LOCALHOST ` +
+        'BIRTH leaves (§0b: the box is born on localhost and the promotion is a NAMED step). The ' +
+        'deployment addresses are in seed/box.json and the promotion is what fills them; nothing here ' +
+        'is wrong.',
     );
   } else {
     for (const face of faces) {
       const value = (declared[face.env] ?? '').trim();
-      if (!value) {
+      if (!value || isBenchAddress(value)) {
         bad(
           `${face.label} — ${face.host}`,
           `${face.env} is EMPTY while ${named.length} of this box's ${faces.length} faces are addressed. This ` +

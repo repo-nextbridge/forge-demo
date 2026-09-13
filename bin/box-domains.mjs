@@ -68,6 +68,38 @@ export const readBox = (root = ROOT) => JSON.parse(readFileSync(join(root, 'seed
  * `host` on that store would put an «Acompanhar o pedido» button on every counter receipt pointing at the
  * totem's own 404 (`packages/core/src/notification/context.ts` builds `https://<host>/account/orders/<id>`).
  */
+/**
+ * ★★ IS THIS VALUE A BENCH ADDRESS RATHER THAN A PUBLISHED ONE? (pk34, the cut)
+ *
+ * ⛔ WHY THIS EXISTS, AND IT IS A DEFECT THE BIRTH OF 13/09 PRINTED NINE TIMES. `verify-config` grades the
+ * faces in three states — none named is a BENCH, all named is a deployment, SOME named is «somebody was
+ * promoting this box and stopped». The comment there says in so many words that it «NEVER GRADES A LOCALHOST
+ * BIRTH AS BROKEN», and on a real bench it did exactly that: `FORGE_DOMAIN` and `FORGE_ADMIN_DOMAIN` are not
+ * new variables this topology invented — `.env.example` has shipped them as `localhost` since the first box —
+ * so a bench NEVER names zero faces. It names two, and the other four took the ✗ meant for a half-promoted
+ * deployment. The guard could not tell a bench from an abandoned promotion.
+ *
+ * ★ The test that was supposed to catch this passed a fixture with all six EMPTY — a shape the bench does not
+ * have. A case that grades a state nothing produces is a green that means nothing.
+ *
+ * The rule is the ADDRESS, never the variable: a face published at loopback is not published.
+ * ⚠️ Anchored equality on the HOST, never a substring — `localhost` is inside `notlocalhost.example`, and this
+ * repository has paid three times in one week for an unanchored match.
+ */
+export function isBenchAddress(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return false; // empty is "unset", which is a different answer and has its own line.
+  const host = (raw.includes('://') ? raw.slice(raw.indexOf('://') + 3) : raw).replace(/\/.*$/, '');
+  // ⚠️ A BARE IPv6 IS ALL COLONS, so the `:port` strip has to know it is not looking at one: `::1` would
+  // come out as `:`. Bracketed form carries the port outside the brackets and is unambiguous.
+  const bare = host.startsWith('[')
+    ? host.slice(1, host.indexOf(']'))
+    : (host.match(/:/g) ?? []).length > 1
+      ? host
+      : host.replace(/:\d+$/, '');
+  return bare === 'localhost' || bare === '127.0.0.1' || bare === '::1';
+}
+
 export function declaredFaces(box = readBox()) {
   const faces = [];
   for (const tenant of box.tenants ?? []) {

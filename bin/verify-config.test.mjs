@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { isBenchAddress } from './box-domains.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STEP = join(ROOT, 'bin/verify-config.mjs');
@@ -422,12 +423,79 @@ const FACES = BOX.tenants.flatMap((t) => [
 ]);
 
 test('★★★ pk34/d1 — a box that names NONE of its faces is a BENCH, and is told so instead of accused', async () => {
+  // ⚠️ THIS FIXTURE IS NOT THE BENCH, and saying so is the point of keeping it. All six empty is what a fresh
+  // clone has BEFORE `.env` is written; the bench itself carries FORGE_DOMAIN=localhost and
+  // FORGE_ADMIN_DOMAIN=localhost, and the test below this one is the one that grades that shape. Believing
+  // this case covered the bench is what let the birth of 2026-09-13 print four wrong ✗.
   const box = await fakeBox(wholeLocalhost);
   try {
     const { stdout, status } = await runVerdict({ box, env: envFor('localhost') });
     assert.equal(status, 0, stdout);
-    assert.match(stdout, /none of the \d+ faces is addressed/, stdout);
+    assert.match(stdout, /none of the \d+ faces is published/, stdout);
+    assert.match(stdout, /0 of them answer at loopback/, stdout);
     assert.match(stdout, /LOCALHOST BIRTH/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ ANCHORED — a hostname that merely CONTAINS "localhost" is a real address, not the bench', () => {
+  // ⛔ THE SABOTAGE THAT PASSED GREEN FIRST TRY, which means the rule was the thing missing. Swapping the
+  // equality for `bare.includes('localhost')` broke nothing, and this repository has paid three times in one
+  // week for exactly that shape: `/jq/` matched inside `/tmp/…zSYjqw`, `die` inside `mens-…-brodie-2`, and
+  // `/demo/` matches `demorou`. A face published at `notlocalhost.example` would have been read as loopback
+  // and silently dropped out of the count.
+  for (const bench of ['localhost', 'localhost:8200', 'http://localhost:8200', '127.0.0.1', '127.0.0.1:8200', '::1', '[::1]:8200', 'https://localhost/']) {
+    assert.equal(isBenchAddress(bench), true, `${bench} is the bench and was not read as one`);
+  }
+  for (const real of ['notlocalhost.example', 'mylocalhost.test', 'localhost.attacker.example', 'store.forgecommerce.pro', 'cafe.forgecommerce.pro:443', 'cafe.unset.localhost']) {
+    assert.equal(isBenchAddress(real), false, `${real} is a real hostname and was read as the bench`);
+  }
+  // ⚠️ ANTI-VACUUM: empty is NOT the bench — it is "unset", a different answer with its own line. A predicate
+  // that swallowed it would make the two states indistinguishable, which is the whole defect this fixes.
+  assert.equal(isBenchAddress(''), false);
+  assert.equal(isBenchAddress(undefined), false);
+});
+
+test('★★★ THE REAL BENCH — two faces at `localhost` and four empty is a BENCH, not a stopped promotion', async () => {
+  // ⛔ THE CASE THE SIBLING TEST ABOVE COULD NOT SEE. It passes a fixture with all six EMPTY, and no bench has
+  // that shape: `.env.example` has shipped FORGE_DOMAIN=localhost and FORGE_ADMIN_DOMAIN=localhost since the
+  // first box. Measured on the birth of 2026-09-13 — the bench came out with FOUR ✗ reading
+  // "FORGE_*_DOMAIN is EMPTY while 2 of this box's 6 faces are addressed", which is the accusation meant for a
+  // promotion somebody abandoned. The two faces were the bench's own loopback.
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const { stdout, status } = await runVerdict({
+      box,
+      env: envFor('localhost', { FORGE_DOMAIN: 'localhost', FORGE_ADMIN_DOMAIN: 'localhost' }),
+    });
+    assert.equal(status, 0, `a plain bench was graded as a broken deployment:\n${stdout}`);
+    assert.match(stdout, /none of the \d+ faces is published/, stdout);
+    assert.match(stdout, /LOCALHOST BIRTH/, stdout);
+    // …and the line SAYS the two are at loopback rather than claiming every variable is empty.
+    assert.match(stdout, /2 of them answer at loopback/, stdout);
+    // ⚠️ ANTI-VACUUM: the four that really are unset must NOT be accused here either.
+    assert.doesNotMatch(stdout, /faces are addressed/, `the bench was told a face is missing:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★ a face published at a REAL hostname still makes the loopback ones a ✗ — the rule is the address, not the count', async () => {
+  // The half-published box is still the shape nobody chose, and this proves the fix did not simply mute the
+  // section: one real hostname among the six and the bench's own loopback faces are named again.
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const { stdout, status } = await runVerdict({
+      box,
+      env: envFor('localhost', {
+        FORGE_DOMAIN: 'localhost',
+        FORGE_ADMIN_DOMAIN: 'localhost',
+        FORGE_CAFE_DOMAIN: 'cafe.forgecommerce.pro',
+      }),
+    });
+    assert.equal(status, 1, `a half-published box came out settled:\n${stdout}`);
+    assert.match(stdout, /faces are addressed/, stdout);
   } finally {
     box.close();
   }
