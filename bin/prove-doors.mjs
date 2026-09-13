@@ -100,6 +100,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { declaredFaces, faceOfStore } from './box-domains.mjs';
 import { OFF_THE_STREET, servability } from './servable.mjs';
 
 const HERE = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -585,6 +586,90 @@ for (const row of rows) {
   }
   say();
 }
+
+// ── ★★★ pk34/d1 · THE ADDRESS EACH STORE IS PUBLISHED AT, AND WHO THE KERNEL SAYS ANSWERS THERE ─────────
+//
+// The loop above opened every door of this box's BENCH address space — `/s/<id>/…`, one origin, four stores.
+// Online each store has a hostname and its doors sit at the ROOT of it, and `seed/box.json` now declares
+// which hostname is whose (`domain`, per store). This is the half of that a step with no DNS can honestly
+// ask: WHO DOES THE KERNEL'S OWN ADDRESS BOOK SAY ANSWERS THERE. `read.store.by_host` is the global
+// directory — public, actorless, the same table `bin/store-host.mjs` writes at step 6b — and it is asked
+// here about the declared hostname rather than about the address this run was reached at.
+//
+// ⛔ AND THE ONE THAT MATTERS ON A BENCH IS THE NEGATIVE. The counter declares `directory: false`: a front of
+// this box answers at that hostname (the totem) and no store may CLAIM it, because the kernel writes
+// `https://<host>/account/orders/<id>` into every transactional message and the totem serves ONE route — so a
+// claim there puts an «Acompanhar o pedido» button on every counter receipt pointing at the totem's own 404
+// (`_public_url_why` in seed/box.json carries the measurement). Nothing anywhere asserted that, and it is
+// exactly the kind of fact a re-provision or a hand-edit flips in silence.
+{
+  const faces = declaredFaces(BOX);
+  const mine = rows.flatMap((row) => {
+    const face = faceOfStore(faces, tenant, row.handle);
+    return face ? [{ row, face }] : [];
+  });
+  if (mine.length === 0) {
+    noted(
+      `${tenant} declares no store hostname`,
+      'no store of this tenant carries a `domain` in seed/box.json, so this run has no published address to ' +
+        'ask the directory about. On a box that is meant to go online, that is the finding.',
+    );
+  } else {
+    let claimedHere = 0;
+    for (const { row, face } of mine) {
+      let answered;
+      try {
+        const res = await fetch(`${api}/v1/read/store.by_host?host=${encodeURIComponent(face.host)}`);
+        answered = res.status === 404 ? null : (await res.json().catch(() => ({})))?.store_id ?? null;
+      } catch (error) {
+        bad(`${row.handle} @ ${face.host}`, `read.store.by_host could not be asked: ${error.message}`);
+        continue;
+      }
+      if (answered) claimedHere++;
+      if (!face.directory) {
+        if (answered === null) {
+          ok(
+            `${row.handle} @ ${face.host}`,
+            'served at the EDGE and claimed by no store in the kernel\'s directory — which is what ' +
+              '`directory: false` declares, and what keeps every counter receipt free of a link into a front ' +
+              'that serves one route',
+          );
+        } else {
+          bad(
+            `${row.handle} @ ${face.host}`,
+            `seed/box.json declares \`directory: false\` for this store's hostname and read.store.by_host ` +
+              `answers "${answered}" for it. The kernel composes \`https://<host>/account/orders/<id>\` into ` +
+              'every transactional message from this column, and the front at that hostname is the totem, ' +
+              'which serves ONE route: every receipt of that store now carries a button to a 404. It also ' +
+              'keys the global store directory, so any request reaching this box with that Host is served ' +
+              'that store. Remove the claim (`tenant.store.update` with a null host), or change the ' +
+              'declaration and say why.',
+          );
+        }
+        continue;
+      }
+      if (answered === null) continue; // reported once, below — a localhost birth claims none of them
+      if (answered !== row.id) {
+        bad(
+          `${row.handle} @ ${face.host}`,
+          `this box declares that hostname for "${row.handle}" (${row.id}) and the kernel's directory answers ` +
+            `"${answered}". TWO STORES AT ONE ADDRESS: whichever the directory names is the one a visitor ` +
+            'reaches, and the declaration is a promise nothing keeps.',
+        );
+        continue;
+      }
+      ok(`${row.handle} @ ${face.host}`, 'its declared hostname resolves to this store in the kernel\'s directory');
+    }
+    if (claimedHere === 0) {
+      noted(
+        `${tenant} is not published at any of its ${mine.length} declared hostname(s)`,
+        'the kernel\'s directory claims none of them, which is exactly what a LOCALHOST BIRTH leaves — the ' +
+          'addresses are in seed/box.json and the promotion is what claims them.',
+      );
+    }
+  }
+}
+say();
 
 // ── ★★ THE STORE THIS REPOSITORY DECLARES AND THE BOX DOES NOT HOLD ─────────────────────────────────────
 //

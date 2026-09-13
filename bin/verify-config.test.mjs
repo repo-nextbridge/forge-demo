@@ -404,6 +404,120 @@ test('★★ the moved set is READ FROM box-up.sh, so a fifth address added to t
 
 // ── what the online-only facilities contribute, and what a question that could not be asked is ───────────
 
+// ── ★★★ pk34/d1 · THE SIX FACES, AND THE HALF-NAMED BOX ─────────────────────────────────────────────────
+//
+// `seed/box.json` declares one hostname per store and per tenant admin. Every one of them falls back, at the
+// edge, to a `<something>.unset.localhost` sentinel — measured 2026-09-12: a variable the Caddyfile reads and
+// nobody set used to take the WHOLE edge down (`server block without any key is global configuration`), and
+// the sentinel turns that into one unreachable face. That trade is only safe if SOMETHING says the face is
+// unreachable, and nothing else on this box would.
+//
+// ⚠️ THE THREE STATES ARE GRADED DIFFERENTLY ON PURPOSE: none named is a BENCH (a note), all named is a
+// deployment (graded against the directory), and SOME named is the shape nobody chose.
+
+/** The six faces as `seed/box.json` really declares them, so these tests carry no hostname of their own. */
+const FACES = BOX.tenants.flatMap((t) => [
+  ...(t.admin_domain ? [{ kind: 'admin', tenant: t.id, ...t.admin_domain }] : []),
+  ...t.stores.flatMap((s) => (s.domain ? [{ kind: 'store', tenant: t.id, handle: s.handle, ...s.domain }] : [])),
+]);
+
+test('★★★ pk34/d1 — a box that names NONE of its faces is a BENCH, and is told so instead of accused', async () => {
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const { stdout, status } = await runVerdict({ box, env: envFor('localhost') });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /none of the \d+ faces is addressed/, stdout);
+    assert.match(stdout, /LOCALHOST BIRTH/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk34/d1 — a HALF-NAMED box names the face left on its sentinel, and does not exit 0', async () => {
+  assert.ok(FACES.length >= 2, `seed/box.json declares ${FACES.length} face(s) — this test has nothing to half-name.`);
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    // One face addressed, the rest empty: somebody was promoting this box and stopped.
+    const first = FACES[0];
+    const { stdout, status } = await runVerdict({
+      box,
+      env: envFor('localhost', { [first.env]: first.host }),
+    });
+    assert.equal(status, 1, stdout);
+    for (const face of FACES.slice(1)) {
+      assert.ok(stdout.includes(face.host), `the verdict does not name ${face.host}, which is a face left unaddressed:\n${stdout}`);
+    }
+    assert.match(stdout, /unset\.localhost/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk34/d1 — every face named and claimed is SETTLED, including the one that must be claimed by NOBODY', async () => {
+  const storeFaces = FACES.filter((f) => f.kind === 'store');
+  const kept = storeFaces.filter((f) => f.directory !== false);
+  const refused = storeFaces.filter((f) => f.directory === false);
+  assert.ok(kept.length > 0 && refused.length === 1, `the declaration has ${kept.length} claimed and ${refused.length} refused store face(s) — this test grades both arms and needs one of each.`);
+  const box = await fakeBox({
+    ...wholeLocalhost,
+    storeHosts: [...wholeLocalhost.storeHosts, ...FACES.map((f) => f.host)],
+    adminDoors: {
+      ...wholeLocalhost.adminDoors,
+      ...Object.fromEntries(FACES.filter((f) => f.kind === 'admin').map((f) => [f.host, f.tenant])),
+    },
+    directory: {
+      localhost: 'sto_ROOT',
+      'localhost:8200': 'sto_ROOT',
+      ...Object.fromEntries(kept.map((f) => [f.host, `sto_${f.handle.toUpperCase()}`])),
+    },
+  });
+  try {
+    const { stdout, status } = await runVerdict({
+      box,
+      env: envFor('localhost', Object.fromEntries(FACES.map((f) => [f.env, f.host]))),
+    });
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /VERDICT: settled/, stdout);
+    // ⛔ ANTI-VACUUM: a green here has to have LOOKED. Every face must appear on a ✓ line of its own.
+    for (const face of FACES) assert.ok(stdout.includes(face.host), `${face.host} is not in the report at all:\n${stdout}`);
+    assert.match(stdout, /claimed by NO store/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk34/d1 — the counter\'s hostname CLAIMED by a store is red, and the reason is the receipt', async () => {
+  const counter = FACES.find((f) => f.kind === 'store' && f.directory === false);
+  assert.ok(counter, 'seed/box.json declares no `directory: false` face — the negative control has no subject.');
+  const kept = FACES.filter((f) => f.kind === 'store' && f.directory !== false);
+  const box = await fakeBox({
+    ...wholeLocalhost,
+    storeHosts: [...wholeLocalhost.storeHosts, ...FACES.map((f) => f.host)],
+    adminDoors: {
+      ...wholeLocalhost.adminDoors,
+      ...Object.fromEntries(FACES.filter((f) => f.kind === 'admin').map((f) => [f.host, f.tenant])),
+    },
+    directory: {
+      localhost: 'sto_ROOT',
+      'localhost:8200': 'sto_ROOT',
+      ...Object.fromEntries(kept.map((f) => [f.host, `sto_${f.handle.toUpperCase()}`])),
+      // THE SABOTAGE: somebody gave the counter a public address.
+      [counter.host]: 'sto_BALCAO',
+    },
+  });
+  try {
+    const { stdout, status } = await runVerdict({
+      box,
+      env: envFor('localhost', Object.fromEntries(FACES.map((f) => [f.env, f.host]))),
+    });
+    assert.equal(status, 1, stdout);
+    assert.ok(stdout.includes(counter.host), stdout);
+    assert.match(stdout, /directory: false.*claims it for sto_BALCAO/s, stdout);
+  } finally {
+    box.close();
+  }
+});
+
 test('★★ the verdict covers the facilities that only exist online, one line each', async () => {
   const box = await fakeBox(wholeLocalhost);
   try {

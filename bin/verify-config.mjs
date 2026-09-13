@@ -48,6 +48,7 @@ import { hostname as machineHostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { declaredFaces } from './box-domains.mjs';
 import { readDeclaration } from './box-env.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -369,6 +370,86 @@ if (!declared.FORGE_GATE_ADMIN_URL) {
           'link gets a login page that refuses with `unknown_admin_host`.',
       );
     } else bad('FORGE_GATE_ADMIN_URL', `the directory could not be asked about ${authorityOf(url)}: ${JSON.stringify(tenant)}`);
+  }
+}
+say();
+
+// ── 3b · ★★★ THE FACES THIS BOX DECLARES, AND WHETHER ANY OF THEM IS STILL ON ITS SENTINEL (pk34/d1) ─────
+//
+// He named the demo's six addresses on 12/09. `seed/box.json` declares them — one `domain` per store, one
+// `admin_domain` per tenant — and `caddy/Caddyfile` routes each from the variable the declaration names.
+//
+// ⛔ WHAT THIS SECTION IS FOR, AND IT IS NOT «are the six set». It is the LOUD HALF of a deliberate trade.
+// A variable this box's edge reads and nobody set used to take the WHOLE EDGE DOWN — an empty site address
+// is a file that does not parse, measured 2026-09-12 — so every address now falls back to a
+// `<something>.unset.localhost` sentinel and one forgotten variable costs ONE face. That is strictly better,
+// and it is also QUIETER: the box comes up, five faces serve, and the sixth answers on a name nothing
+// resolves. Nothing else on this box would ever say so. This does, by name.
+//
+// ★ AND IT NEVER GRADES A LOCALHOST BIRTH AS BROKEN. The bench is born on `localhost` and the promotion is a
+// NAMED step (§0b); a box that names NONE of its faces is a bench, and a bench is told so in one line. What
+// is a ✗ is the half-named box — some faces addressed and others not — because that is the shape nobody
+// chose: somebody was promoting this box and stopped.
+say('THE FACES THIS BOX DECLARES · one hostname per store and per tenant admin (seed/box.json)');
+{
+  const faces = declaredFaces(BOX);
+  const named = faces.filter((f) => (declared[f.env] ?? '').trim());
+  if (faces.length === 0) {
+    bad('seed/box.json', 'declares no face at all — this box has no address it can be published at.');
+  } else if (named.length === 0) {
+    noted(
+      `none of the ${faces.length} faces is addressed`,
+      'every FORGE_*_DOMAIN is empty, which is what a LOCALHOST BIRTH leaves. The deployment addresses are ' +
+        'in seed/box.json and the promotion is what fills them; nothing here is wrong.',
+    );
+  } else {
+    for (const face of faces) {
+      const value = (declared[face.env] ?? '').trim();
+      if (!value) {
+        bad(
+          `${face.label} — ${face.host}`,
+          `${face.env} is EMPTY while ${named.length} of this box's ${faces.length} faces are addressed. This ` +
+            'face falls back to its `.unset.localhost` sentinel: the edge stays up and that one hostname ' +
+            'answers on a name nothing resolves, so the shop/admin behind it is unreachable and no log says ' +
+            'so. Either set it, or take the declaration out of seed/box.json.',
+        );
+        continue;
+      }
+      if (value !== face.host) {
+        noted(`${face.label}`, `${face.env}=${value}, and seed/box.json declares ${face.host} — this box is published somewhere other than the address its topology names`);
+      }
+      // ★ WHAT THE DIRECTORY SAYS ABOUT IT, asked of the port and never assumed from the name. A store face
+      // that is addressed and NOT claimed is the pk26/d1 defect one hostname over; the counter is the one
+      // face that must NOT be claimed, and says so in its own declaration.
+      if (face.kind === 'admin') {
+        const tenant = await adminDoorTenant(value);
+        if (tenant === face.tenant) ok(`${face.label} — ${value}`, 'the directory holds it');
+        else if (tenant === null) bad(`${face.label} — ${value}`, `the directory holds NO claim for this hostname — a login there answers \`unknown_admin_host\`.`);
+        else if (typeof tenant === 'string') bad(`${face.label} — ${value}`, `the directory says this hostname belongs to "${tenant}", not to "${face.tenant}".`);
+        else bad(`${face.label} — ${value}`, `the directory could not be asked: ${JSON.stringify(tenant)}`);
+        continue;
+      }
+      const store = await storeByHost(value);
+      if (store && typeof store === 'object') {
+        bad(`${face.label} — ${value}`, `read.store.by_host answered HTTP ${store.error ?? '?'} — this box's directory cannot be read`);
+      } else if (!face.directory) {
+        // The counter. Its front is the totem, which serves ONE route, so a `host` on that store would put an
+        // «Acompanhar o pedido» button on every receipt pointing at the totem's own 404. The declaration says
+        // so; this is the assertion that keeps it true.
+        if (store === null) ok(`${face.label} — ${value}`, 'served at the edge and claimed by NO store, which is what `directory: false` declares');
+        else bad(`${face.label} — ${value}`, `seed/box.json declares \`directory: false\` for this face and the kernel's directory claims it for ${store}. Every receipt of that store now carries a link into a front that serves one route.`);
+      } else if (store === null) {
+        bad(
+          `${face.label} — ${value}`,
+          'the edge serves this hostname and NO store claims it in the kernel\'s directory, so everything that ' +
+            'resolves an address THROUGH THE PORT is wrong here: the warmer fills /s/<id>/… pages while a ' +
+            'shopper opens /, and the URL inventory cannot find the store. Step 6b (bin/store-host.mjs) is ' +
+            'what declares it.',
+        );
+      } else {
+        ok(`${face.label} — ${value}`, `→ ${store} in the kernel's directory`);
+      }
+    }
   }
 }
 say();
