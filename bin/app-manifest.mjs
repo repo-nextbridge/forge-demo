@@ -134,16 +134,14 @@ function arrayAfter(src, pattern, complaint) {
 const mentions = (src) => new Set([...src.matchAll(/\b([A-Z][A-Z0-9_]*)\b/g)].map((m) => m[1]));
 
 /**
- * The app's blocks, evaluated. Each carries what the manifest declares and nothing this repository invented:
- * `{ component, label?, surface, area?, placement?, config_schema: [{ name, type, optional? }] }`.
+ * One array of a manifest, evaluated — the half `parseBlocks` and `parseHooks` share.
+ *
+ * Only the consts the array really reaches are bound, transitively. Binding ALL of them would drag in the
+ * ones built from imported symbols (`extensionManifestSchema`, the i18n catalogs) and throw on a manifest
+ * this reader understands perfectly well.
  */
-export function parseBlocks(source, where) {
-  const src = asJs(source);
-  const array = arrayAfter(src, /\bblocks:\s*\[/, () => `${where} declares no \`blocks\` array — this reader is about an app that ships blocks`);
-
-  // Bind only the consts the array really reaches, transitively. Binding ALL of them would drag in the ones
-  // built from imported symbols (`extensionManifestSchema`, the i18n catalogs) and throw on a manifest this
-  // reader understands perfectly well.
+function evaluateArray(src, pattern, where, what, complaint) {
+  const array = arrayAfter(src, pattern, complaint);
   const consts = topLevelConsts(src);
   const needed = [];
   const seen = new Set();
@@ -157,13 +155,27 @@ export function parseBlocks(source, where) {
   };
   walk(array);
 
-  let blocks;
   try {
     // eslint-disable-next-line no-new-func -- the subject IS source at a pinned commit; see the header.
-    blocks = new Function(`"use strict";${needed.join('\n')}\nreturn ${array};`)();
+    return new Function(`"use strict";${needed.join('\n')}\nreturn ${array};`)();
   } catch (error) {
-    throw new Error(`${where}: its \`blocks\` array could not be evaluated — ${error.message}`);
+    throw new Error(`${where}: its \`${what}\` array could not be evaluated — ${error.message}`);
   }
+}
+
+/**
+ * The app's blocks, evaluated. Each carries what the manifest declares and nothing this repository invented:
+ * `{ component, label?, surface, area?, placement?, config_schema: [{ name, type, optional? }] }`.
+ */
+export function parseBlocks(source, where) {
+  const src = asJs(source);
+  const blocks = evaluateArray(
+    src,
+    /\bblocks:\s*\[/,
+    where,
+    'blocks',
+    () => `${where} declares no \`blocks\` array — this reader is about an app that ships blocks`,
+  );
 
   // ⛔ ANTI-VACUUM. A reader that quietly returns [] makes every rule downstream green over nothing.
   if (!Array.isArray(blocks) || blocks.length === 0) throw new Error(`${where} parsed to no blocks at all`);
@@ -177,13 +189,39 @@ export function parseBlocks(source, where) {
 }
 
 /**
- * The blocks of one app, from wherever that app's manifest lives.
- * `{ blocks, from }` when it was read, `{ tried }` when this machine cannot reach it.
+ * ★★ pk34/D3 — THE APP'S DECLARED DEFAULT PLACEMENTS: `hooks: [{ component, target }]`.
+ *
+ * `blocks` says which components the app ships; `hooks` says WHERE each one lands the moment somebody
+ * installs the app. `extension.install` materialises one `hook_placement` row per scope for every entry here
+ * (`seedDefaultPlacements`), so this array is the answer to "where is this block when nobody has dragged it".
+ * It is the manifest's, never a seed's and never this repository's.
  */
-export function blocksOf(id) {
+export function parseHooks(source, where) {
+  const hooks = evaluateArray(
+    asJs(source),
+    /\bhooks:\s*\[/,
+    where,
+    'hooks',
+    () => `${where} declares no \`hooks\` array — an app that places nothing at install has \`hooks: []\``,
+  );
+  if (!Array.isArray(hooks)) throw new Error(`${where}: \`hooks\` did not parse to an array`);
+  for (const hook of hooks) {
+    // ⛔ NOT ANTI-VACUUM ON LENGTH, and the difference is the point: `hooks: []` is a REAL and common answer
+    // (both apps this box writes declare it), so an empty list here is data. What must never be silent is a
+    // list this reader half-understood — an entry missing either field means the parse is wrong.
+    if (typeof hook?.component !== 'string' || typeof hook?.target !== 'string')
+      throw new Error(
+        `${where} has a hook without \`component\` and \`target\` — the parse is wrong, not the manifest`,
+      );
+  }
+  return hooks;
+}
+
+/** One app's manifest source, from wherever that app's manifest lives — `{ text, where, from }` or `{ tried }`. */
+function manifestSource(id) {
   const local = localManifest(id);
   if (existsSync(local))
-    return { blocks: parseBlocks(readFileSync(local, 'utf8'), `apps/${id}/manifest.ts`), from: `apps/${id}` };
+    return { text: readFileSync(local, 'utf8'), where: `apps/${id}/manifest.ts`, from: `apps/${id}` };
 
   const pinned = pinnedCommit();
   if (!pinned)
@@ -191,7 +229,27 @@ export function blocksOf(id) {
   const rel = releaseManifest(id);
   const found = fileAtPinned(pinned, rel);
   if (found.tried) return { tried: found.tried };
-  return { blocks: parseBlocks(found.text, `${rel} @ ${pinned.sha}`), from: found.from };
+  return { text: found.text, where: `${rel} @ ${pinned.sha}`, from: found.from };
+}
+
+/**
+ * The blocks of one app, from wherever that app's manifest lives.
+ * `{ blocks, from }` when it was read, `{ tried }` when this machine cannot reach it.
+ */
+export function blocksOf(id) {
+  const source = manifestSource(id);
+  if (source.tried) return { tried: source.tried };
+  return { blocks: parseBlocks(source.text, source.where), from: source.from };
+}
+
+/**
+ * The default placements of one app, read the same way and from the same place.
+ * `{ hooks, from }` when it was read, `{ tried }` when this machine cannot reach it.
+ */
+export function hooksOf(id) {
+  const source = manifestSource(id);
+  if (source.tried) return { tried: source.tried };
+  return { hooks: parseHooks(source.text, source.where), from: source.from };
 }
 
 /** `component -> [config key, …]`, in the manifest's own order. */
