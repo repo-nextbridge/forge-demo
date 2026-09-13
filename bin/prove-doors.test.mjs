@@ -127,6 +127,14 @@ function fakeBox({
   refusesGate = [],
   leaksGate = [],
   extensionsRefuses = false,
+  /**
+   * ★★★ pk34/d1 — WHAT THE KERNEL'S GLOBAL ADDRESS BOOK ANSWERS, `hostname → store`. It is the table
+   * `read.store.by_host` serves and `bin/store-host.mjs` writes at step 6b, and it is SEPARATE from every
+   * other fact this fixture holds on purpose: a box can answer perfectly at `/s/<id>/…` while its directory
+   * claims the wrong store — or no store — for a hostname `seed/box.json` declares. Empty is what a
+   * LOCALHOST BIRTH really leaves, which is why it is the default.
+   */
+  directory = {},
 } = {}) {
   /**
    * ★★ pk22 — THE FAKE VITRINE IS NOW HONEST ABOUT A STORE WITH NO PUBLIC PAGE, and without this the whole
@@ -178,6 +186,15 @@ function fakeBox({
               : [],
           ),
         );
+      return;
+    }
+    // ★ THE GLOBAL DIRECTORY: public, actorless, and the same read every consumer that resolves an
+    // address THROUGH THE PORT makes. 404 is «no store claims it», which is what a bench answers.
+    if (url.pathname === '/v1/read/store.by_host') {
+      const id = directory[(url.searchParams.get('host') ?? '').toLowerCase()];
+      res
+        .writeHead(id ? 200 : 404, { 'content-type': 'application/json' })
+        .end(JSON.stringify(id ? { store_id: id } : { error: { kind: 'not_found' } }));
       return;
     }
     if (url.pathname === '/v1/read/internal/stores') {
@@ -757,4 +774,79 @@ test('★★★ the RIBBON is not the GATE — the match is exact, and a healthy
   await box.close();
   assert.equal(code, 0, out);
   assert.doesNotMatch(out, /THE GATE WILL NOT LET GO/, out);
+});
+
+// ── ★★★ pk34/d1 · THE ADDRESS EACH STORE IS PUBLISHED AT ─────────────────────────────────────────────────
+//
+// `seed/box.json` declares one hostname per store (`domain`) and — for the counter alone — `directory: false`,
+// meaning a front of this box answers there and NO store may claim it in the kernel's address book. Nothing
+// asserted either half before this slice, and the second is the one that bites: the kernel composes
+// `https://<host>/account/orders/<id>` into every transactional message from that column, and the totem
+// serves ONE route, so a claim there puts an «Acompanhar o pedido» button on every counter receipt pointing
+// at a 404. It is exactly the fact a re-provision or a hand-edit flips in silence.
+
+/** The declared faces of one tenant, read from the file so no hostname is typed in this suite. */
+const facesOf = (tenantId) => {
+  const t = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8')).tenants.find((x) => x.id === tenantId);
+  return (t?.stores ?? []).flatMap((s) => (s.domain ? [{ handle: s.handle, ...s.domain }] : []));
+};
+
+test('★★★ pk34/d1 — a LOCALHOST birth claims none of its declared hostnames, and is told so, not accused', async () => {
+  const faces = facesOf(CAFE_TENANT);
+  assert.ok(faces.length >= 2, `forgecafe declares ${faces.length} store hostname(s) — this arm has nothing to grade.`);
+  const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 0, out);
+  assert.match(out, /is not published at any of its \d+ declared hostname\(s\)/, out);
+  // ⛔ ANTI-VACUUM: the counter's negative is a GREEN that must be stated, not an absence.
+  assert.match(out, /claimed by no store in the kernel's directory/, out);
+});
+
+test('★★★ pk34/d1 — SABOTAGE: the COUNTER\'s hostname is claimed ⇒ red, and the reason is the receipt', async () => {
+  const counter = facesOf(CAFE_TENANT).find((f) => f.directory === false);
+  assert.ok(counter, 'seed/box.json declares no `directory: false` store — this sabotage has no subject.');
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: CAFE_STORES,
+    directory: { [counter.host.toLowerCase()]: 'sto_BALCAO' },
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 1, out);
+  assert.ok(out.includes(counter.host), `the red does not name ${counter.host}:\n${out}`);
+  assert.match(out, /every receipt of that store now carries a button to a 404/, out);
+});
+
+test('★★★ pk34/d1 — SABOTAGE: a shop hostname claimed for ANOTHER store ⇒ red, naming both', async () => {
+  const shop = facesOf(CAFE_TENANT).find((f) => f.directory !== false);
+  assert.ok(shop, 'forgecafe declares no ordinary shop hostname.');
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: CAFE_STORES,
+    directory: { [shop.host.toLowerCase()]: 'sto_SOMEBODY_ELSE' },
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 1, out);
+  assert.match(out, /TWO STORES AT ONE ADDRESS/, out);
+  assert.match(out, /sto_SOMEBODY_ELSE/, out);
+});
+
+test('★★★ pk34/d1 — a published box: each shop resolves to its own store and the counter to nobody ⇒ green', async () => {
+  const faces = facesOf(CAFE_TENANT);
+  const idOf = { cafe: 'sto_CAFE', balcao: 'sto_BALCAO' };
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: CAFE_STORES,
+    directory: Object.fromEntries(
+      faces.filter((f) => f.directory !== false).map((f) => [f.host.toLowerCase(), idOf[f.handle]]),
+    ),
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT);
+  await box.close();
+  assert.equal(code, 0, out);
+  for (const face of faces) assert.ok(out.includes(face.host), `${face.host} is not in the report at all:\n${out}`);
+  assert.match(out, /its declared hostname resolves to this store/, out);
+  assert.doesNotMatch(out, /is not published at any of its/, out);
 });

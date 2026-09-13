@@ -1,10 +1,41 @@
-# TLS + routing for this instance. Both hostnames come from the environment ({$FORGE_DOMAIN},
-# {$FORGE_ADMIN_DOMAIN}), so nothing here names your domain and this file needs no edit to move.
+# TLS + routing for this instance. Every hostname below comes from the environment, so nothing here names
+# your domain and this file needs no edit to move between boxes.
 #
-# Caddy provisions a Let's Encrypt certificate for each host automatically — which means the DNS records must
-# already point at this box when you first bring the stack up, and ports 80 and 443 must be reachable.
+# ★★★ THIS BOX HAS SIX FACES AND pk34 IS WHERE IT LEARNED TO SAY SO. Three shops, two admins and the
+# counter — and until that slice only three of them could be declared at all, because `FORGE_DOMAIN`,
+# `FORGE_ADMIN_DOMAIN` and `FORGE_TOTEM_DOMAIN` are SINGULAR variables for a box with two brands, four
+# stores and two admins. The outlet and the coffee shop had no variable; the second admin was a file
+# somebody hand-wrote into `caddy/extra/` per box.
 #
-# The root domain serves TWO fronts, split by path. Most of it is the STOREFRONT — the vitrine, the half you
+# ⛔ WHICH HOSTNAME IS WHICH IS NOT DECIDED HERE. `seed/box.json` declares one `domain` per store and one
+# `admin_domain` per tenant — a hostname is DATA, it is the `host` column the kernel keys its directory on —
+# and each declaration names the variable that carries it here. This file decides the other half: which
+# CONTAINER answers at that hostname. `bin/box-domains.guard.mjs` grades the pairing in both directions, and
+# grades the third end too: compose has to DELIVER each of these variables to this container.
+#
+# ⛔⛔ AND THAT THIRD END IS WHERE THIS FILE WAS ALREADY DEAD. Measured 2026-09-12 on the live bench:
+# `docker inspect …-caddy-1` shows this container holding exactly THREE FORGE_* variables — FORGE_DOMAIN,
+# FORGE_ADMIN_DOMAIN, FORGE_CONTROL_ALLOW_CIDR. `FORGE_TOTEM_DOMAIN` was never passed, so `{$FORGE_TOTEM_DOMAIN}`
+# resolved to the EMPTY STRING, and an empty site address is not a missing host:
+#
+#     caddy validate → Error: adapting config using caddyfile: server block without any key is global
+#                             configuration, and if used, it must be first
+#
+# This file is compose's DEFAULT (`${FORGE_CADDYFILE:-./caddy/Caddyfile}`), so the edge a deployment of this
+# instance would have got was one that cannot load — store, checkout and admin down together. The bench never
+# showed it because the bench opts into `caddy/Caddyfile.local`. Same species as A10, one layer out.
+#
+# ★ HENCE THE SENTINEL ON EVERY ADDRESS, AND IT IS MEASURED. `{$VAR:something.unset.localhost}`: with
+# `caddy:2` v2.11.4 a `.localhost` name is issued by Caddy's OWN internal CA — `certificate obtained
+# successfully … issuer:"local"`, 11 ms, no ACME request at all — so a variable nobody set costs ONE face on
+# a name nothing resolves, and never the whole edge. The defaults are DISTINCT on purpose: two site blocks
+# with one address is a duplicate site address, which is the dead edge again by another road.
+#
+# Caddy provisions a Let's Encrypt certificate for each real hostname automatically — which means the DNS
+# records must already point at this box when you first bring the stack up, and ports 80 and 443 must be
+# reachable.
+#
+# A SHOP HOSTNAME SERVES TWO FRONTS, SPLIT BY PATH. Most of it is the STOREFRONT — the vitrine, the half you
 # are free to fork. `/checkout`, `/account`, `/.well-known/` and the checkout's own assets go to the CHECKOUT
 # container: the part that handles money and sign-in, that we keep evolving, and that you do not have to
 # maintain to own your storefront. Same hostname on purpose — a subdomain would put the cart and the session
@@ -30,17 +61,16 @@
 # would stop the whole file loading, and your STORE with it. The per-credential cap is inside the kernel and
 # is always on. The recipe for the edge layer, if you want it, is in the doc above.
 
-{$FORGE_DOMAIN} {
-	# Certificates you were GIVEN, rather than ones Caddy issues. If a CDN sits in front of this box in
-	# full-strict mode, it terminates TLS and the ACME challenge can never reach here — so automatic
-	# renewal cannot work and the certificate expires ~90 days after it was issued. The way out is the
-	# CDN's Origin Certificate: `cat origin.crt origin.key > caddy/certs/origin.pem` and restart.
-	#
-	# An EMPTY folder is the normal state and changes nothing — Caddy keeps issuing its own certificates.
-	# One declaration covers BOTH hostnames: the certificate pool is process-wide, not per-site.
-	tls {
-		load /etc/caddy/certs
-	}
+# ★★★ ONE SHOP HOSTNAME, DEFINED ONCE. Every store of this box serves the SAME doors — that is not tidiness,
+# it is the path split itself: a hostname that carries `/checkout*` and a sibling that does not is a shop
+# whose buyer meets the other shop's 404 with a full cart. Copied by hand into three site blocks this is
+# exactly the list that rots in silence (this house has paid for that: «cinco listas digitadas para mover um
+# bloco», 09/09), so it is a snippet and each hostname passes the ONE thing that differs — the container its
+# fall-through reaches. `bin/box-domains.guard.mjs` expands this the way Caddy does and compares the doors of
+# every shop hostname against every other, so a door added to one and not the rest is red the same day.
+#
+#   {args[0]} — the compose service serving the VITRINE at this hostname (`storefront`, or a fork of it).
+(forge_shop_host) {
 	# Who may reach the control face. Empty is not something `remote_ip` accepts, so "nobody" is written as
 	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
 	# in FORGE_CONTROL_ALLOW_CIDR (space-separated) if you want it reachable, and leave it alone otherwise.
@@ -61,8 +91,9 @@
 	# comment at the top of this file already promised "an MCP agent" among the callers reaching the kernel,
 	# so the file was asserting a route it did not carry. Measured on Staging 2026-08-24: POST /mcp answered
 	# 405 from the STOREFRONT (Next refusing a method on a page that is not there), never reaching the kernel,
-	# while /health and /v1/read/internal/* both landed correctly. `infra/cicd/control-exposure-selftest.sh`
-	# now lists /mcp among the faces that MUST answer, so an edge that forgets it again fails the build.
+	# while /health and /v1/read/internal/* both landed correctly. ★ AND IT IS IN THE SNIPPET RATHER THAN ON
+	# ONE HOST: which STORE an agent buys from is the Host it connected to, so an endpoint that covered the
+	# primary hostname only would serve the promise on the one hostname multistore does not use.
 	handle /mcp {
 		reverse_proxy kernel:3000
 	}
@@ -85,12 +116,12 @@
 	# `apps/checkout` is a deployable of its own (checkout, account, login, orders); `apps/storefront` is the
 	# vitrine a customer forks. They share ONE hostname and split by PATH — never by subdomain, because a
 	# subdomain would put `forge_cart` and `forge_customer_session` on another origin and the shopper would
-	# lose the cart on the way to paying for it. These five blocks ARE that split; without them the checkout
+	# lose the cart on the way to paying for it. These blocks ARE that split; without them the checkout
 	# container is running and unreachable, and every address below answers the vitrine's 404.
 	#
-	# Declared in packages/codegen/src/control-exposure.ts (EDGE_HANDLES) and compared against this file in
-	# BOTH directions by infra/cicd/control-exposure-selftest.sh — a handle here that the declaration has not
-	# heard of is red, and so is one there that this file does not carry.
+	# Declared in packages/codegen/src/control-exposure.ts (EDGE_HANDLES) in the Forge monorepo, which compares
+	# that declaration against the Caddyfiles IT ships in both directions — this instance's copy is its own
+	# file and is graded here, by `bin/box-domains.guard.mjs`, against the hostnames `seed/box.json` declares.
 	#
 	# ⚠️ ORDER IS NOT WHAT DECIDES THIS. Caddy matches `handle` blocks by how SPECIFIC their path is, not by
 	# where they appear, so these win over the bare fall-through below wherever they are written. They are
@@ -106,8 +137,7 @@
 	# — the header asks it after hydration to choose between "Entrar" and the shopper's name, and reading a
 	# session is exactly what the vitrine is allowed to do. Widen this to the whole prefix and that fetch
 	# lands on a deployable that does not serve it: the header is permanently signed out, the 404 happens
-	# where no human is looking, and the account page itself still works, so nobody reports it. The selftest
-	# probes `/api/account/status` as a STOREFRONT path for this reason.
+	# where no human is looking, and the account page itself still works, so nobody reports it.
 	handle /api/account/orders/* {
 		reverse_proxy checkout:3000
 	}
@@ -141,9 +171,9 @@
 	# a shopper writes a review of something they bought and gets a 404 on submit.
 	#
 	# ⚠️ WHOLE-PREFIX, AND WHAT MAKES THAT SAFE IS A FACT ABOUT TODAY'S COMPOSITION. The one generated app
-	# route that stays with the vitrine is the feed's, and it is `/feeds/google.xml` — outside this prefix (the
-	# selftest probes it as a STOREFRONT path for exactly that reason). An app whose slots live in the vitrine
-	# and that declared a route under `/apps/` would be silently taken by this block.
+	# route that stays with the vitrine is the feed's, and it is `/feeds/google.xml` — outside this prefix. An
+	# app whose slots live in the vitrine and that declared a route under `/apps/` would be silently taken by
+	# this block.
 	handle /apps/* {
 		reverse_proxy checkout:3000
 	}
@@ -152,40 +182,107 @@
 	handle /ui-checkout* {
 		reverse_proxy checkout:3000
 	}
+	# ★ WHO SERVED. Set by the ROUTE, so a reader can prove which front the edge chose instead of inferring it
+	# from a theme attribute — which proves the THEME and misled two people into believing the café's fork was
+	# serving a page the vanilla front was rendering. `bin/prove-doors.mjs` grades this header.
 	handle {
-		reverse_proxy storefront:3000
+		header X-Forge-Served-By "{args[0]}"
+		reverse_proxy {args[0]}:3000
 	}
 }
 
-# The admin on its own hostname, with its own DNS record and its own certificate.
-{$FORGE_ADMIN_DOMAIN} {
+# ── THE SHOPS ────────────────────────────────────────────────────────────────────────────────────────────
+# One site block per store hostname `seed/box.json` declares. The argument is the container whose VITRINE
+# answers there; everything else about the hostname is the snippet above.
+
+{$FORGE_DOMAIN:store.unset.localhost} {
+	# Certificates you were GIVEN, rather than ones Caddy issues. If a CDN sits in front of this box in
+	# full-strict mode, it terminates TLS and the ACME challenge can never reach here — so automatic
+	# renewal cannot work and the certificate expires ~90 days after it was issued. The way out is the
+	# CDN's Origin Certificate: `cat origin.crt origin.key > caddy/certs/origin.pem` and restart.
+	#
+	# An EMPTY folder is the normal state and changes nothing — Caddy keeps issuing its own certificates.
+	# ★ ONE DECLARATION COVERS ALL SIX HOSTNAMES: the certificate pool is process-wide, not per-site. It is
+	# written on this block because this is the box's root shop, not because this block is special.
+	tls {
+		load /etc/caddy/certs
+	}
+	import forge_shop_host storefront
+}
+
+# The outlet: the SAME two containers as the root shop, on a hostname of its own. Nothing about this store is
+# a fork — its whole thesis is that a theme plus data plus composition is enough — so what makes this address
+# the outlet is only which store the kernel's directory says answers here.
+{$FORGE_OUTLET_DOMAIN:outlet.unset.localhost} {
+	import forge_shop_host storefront
+}
+
+# ★★ THE COFFEE SHOP, AND IT IS THE ONE HOSTNAME WHOSE VITRINE IS NOT OURS. `storefront-coffee` is a fork
+# this repository owns and builds into an image of its own; its checkout, account and sign-in stay with the
+# checkout we host, exactly like every other shop's. That is the customisation posture this demo exists to
+# show, at an address.
+{$FORGE_CAFE_DOMAIN:cafe.unset.localhost} {
+	import forge_shop_host storefront-coffee
+	# ⚠️⚠️ THE ONE DOOR THIS HOSTNAME NEEDS AND ITS SIBLINGS DO NOT, AND ITS ABSENCE IS SILENT. The fork
+	# carries `assetPrefix: '/_coffee'` in its image (storefront-coffee/next.config.mjs) — unconditionally,
+	# so it emits `/_coffee/_next/…` into its HTML on EVERY hostname it is served at, including this one where
+	# it has the origin to itself, and it answers 404 to that URL: it serves those files at `/_next/static/…`
+	# and nowhere else. `handle_path` (never `handle`) strips the prefix. Without this block the coffee shop
+	# is served UNSTYLED, the HTML arrives, no server logs anything, and the only trace is a 404 for a
+	# stylesheet nobody was watching — the same defect the checkout paid for in C3.
+	handle_path /_coffee/* {
+		header X-Forge-Served-By "storefront-coffee"
+		reverse_proxy storefront-coffee:3000
+	}
+}
+
+# ── THE ADMINS ───────────────────────────────────────────────────────────────────────────────────────────
+# ★★ TWO HOSTNAMES, ONE CONTAINER, TWO TENANTS. With FORGE_ADMIN_TENANT empty the admin runs in HOST mode and
+# asks the kernel which tenant the request's `Host` belongs to (`read.admin.by_host`); `platform.admin_host.set`
+# writes that map. So a second brand costs a hostname, not a second container — and each admin is its own
+# origin, so the session cookie of one is not the session cookie of the other, which is what stops an operator
+# acting on one tenant while believing they are on the other.
+#
+# ⚠️ THE SECOND ONE USED TO BE A FILE IN `caddy/extra/`, HAND-WRITTEN PER BOX. That folder's recipe is still
+# right for a THIRD tenant somebody adds to one deployment — but a face EVERY deployment of this instance has
+# is not an extra, and a hostname that only exists in an untracked file is a hostname no guard can grade.
+
+{$FORGE_ADMIN_DOMAIN:admin.unset.localhost} {
 	reverse_proxy admin:3000
 }
 
+{$FORGE_CAFE_ADMIN_DOMAIN:admin-cafe.unset.localhost} {
+	reverse_proxy admin:3000
+}
+
+# ── THE COUNTER ──────────────────────────────────────────────────────────────────────────────────────────
 # ★★ THE COUNTER'S TOTEM (T2·S2), on a hostname of its own — and it is a WHOLE SITE with no path split,
 # which is the entire architectural claim of that slice: the totem is ONE app of the client's own serving
 # EVERY path of this host. There is no second Next server behind it, so there is nothing to divide — no
 # `/checkout*` to peel off, no `/_checkout/*` assets, no store in the URL. It resolves its store from its
 # own environment (`FORGE_TOTEM_STORE_ID`), which is why this block needs no store name either.
 #
-# ⚠️ IT IS HERE AND NOT IN `caddy/extra/`, unlike a second tenant's admin, and the difference is what the
-# hostname MEANS. `extra/` is for hostnames one BOX happens to serve; this is a host of the instance itself —
-# every deployment of this demo has a counter — and it is driven by an environment variable exactly like the
-# two above, so this file still needs no edit to move between boxes.
+# ⚠️ AND THE STORE BEHIND IT DECLARES `directory: false` IN `seed/box.json`, WHICH IS A DIFFERENT FACT FROM
+# THIS BLOCK. This block says a front of this box answers at that hostname. The declaration says the KERNEL's
+# address book must NOT claim it for the counter's store — because the kernel writes `https://<host>` into
+# every transactional message and the totem serves ONE route, so a `host` on that store would put an
+# «Acompanhar o pedido» button on every counter receipt pointing at the totem's own 404. The two halves are
+# graded separately: `bin/box-domains.guard.mjs` grades this one, `bin/prove-doors.mjs` grades the other.
 #
-# The certificate comes from the `tls` declaration in the first block: the pool is process-wide, not
+# The certificate comes from the `tls` declaration in the first shop block: the pool is process-wide, not
 # per-site. The kernel's own faces are NOT routed here on purpose — the totem talks to the kernel
 # server-side over the compose network, and a till has no reason to expose a command face to a room.
-{$FORGE_TOTEM_DOMAIN} {
+{$FORGE_TOTEM_DOMAIN:totem.unset.localhost} {
 	reverse_proxy totem:3000
 }
 
-# Hostnames beyond those two — the case being a SECOND ADMIN, for a second tenant this instance holds. They
-# go in caddy/extra/, one file each, instead of here: this file needs no edit to move between boxes, and an
-# empty folder is the normal state. Caddy accepts a pattern that matches nothing (one `warn` line in the log
-# and it carries on), so leaving the folder empty changes nothing at all.
+# Hostnames beyond the six — a THIRD tenant's admin, a second brand this box grows later. They go in
+# caddy/extra/, one file each, instead of here: a hostname every deployment of this instance has belongs in
+# this file where a guard can see it, and a hostname one BOX happens to serve does not. An empty folder is
+# the normal state: Caddy accepts a pattern that matches nothing (one `warn` line in the log and it carries
+# on), so leaving it empty changes nothing at all.
 #
-# A hostname added there behaves like the two above — Caddy matches site blocks by how specific they are,
+# A hostname added there behaves like the ones above — Caddy matches site blocks by how specific they are,
 # not by where they appear — and gets its certificate automatically. See caddy/extra/README.md for the whole
 # recipe (the container, the hostname, the reload).
 import /etc/caddy/extra/*.caddy

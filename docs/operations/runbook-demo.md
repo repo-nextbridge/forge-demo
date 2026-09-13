@@ -162,6 +162,48 @@ configuração:
   `tailscale serve` também (ele termina TLS e fala com `http://127.0.0.1:<porta>`). Medido em 08/09/2026 —
   as quatro portas http respondiam 200 de fora da máquina.
 
+### 3.1-bis ★★★ AS SEIS URLS DESTA DEMO — onde cada uma mora, e o que acontece se você esquecer uma
+
+Ele nomeou os endereços da demo em **12/09** — *"vão ser essas urls das demos"* — e são **seis**:
+
+| endereço | o que serve | variável |
+|---|---|---|
+| `store.forgecommerce.pro` | vitrine + checkout da loja `forge` (T1) | `FORGE_DOMAIN` |
+| `outlet.store.forgecommerce.pro` | vitrine + checkout da loja `outlet` (T1) | `FORGE_OUTLET_DOMAIN` |
+| `admin.store.forgecommerce.pro` | admin do tenant `forgeco` | `FORGE_ADMIN_DOMAIN` |
+| `cafe.forgecommerce.pro` | o **fork** `storefront-coffee` + o nosso checkout | `FORGE_CAFE_DOMAIN` |
+| `totem.cafe.forgecommerce.pro` | o totem do balcão | `FORGE_TOTEM_DOMAIN` |
+| `admin.cafe.forgecommerce.pro` | admin do tenant `forgecafe` | `FORGE_CAFE_ADMIN_DOMAIN` |
+
+⛔ **A tabela acima não é digitada aqui como verdade — ela é `seed/box.json`.** Cada loja declara um
+`domain` e cada tenant um `admin_domain`, porque **um hostname é DADO**: é a coluna `host` em que o kernel
+chaveia o seu diretório. O `caddy/Caddyfile` decide a outra metade — **qual container** responde naquele
+hostname — e `bin/box-domains.guard.mjs` grada o par nos **dois sentidos**, mais a terceira ponta que
+ninguém tinha: o compose precisa **entregar** cada variável ao container do edge.
+
+⚠️ **A bancada não nomeia nenhuma delas e nada muda.** A caixa nasce em `localhost` (§0b) e a promoção é um
+passo **nomeado**; a bancada usa `caddy/Caddyfile.local`, que não sabe o que é hostname. **Um deployment
+preenche as seis.**
+
+⛔⛔ **E uma esquecida NÃO derruba mais a caixa — ela derrubava.** Medido em 12/09 na bancada viva:
+`docker inspect …-caddy-1` mostrava **três** variáveis `FORGE_*` no container do edge, e
+`FORGE_TOTEM_DOMAIN` **não estava entre elas** — o `{$FORGE_TOTEM_DOMAIN}` do `caddy/Caddyfile` resolvia
+para **string vazia**, e endereço de site vazio não é host faltando, é arquivo que não carrega:
+
+```
+caddy validate → Error: adapting config using caddyfile: server block without any key is global
+                        configuration, and if used, it must be first
+```
+
+`./caddy/Caddyfile` é o **default** do compose, então o edge de um deployment desta instância **não subia**:
+loja, checkout e admin caídos juntos. Agora cada endereço carrega um sentinela `<algo>.unset.localhost` —
+medido com `caddy:2` v2.11.4, um nome `.localhost` é emitido pela **CA interna** do Caddy (`issuer:"local"`,
+11 ms, **zero** pedido ACME) — em **compose e Caddyfile ao mesmo tempo**, porque o `{$VAR:fallback}` do Caddy
+**não dispara** para variável presente-e-vazia (também medido). ⇒ esquecer uma custa **uma face** num nome
+que não resolve, e o passo 15 (`bin/verify-config.mjs`) **diz qual**.
+
+---
+
 ### 3.2 Os segredos que **a própria caixa** cria
 
 Nem todo segredo é seu para criar. Estes o `box-up` **minta e arquiva** via `put_secret`

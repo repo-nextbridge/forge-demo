@@ -337,9 +337,50 @@ services:
       # `read.admin.by_host` keys on, so two tenants on one `localhost` need two published ports. See
       # caddy/Caddyfile.local, `:83`.
       - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_ADMIN2_HTTP_PORT:-8202}:83'
+    # ★★★ THE SIX ADDRESSES OF THIS BOX, AND THIS BLOCK IS THE END THAT WAS MISSING (pk34/d1).
+    #
+    # ⛔ THE DEFECT, MEASURED 2026-09-12 ON THE LIVE BENCH. `docker inspect …-caddy-1` showed this container
+    # holding THREE FORGE_* variables: FORGE_DOMAIN, FORGE_ADMIN_DOMAIN, FORGE_CONTROL_ALLOW_CIDR.
+    # `caddy/Caddyfile` had a `{$FORGE_TOTEM_DOMAIN}` site block and NOTHING EVER PASSED THAT VARIABLE, so it
+    # resolved to the empty string on every box — and an empty site address is not a missing host:
+    #
+    #     caddy validate → Error: adapting config using caddyfile: server block without any key is global
+    #                             configuration, and if used, it must be first
+    #
+    # Reproduced against the real file with exactly those three variables. `./caddy/Caddyfile` is the DEFAULT
+    # below, so the edge a deployment of this instance would have got could not load at all: store, checkout
+    # and admin down together. The bench never showed it because `.env.example` opts into the local edge.
+    #
+    # ★★ AND THE DEFAULTS ARE HERE RATHER THAN ONLY IN THE CADDYFILE, WHICH IS A MEASUREMENT AND NOT A
+    # BELT-AND-BRACES. Caddy's `{$VAR:fallback}` fires only when the variable is UNSET; measured with
+    # `caddy:2` v2.11.4, a variable that is PRESENT AND EMPTY beats the fallback and the site address is
+    # empty again — the dead edge, back. Compose's own `${VAR:-x}` (WITH the colon) substitutes for unset AND
+    # empty, and `.env.example` ships these lines empty, so this is what makes the fallback real. The two
+    # spellings of each sentinel are pinned equal by `bin/box-domains.guard.mjs`.
+    #
+    # ★★ TWO SPELLINGS, AND THE DIFFERENCE IS WHICH VARIABLES A BOX MAY NOT BE BORN WITHOUT.
+    #
+    # `:?` DEMANDED — the first two. A variable demanded this way stops `docker compose` BY NAME before the
+    # first container, so it can never reach Caddy empty at all: a stronger guarantee than any fallback, and
+    # the loudest signal this file can give. Both have always been demanded and both stay that way; every
+    # `.env` on every bench already carries them.
+    #
+    # `:-` SENTINEL — the other four, and the reason is the birth rather than the design. A demanded variable
+    # refuses `docker compose` on every box whose `.env` predates this block, which is EVERY bench that
+    # exists — and the local birth may not regress. So they fall back, and the loud half moves to the end of
+    # the birth where it can be honest: `bin/verify-config.mjs` names every face still on its sentinel.
+    #
+    # ⛔ `bin/box-domains.guard.mjs` demands one or the other for every variable the Caddyfile reads, and pins
+    # each `:-` value to the Caddyfile's own fallback. Neither is decoration: a bare `${VAR}` here would pass
+    # the empty string through, and Caddy's `{$VAR:fallback}` does NOT fire for a variable that is present and
+    # empty (measured, caddy:2 v2.11.4) — which is the dead edge, back.
     environment:
       FORGE_DOMAIN: ${FORGE_DOMAIN:?set FORGE_DOMAIN (.env) to the public storefront hostname}
       FORGE_ADMIN_DOMAIN: ${FORGE_ADMIN_DOMAIN:?set FORGE_ADMIN_DOMAIN (.env) to the admin hostname}
+      FORGE_OUTLET_DOMAIN: ${FORGE_OUTLET_DOMAIN:-outlet.unset.localhost}
+      FORGE_CAFE_DOMAIN: ${FORGE_CAFE_DOMAIN:-cafe.unset.localhost}
+      FORGE_CAFE_ADMIN_DOMAIN: ${FORGE_CAFE_ADMIN_DOMAIN:-admin-cafe.unset.localhost}
+      FORGE_TOTEM_DOMAIN: ${FORGE_TOTEM_DOMAIN:-totem.unset.localhost}
       FORGE_CONTROL_ALLOW_CIDR: ${FORGE_CONTROL_ALLOW_CIDR:-127.0.0.1/32}
     volumes:
       - ${FORGE_CADDYFILE:-./caddy/Caddyfile}:/etc/caddy/Caddyfile:ro

@@ -841,6 +841,41 @@ answer "every interface" — what a deployment says, and byte-for-byte what this
 saying nothing at all stops `docker compose` by name before the first container.
 `bin/bench-http-door.guard.mjs` grades the interface; `bin/bench-ports.guard.mjs` grades the numbers.
 
+### ★★★ A DEPLOYMENT'S addresses — the SIX, and where each one is declared (pk34/d1)
+
+The bench above is **one origin and four ports**. A deployment of this instance is **six hostnames**, and he
+named them on 2026-09-12 — *"vão ser essas urls das demos"*:
+
+| face | address | the front behind it | variable |
+|---|---|---|---|
+| shop · `forge` | `store.forgecommerce.pro` | `storefront` + `checkout` | `FORGE_DOMAIN` |
+| shop · `outlet` | `outlet.store.forgecommerce.pro` | `storefront` + `checkout` | `FORGE_OUTLET_DOMAIN` |
+| shop · `cafe` | `cafe.forgecommerce.pro` | **`storefront-coffee`** + `checkout` | `FORGE_CAFE_DOMAIN` |
+| admin · `forgeco` | `admin.store.forgecommerce.pro` | `admin` | `FORGE_ADMIN_DOMAIN` |
+| admin · `forgecafe` | `admin.cafe.forgecommerce.pro` | `admin` | `FORGE_CAFE_ADMIN_DOMAIN` |
+| counter · `balcao` | `totem.cafe.forgecommerce.pro` | `totem` | `FORGE_TOTEM_DOMAIN` |
+
+⛔ **This table is not the source — `seed/box.json` is.** Every store declares a `domain` and every tenant an
+`admin_domain`, because **a hostname is DATA**: it is the `host` column the kernel keys its directory on. The
+`caddy/Caddyfile` owns the other half — which CONTAINER answers there — and it holds ONE definition of a shop
+hostname (a snippet; each hostname passes only the container its fall-through reaches). Nothing is copied
+three times by hand. `bin/box-domains.guard.mjs` grades the pairing in **both** directions and the third end
+with it: compose has to DELIVER each variable to the edge container.
+
+⚠️ **The bench names none of them and nothing changes.** The box is born on `localhost` (the promotion is a
+named step) and it reads `caddy/Caddyfile.local`, which knows nothing about hostnames.
+
+⛔⛔ **A forgotten one used to take the WHOLE BOX down.** Measured 2026-09-12 on the live bench:
+`docker inspect …-caddy-1` held **three** `FORGE_*` variables and `FORGE_TOTEM_DOMAIN` was not one of them,
+so `{$FORGE_TOTEM_DOMAIN}` resolved to the empty string — and an empty site address is not a missing host,
+it is a file that does not parse (`server block without any key is global configuration`). `./caddy/Caddyfile`
+is compose's default, so the edge a deployment gets could not load: store, checkout and admin down together.
+Every address now falls back to a `<something>.unset.localhost` sentinel — measured with `caddy:2` v2.11.4, a
+`.localhost` name is issued by Caddy's **own internal CA** (`issuer:"local"`, 11 ms, no ACME request at all) —
+declared in **both** compose and the Caddyfile, because Caddy's `{$VAR:fallback}` does **not** fire for a
+variable that is present and EMPTY. A forgotten variable now costs **one face**, and step 15
+(`bin/verify-config.mjs`) names it.
+
 ### ★ Two tenants, four stores — and only THREE of them on the street
 
 | tenant | store | theme | on the reference vitrine? |

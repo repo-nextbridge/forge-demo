@@ -38,6 +38,29 @@
     "catalogue. \u26a0\ufe0f A `dataset: true` tenant must NOT declare them \u2014 the one-shot is their owner, and two",
     "owners for one gesture is how this repository has already grown a duplicate.",
     "",
+    "★★★ `domain` / `admin_domain` — THE ADDRESS EACH FACE OF THIS BOX IS PUBLISHED AT (pk34/d1). He named",
+    "the demo's six addresses on 12/09 — «vão ser essas urls das demos» — and FOUR of them had nowhere to be",
+    "declared: `FORGE_DOMAIN`, `FORGE_ADMIN_DOMAIN` and `FORGE_TOTEM_DOMAIN` are three SINGULAR variables for",
+    "a box with two brands, four stores and two admins, so the outlet and the coffee shop had no variable at",
+    "all and the second admin was a file somebody hand-wrote into `caddy/extra/`.",
+    "",
+    "★ A HOSTNAME IS DATA AND BELONGS HERE; WHICH CONTAINER SERVES IT IS THE EDGE'S. A store's public",
+    "hostname is the `host` column the kernel keys its directory on (`storePublicUrl`/`storeHostKey`) and an",
+    "admin's is what `read.admin.by_host` resolves — both are facts about the TOPOLOGY, which is what this",
+    "file states. `caddy/Caddyfile` turns a hostname into an upstream and nothing here names a container. The",
+    "wire between the two is `env`, because Caddy cannot read this file: `bin/box-domains.guard.mjs` grades",
+    "the pairing in BOTH directions, plus the third end nobody had — compose has to DELIVER that variable to",
+    "the edge container.",
+    "",
+    "⚠️ THE BENCH NAMES NONE OF THEM AND NOTHING CHANGES. The box is born on `localhost` (§0b) and the",
+    "promotion is a NAMED step; `.env.example` leaves every one of these variables empty, the bench opts into",
+    "`caddy/Caddyfile.local`, and these lines are inert there. A DEPLOYMENT sets the six.",
+    "",
+    "⚠️ `directory: false` IS THE EXCEPTION AND IT DECLARES ITSELF, exactly as `status` and `gate` do: the",
+    "hostname is the EDGE's (a front of this box answers there) and the KERNEL's address book must NOT claim",
+    "it for that store. Today there is exactly one — the counter — and the measurement is in its",
+    "`_public_url_why` below.",
+    "",
     "WHAT IS NOT HERE, and deliberately: the FIRST store of each tenant. `provision-ref` creates it at",
     "bootstrap (`FORGE_REF_STORE_HANDLE`), before any credential exists to drive the port with — so listing it",
     "here would be a second author for a row that already has one. It is named below only so a reader can see",
@@ -112,6 +135,11 @@
       "id": "forgeco",
       "why": "T1, the footwear brand. The tenant this bench was born with, kept under its own name so nothing that already refers to it has to move.",
       "admin_host": "localhost:8201",
+      "admin_domain": {
+        "host": "admin.store.forgecommerce.pro",
+        "env": "FORGE_ADMIN_DOMAIN",
+        "_why": "The address a DEPLOYMENT publishes this tenant's admin at, beside the bench's own door above. Two lines for one face because they answer two different questions: `admin_host` is what a browser types on THIS laptop and what `platform.admin_host.set` claims in the directory at birth; this is what the edge is told to serve and certify online. The promotion is what makes the second become the first."
+      },
       "dataset": true,
       "_dataset_why": "The mounted example data IS this brand's catalogue \u2014 2 790 footwear products, 351 footwear brands, and the footwear facet vocabulary in its `custom-fields.json`. So step 9 of `bin/box-up.sh` runs here, and everything it brings (the catalogue, the storefront apps, the delivery methods, the checkout flags) has one owner: the one-shot.",
       "settings": {
@@ -126,11 +154,21 @@
           "handle": "forge",
           "name": "Forge",
           "bootstrap": true,
+          "domain": {
+            "host": "store.forgecommerce.pro",
+            "env": "FORGE_DOMAIN",
+            "_why": "The demo's root shop, on the reference vitrine plus the checkout we host — ONE hostname split by PATH, never two. A subdomain for the checkout would put `forge_cart` and `forge_customer_session` on another origin and the shopper would lose the cart on the way to paying, which is why every shop face of this box carries the same doors and `bin/box-domains.guard.mjs` compares them against each other."
+          },
           "why": "The reference storefront, unforked and unthemed. It is the control: every other store's thesis is that a theme plus data plus composition is enough, and a thesis needs something to be compared against."
         },
         {
           "handle": "outlet",
           "name": "Forge Outlet",
+          "domain": {
+            "host": "outlet.store.forgecommerce.pro",
+            "env": "FORGE_OUTLET_DOMAIN",
+            "_why": "★ THE SECOND SHOP ON THE SAME CONTAINERS, and until pk34 it had no address at all: `FORGE_DOMAIN` is singular, so this store could only ever be reached through the bench's `/s/<id>` path space. It runs the reference vitrine UNFORKED — the whole thesis of this store is that a theme plus data is enough — so its hostname reaches the same two containers the root shop does, and the only thing that makes it the outlet is which store the kernel's directory says answers here."
+          },
           "theme_key": "outlet",
           "guest_checkout_enabled": false,
           "masked_checkout_enabled": true,
@@ -143,6 +181,11 @@
       "id": "forgecafe",
       "why": "T2, the coffee business. A SECOND TENANT, which this bench never had — and the thing that makes it possible is not a second admin container: `read.admin.by_host` resolves the tenant from the request's host:port and `platform.admin_host.set` writes that map, so one admin serves both.",
       "admin_host": "localhost:8202",
+      "admin_domain": {
+        "host": "admin.cafe.forgecommerce.pro",
+        "env": "FORGE_CAFE_ADMIN_DOMAIN",
+        "_why": "★★ THE SECOND ADMIN, AND UNTIL pk34 IT WAS THE ONE FACE OF THIS BOX THAT COULD ONLY BE HAND-WRITTEN. `FORGE_ADMIN_DOMAIN` is singular and this box has two brands, so the coffee tenant's admin had to be a file somebody dropped into `caddy/extra/` per box — the recipe is still in that folder's README and it is still right for a THIRD tenant, but a face every deployment of this instance has is not an extra. Same container as the first (`read.admin.by_host` resolves the tenant from the Host), different hostname, different session cookie."
+      },
         "dataset": false,
         "_dataset_why": "A coffee business is not the brand the mounted example data describes. Its catalogue is the CURATED one this repository writes — 6 coffees + the counter's 15 — and nothing else belongs in it. Step 9 therefore does not run here; `apps` and `delivery` below are the half of that one-shot this tenant really did need.",
         "apps": [
@@ -256,6 +299,11 @@
         {
           "handle": "cafe",
           "name": "Forge Café",
+          "domain": {
+            "host": "cafe.forgecommerce.pro",
+            "env": "FORGE_CAFE_DOMAIN",
+            "_why": "★★ THE FORK'S OWN HOSTNAME — the one face of this box whose vitrine is not ours. `storefront-coffee` is a deployable of this repository, so this hostname's fall-through is that container while its `/checkout*`, `/account*` and the rest stay with the checkout we host: the customisation posture this demo exists to show, at an address. ⚠️ AND IT NEEDS ONE DOOR ITS SIBLINGS DO NOT: the fork carries `assetPrefix: '/_coffee'` in its image (storefront-coffee/next.config.mjs), unconditionally, so it emits `/_coffee/_next/…` into its HTML on EVERY hostname and answers 404 to it — the edge has to strip that prefix here or the coffee shop is served UNSTYLED with nothing in any log. `caddy/Caddyfile` carries it beside the shared import."
+          },
           "theme_key": "coffee-store",
           "bootstrap": true,
           "guest_checkout_enabled": false,
@@ -268,10 +316,16 @@
         {
           "handle": "balcao",
           "name": "Forge Café · Balcão",
+          "domain": {
+            "host": "totem.cafe.forgecommerce.pro",
+            "env": "FORGE_TOTEM_DOMAIN",
+            "directory": false,
+            "_why": "The counter's front is the TOTEM — one app of this repository's own serving every path of this host, no second Next server behind it, no store in the URL and nothing to split. So this face has a hostname like every other and `directory: false` beside it, which is the whole distinction pk34 had to draw: WHERE A FRONT OF THIS BOX ANSWERS is not the same fact as WHAT THE KERNEL'S ADDRESS BOOK CLAIMS FOR THAT STORE. The edge serves this name; the store's `host` column stays null. `_public_url_why` below is the measurement that keeps it null, and `bin/prove-doors.mjs` asserts the negative — a store declared `directory: false` whose hostname the directory HAS claimed is red by name."
+          },
           "status": "private",
           "_checkout_posture_why": "⛔ THE COUNTER DECLARES NO POSTURE, AND THE MEASUREMENT IS WHY — A22's table reads «Café / Balcão: neither», and applying it here would BREAK THE TOTEM. `totem/src/lib/buyer.ts:70` sends `guest: true` on every counter order (a person at a kiosk typed a name, not an address), and `checkout.place_order` refuses a pure-guest cart with `forbidden · guest_disabled` when the store's flag is off (packages/core/src/commands/checkout.ts:787). So `guest_checkout_enabled: false` here is a counter that cannot sell coffee. The contrast A22 is built on is between the THREE SERVABLE SHOPS — Forge, Outlet, Café — and this fourth store is the totem's, not a shop a browser reaches. `masked_checkout_enabled` is already `false` here (the column's default) and is left unstated for the same reason it always was: a totem has no returning session to recognise.",
           "_servability_why": "★★ THE COUNTER IS OFF THE STREET, AND THE `status` ABOVE IS THE WHOLE OF IT (pk22). The merchant of this shop chose another front — the totem IS the counter's front — so the reference vitrine must not serve it, and `private` is the kernel's word for exactly that. ⛔ IT IS WRITTEN THROUGH THE PORT AND NOWHERE ELSE: `bin/seed-box.mjs` carries it on `tenant.store.create` and converges it with `tenant.store.update` (pk13/C6 put it on the create so the store is never public for the window between the two). No SQL, no column touched behind the port. ★ AND EVERYTHING ELSE FOLLOWS BY ITSELF, WITH NO LIST ANYWHERE: `read.internal.stores` derives `storefront_enabled: false` from this word (`storefrontIsEnabled` — `status !== 'private'`, packages/core/src/commands/store.ts), `bin/servable.mjs` reads that, and steps 14 (warm) and 14-bis (doors) skip the counter's PAGE by name with the port's own reason. ⚠️ `private` IS NOT `archived`, AND THE COUNTER IS THE PROOF. Measured by pk21/p1 with the store private: `read.products`, `product.by_handle`, `search`, `categories`, `availability`, `store.by_host`, `cart` and `checkout` all answer 200, and `cart.create` + `add_line` still work. So the totem keeps selling, `/s/<balcao>/checkout` and `/s/<balcao>/account/login` keep answering — they are the CHECKOUT deployable, which mounts `requireStore` and never `requirePublicStorefront` — and the admin keeps showing everything. One thing stops: the vitrine's page. ★ THIS IS NOT THE `servable: false` THIS STORE CARRIED UNTIL pk21 COMING BACK, and the difference is the whole of pk21+pk22: that flag was a SECOND TRUTH about a fact the port already published, with nothing to keep the two in agreement. This is the kernel's own column, and servability is what DERIVES from it. Put the counter back on the street with `\"status\": \"active\"` here (or by dropping the key — an undeclared status is «this box has no opinion» and the column keeps what it has), never by editing `bin/servable.mjs`, `bin/warm-box.mjs` or `bin/prove-doors.mjs`.",
-          "_public_url_why": "⛔ THE COUNTER DECLARES NO PUBLIC URL, AND IT WAS MEASURED BEFORE IT WAS REFUSED (pk22). pk21/p1 made the vitrine REDIRECT (307) a store with no public page to the address that store declares, instead of 404ing it — so declaring the TOTEM's address here would make `/s/<balcao>` hand the visitor to the counter's real front, which is the exact capability this demo exists to show. Three measurements said no. (1) ⚠️ `public_url` IS THE `host` COLUMN (`storePublicUrl`/`storeHostKey`, packages/core/src/read/host-key.ts) AND THE KERNEL ALSO WRITES IT INTO TRANSACTIONAL MESSAGES: `packages/core/src/notification/context.ts:176` builds `https://<host>` and `order.url = <that>/account/orders/<id>`, and the factory templates draw the «Acompanhar o pedido» button only `{{#if order.url}}` (factory-content/variants.ts:70). The totem serves ONE route (`totem/src/app/page.tsx`) and no `/account/*`, so every counter receipt would grow a button leading to the totem's own 404 — over `https`, at a plain-HTTP port, on this bench. Today `host` is null, the button is absent, and nothing is broken. (2) The address is the BOX's and not the dataset's — `FORGE_TOTEM_DOMAIN` online, `localhost:${FORGE_TOTEM_HTTP_PORT}` on the bench — while this file is applied identically on every box. (3) The images this box PINS do not carry the feature: `forge.lock` is built from `v03/integra@8f302fbe7`, which predates pk21/p1, and `read.store_flags` publishes no `public_url` there at all — the redirect could not fire and only the mail link would have landed. ⇒ the vitrine answers the plain 404, which is what `bin/prove-doors.mjs` demands of it. ★ AND THE ROUTING RISK THE QUESTION WAS ABOUT IS REAL BUT IS NOT WHAT DECIDED IT: `host` also keys the global `store_directory`, so claiming the totem's hostname would make the storefront serve THIS store to any request that reached it with that Host. On this box no such request exists — the edge sends `:82` (and `{$FORGE_TOTEM_DOMAIN}`) to the totem container alone — and p1's own loop guard refuses a redirect to the address the request was reached at.",
+          "_public_url_why": "⛔ THE COUNTER DECLARES NO PUBLIC URL, AND IT WAS MEASURED BEFORE IT WAS REFUSED (pk22). pk21/p1 made the vitrine REDIRECT (307) a store with no public page to the address that store declares, instead of 404ing it — so declaring the TOTEM's address here would make `/s/<balcao>` hand the visitor to the counter's real front, which is the exact capability this demo exists to show. Three measurements said no. (1) ⚠️ `public_url` IS THE `host` COLUMN (`storePublicUrl`/`storeHostKey`, packages/core/src/read/host-key.ts) AND THE KERNEL ALSO WRITES IT INTO TRANSACTIONAL MESSAGES: `packages/core/src/notification/context.ts:176` builds `https://<host>` and `order.url = <that>/account/orders/<id>`, and the factory templates draw the «Acompanhar o pedido» button only `{{#if order.url}}` (factory-content/variants.ts:70). The totem serves ONE route (`totem/src/app/page.tsx`) and no `/account/*`, so every counter receipt would grow a button leading to the totem's own 404 — over `https`, at a plain-HTTP port, on this bench. Today `host` is null, the button is absent, and nothing is broken. (2) ⚠️ THIS REASON WAS REWRITTEN BY pk34 AND ITS OLD FORM IS GONE, because the slice that named the demo's six addresses made it false. It used to say «the address is the BOX's and not the dataset's, while this file is applied identically on every box» — and this file now DOES carry the counter's address, in `domain` above. What it says instead is the distinction that survived: declaring WHERE A FRONT OF THIS BOX IS PUBLISHED is not claiming that hostname in the KERNEL'S ADDRESS BOOK for this store. `domain.directory` is false here for exactly that, and it is the only face of this box where the two answers differ. (3) ⛔ AND THIS REASON IS SIMPLY DEAD — MEASURED 2026-09-12 AND IT NO LONGER HOLDS. It used to say the images this box pins predate pk21/p1 (`forge.lock` from `v03/integra@8f302fbe7`) and publish no `public_url` at all. Today `forge.lock` is `v03/integra@d981dee6a`, and the live bench answers `GET /v1/read/store_flags?store=<the root shop>` with a `public_url` of `https://…`: the feature IS in these images and the redirect WOULD fire. ⇒ the refusal now rests on (1) alone, which is enough and is about a receipt rather than about a pin. ★ Prose that describes a world that ended is worse than no prose: this line is kept, rather than deleted, so the next reader can see that the argument SHRANK and why. ⇒ the vitrine answers the plain 404, which is what `bin/prove-doors.mjs` demands of it. ★ AND THE ROUTING RISK THE QUESTION WAS ABOUT IS REAL BUT IS NOT WHAT DECIDED IT: `host` also keys the global `store_directory`, so claiming the totem's hostname would make the storefront serve THIS store to any request that reached it with that Host. On this box no such request exists — the edge sends `:82` (and `{$FORGE_TOTEM_DOMAIN}`) to the totem container alone — and p1's own loop guard refuses a redirect to the address the request was reached at.",
           "why": "The counter the totem serves. No `theme_key` on purpose: the totem is an app of its own and resolves no theme, so a theme key here would be a promise nothing keeps. Same tenant as `cafe` — one catalogue, two assortments."
         }
       ]
