@@ -752,6 +752,70 @@ const namedFailures = (lines) => {
   return `${shown.join(' · ')}${more > 0 ? ` · …and ${more} more` : ''} (${lines.length} in total)`;
 };
 
+// ── ★★★ pk34/d2 · DOES THIS BOX SERVE THAT HOST? THE STEP ASKS, IT NO LONGER ASSUMES ────────────────────
+//
+// ⛔ THE DEFECT, MEASURED ON THE BENCH `forge-preseed` ON 2026-09-12, in EVERY store and EVERY pass:
+//
+//     images on hosts this box does not serve: $FORGE_TAILNET_HOST
+//
+// and that host is THE BOX'S OWN. Two keys of its `FORGE_STORE_HOSTS`, the address `bin/verify-config.mjs`
+// calls `settled`, and a 200 from `read.store.by_host` for it (asked from inside the kernel container).
+// ⇒ A LINE THAT ACCUSES, ON EVERY RUN, FALSELY — which is worse than a line that stays quiet, because a
+// reader who learns to ignore one line has learned to ignore the report.
+//
+// ★ WHAT WAS WRONG WAS THE SENTENCE, NOT THE FIELD. `images.foreignHosts` is the VITRINE's list and it means
+// exactly one thing: hosts whose image addresses the vitrine's image pass did not fetch. The vitrine has
+// never been told which hosts this box answers on, so "this box does not serve them" was this step asserting
+// about the WORLD what the field only knows about ITSELF. That claim is now GRADED before it is printed.
+//
+// ⚠️ AND THE MEASUREMENT KILLED THE OBVIOUS EXPLANATION. It is NOT `host:port` against a bare `host`.
+// Measured over the bytes the bench served (`/`, `/tenis`, `/b/taft`, past the gate, one absolute image src
+// each): the addresses are `https://$FORGE_TAILNET_HOST/v1/media/…`, the KERNEL's master url on the
+// box's OWN origin. The vitrine's classifier compares origins first and would have matched — then it checks
+// the PATH against its three image doors, `/v1/media/` is none of them, and the fall-through names the HOST
+// for a problem that is about the DOOR (apps/storefront/src/lib/warm/images.ts:17, :78, :86). Same host,
+// different door. ⛔ That half is the PRODUCT's and is the slice `pk34/p5`; nothing here reaches into it.
+//
+// ── WHICH SOURCE ANSWERS «THIS BOX SERVES H», AND WHY IT TAKES BOTH ─────────────────────────────────────
+// ⛔ THE TWO DISAGREE ON THE REAL BOX, measured the same day, asked of the same bench:
+//
+//     FORGE_STORE_HOSTS        8 keys: localhost · localhost:8200 · 127.0.0.1 · 127.0.0.1:8200 ·
+//                              $FORGE_TAILNET_HOST and its short name, each bare and :8200
+//     read.store.by_host       200 for TWO of them (the tailnet name, bare and :8200); 404 for the other six
+//
+// Neither is the whole answer. The OVERRIDE is what the fronts obey — `resolve-store.ts` checks it before it
+// asks the port — so a host in it IS served, whatever the directory says; and the DIRECTORY is what the
+// warmer itself resolved for this origin (step 6b claims exactly one host, which is why the other six are
+// 404). A step that trusted only the directory would call `localhost` foreign on this very bench. So the
+// question is put to BOTH, and the line names whichever one answered.
+//
+// ⛔ ANCHORED, HOST BY HOST, NEVER `includes()` ON A JOINED STRING. This house has paid three times this
+// month for an unanchored match (`/jq/` inside `/tmp/…zSYjqw`, `die` inside `mens-calvin-klein-brodie-2`,
+// `/demo/` inside `demorou`), and `127.0.0.1` is a substring of `127.0.0.10`. The comparison is `storeAtRoot`,
+// which is the KERNEL's own rule spelled once (exact authority, then the bare host) and is equality on a key.
+
+/**
+ * Who says this box serves `host` — every source that answered, or `[]` for none.
+ *
+ * `[]` is NOT «nobody serves it»: when there is no declaration to read, nothing here can tell the two apart,
+ * and `canGradeHosts` below is what keeps the step from turning silence into an accusation.
+ */
+const servesHost = (host) => {
+  const from = [];
+  if (declaration && storeAtRoot(declaration, host)) from.push(`FORGE_STORE_HOSTS in ${envPath}`);
+  // The port's answer is the one this run already has, for the one host it already asked about — the origin.
+  // Asking it again per host would be N reads to re-derive what the override answers for free.
+  if (rootByPort) {
+    const h = String(host ?? '').toLowerCase();
+    const authority = originAuthority.toLowerCase();
+    if (h === authority || h === authority.replace(/:\d+$/, '')) from.push('read.store.by_host');
+  }
+  return from;
+};
+
+/** Can this run say «this box does NOT serve H» at all? Only the declaration lists every host it answers on. */
+const canGradeHosts = Boolean(declaration);
+
 /** One pass of one store, in the words the pass itself uses. Returns whether it was whole. */
 const passLine = (label, pass) => {
   if (!pass) return true;
@@ -822,8 +886,35 @@ if (!run) {
       if (store.images.cut) {
         say(`              the image list was CUT at the run's ceiling: ${store.images.declared ?? 0} declared by the HTML`);
       }
-      const foreign = store.images.foreignHosts ?? [];
-      if (foreign.length > 0) say(`              images on hosts this box does not serve: ${foreign.join(' · ')}`);
+      // ★ TWO SENTENCES, because one of them is about SOMEBODY ELSE'S box and the other is about THIS one,
+      //   and printing them as one is the defect this slice removes. See «DOES THIS BOX SERVE THAT HOST?».
+      const ours = [];
+      const theirs = [];
+      const ungraded = [];
+      for (const host of store.images.foreignHosts ?? []) {
+        const from = servesHost(host);
+        if (from.length > 0) ours.push(`${host} (${from.join(' and ')})`);
+        else if (canGradeHosts) theirs.push(host);
+        else ungraded.push(host);
+      }
+      if (theirs.length > 0) {
+        say(`              images on hosts this box does not serve: ${theirs.join(' · ')}`);
+      }
+      if (ours.length > 0) {
+        say(
+          `              images left UNWARMED at an address this box DOES serve: ${ours.join(' · ')} — so these ` +
+            'are not somebody else\'s CDN, they are this box\'s own images and nothing warmed them. The list ' +
+            'is the vitrine\'s (apps/storefront/src/lib/warm/images.ts), which this step only relays: measured ' +
+            '2026-09-12, what lands in it here is the kernel\'s master url, same origin, outside the three ' +
+            'image doors the vitrine can warm.',
+        );
+      }
+      if (ungraded.length > 0) {
+        say(
+          `              images the warmer left unwarmed, addressed at: ${ungraded.join(' · ')} — this run CANNOT ` +
+            `SAY whether this box serves those hosts${blindWhy ? ` (${blindWhy})` : ''}, so it claims neither.`,
+        );
+      }
     }
     passLine('verify', store.verify);
   }

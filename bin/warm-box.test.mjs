@@ -164,6 +164,13 @@ async function fakeBox({
   plan = { pages: 400, images: 20_000, msPerUrl: 100 },
   /** ★ pk33 — store handle → the extension filling `storefront:gate`. `{}` is a box with no gate anywhere. */
   gates = {},
+  /**
+   * ★ pk34/d2 — the hosts the VITRINE'S image pass left unwarmed (`StoreReport.images.foreignHosts`,
+   * apps/storefront/src/lib/warm/warm.ts:117). It is the product's own field and it carries HOSTS, never a
+   * verdict: the vitrine knows which addresses it did not fetch, and nothing at all about which hosts this
+   * box serves. `[]` is a run whose images were all at the vitrine's own doors.
+   */
+  foreignHosts = [],
 } = {}) {
   const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
@@ -247,7 +254,7 @@ async function fakeBox({
                           sections: {},
                           short: [],
                           pages: pass({ planned, done: planned, p95 }),
-                          images: { ...pass({ planned: 0, done: 0 }), foreignHosts: [], declared: 0, cut: false },
+                          images: { ...pass({ planned: 0, done: 0 }), foreignHosts, declared: 0, cut: false },
                           verify: undefined,
                         },
                       ],
@@ -1093,6 +1100,165 @@ test('★★ ANTI-VACUUM — a box with NO gate says nothing about gates, so the
     const { stdout, status } = await runStep({ box });
     assert.equal(status, 0, stdout);
     assert.doesNotMatch(stdout, /A GATE \(/, `a box with no gate anywhere still warns about one:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ pk34/d2 · THE WARMER CALLED THIS BOX'S OWN HOST A STRANGER ───────────────────────────────────────
+//
+// ⛔ MEASURED ON THE BENCH `forge-preseed`, 2026-09-12, in EVERY store and EVERY pass:
+//
+//     images on hosts this box does not serve: $FORGE_TAILNET_HOST
+//
+// and that host is the box's own: two keys of `FORGE_STORE_HOSTS` in its `.env`, `VERDICT: settled` about it
+// from `bin/verify-config.mjs`, and 200 from `read.store.by_host` for it (measured, from inside the kernel
+// container). ⇒ THE SENTENCE WAS FALSE, and it was printed on every run — prose that ACCUSES teaches the
+// reader to skip the whole report.
+//
+// ★ THE SHAPE OF THE DEFECT is this house's fio: the step asserted about the WORLD ("this box does not serve
+// X") what the field only knows about the VITRINE ("I did not fetch images addressed at X"). `foreignHosts`
+// is the vitrine's own list, and the vitrine has never been told which hosts this box answers on.
+//
+// ⚠️ AND THE BRIEF'S SUSPICION WAS WRONG, which is why this file measures rather than repeats it: it was NOT
+// `host:port` against bare `host`. Measured over the bytes the bench served (`/`, `/tenis`, `/b/taft`, past
+// the gate): the addresses are `https://$FORGE_TAILNET_HOST/v1/media/…` — the KERNEL's master url on the
+// box's OWN origin, which the vitrine's classifier drops into `foreign` because the PATH is not one of its
+// three image doors (apps/storefront/src/lib/warm/images.ts:17, :78, :86). Same host, different door. The
+// product half is `pk34/p5`; what is repaired HERE is the sentence this repository prints about it.
+
+test('★★★ a host this box SERVES is never reported as one it does not serve', async () => {
+  const box = await fakeBox({ warm: 'ok', foreignHosts: ['127.0.0.1'], directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 0, stdout);
+    // 1 · THE FALSE SENTENCE IS GONE for this host. Anchored on the host, so a line that merely mentions it
+    //     somewhere else cannot pass this.
+    const accusation = stdout
+      .split('\n')
+      .find((l) => l.includes('does not serve') && l.includes('127.0.0.1'));
+    assert.equal(accusation, undefined, `the box's OWN host is still called foreign:\n${stdout}`);
+    // 2 · …and the host is NOT dropped in silence: images that went unwarmed are still worth a line.
+    const line = stdout.split('\n').find((l) => l.includes('UNWARMED'));
+    assert.ok(line, `the unwarmed images were dropped instead of reported:\n${stdout}`);
+    assert.match(line, /127\.0\.0\.1/, `the line does not name the host: ${line}`);
+    // 3 · with the SOURCE that decided it, so a reader can ask the box the same question.
+    assert.match(line, /FORGE_STORE_HOSTS/, `the line does not name what it graded the claim against: ${line}`);
+    // 4 · and it points at the repository that classifies, because this one only relays the field.
+    assert.match(line, /warm\/images\.ts/, `the line does not name where the classification lives: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ THE WARNING SURVIVES — a host this box really does not serve is still accused, by name', async () => {
+  // The half that keeps the repair honest: the defect was the FALSE positive, never the warning. A step that
+  // answered the first test by deleting the sentence would pass it and lose the only thing it was for.
+  const box = await fakeBox({
+    warm: 'ok',
+    foreignHosts: ['cdn.somebody-else.test'],
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 0, stdout);
+    const line = stdout.split('\n').find((l) => l.includes('does not serve'));
+    assert.ok(line, `a genuinely foreign host is no longer reported at all:\n${stdout}`);
+    assert.match(line, /cdn\.somebody-else\.test/, `the foreign host is not named: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ ANTI-SUBSTRING — the two verdicts are decided host by host, in one run', async () => {
+  // ⚠️ THIS HOUSE HAS PAID THREE TIMES THIS MONTH for an unanchored match (`/jq/` inside `/tmp/…zSYjqw`,
+  // `die` inside `mens-calvin-klein-brodie-2`, `/demo/` inside `demorou`). The two hosts below share a
+  // suffix on purpose: `127.0.0.1` is a SUBSTRING of `127.0.0.10`, and a classifier written with
+  // `includes()` would call the second one served and print nothing about it.
+  const box = await fakeBox({
+    warm: 'ok',
+    foreignHosts: ['127.0.0.1', '127.0.0.10'],
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 0, stdout);
+    const accused = stdout.split('\n').find((l) => l.includes('does not serve'));
+    assert.ok(accused, `the host outside the map is not accused at all:\n${stdout}`);
+    assert.match(accused, /127\.0\.0\.10/, `the unserved host is missing from the accusation: ${accused}`);
+    // …and the served one is NOT in that list. `\b` will not do here — `127.0.0.1` matches inside
+    // `127.0.0.10` — so the assertion is on the list the line carries, split the way the step joins it.
+    const named = accused.slice(accused.indexOf(':') + 1).split('·').map((s) => s.trim());
+    assert.ok(
+      !named.includes('127.0.0.1'),
+      `the served host was swept into the accusation by a substring: ${accused}`,
+    );
+    const relayed = stdout.split('\n').find((l) => l.includes('UNWARMED'));
+    assert.ok(relayed?.includes('127.0.0.1'), `the served host lost its own line: ${relayed}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ ANTI-VACUUM — a run whose images were all at the vitrine\'s own doors says nothing about hosts', async () => {
+  // The test above is only a measurement if this one is true: the lines must come from the field, never from
+  // a step that learned to print them. A green earned by an empty list is a green about nothing.
+  const box = await fakeBox({ warm: 'ok', directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout, status } = await runStep({ box, storeHosts: { '127.0.0.1': 'sto_CAFE' } });
+    assert.equal(status, 0, stdout);
+    assert.doesNotMatch(stdout, /does not serve/, `a run with no foreign host still accuses one:\n${stdout}`);
+    assert.doesNotMatch(stdout, /UNWARMED/, `a run with no foreign host still relays one:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ a run with NO declaration to grade against says it CANNOT TELL — it does not guess either way', async () => {
+  // The third answer, and it is the one this house keeps losing: not knowing which hosts the box serves is a
+  // different sentence from knowing it does not serve them. Both accusations are refused here.
+  const box = await fakeBox({
+    warm: 'ok',
+    foreignHosts: ['cdn.somebody-else.test'],
+    directory: { '127.0.0.1': 'sto_CAFE' },
+  });
+  try {
+    const { stdout, status } = await runStep({
+      box,
+      noDeclaration: true,
+      extra: ['--env', '/nonexistent/.env'],
+    });
+    assert.equal(status, 0, stdout);
+    assert.doesNotMatch(stdout, /does not serve/, `a blind run still asserts what this box serves:\n${stdout}`);
+    const line = stdout.split('\n').find((l) => l.includes('cdn.somebody-else.test'));
+    assert.ok(line, `the blind run dropped the host entirely:\n${stdout}`);
+    assert.match(line, /cannot say/i, `the blind run does not say it cannot tell: ${line}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ THE PORT IS THE OTHER SOURCE — a host the DIRECTORY claims is not called foreign either', async () => {
+  // ⛔ MEASURED, AND THE TWO SOURCES DISAGREE ON THE REAL BOX (`forge-preseed`, 12/09, asked from inside the
+  // kernel container): `FORGE_STORE_HOSTS` carries EIGHT keys and `read.store.by_host` answers 200 for only
+  // two of them — `$FORGE_TAILNET_HOST`, bare and `:8200`. `localhost`, `localhost:8200`,
+  // `127.0.0.1`, `127.0.0.1:8200` and the short tailnet name are all 404 in the directory and all served by
+  // the box, because
+  // step 6b claims ONE host (the origin) and the OVERRIDE is what the fronts obey
+  // (packages/storefront-kit/src/resolve-store.ts, checked before the port). ⇒ neither source alone answers
+  // the question, and a step that trusted only the directory would call `localhost` foreign on this bench.
+  const box = await fakeBox({ warm: 'ok', foreignHosts: ['127.0.0.1'], directory: { '127.0.0.1': 'sto_CAFE' } });
+  try {
+    const { stdout, status } = await runStep({
+      box,
+      noDeclaration: true,
+      extra: ['--env', '/nonexistent/.env'],
+    });
+    assert.equal(status, 0, stdout);
+    assert.doesNotMatch(stdout, /does not serve/, `the host the DIRECTORY claims is called foreign:\n${stdout}`);
+    const line = stdout.split('\n').find((l) => l.includes('UNWARMED'));
+    assert.ok(line, `the host the directory claims got no line at all:\n${stdout}`);
+    assert.match(line, /read\.store\.by_host/, `the line does not name the source that answered: ${line}`);
   } finally {
     box.close();
   }
