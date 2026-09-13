@@ -1066,8 +1066,19 @@ test('★★★ a store with a GATE in front of it is named, and the report says
     const line = stdout.split('\n').find((l) => l.includes('cafe') && l.includes('A GATE'));
     assert.ok(line, `the gated store is not named:\n${stdout}`);
     assert.match(line, /demo-gate/, `the notice does not name the gate the port declared: ${line}`);
-    assert.match(line, /no dismissal cookie/, `the notice does not say WHY it warms the wrong thing: ${line}`);
-    assert.match(line, /COLD/, `the notice does not tell the operator what to believe: ${line}`);
+    // ⚠️ THE CITATION, NOT THE OLD WORDS. This assertion read `/no dismissal cookie/` and went RED at
+    //    `8215a38`, the commit that rewrote exactly this sentence and touched only `bin/warm-box.mjs` — the
+    //    step stopped claiming the fetcher carries no cookie (it has since pk33) and started saying what it
+    //    can see. What is graded is the ALLEGATION: the notice has to name the dismissal and say which of
+    //    the two things gets warmed without it.
+    assert.match(line, /dismissal/, `the notice does not say WHY it warms the wrong thing: ${line}`);
+    assert.match(line, /warms the GATE and not the shop/, `the notice does not say WHAT gets warmed instead: ${line}`);
+    // ⚠️ AND THE SAME COMMIT DELETED WHAT THIS ONE GRADED. It read `/COLD/` — the old notice told the
+    //    operator to read the store as cold, which is a claim about a container this script cannot see into.
+    //    `8215a38` replaced the verdict with the MEASUREMENT that settles it, so that is what is graded now:
+    //    a gated store that warmed the gate finds zero images, because the interstitial carries no
+    //    `next/image`. Grading the deleted word would only keep a red that names the wrong thing.
+    assert.match(line, /images: 0 visited/, `the notice does not name the number that settles it: ${line}`);
     assert.match(line, /warm\/run\.ts/, `the notice does not name where the repair lives: ${line}`);
   } finally {
     box.close();
