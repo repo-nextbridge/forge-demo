@@ -330,11 +330,15 @@ for (const row of rows) {
     gated.push(row.handle);
     noted(
       row.handle,
-      `A GATE ("${filler}") STANDS IN FRONT OF THIS STORE, and the warmer carries no dismissal cookie — so ` +
-        'every page below warms the GATE, not the shop. The visits will all answer 200 and this report will ' +
-        'say "warm": it cannot tell the two apart. ⇒ treat this store as COLD whatever the numbers say. The ' +
-        'repair is one header on the warmer\'s own fetcher, in the product (apps/storefront/src/lib/warm/' +
-        'run.ts); step 14-bis is what proves the gate is really there.',
+      `A GATE ("${filler}") STANDS IN FRONT OF THIS STORE. A warmer that does not carry the shopper's ` +
+        'dismissal warms the GATE and not the shop: every visit answers 200 from the same tiny page, and a ' +
+        'report counting visits cannot tell that apart from a warm store. ⚠️ THIS SCRIPT CANNOT SEE INSIDE ' +
+        'THE STOREFRONT CONTAINER, so it does not claim which one happened — it says where to look. The ' +
+        'fetcher is the product\'s (apps/storefront/src/lib/warm/run.ts) and it has carried the dismissal ' +
+        'since pk33; the release this box is pinned to is in forge.lock. ★ AND THE NUMBERS BELOW ANSWER IT: ' +
+        'a gated store that warmed the GATE finds ZERO images, because the interstitial has no next/image in ' +
+        'it — so `images: 0 visited` on this store means the dismissal did not travel, whatever the page ' +
+        'count says. Step 14-bis is what proves the gate is really there.',
     );
   }
   toWarm.push(row);
