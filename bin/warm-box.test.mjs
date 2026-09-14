@@ -300,6 +300,22 @@ async function fakeBox({
       if (req.headers['x-revalidate-secret'] !== SECRET || warm === 'unauth') {
         return json(401, { ok: false, error: 'unauthorized' });
       }
+      if (req.method === 'POST' && warm === 'adopted') {
+        // ⛔ A VITRINE GUARDA UMA CORRIDA POR CAIXA. Quando o passo do SEGUNDO tenant chega, a do primeiro ainda
+        // voa: a rota responde `started: false` e devolve a corrida ALHEIA, com o plano do outro tenant.
+        asked.posts.push(url.searchParams.getAll('store'));
+        run = {
+          id: 'warm_other_tenant',
+          state: 'running',
+          startedAt: new Date().toISOString(),
+          finishedAt: null,
+          asked: { origin: `http://127.0.0.1:${port}`, originFrom: 'caller', stores: ['sto_SOMEBODY_ELSE'] },
+          progress: { stores: null, storesDone: 0, planned: 20418, plannedFinal: true, warmed: 13002, failed: 0, verified: 0 },
+          report: null,
+          error: null,
+        };
+        return json(202, { ok: true, started: false, run });
+      }
       if (req.method === 'POST') {
         asked.posts.push(url.searchParams.getAll('store'));
         asked.calls.push(url.searchParams);
@@ -540,6 +556,34 @@ async function runStep({
 const poll = (extra) => (extra.includes('--poll-ms') ? extra : [...extra, '--poll-ms', '50']);
 
 // ── the happy half ────────────────────────────────────────────────────────────────────────────────────────
+
+test("★★★ a run this step ADOPTED is never published as this tenant's measurement", async () => {
+  // ⛔ MEDIDO NO NASCIMENTO DE 14/09, e é a dobra mais fina desta leva. O passo do SEGUNDO tenant encontrou a
+  // corrida do primeiro ainda voando, DISSE ISSO por nome — "one was already flying … the numbers below are
+  // ITS" — e o veredito publicou `13002 warmed … of 20418 planned` sob o cabeçalho do café, um tenant de ~15
+  // páginas. ⇒ a nota existia e o RESUMO a jogava fora. Não é um sinal que mente: é um sinal honesto que o
+  // resumo esquece, e um número alheio sob o nome errado manda o próximo leitor caçar a coisa errada.
+  const box = await fakeBox({ warm: 'adopted' });
+  try {
+    const { stdout } = await runStep({ box, extra: ['--deadline-ms', '1200', '--poll-ms', '100'] });
+    assert.match(stdout, /already flying/, `the honest note vanished:\n${stdout}`);
+    assert.match(stdout, /NOT THIS TENANT'S/, `the verdict published a foreign run as this tenant's:\n${stdout}`);
+    assert.match(stdout, /warm_other_tenant/, `the adopted run is not named, so nobody can chase it:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★ ANTI-VACUUM — a run this step STARTED carries no such caveat, or the sentence is noise', async () => {
+  const box = await fakeBox({ warm: 'running' });
+  try {
+    const { stdout } = await runStep({ box, extra: ['--deadline-ms', '1200', '--poll-ms', '100'] });
+    assert.match(stdout, /still running after this step/, `the running case did not render at all:\n${stdout}`);
+    assert.doesNotMatch(stdout, /NOT THIS TENANT'S/, `a run this step started was disowned:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
 
 test('★★ a birth that warms every servable store finishes green, with numbers rather than an adjective', async () => {
   const box = await fakeBox({ warm: 'ok' });

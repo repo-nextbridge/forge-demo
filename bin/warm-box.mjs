@@ -600,6 +600,12 @@ const warmRun = async (maxDurationMs, waitMs) => {
     // did not choose.
     noted('the run', `one was already flying (${startedBody.run?.id ?? '?'}) — the numbers below are ITS, not this call's`);
   }
+  // ★ pk35, o corte — E ESSA RESSALVA NÃO PODE MORRER AQUI. Medido no nascimento de 14/09: o passo do SEGUNDO
+  // tenant encontrou a corrida do primeiro ainda voando, disse esta linha honestamente, e o VEREDITO três
+  // linhas abaixo publicou `13002 de 20418 planned` como se fosse do café — um tenant de ~15 páginas. A nota
+  // existia e o resumo a esquecia, que é a forma mais fina do defeito que esta casa persegue: não um sinal que
+  // mente, mas um sinal honesto que o resumo joga fora. ⇒ a posse viaja com a corrida.
+  const adopted = startedBody.started === false;
 
   const runId = startedBody.run?.id;
   const until = Date.now() + waitMs;
@@ -617,7 +623,7 @@ const warmRun = async (maxDurationMs, waitMs) => {
     const body = await res.json().catch(() => ({}));
     run = body.run ?? run;
   }
-  return run;
+  return run && { ...run, adopted };
 };
 
 // ── ★★★ 3b · THE CLOCK IS NOT THE JUDGE ANY MORE, AND THIS STEP STOPPED BUYING ONE ──────────────────────
@@ -1050,7 +1056,12 @@ if (!run) {
       `${p.failed ?? 0} failed, ` +
       `${busyOf(p) === null ? 'busy not published by this image' : `${busyOf(p)} busy`} ` +
       `of ${p.planned ?? 0} planned so far. A birth may not hang on a poll; the run ` +
-      `itself carries on and \`GET ${api}/api/warm\` still answers for it.`,
+      `itself carries on and \`GET ${api}/api/warm\` still answers for it.` +
+      (run.adopted
+        ? ` ⛔ AND THESE NUMBERS ARE NOT THIS TENANT'S: run ${run.id ?? '?'} was already flying when this step ` +
+          'asked, and the vitrine keeps ONE run per box, so the plan above is whoever started it. Read it as ' +
+          'the BOX still warming, never as this tenant measured.'
+        : ''),
   );
 } else if (run.state === 'failed') {
   // No report at all is a DIFFERENT answer from "warmed nothing", and the two must never render the same.
