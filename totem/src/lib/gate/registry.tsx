@@ -9,7 +9,7 @@
 //
 // The totem does not go through that oven. It is a fork, built by `bin/build-totem.sh` like the coffee
 // vitrine — so without this file the counter's host would have no gate on it at all. That is precisely what
-// the brief refuses: "o host do totem é tão protegido quanto os outros".
+// the brief refuses: the totem's host is as protected as the others.
 //
 // ⛔⛔ AND THE SENTENCE THAT USED TO FOLLOW — *"while every other one is covered"* — WAS FALSE, MEASURED
 // 2026-09-11 (pk31/§2). The coffee vitrine is the other fork, built by `bin/build-coffee.sh` outside the same
@@ -26,11 +26,11 @@
 // that branch today. A shop nobody can open is a better answer than a front door nobody put up — and it is
 // still not a gate.
 //
-// ★★★ pk33 SPENT THE DIFFERENCE THE WAY HE ASKED (11/09: *"o fork é do cliente, 100% liberdade"*): the app was
+// ★★★ pk33 SPENT THE DIFFERENCE ON THE DECLARED RULE — the fork belongs to the client, with full freedom: the app was
 // installed for BOTH tenants at birth and `seed/coffee.mjs` REMOVED the placement from the café alone, which
 // declared itself `gate: false` in `seed/box.json`. ⛔ THAT ARRANGEMENT IS OVER AND EVERY SENTENCE ABOUT IT IS
 // GONE WITH IT (pk36/d1) — leaving the reasoning behind while changing the decision is how the next false
-// paragraph gets written. He reversed the exception on 13/09 («Sim ganha portaria»); pk35/d2 gave the café's
+// paragraph gets written. The exception was then reversed — the café gets a gate too — and pk35/d2 gave the café's
 // fork its own `composition.json`, a `codegen` script and a real dependency on `@forgecommerce/surface-codegen`,
 // so `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` exists and resolves `demo-gate` to both
 // faces. ⇒ ALL FOUR STORES ARE GATED NOW, and this file is no longer the only front that draws one.

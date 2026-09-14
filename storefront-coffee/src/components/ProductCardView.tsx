@@ -7,7 +7,7 @@
 // (the add pill, the swatches) are raised above it, so they never navigate. The variation panel is IN-FLOW below
 // the body, so opening it grows the card (a 0fr -> 1fr row track), exactly like the source.
 //
-// THE ADD (the fix Renan called out — "an add that didn't work"): the selected color+size RESOLVE to a SKU id
+// THE ADD (the fix for an add that did not work): the selected color+size RESOLVE to a SKU id
 // and the click calls the MinicartProvider's addAndOpen(skuId, qty) — opening the minicart via the 'add' path
 // (its 4s timer bar). With no provider (a preview/SSR shell) the island is inert.
 //

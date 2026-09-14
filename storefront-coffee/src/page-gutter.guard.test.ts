@@ -1,6 +1,6 @@
 // ★ pk31 §9 — THE TOP BAR LINES UP WITH THE SITE, AND IT IS ONE VALUE THAT SAYS SO.
 //
-// The owner, 11/09, asked for the top bar to line up with the width of the site. He was right, and the
+// The requirement is that the top bar line up with the width of the site, and the
 // measurement says where: the box was never the problem — every centred column in this shop is the same
 // 1240px — the SIDE INSET was. Measured on the cut before this guard:
 //
@@ -179,7 +179,7 @@ test('★ the top bar’s side inset is the side inset of the page content', () 
   }
 
   // Anti-vacuum: a scan that found nothing would agree with itself. Every one of the three stylesheets has to
-  // have contributed, and the chrome's sticky bar — the thing he asked about — has to be among them.
+  // have contributed, and the chrome's sticky bar — the thing this guard claims to grade — has to be among them.
   for (const sheet of Object.keys(SHEETS)) {
     expect(
       [...insets.keys()].some((key) => key.startsWith(`${sheet}:`)),
@@ -228,7 +228,7 @@ test('★ and that inset has ONE spelling — no literal copy of it anywhere in 
 });
 
 test('★★ a centred column carries NO inline padding of its own — it would be NARROWER than the site', () => {
-  // ★ pk37 — THE HALF THE VALUE COULD NOT SEE, and the owner found it with his eyes: the header is not as
+  // ★ pk37 — THE HALF THE VALUE COULD NOT SEE, and the eye found it anyway: the header is not as
   // wide as the content of the page.
   //
   // pk31 §9 made every page edge quote ONE inset, and it did. The bar was still narrower than the page,

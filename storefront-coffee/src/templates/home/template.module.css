@@ -4,7 +4,7 @@
   max-width: var(--size-container);
   margin: 0 auto;
   /* o4 #18 — trim the space between the header and the first block: the sides/bottom keep the prototype's 24px,
-     but the TOP tightens so the hero sits closer to the nav (Renan: "do topo tbm"). */
+     but the TOP tightens so the hero sits closer to the nav. */
   padding: var(--space-lg) var(--space-xl) var(--space-xl);
   display: flex;
   flex-direction: column;

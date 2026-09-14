@@ -147,7 +147,7 @@ describe('the page is the catalogue — there is no PLP behind it', () => {
 //
 // The reported defect was "the hero says three lines". It was never the break that was wrong — the markup has
 // authored two since the fork was cut — it was the SECOND one being 24 characters ("quem plantou a quem bebe")
-// against a display that clamps to 88px, so it wrapped again on its own. Renan chose the replacement pair.
+// against a display that clamps to 88px, so it wrapped again on its own. A shorter pair replaced it.
 //
 // ⚠️ SO THE ASSERTION IS THE LENGTH, NOT THE SENTENCE. A test that pinned the exact copy would be a
 // transcription: it would go red on a wording change that is perfectly fine and stay green on the day

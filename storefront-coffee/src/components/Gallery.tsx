@@ -117,7 +117,7 @@ export function Gallery({
               fill
               // The desktop stage carries a 2× LOUPE (ZoomableImage: transform: scale(2)). Requesting only the
               // ~688px display width made the optimizer serve a 688px derivative, so the loupe upscaled it and read
-              // blurry (Renan — the master is 1920×1440, plenty). We ask for ~1280px on desktop so the magnified
+              // blurry (the master is 1920×1440, plenty). We ask for ~1280px on desktop so the magnified
               // view has real pixels (retina pulls up to the 1920 master); the unzoomed stage just downscales it,
               // crisp. Mobile has no loupe → stays 100vw. Trade a heavier hero for a sharp zoom (the demo's point).
               sizes="(max-width: 768px) 100vw, 1280px"

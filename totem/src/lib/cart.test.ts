@@ -151,7 +151,7 @@ describe('cartForThisCustomer — the cart a NEW basket goes into (pk9/d1)', () 
     expect(createCart).not.toHaveBeenCalled();
   });
 
-  it('★★ MINTS when the pointer names a vessel that ALREADY LANDED AN ORDER — the reload the owner reported', async () => {
+  it('★★ MINTS when the pointer names a vessel that ALREADY LANDED AN ORDER — the reported reload', async () => {
     jar.set('forge_cart', 'cart_OWN');
     readCheckout.mockResolvedValue(landed);
 

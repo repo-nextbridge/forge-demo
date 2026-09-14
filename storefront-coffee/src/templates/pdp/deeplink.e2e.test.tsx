@@ -1,4 +1,4 @@
-// S6-PDP — "the link you send your wife": pick the green one, share the URL, she opens GREEN.
+// S6-PDP — THE SHARED LINK: pick the green one, share the URL, whoever opens it gets GREEN.
 // Browser e2e (jsdom, port mocked): the PDP is mounted at a URL carrying `?sku=`, and we assert the whole page
 // state follows — variant, price, gallery and title — and that choosing another variant rewrites the URL.
 

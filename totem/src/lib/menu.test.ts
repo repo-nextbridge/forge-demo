@@ -126,9 +126,9 @@ describe('the order of the bands is ours, and the kernel has no opinion to borro
 
 // ── A48 · THE COUNTER'S OWN ONE-LINER ───────────────────────────────────────────────────────────────────
 //
-// "no totem a descrição curta ficou grande demais… o ideal é talvez um campo próprio só para descrição
-// totem. Na rolagem aparece essa mini descrição e ao abrir o modal a descrição curta. E na loja de café
-// normal aparece só a descrição curta." (Renan, 2026-09-02)
+// The short description was still too long for the counter's card. The shape chosen: a product field of the
+// totem's own — the scrolling card shows that mini description, the modal shows the short description, and
+// the ordinary coffee vitrine keeps showing only the short description.
 //
 // The whole feature is a product CUSTOM FIELD plus a `??`. What these tests defend is the `??`: a card that
 // went mute for every product nobody wrote a line for would turn an upgrade into a requirement, and it is

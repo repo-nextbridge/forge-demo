@@ -117,12 +117,12 @@ a {
 }
 
 /* iOS WebKit (Safari AND Chrome-on-iOS, which is WebKit) auto-ZOOMS into any form control whose font-size is
- * < 16px the moment it's focused — the "field yanks a zoom" Renan saw on search/checkout, which sites like
+ * < 16px the moment it's focused — the "field yanks a zoom" seen on search/checkout, which sites like
  * O Boticário avoid. `-webkit-touch-callout: none` matches ONLY iOS WebKit, so desktop and Android keep their
  * intended (smaller) field type; there the zoom never happens. `!important` because the per-component `.input`
  * classes (specificity 0,1,0) would otherwise beat a bare element rule — this is a hard platform minimum, not a
  * design choice. Pinch-zoom stays enabled (we do NOT touch the viewport's maximum-scale — that would hurt a11y). */
-/* A single, consistent 16px type on EVERY form control, all platforms (Renan). It also removes the iOS WebKit
+/* A single, consistent 16px type on EVERY form control, all platforms. It also removes the iOS WebKit
  * (Safari + Chrome-on-iOS) focus auto-zoom, which triggers on any field below 16px. Pinch-zoom stays enabled
  * (we never touch the viewport's maximum-scale — that would hurt a11y).
  * Exception: [data-otp-box] (the OTP digit boxes) opt out — they are 20px BY DESIGN (§2.5), already above the

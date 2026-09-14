@@ -151,7 +151,7 @@ function OptionGroup({
   basePath: StorePath;
   extra?: Record<string, string>;
   /** Accepted for call-site compatibility but INTENTIONALLY ignored: a color chip is ALWAYS a solid hue, never
-   * a harvested product photo (Renan) — an unmapped hue falls to the neutral `.swatchImg` background. */
+   * a harvested product photo — an unmapped hue falls to the neutral `.swatchImg` background. */
   swatches?: Record<string, string>;
 }) {
   const nameKey = axis.name.toLowerCase();

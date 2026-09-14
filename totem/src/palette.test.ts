@@ -62,7 +62,7 @@ describe('the totem palette is the artboard palette', () => {
 });
 
 describe('the two exceptions the client asked for, and they are exceptions ON PURPOSE', () => {
-  // Renan, 2026-09-01: the chips are ALL beige — the artboard's divergent chip colours were a Claude Design
+  // The chips are ALL beige — the artboard's divergent chip colours were a Claude Design
   // mistake, not a decision. The artboard therefore still contains the green/amber chip backgrounds, and this
   // test exists so nobody "restores fidelity" by putting them back.
   it('no component paints a chip with the artboard chip colours', () => {

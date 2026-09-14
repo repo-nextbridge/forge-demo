@@ -12,10 +12,10 @@
 // ★ THIS IS A FORK, SO HERE THE ANSWER IS DIFFERENT: this file is the coffee shop's own copy, and its own
 // voice is exactly what a fork is for. The channels below are this shop's.
 //
-// ⛔ AND THIS SHOP DOES NOT EXIST, SO ITS CHANNELS MUST NOT EITHER (pk21/D3, the owner's own words: «troca por
-// .example»). It shipped `ola@forge.co` and `(11) 3237-0188` — a REAL delegated TLD (`.co`, Colombia) and a
+// ⛔ AND THIS SHOP DOES NOT EXIST, SO ITS CHANNELS MUST NOT EITHER (pk21/D3 swapped them to `.example`).
+// It shipped `ola@forge.co` and `(11) 3237-0188` — a REAL delegated TLD (`.co`, Colombia) and a
 // plausible São Paulo landline. Both are reachable, both end up in screenshots, and this dataset has already
-// put a real address on a screen once: the owner's personal one, in fifteen files. The e-mail is now under
+// put a real address on a screen once: a live personal one, in fifteen files. The e-mail is now under
 // the RFC 2606 `.example` TLD, which can never be registered by anyone, and the number is in the
 // `(11) 4000-xxxx` range this box keeps its fictional lines in.
 //

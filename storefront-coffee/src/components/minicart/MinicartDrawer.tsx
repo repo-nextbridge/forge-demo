@@ -40,12 +40,12 @@ import { type MinicartErrorOp, useMinicart } from './MinicartProvider';
 
 /** PT display labels for the kernel's stable totalizer ids — the same three the cart column localizes. A
  * DISCOUNT row is never in this map on purpose: it keeps the merchant's own words (see discount-lines.ts). */
-/** The sentence for each refused command (approved by the Renan, 2026-08-12). Two, not four: the add says the
+/** The sentence for each refused command. Two, not four: the add says the
  * item did not go in, and the three EDITS share one, because "atualizar o carrinho" is what all three failed to
  * do — a shopper who pressed "−" and was told the ADD failed would look for an add they never made.
  *
  * The word is `carrinho` everywhere now — the storefront used to say "sacola" on one CTA and "Seu carrinho" on
- * this panel, and the two were unified onto `carrinho` (his call, same day).
+ * this panel, and the two were unified onto `carrinho`.
  *
  * They are shaped on the coupon's honest fallback (lib/promo/coupon-error.ts): say what happened and what to
  * do, never blame the shopper, never relay the port's own English message. `cart.add_line` has no refusal
@@ -444,7 +444,7 @@ export function MinicartDrawer({
             {!isEmpty ? <span className={styles.headline}>Adicionados agora</span> : null}
           </header>
 
-          {/* MINICART-ERRO — what the last refused command has to say, INSIDE the drawer (his decision: not a
+          {/* MINICART-ERRO — what the last refused command has to say, INSIDE the drawer (not a
            * toast, not a banner, not a page). It sits ABOVE the two slots and OUTSIDE the isEmpty branch on
            * purpose: the commonest failure of all is the very first add, when the cart is still empty and that
            * branch renders nothing but "Seu carrinho está vazio". `role="alert"` announces it without stealing

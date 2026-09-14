@@ -1,6 +1,6 @@
 // ★ PDP BODY ORDER (S7 fix): below the gallery/buybox hero the body slots must render in this exact sequence —
 // pdp.below_gallery (reviews) → pdp.below_buybox (the "compre junto" cross-sell) → pdp.below_cross_sell (the
-// "related" shelf) — and the description TABS must render LAST, below all three. Renan's ask: frete → avaliações
+// "related" shelf) — and the description TABS must render LAST, below all three. The required order: frete → avaliações
 // → compre junto → shelfs → abas. Asserted on the raw server HTML (renderToString = the crawler's bytes): the
 // template just places the slot fills it is handed, so their DOM order IS the rendered page order.
 import { renderToString } from 'react-dom/server';

@@ -163,7 +163,7 @@ test('★★ the decision never touches the shopper — no buyer, no payment met
 });
 
 test('★★ "the item ALONE unlocks it" — the free-shipping signal is a UNIT price test, never a cart total', () => {
-  // Renan's rule: a R$ 250 product must not be badged because TWO of them would clear a R$ 500 floor. The
+  // The rule: a R$ 250 product must not be badged because TWO of them would clear a R$ 500 floor. The
   // comparison therefore has to be against the sku's own amount, in both hosts. A qty or a subtotal creeping
   // into this expression is the failure, and it would be invisible in a screenshot.
   for (const file of ['components/ProductCard.tsx', 'components/SkuSelector.tsx']) {

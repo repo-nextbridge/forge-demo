@@ -1,7 +1,7 @@
 /* THE COUNTER, AS THE ARTBOARD DRAWS IT.
  *
  * Every number here is the artboard's (`design-base/Totem forge.co.dc.html`), moved out of inline styles and
- * into classes. The two deliberate departures are the ones Renan named: the chips are ALL beige, and the
+ * into classes. The two deliberate departures are declared ones: the chips are ALL beige, and the
  * pix/card/bag icons are new (see Icons.tsx). Everything else is the design.
  *
  * ⚠️ THE PANEL IS A FIXED 1080x1920 AND IS SCALED TO FIT. It is not responsive and must not become so: this
@@ -176,8 +176,8 @@
 
 /* ── MENU: header, rail, bands ───────────────────────────────────────────────────────────────────────── */
 
-/* ★ THE BAND'S SLACK IS SHARED, NOT PARKED — the owner, 2026-09-08: «No totem, quero deixar essa parte mais
- * centralizada, tem muito espaço verde embaixo».
+/* ★ THE BAND'S SLACK IS SHARED, NOT PARKED — the band's header sat too high, leaving a large empty green
+ * area under it.
  *
  * The band is the artboard's fixed 372px and its three children measure 214px, so 142px of it is empty.
  * MEASURED (headless Chromium, the panel's own 1080x1920, this app's own self-hosted Fraunces and Poppins):
@@ -438,7 +438,7 @@
   object-fit: contain;
 }
 
-/* ★ ALL CHIPS ARE BEIGE. The artboard painted "gelado" chips green and the rest amber; Renan named that a
+/* ★ ALL CHIPS ARE BEIGE. The artboard painted "gelado" chips green and the rest amber; that was judged a
  * Claude Design mistake rather than a decision, so the one rule here replaces two. `palette.test.ts` keeps
  * the old two colours out of this sheet. */
 .chip {
