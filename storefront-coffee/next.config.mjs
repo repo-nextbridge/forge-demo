@@ -15,15 +15,34 @@ import { fileURLToPath } from 'node:url';
 // still proven standalone by the Docker build + the local smoke.
 const standalone = process.env.FORGE_BUILD_STANDALONE === '1';
 
-// FRONT-OWN: the tracing root is discovered, not assumed. This same file builds in TWO places — here, where
-// the app sits at `apps/storefront` of a pnpm workspace and the tracer must reach the linked workspace deps
-// two levels up, and in the COPY a customer owns, where the app IS the root and its deps are a plain
-// `node_modules`. Hardcoding `../..` was correct only in the first: in the copy it made the standalone output
-// land at `.next/standalone/apps/storefront/server.js` — a path the customer's Dockerfile has no reason to
-// expect, from directories that do not exist in their repo. The workspace manifest is the honest signal.
+// FRONT-OWN: the tracing root is discovered, not assumed. This file was cut from a front that builds in TWO
+// places — inside the Forge workspace, where the app sits at `apps/storefront` and the tracer must reach the
+// linked workspace deps two levels up, and in the COPY a customer owns, where the app IS the root and its
+// deps are a plain `node_modules`. Hardcoding `../..` was correct only in the first: in the copy it made the
+// standalone output land at `.next/standalone/apps/storefront/server.js` — a path the customer's Dockerfile
+// has no reason to expect, from directories that do not exist in their repo.
+//
+// ── ★★ pk35/d3 — AND THE COPY'S HALF IS NO LONGER `.`, BECAUSE THIS COPY REACHES A SIBLING DIRECTORY ─────
+//
+// This box writes apps of its own (`apps/demo-gate`), and a front renders an app by IMPORTING it: the
+// dependency is `"@forge/ext-demo-gate": "file:../apps/demo-gate"`, which npm installs as a SYMLINK pointing
+// OUT of this directory. The standalone tracer never copies a file from above its root, so with the root at
+// `.` the build stays green and the IMAGE is short a module — the failure `bin/front-apps.mjs` calls
+// `untraced`, and the one that is invisible until a container runs. `totem/next.config.mjs` reached the same
+// answer first, for the same app, and this is the same value said the same way.
+//
+// ⚠️ IT MOVES THE STANDALONE ENTRY, AND THE DOCKERFILE CARRIES THE OTHER HALF. With the root one directory
+// up, the server lands at `.next/standalone/storefront-coffee/server.js` and the workspace's node_modules
+// beside it — which is why `Dockerfile` copies to `./storefront-coffee/` and runs that path, exactly as
+// `totem/Dockerfile` does. Proven by `bin/build-coffee.sh`, which asserts the entry where it now is.
+//
+// ⚠️ AND IT IS UNCONDITIONAL, unlike `output: 'standalone'` below. `bin/front-app-reach.guard.mjs` IMPORTS
+// this config to read the tracer's root, and it does so without `FORGE_BUILD_STANDALONE` set; a value that
+// only exists inside the image build would read as "the default" — the fork's own directory — and the rule
+// would grade a root this project never uses.
 const workspaceRoot = new URL('../../pnpm-workspace.yaml', import.meta.url);
 const tracingRoot = fileURLToPath(
-  existsSync(workspaceRoot) ? new URL('../..', import.meta.url) : new URL('.', import.meta.url),
+  existsSync(workspaceRoot) ? new URL('../..', import.meta.url) : new URL('..', import.meta.url),
 );
 
 // ⚠️ DO NOT REMOVE AS DEAD WEIGHT — it looks like a no-op in here, and it is: pnpm links the block packages
@@ -33,7 +52,13 @@ const tracingRoot = fileURLToPath(
 // unless they are listed here. Without the line the copy fails to build ("Module parse failed: Unexpected
 // token" on the first `export type`, then on the first CSS Module import). With it, the copy is born
 // correct. Proven on a Next app outside this monorepo: scripts/publishing/front-consumer.guard.test.ts.
+//
+// ★ pk35/d3 — AND `@forge/ext-demo-gate` IS HERE FOR THE SAME REASON, arriving a different way. It is an app
+// THIS BOX wrote, so it travels as a DIRECTORY of source (`file:../apps/demo-gate`, a symlink) rather than as
+// a tarball; either way it is .tsx + CSS Modules under `node_modules`, which is exactly what Next skips
+// unless it is listed here.
 const transpilePackages = [
+  '@forge/ext-demo-gate',
   '@forgecommerce/ext-banners',
   '@forgecommerce/ext-feed',
   '@forgecommerce/ext-leads',
@@ -172,12 +197,11 @@ const nextConfig = {
   // that carries the no-JS server-action fix is what put the old spelling out of date, so it dies with it.
   ...(process.env.FORGE_HIDE_DEV_INDICATORS === '1' ? { devIndicators: false } : {}),
   webpack: forkWebpack,
-  ...(standalone
-    ? {
-        output: 'standalone',
-        outputFileTracingRoot: tracingRoot,
-      }
-    : {}),
+  // ★ pk35/d3 — DECLARED ALWAYS, not only for the image. See the note beside `tracingRoot`: a rule that reads
+  // this config to ask "does the tracer cover the app you import from ../apps?" runs an ordinary import, and a
+  // value hidden behind an env var would answer for a build nobody makes.
+  outputFileTracingRoot: tracingRoot,
+  ...(standalone ? { output: 'standalone' } : {}),
 };
 
 export default nextConfig;

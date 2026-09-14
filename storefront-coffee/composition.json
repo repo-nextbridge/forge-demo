@@ -1,0 +1,78 @@
+{
+  "_readme": [
+    "THE APPS THIS FRONT COMPOSES — and from here on it is YOURS, like every other file here.",
+    "",
+    "It is the same format as the list a Forge instance keeps for its kernel images, plus `surface`, which",
+    "says which Forge front this project is a copy of. Everything under `src/lib/**/generated/` is DERIVED",
+    "from this file by `npm run codegen` (the `forge-surface-codegen` command, which `npm run build` calls",
+    "for you). `npm test` fails while a generated file disagrees with this list.",
+    "",
+    "TO ADD AN APP — one of ours or one of your own — install its package and add the entry. An app of your",
+    "own has to be PACKED and installed like any other: this front renders an app by importing it, so an",
+    "app that only exists as a directory in another repository cannot reach this build. The run refuses,",
+    "naming it, rather than rendering nothing.",
+    "",
+    "AN APP THAT RUNS IN THE KERNEL NEEDS NO ENTRY. A payment driver, a job, an event script: it reaches",
+    "this front through the port, as data, and belongs on the instance list your kernel images are baked",
+    "from — not here. This list is only about components this build has to compile in.",
+    "",
+    "★★ THIS COPY WAS CUT BEFORE THE TOOL EXISTED, so this file was written by hand on 2026-09-13 rather",
+    "than by `pnpm pack:surface`. It is the same derivation the cut makes — every app of the instance list",
+    "this project can IMPORT — so it holds the platform apps this fork installs plus `demo-gate`, which is",
+    "this box's own app and arrives as a directory (`file:../apps/demo-gate`) instead of a tarball.",
+    "`chrome` and `content` are on the box's list and NOT here: this fork does not depend on them, and an",
+    "entry naming a package `npm install` never fetched is exactly what the generator refuses."
+  ],
+  "version": 1,
+  "surface": "storefront",
+  "apps": [
+    {
+      "id": "banners",
+      "package": "@forgecommerce/ext-banners"
+    },
+    {
+      "id": "demo-gate",
+      "package": "@forge/ext-demo-gate"
+    },
+    {
+      "id": "feed",
+      "package": "@forgecommerce/ext-feed"
+    },
+    {
+      "id": "leads",
+      "package": "@forgecommerce/ext-leads"
+    },
+    {
+      "id": "payment-mercadopago",
+      "package": "@forgecommerce/ext-payment-mercadopago"
+    },
+    {
+      "id": "payment-promissory",
+      "package": "@forgecommerce/ext-payment-promissory"
+    },
+    {
+      "id": "payment-reference",
+      "package": "@forgecommerce/ext-payment-reference"
+    },
+    {
+      "id": "payment-zero",
+      "package": "@forgecommerce/ext-payment-zero"
+    },
+    {
+      "id": "recommendations",
+      "package": "@forgecommerce/ext-recommendations"
+    },
+    {
+      "id": "reviews",
+      "package": "@forgecommerce/ext-reviews"
+    },
+    {
+      "id": "shelves",
+      "package": "@forgecommerce/ext-shelves"
+    },
+    {
+      "id": "subscriptions",
+      "package": "@forgecommerce/ext-subscriptions"
+    }
+  ]
+}

@@ -81,72 +81,43 @@ const DIVERGENCES = [
     fork: 'storefront-coffee',
     app: 'demo-setup',
     why:
-      'THE SPECIMEN, AND IT IS WAITING ON WORK IN THIS REPOSITORY — WHICH IS NOT WHAT THIS ENTRY USED TO SAY. ' +
-      'The three marks are reachable only once this fork can REGENERATE `storefront-coffee/src/lib/extensions/' +
-      'generated/registry.tsx`, which is a GENERATED surface (its own first line says "do not edit"). ' +
-      '⛔ THE OLD REASON — "the tool is owed by the product and is being fiado by pk32/p1-parto" — IS FALSE ' +
-      'AND WAS FALSE FOR TWO WEEKS. Measured 2026-09-13 against the pinned release ' +
-      '(`git show <forge.lock built_from>:scripts/publishing/publishable.json`): `@forgecommerce/' +
-      'surface-codegen` IS a package of that release and IS on its publishable list, so ' +
-      '`bin/vendor-packages.sh` already writes its tarball into `storefront-coffee/vendor/` on every build — ' +
-      'and `storefront-coffee/package.json` already carries the override for it. What is missing is entirely ' +
-      "this box's: the fork has no `composition.json` of its own (the list the tool derives everything from), " +
-      'no `codegen` script, and does not depend on the tool. ⇒ the fix is `until` below plus the three ' +
-      'gestures, and it is ONE slice for both entries of this list.' +
-      '★ pk35/d7 — AND NOTHING IS PLACED ON THE CAFÉ ANY MORE: `seed/demo-setup.json` declares `"cafe": null`, ' +
-      'because the three marks were MEASURED drawing on zero screens there (the checkout account layout ' +
-      'replaces both regions, so the reference chrome only ever arrives as a fallback that never renders). ' +
-      '⇒ this divergence costs a shopper nothing TODAY, and stays because the REACH is still absent: the day ' +
-      'an operator drops one of these blocks on the café in Compose it would draw nothing, and nobody is ' +
-      'entitled to not know that.',
-    until: {
-      fork: 'storefront-coffee',
-      files: ['composition.json'],
-      scripts: ['codegen'],
-      dependencies: ['@forgecommerce/surface-codegen'],
-    },
+      'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
+      'It used to blame a missing product artifact ("the tool is owed by the product and is being fiado by ' +
+      'pk32/p1-parto"); that tool SHIPPED — `@forgecommerce/surface-codegen` is in the release, the fork ' +
+      'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
+      'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
+      'would draw a second one. His own rule decides it — 11/09, «o fork é do cliente, 100% liberdade» ⇒ when ' +
+      'a fork draws for itself what a declared block would draw, the INSTANCE removes the placement (the ' +
+      'shape `seed/outlet.mjs` already uses). ⇒ the fix is a seed change, not three gestures, and it is not ' +
+      'this slice\'s to make. ★ pk35/d7 MADE IT: `seed/demo-setup.json` now declares `"cafe": null`, after ' +
+      'MEASURING that the three marks drew on ZERO screens there — the checkout account layout replaces both ' +
+      'regions, so the reference chrome only ever arrives as a fallback that never renders. ⇒ this costs a ' +
+      'shopper nothing today, and the entry stays because the REACH is still absent: the day an operator ' +
+      'drops one of these blocks on the café in Compose it would draw nothing, and nobody is entitled to ' +
+      'not know that.',
   },
   {
     fork: 'storefront-coffee',
     app: 'demo-gate',
     why:
-      'THE SAME MISSING PIECE, AND IT IS THIS BOX\'S: this cut (2026-09-01, commit 0d1c37f) predates the gate ' +
-      'seam by hours, so it has NEITHER `src/lib/extensions/generated/gate-registry.tsx` NOR ' +
-      '`src/lib/extensions/gate.ts` — the reference grew both on 2026-09-01 (ff2006e9d). Its ' +
-      '`src/app/s/[store]/layout.tsx:27` still resolves the gate through `@forgecommerce/storefront-kit/gate/' +
-      'registry`, whose map is `{}` (that release, line 145) and stays `{}` by design. ' +
-      '⛔ THE SENTENCE THAT USED TO FOLLOW — "reported upstream, not patchable from here (repo boundary)" — IS ' +
-      'FALSE. The reference no longer resolves the gate from the kit either: at the pinned release ' +
-      '`apps/storefront/src/app/s/[store]/layout.tsx:45` imports `resolveGate` from its OWN ' +
-      '`src/lib/extensions/gate.ts`, which is `resolveComposedGate(id) ?? resolveWeldedGate(id)` — and the ' +
-      'composed half is written by `@forgecommerce/surface-codegen`, the fork\'s own tool, which that release ' +
-      'carries and publishes. So the repair is INSIDE this repository and needs nothing from upstream. ' +
-      'Measured 2026-09-13 by running that tool against this fork (its list drafted, its own ' +
-      '`node_modules` standing in): it answers `6 generated file(s) do not match composition.json` and names ' +
-      'them, `gate-registry.tsx` among them. ⇒ THAT is the slice, and it is bigger than a gate: five of those ' +
-      'six files are the shelves, the card annotations, the feed route and the public routes of a shop the ' +
-      'owner is about to test, so it wants its own cut and a real `next build`, not a rider on a portaria. ' +
-      '★★★ pk33 — AND THE CONSEQUENCE IS NO LONGER LEFT TO THE BOX. The gate app is installed at birth for ' +
-      'BOTH tenants now, and an install is TENANT-wide: it would place the gate on the café too, whose front ' +
-      'is this fork. Since pk32 a structural slot a build cannot draw REFUSES the page, so that would be a ' +
-      'coffee shop whose every page reads «Esta loja está temporariamente indisponível». ⇒ ' +
-      '`seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement from the café alone (the counter, whose ' +
-      'front is the totem, keeps its gate and draws it), `seed/box.json` declares `gate: false` + the reason ' +
-      'on that store, and `bin/prove-doors.mjs` grades the declaration against the port AND against the ' +
-      'screen. So the café is gateless BY DECLARATION rather than by accident — which is his own rule ' +
-      '(11/09: «o fork é do cliente, 100% liberdade» ⇒ the instance removes the placement). ⛔ THIS ENTRY ' +
-      'STILL STANDS, and it is what keeps the arrangement temporary: it is printed on every run, goes RED the ' +
-      'day it stops matching a finding, and now ALSO goes red the day `until` below is satisfied. ' +
-      '★ 13/09 HE REVERSED THE EXCEPTION — «Sim ganha portaria» — and pk35/d2 measured the reversal and ' +
-      'REFUSED to ship it: the fork still cannot draw, so giving the café the placement today hands over a ' +
-      'shop whose every page is a refusal screen. The decision stands and is owed; what it is owed is the ' +
-      'regeneration slice above, in this order — the fork draws FIRST, `gate: false` goes SECOND.',
-    until: {
-      fork: 'storefront-coffee',
-      files: ['composition.json'],
-      scripts: ['codegen'],
-      dependencies: ['@forgecommerce/surface-codegen'],
-    },
+      'THREE OF THE FOUR GESTURES ARE DONE; THE FOURTH IS BLOCKED UPSTREAM AND `bin/fork-codegen.guard.mjs` ' +
+      'RUNS IT EVERY DAY. pk35/d3 gave this fork the dependency (`file:../apps/demo-gate`), the ' +
+      '`transpilePackages` entry and a tracing root that covers it (proven by a real standalone build and by ' +
+      'the image booting) — so the finding here is `unreached` and nothing else. What is left is the ' +
+      'REGENERATION: `src/lib/extensions/generated/` is a generated surface, and the tool that would write it ' +
+      '(`@forgecommerce/surface-codegen`, installed here) cannot run against a fork that installs the ' +
+      'RELEASE\'s tarballs — the front generator demands each app\'s kernel-side exports (`./manifest`, the ' +
+      'driver module) which a front tarball strips on purpose. Measured on this fork and reproduced on a ' +
+      'pristine `pnpm pack:surface` cut; the two walls, with their upstream file and line, are declared and ' +
+      'exercised in `bin/fork-codegen.guard.mjs`, which goes RED the day either falls. ' +
+      '⛔ AND WELDING THE IMPORT BY HAND IS NOT THE ANSWER — that is what `totem/src/lib/gate/registry.tsx` ' +
+      'did, and that file\'s prose had rotted by the time pk31/d1 read it. ' +
+      '★★ THE CONSEQUENCE IS STILL DECLARED, NOT LEFT TO THE BOX: the gate app is installed for BOTH tenants ' +
+      'at birth and an install is TENANT-wide, so `seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement ' +
+      'from the café alone (the counter keeps its gate and the totem draws it), `seed/box.json` declares ' +
+      '`gate: false` + the reason on that store, and `bin/prove-doors.mjs` grades the declaration against the ' +
+      'port AND the screen. The day the walls fall, the regeneration, the removal, the `gate: false` and this ' +
+      'entry go together — which is the slice after this one.',
   },
 ];
 
