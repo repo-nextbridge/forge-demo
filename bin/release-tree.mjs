@@ -13,6 +13,11 @@
 // silently accepted, it is EXPANDED through `git worktree list`, and a machine that does not have the
 // release's tree says so.
 //
+// ⚠️ AND THE COMMIT IS NOT THE WHOLE QUESTION — the fold this file learned last. A working tree can sit at
+// the pinned commit and still not be the release's bytes, because a slice is running in it; a cut packed out
+// of one of those reported drift that was the slice's own edits. So `releaseTree` PREFERS a clean tree among
+// the ones at that commit and says which it took.
+//
 // A caller that gets `{ tried }` back has no tree and must say NOT CHECKED, loudly. A silent green there
 // would mean "measured against whatever was lying around", which is not a measurement.
 
@@ -59,22 +64,75 @@ export function checkout(base) {
 
 /** Where a Forge checkout might be. Same first door as this repo's other guards — `FORGE_MONOREPO` — and the
  *  rest are the layouts this repository is actually cloned in, as a plain checkout and as a worktree.
- *  ★ pk24/D3 — exported for the same reason `checkout` above is. */
-export function candidates() {
+ *  ★ pk24/D3 — exported for the same reason `checkout` above is.
+ *
+ *  ⚠️ THE ENVIRONMENT IS AN ARGUMENT, NOT AN AMBIENT FACT (pk38/d9). A caller that runs one of these guards as
+ *  a CHILD gives that child an environment of its own, and then has to ask this same question the way the
+ *  CHILD will answer it — not the way this process would. Reading `process.env` here and nowhere else made
+ *  that impossible to state, and `bin/composition-pin.test.mjs` went red whenever the shell happened to export
+ *  `FORGE_MONOREPO`: it compared a child pointed at a fixture against an answer computed from the caller's
+ *  own shell. Defaulting to `process.env` keeps every other caller written exactly as it was. */
+export function candidates(env = process.env) {
   return [
-    process.env.FORGE_MONOREPO,
+    env.FORGE_MONOREPO,
     join(ROOT, '..', 'forge'),
     join(ROOT, '..', '..', 'forge'),
     join(ROOT, '..', '..', '..', 'forge'),
   ].filter(Boolean);
 }
 
-/** The checkout whose HEAD is the pinned commit, and the sentence that says how it was found. Returns
- *  `{ path, head, how }` when one exists and `{ tried }` — the list of what was looked at and why each was
- *  rejected — when none does. */
-export function releaseTree(pinned) {
+/**
+ * ★★ UNCOMMITTED CHANGES, COUNTED — the question that separates "the right commit" from "the right tree".
+ *
+ * ⛔ MEASURED AT THE pk36 CUT. A release was packed out of a worktree sitting at the pinned commit with a
+ * slice still running in it, and the drift it reported was the SLICE's edits, not a difference between the
+ * box and the release. The tree had the right commit and still lied — which is why `--porcelain` and not
+ * `rev-parse` is the second question. Untracked files count: `node_modules/`, `dist/` and every build output
+ * here are gitignored, so an untracked path at this level is a file somebody added and nobody packed.
+ *
+ * @returns the number of changed paths, `0` for a clean tree, or `null` when git cannot answer — which is
+ * NEVER read as clean, because "I could not look" and "I looked and there was nothing" are different answers.
+ */
+function uncommitted(base) {
+  const status = gitOut(base, ['status', '--porcelain']);
+  if (status === null) return null;
+  return status === '' ? 0 : status.split('\n').length;
+}
+
+/**
+ * The checkout whose HEAD is the pinned commit, and the sentence that says how it was found. Returns
+ * `{ path, head, how, clean }` when one exists and `{ tried }` — the list of what was looked at and why each
+ * was rejected — when none does.
+ *
+ * ★★ A CLEAN TREE IS PREFERRED OVER A DIRTY ONE AT THE SAME COMMIT (pk38/d9), and the one that was used is
+ * said out loud in `how`. A dirty tree is still an answer — a developer editing the monorepo next door must
+ * not be told the release is missing — but it is the LAST answer, never the first one found, and it arrives
+ * carrying the count of what is uncommitted in it so a reader of a red can see the tree is not the release.
+ */
+export function releaseTree(pinned, env = process.env) {
   const tried = [];
-  for (const base of candidates()) {
+  /** Trees AT the pinned commit that are not clean — the fallback, weighed only after the search is over. */
+  const dirty = [];
+  const seen = new Set();
+  /** Accept `found` if it is clean; otherwise remember it and keep looking. */
+  const weigh = (found, how) => {
+    if (seen.has(found.path)) return null;
+    seen.add(found.path);
+    const changed = uncommitted(found.path);
+    if (changed === 0) return { ...found, how, clean: true };
+    dirty.push({
+      ...found,
+      clean: false,
+      how:
+        `${how}, ⚠️ NOT THE RELEASE'S BYTES — ` +
+        (changed === null
+          ? 'git cannot read a status from it'
+          : `${changed} uncommitted change(s) sit on top of the pinned commit`),
+    });
+    return null;
+  };
+
+  for (const base of candidates(env)) {
     const found = checkout(base);
     if (!found) {
       tried.push(
@@ -84,17 +142,27 @@ export function releaseTree(pinned) {
       );
       continue;
     }
-    if (found.head.startsWith(pinned.sha)) return { ...found, how: 'checked out here' };
-    tried.push(`${base} @ ${found.head.slice(0, 9)} — a different commit`);
+    if (found.head.startsWith(pinned.sha)) {
+      const answer = weigh(found, 'checked out here');
+      if (answer) return answer;
+    } else {
+      tried.push(`${base} @ ${found.head.slice(0, 9)} — a different commit`);
+    }
+    // ⚠️ THE EXPANSION RUNS EVEN WHEN THE BASE ITSELF IS AT THE PIN, which it did not before: a sibling
+    // worktree of the same clone can hold the same commit CLEAN while this one is mid-slice, and that sibling
+    // is the tree the question was about.
     const list = gitOut(base, ['worktree', 'list', '--porcelain']) ?? '';
     for (const block of list.split('\n\n')) {
       const path = block.match(/^worktree (.+)$/m)?.[1];
       const head = block.match(/^HEAD ([0-9a-f]+)$/m)?.[1];
       if (!path || !head || !head.startsWith(pinned.sha)) continue;
       const sibling = checkout(path);
-      if (sibling) return { ...sibling, how: `a worktree of ${base}` };
+      if (!sibling) continue;
+      const answer = weigh(sibling, `a worktree of ${base}`);
+      if (answer) return answer;
     }
   }
+  if (dirty.length > 0) return dirty[0];
   return { tried };
 }
 

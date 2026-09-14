@@ -236,11 +236,26 @@ test('★★★ the generator RUNS in every surface fork — clean, or stopped b
     );
   }
 
-  assert.ok(
-    graded.length > 0,
-    'no fork had the tool installed, so this rule graded NOTHING. Install one (`bash bin/install-storefront.sh`) ' +
-      'before believing the green above',
-  );
+  // ★★ NOT CHECKED, NOT RED — the posture every other rule in this directory already has (pk38/d9).
+  //
+  // ⛔ THIS WAS AN `assert.ok(graded.length > 0)`, AND IT CONTRADICTED THE DOCTRINE ONE FILE OVER: "a machine
+  // with no Forge checkout is told NOT CHECKED, never quietly passed … on a dev machine that is the right
+  // answer, and it must stay; the STRICT mode is what turns a skip into a failure" (bin/test.sh). An absent
+  // tool is exactly that kind of absence — a fork's `node_modules/` is gitignored, so EVERY freshly born
+  // worktree of this repository has none — and grading it red here meant no newborn worktree could ever reach
+  // a green run, for a reason that says nothing about the code in it. Three slices met that red in one day
+  // and had to report that they had proven nothing.
+  //
+  // ⚠️ AND NOTHING IS LOST, because the skip is graded elsewhere: `FORGE_STRICT_CHECKS=1 bash bin/test.sh`
+  // reads the run's own `ℹ skipped` line and refuses to call a run green that reported instead of grading. A
+  // pipeline gets the red; a workstation gets the sentence that says what would let it run.
+  if (graded.length === 0) {
+    t.skip(
+      `NOT CHECKED — no fork has ${TOOL.name} on disk, so nothing was generated and nothing was compared. ` +
+        'The line above names the install for each fork; give the runner one and this rule runs.',
+    );
+    return;
+  }
 
   // ⚠️ THE STALE WALL IS THE POINT OF THE LIST, and it is what makes the arrangement temporary: the day the
   // product ships the one-line fix, this goes RED and names the slice that follows.
@@ -280,7 +295,9 @@ test('★ the `no-shebang` wall is a FACT on disk, not only a message — the bi
     );
     say(`${fork.dir}: the linked command starts with ${JSON.stringify(head)}, not "#!" — /bin/sh would run it`);
   }
-  assert.ok(checked > 0, 'no fork had the tool installed, so this rule read no file at all');
+  // Same posture as the rule above, for the same reason: an uninstalled fork is an absence this machine can
+  // report, never a verdict about the wall.
+  if (checked === 0) t.skip('NOT CHECKED — no fork had the tool on disk, so this rule read no file at all');
 });
 
 // A fork of ROOT is what every path above is relative to; naming it once keeps this file honest about where

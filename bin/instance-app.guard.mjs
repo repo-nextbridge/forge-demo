@@ -60,8 +60,8 @@
 //   2. no such checkout                                → NOT CHECKED, with the reason and what would fix it.
 //   3. a checkout that cannot lend some package an app declares → NOT CHECKED for that app, BY NAME. Never a
 //      run against a smaller program than the one the oven ships.
-// The tree is preferred pinned and said out loud when it is not — see `lendingTree()` for why that differs
-// from the kit comparison next door.
+// The tree is THE PINNED ONE or none — see `lendingTree()` for the measurement that removed the fallback it
+// used to have, and why it now holds the same posture as the kit comparison next door.
 //
 //   node --test bin/instance-app.guard.mjs        (or: bash bin/test.sh)
 //   FORGE_MONOREPO=~/path/to/forge node --test bin/instance-app.guard.mjs
@@ -95,13 +95,10 @@ say(`apps of this instance: ${APPS.map((a) => a.dir).join(', ') || 'none'}`);
 say(`forge.lock pins: ${PINNED ? PINNED.ref : 'no branch@sha — this lock names registry digests'}`);
 if (TREE.path) {
   say(`linking from: ${TREE.path} (${TREE.how})`);
-  if (!TREE.pinned) {
-    say('   ⚠️ a green below means "this app agrees with THAT tree", not "with the tree these images carry".');
-  }
 } else {
-  say('⚠️ NOT CHECKED — no Forge checkout with a built @forgecommerce/contracts on this machine.');
+  say('⚠️ NOT CHECKED — no checkout of the PINNED release with a built @forgecommerce/contracts here.');
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<a Forge checkout> and run `pnpm build` there.');
+  say('   set FORGE_MONOREPO=<a clone at the pinned commit> and run `pnpm build` there.');
 }
 
 /** app.dir → the packages it declares that the tree could not lend. Empty is the only state that runs. */
@@ -121,8 +118,8 @@ if (TREE.path) {
 function notChecked(app) {
   if (!TREE.path) {
     return (
-      'NOT CHECKED — no Forge checkout with a built @forgecommerce/contracts ' +
-      '(set FORGE_MONOREPO, then `pnpm build` there)'
+      'NOT CHECKED — no checkout of the PINNED release with a built @forgecommerce/contracts ' +
+      '(set FORGE_MONOREPO to a clone at that commit, then `pnpm build` there)'
     );
   }
   const missing = incomplete.get(app.dir);

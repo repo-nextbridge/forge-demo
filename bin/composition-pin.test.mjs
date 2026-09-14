@@ -39,6 +39,22 @@ const GUARD = join(HERE, 'composition.guard.mjs');
 const PINNED = pinnedCommit();
 
 /**
+ * The environment a child gets when it is pointed at `forge` — built here, so that the question "which tree
+ * will that child find?" can be asked from this process with the same answer.
+ *
+ * ⛔ THE DEFECT THIS SHAPE ENDS, measured 2026-09-14. This file used to point the child at a fixture and then
+ * resolve the expected tree out of ITS OWN `process.env`. With `FORGE_MONOREPO` exported in the shell the two
+ * disagreed by construction: the parent saw the release, the child — whose `FORGE_MONOREPO` is the fixture —
+ * correctly said NOT CHECKED, and the test called that a failure of the guard. A test whose verdict depends on
+ * which variables the caller happened to export is measuring the shell.
+ */
+const childEnv = (forge) => {
+  const env = { ...process.env, FORGE_MONOREPO: forge };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+};
+
+/**
  * Run the composition guard with `FORGE_MONOREPO` pointed somewhere, and hand back everything it said.
  *
  * ⚠️ `node <file>` AND NOT `node --test <file>`: a `node:test` file executed from inside a `node --test` run
@@ -48,9 +64,7 @@ const PINNED = pinnedCommit();
  * this run's reporter either.
  */
 async function guard(forge) {
-  const env = { ...process.env, FORGE_MONOREPO: forge };
-  delete env.NODE_TEST_CONTEXT;
-  const options = { env, cwd: join(HERE, '..'), encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 };
+  const options = { env: childEnv(forge), cwd: join(HERE, '..'), encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 };
   try {
     const { stdout, stderr } = await run(process.execPath, [GUARD], options);
     return { code: 0, out: stdout + stderr };
@@ -117,7 +131,11 @@ test('★★★ a tree that is NOT the pinned release is never the tree this box
     // rather than one being assumed: a developer who also has the release gets it graded (the impostor is
     // skipped past), and a developer who does not gets NOT CHECKED with the pin named. The failure mode this
     // file exists for — a verdict off the impostor — is refused above in both.
-    const here = releaseTree(PINNED);
+    //
+    // ★ ASKED IN THE CHILD'S ENVIRONMENT, NEVER IN THIS ONE — see `childEnv`. The child's `FORGE_MONOREPO` is
+    // the impostor, so the only release it can reach is one of the neighbouring layouts; resolving that from
+    // this process's own variables would demand of the child a tree the child was never told about.
+    const here = releaseTree(PINNED, childEnv(fake.dir));
     if (here.path) {
       assert.ok(
         out.includes(`grading against: ${here.path}`),
