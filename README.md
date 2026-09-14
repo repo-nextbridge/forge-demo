@@ -826,9 +826,19 @@ a check people route around.
 | **admin · T1** | `http://localhost:8201` | tenant `forgeco` |
 | **admin · T2** | `http://localhost:8202` | tenant `forgecafe` |
 | totem (the counter) | `http://localhost:8203` | store `balcao` |
+| **mail collector** | `http://localhost:8204` | every message this box sends — **the login codes** |
 | https (edge) | `8243` | |
 
-⚠️ **All five are published on `127.0.0.1` and nothing else** — `FORGE_BENCH_BIND`, which `.env.example`
+★★ **THE MAILBOX IS THE ONE A HUMAN CAN ACTUALLY READ, and it is a declaration.** `FORGE_BENCH_MAILBOX` in
+`.env` points the four `FORGE_SMTP_*` at the `mailpit` container instead of the real provider, and the
+service carries a compose **profile**, so an instance that declares nothing never creates one. Until
+2026-09-13 this box had no collector and mailed through Resend, whose only deliverable address here is the
+owner's — so nobody else could log in as anybody. ⚠️ It is not optional dressing: the transport that prints
+the code to a terminal is constructible only under `!production` and every container here declares
+`NODE_ENV=production`, so a box with no mailbox does **not** log the code, it fails by name. See
+`mail/README.md`.
+
+⚠️ **All six are published on `127.0.0.1` and nothing else** — `FORGE_BENCH_BIND`, which `.env.example`
 ships. `localhost` is a **secure context**, so every address above keeps working over plain http exactly as
 it always did; any OTHER plain-http origin is the trap this bind removes. Every door here is plain http and
 every front runs `NODE_ENV=production`, so the cookies are `Secure` and a browser silently refuses them off
