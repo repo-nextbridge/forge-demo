@@ -132,15 +132,24 @@ fork's own mark instead, saying nothing to anybody.**
 ★ **It is still a defect even though the page looks right.** The café has chrome of its own (`CoffeeChrome`)
 and a mark of its own, so the shop is not visibly broken; the fork's owner is entitled to *decide* he does not
 want this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
-it by name on every run, and the decision — today: "waiting on the regeneration tool" — is written there as a
-declared divergence rather than implied by silence.
+it by name on every run, and the decision is written there as a declared divergence rather than implied by
+silence.
 
 ⚠️ **Why it is not simply wired yet:** the file that connects an app to a front is
 `storefront-coffee/src/lib/extensions/generated/registry.tsx`, a **generated** surface (its own first line says
-*do not edit*), and nothing in this repository regenerates it — `bin/build-coffee.sh` mentions no codegen and
-the 18 tarballs in `storefront-coffee/vendor/` carry none. The tool is owed by the product (pk32/p1-parto).
+*do not edit*), and nothing in this repository regenerates it — `bin/build-coffee.sh` mentions no codegen.
 Welding the import by hand is what `totem/src/lib/gate/registry.tsx` did, and that file's prose had already
 rotted by the time pk31/d1 read it.
+
+⛔ **And the sentence that used to end this paragraph — "the tool is owed by the product (pk32/p1-parto)" — is
+false, measured 13/09.** `@forgecommerce/surface-codegen` is a package of the pinned release *and* on its
+publishable list, so `bin/vendor-packages.sh` already writes its tarball into `storefront-coffee/vendor/` on
+every build, and the fork's `package.json` already pins it under `overrides`. What is missing is **this
+repository's**: the fork carries no `composition.json` list of its own, no `codegen` script, and no dependency
+on the tool. Run against the fork it answers `6 generated file(s) do not match composition.json` — so wiring
+this app is one slice with the café's gate and with the fork's five other generated surfaces, not three lines
+in a package.json. The declared divergence in `bin/front-app-reach.guard.mjs` now carries those three
+conditions as `until`, and goes **red** the day they are all met and the entry is still there.
 
 ## Graded by
 

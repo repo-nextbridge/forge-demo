@@ -376,8 +376,26 @@ async function installApps({ command, read, rows, log }) {
  *
  * ⇒ so the café is born WITHOUT the gate, ON PURPOSE and ON THE RECORD, and the reason is not this file's
  * secret: `bin/front-app-reach.guard.mjs` carries `{ fork: 'storefront-coffee', app: 'demo-gate' }` as a
- * DECLARED DIVERGENCE, printed on every run, and a waiver that stops matching a finding goes RED. The day the
- * café's fork can regenerate its registry, that entry goes and this function goes with it.
+ * DECLARED DIVERGENCE, printed on every run, and a waiver that stops matching a finding goes RED.
+ *
+ * ── ★★★ 13/09 — HE REVERSED THE EXCEPTION, AND THIS FUNCTION IS STILL HERE ──────────────────────────────
+ *
+ * *"o café ganha portaria? — Sim ganha portaria"*. pk35/d2 went to remove this function and MEASURED first,
+ * which is what the slice was told to do: the fork still resolves the gate through the kit's map, that map is
+ * `{}` at the pinned release (`packages/storefront-kit/src/gate/registry.tsx:145`), and the fork's layout
+ * still imports it (`storefront-coffee/src/app/s/[store]/layout.tsx:27`). ⇒ removing these lines today would
+ * deliver the decision as a café whose every page is the refusal screen, which is the opposite of what he
+ * asked for. The decision stands and is OWED; it is not shipped yet.
+ *
+ * ⚠️ WHAT THE MEASUREMENT DID CHANGE IS WHOSE WORK IT IS. This used to say "the day the café's fork can
+ * regenerate its registry" as if that day belonged to somebody else. It does not any more:
+ * `@forgecommerce/surface-codegen` — the tool a `pack:surface` fork runs to rewrite its own generated
+ * wiring — is a package of the pinned release and is on its publishable list, so its tarball is already
+ * vendored into this fork on every `bash bin/build-coffee.sh`. What is missing is this repository's: the fork
+ * carries no composition list of its own, no `codegen` script, and no dependency on the tool. Run against the
+ * fork on 13/09 it answers `6 generated file(s) do not match composition.json` — the gate registry and five
+ * files that decide this café's shelves, card annotations, feed route and public routes. ⇒ that is its own
+ * slice, with a real `next build`; this function dies WITH it and not before.
  *
  * ⛔ IT REMOVES AND NEVER RE-PLACES. A reinstall does not put the row back either: the kernel remembers an
  * offered default in `default_placement_seed`, so this is convergent rather than a tug of war.

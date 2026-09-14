@@ -33,9 +33,15 @@
 // screen where a coffee shop should be. The reason lives where a reader will trip over it: the declared
 // divergence `{ fork: 'storefront-coffee', app: 'demo-gate' }` at the top of `bin/front-app-reach.guard.mjs`,
 // printed on every run, RED the day it stops matching a finding.
-// ⇒ The real repair is still owed and still somebody else's: the café's own registry plus its dependency and
-// build staging, which needs the fork to be able to regenerate a GENERATED surface. Naming it is what stops the
-// next reader believing either of the two sentences this paragraph has already outlived.
+// ⇒ The real repair is still owed — and as of 13/09 it is NO LONGER SOMEBODY ELSE'S, which is the third
+// sentence of this paragraph to be outlived. `@forgecommerce/surface-codegen`, the tool a `pack:surface` fork
+// runs to rewrite its own generated wiring, is in the pinned release and on its publishable list, so its
+// tarball is already vendored into the café's fork on every build. What that fork lacks is a composition list
+// of its own, a `codegen` script and a dependency on the tool — all three in THIS repository. The declared
+// divergence now carries them as `until` and goes RED the day all three exist and the waiver has not moved.
+// ⚠️ AND HE REVERSED THE EXCEPTION on 13/09 («Sim ganha portaria»): the café is owed a gate, pk35/d2 measured
+// that it still cannot draw one, and refused to ship the decision as a shop full of refusal screens. So the
+// sentence above about the café being gateless is TRUE TODAY and is not meant to stay that way.
 //
 // ⚠️ THE ENTRY IS NOT INVENTED — IT IS COPIED FROM THE APP'S OWN DECLARATION. `apps/demo-gate/package.json`
 // carries `forge.wiring.gate.interstitial` = `./block/entry` × `GateInterstitial` and `…ribbon` = the same
