@@ -182,8 +182,14 @@ hostname — e `bin/box-domains.guard.mjs` grada o par nos **dois sentidos**, ma
 ninguém tinha: o compose precisa **entregar** cada variável ao container do edge.
 
 ⚠️ **A bancada não nomeia nenhuma delas e nada muda.** A caixa nasce em `localhost` (§0b) e a promoção é um
-passo **nomeado**; a bancada usa `caddy/Caddyfile.local`, que não sabe o que é hostname. **Um deployment
-preenche as seis.**
+passo **nomeado**; a bancada usa `caddy/Caddyfile.local`, que não sabe o que é hostname.
+
+★★★ **E um deployment também não as digita — a PROMOÇÃO as escreve (pk35/d4).**
+`bash bin/box-up.sh --promote store.forgecommerce.pro` (ou qualquer um dos seis nomes acima) escreve **as
+seis** a partir do `seed/box.json`. Até esta fatia **ninguém escrevia o valor**: a promoção reescrevia quatro
+variáveis (`FORGE_STORE_HOSTS`, `FORGE_PUBLIC_ORIGIN`, `FORGE_GATE_ADMIN_URL`, `FORGE_ADMIN_SIBLINGS`) e
+**nenhuma** das seis — então uma implantação preenchia à mão, ao lado de um arquivo que já as declarava.
+Detalhes em `bin/promotion-faces.mjs`, e a §5 tem a tabela dos três estados.
 
 ⛔⛔ **E uma esquecida NÃO derruba mais a caixa — ela derrubava.** Medido em 12/09 na bancada viva:
 `docker inspect …-caddy-1` mostrava **três** variáveis `FORGE_*` no container do edge, e
@@ -589,6 +595,39 @@ O endereço da loja é graduado nas **duas** direções, porque as duas o movem;
 promoção saem **2** (*"não deu para graduar"*), que nenhum chamador pode publicar como verde.
 ⚠️ **Por que isto importa mais do que parece:** `--promote localhost` é o caminho de **voltar atrás**, e um
 caminho de volta que falha na primeira tentativa é o que um operador usa **com pressa, no pior momento**.
+
+### 5-bis ★★★ pk35/d4 — a promoção escreve **as seis faces do edge**, e o destino decide se há o que escrever
+
+`bin/promotion-faces.mjs` deriva as seis do `seed/box.json` e o `box-up` as escreve junto com as outras
+quatro. **Nenhum endereço é digitado em lugar nenhum** — o arquivo já os tem. São **três** estados, e são os
+mesmos que o passo 15 (`bin/verify-config.mjs`) já gradua:
+
+| o destino da promoção | o que acontece com as seis |
+|---|---|
+| **é uma das faces declaradas** (`store.forgecommerce.pro`, …) | esta promoção **é** a implantação que o `seed/box.json` descreve ⇒ **as seis** são escritas, do arquivo, numa passada |
+| **é outro endereço** (tailnet, laptop, staging) | **nenhuma** é escrita, e a corrida **diz isso por extenso**: aqueles hostnames não são endereços em que esta caixa responde, e escrevê-los publicaria nome que não roteia e daria seis faces "publicadas" para o passo 15 reprovar |
+| **a caixa não declara face nenhuma** | é uma **bancada**: nada a escrever, e isso **não** é falha — o mapa host→loja, a origem e as portas de admin **são** a promoção; as faces são o **edge** |
+
+⛔ **E uma face que o edge LÊ e o `seed/box.json` não declara é RECUSA, nunca sentinela em silêncio.** Se o
+`caddy/Caddyfile` tem bloco para `{$FORGE_OUTLET_DOMAIN}` e nenhuma loja declara essa variável, escrever as
+outras cinco deixaria essa numa `outlet.unset.localhost`: o edge carrega, cinco faces servem, e uma loja
+responde num nome que não resolve **sem uma linha em log nenhum**. A promoção para e **nomeia a variável, a
+sentinela e a linha do Caddyfile** — e para **antes** da primeira escrita, então a caixa recusada é byte a
+byte a caixa que rodou o comando.
+
+⚠️ **A VOLTA (`--promote localhost`) não desfaz as seis, e diz quais está deixando.** As duas desfeitas
+óbvias estão medidas mortas: esvaziar é **recusado pelo próprio compose** (`${FORGE_DOMAIN:?…}` rejeita
+variável presente-e-vazia) e apontar as seis para `localhost` é **endereço de site duplicado**, que não
+degrada uma face — derruba o arquivo inteiro (loja, checkout e admin juntos).
+
+★★ **E o que faz qualquer uma dessas escritas CHEGAR num contêiner (achado da fatia).** Medido na bancada
+viva em 13/09: o `.env` dizia `FORGE_ADMIN_SIBLINGS='[…"https://<tailnet>:8443"…]'` e o contêiner do admin,
+recriado **10 s depois** pelo próprio `--force-recreate` da promoção, dizia `[…"http://localhost:8201"…]` — o
+valor da geração anterior. **A causa não é ordem de recriação:** o `box-up` faz `set -a; . .env` no passo 0,
+então todo valor do arquivo fica **exportado** naquele shell, e o compose prefere o **ambiente** ao `.env`
+(medido com um projeto descartável: `docker compose config` responde `from-dotenv` sem export e `from-shell`
+com export). ⇒ `put_env` agora escreve o arquivo **e exporta no shell que está rodando**, tirando as aspas
+simples exatamente como os dois leitores do `.env` tiram.
 
 ⚠️ **`--promote` sem destino RECUSA e nomeia os destinos** — nunca cai num default. Um passo que só funciona
 porque alguém sabia qual variável exportar não é um passo pronto.

@@ -422,6 +422,35 @@ if not seen:
     out.append(line)
 open(path, 'w', encoding='utf-8').write(''.join(out))
 PYEOF
+  # ── ★★★ AND THE RUNNING SHELL IS UPDATED TOO, BECAUSE COMPOSE DOES NOT READ `.env` WHEN THIS SHELL HAS
+  #        AN ANSWER (pk35/d4) ───────────────────────────────────────────────────────────────────────────
+  #
+  # ⛔ THE DEFECT, MEASURED ON THE LIVE BENCH 2026-09-13 — and it is the quietest kind, because BOTH halves
+  # look right on their own. `.env` line 124 held
+  # `FORGE_ADMIN_SIBLINGS='[…"https://<tailnet>:8443"…]'` and the admin container, created TEN SECONDS
+  # LATER by this script's own `--force-recreate`, held `[…"http://localhost:8201"…]`: the birth's step 3d
+  # value, i.e. the generation before. The file was right and the box was wrong, and the brand switcher
+  # offered an address that answers nothing from outside the machine.
+  #
+  # ★ THE CAUSE IS NOT THE ORDER OF THE RECREATE. Step 0 sources `.env` under `set -a`, so every value in it
+  # is EXPORTED into this shell; `put_env` then rewrites the FILE and not the export. Measured here, with a
+  # throwaway project: `docker compose config` answers `from-dotenv` with nothing exported and `from-shell`
+  # with the variable exported — the shell wins the interpolation, every time. (`sg docker -c` passes the
+  # environment straight through; measured too, so the wrapper is not the insulator it might look like.)
+  # ⇒ any value this function writes mid-run reaches `.env` and NOT the containers recreated after it, until
+  #   some later run happens to source the file again. That is one bug per variable this script writes, and
+  #   it was about to be six more: the faces below are read by the EDGE at boot.
+  #
+  # ⚠️ THE QUOTES ARE STRIPPED BECAUSE BOTH READERS STRIP THEM. `put_env FORGE_STORE_HOSTS "'{…}'"` writes
+  # the single quotes ON PURPOSE (see step 3b: they are what keeps bash's `source` from eating the JSON's
+  # double quotes), and both `. .env` and compose's own dotenv parser hand the value on WITHOUT them. An
+  # export that kept them would make this shell the one reader that disagrees — the same class of defect,
+  # one layer in.
+  local exported="$2"
+  case "$exported" in
+    "'"*"'") exported="${exported#\'}"; exported="${exported%\'}" ;;
+  esac
+  export "$1=$exported"
 }
 
 # THE ADMIN'S SIBLING SWITCHER, DERIVED FROM `seed/box.json` (A44).
@@ -758,6 +787,40 @@ if [ "$MODE" = promote ]; then
       note "releasing the doors of:$(printf ' %s' $net_hosts)" ;;
   esac
 
+  # ── ★★★ THE EDGE'S SIX HOSTNAMES, DERIVED FROM `seed/box.json` (pk35/d4) ────────────────────────────────
+  #
+  # ⛔ NOTHING WROTE THEM UNTIL NOW, AND A DEPLOYMENT FILLED THEM BY HAND. Since pk34/d1 every face of this
+  # box is DECLARED — one `domain` per store, one `admin_domain` per tenant, each naming the variable that
+  # carries it to `caddy/Caddyfile` — and `bin/box-domains.guard.mjs` grades all three ends of that wire.
+  # The one thing no step did was WRITE the value, so the file said `store.forgecommerce.pro` and the `.env`
+  # beside it said whatever somebody typed. A hostname that lives in two places agrees until it does not.
+  #
+  # ★ IT IS A READ AND A REFUSAL, HERE, ABOVE EVERY WRITE. The plan is computed now and put into `.env` two
+  # hundred lines down with the other four values, for the reason the map below states in full: everything
+  # before the first `put_env` is a read, so a box refused here is byte-for-byte the box that ran the command.
+  #
+  # ⛔ AND IT MAY REFUSE. A site block in `caddy/Caddyfile` whose variable no face declares would be left on
+  # its `<something>.unset.localhost` sentinel while its five siblings got real hostnames: the edge loads,
+  # five faces serve, and one shop answers on a name nothing resolves with nothing in any log. That is not a
+  # promotion with a gap in it, it is a promotion that lied — so `bin/promotion-faces.mjs` names the variable
+  # and this run stops. Exit 2 is the other answer and it is NOT a verdict about the box: it is that step
+  # saying it could not read one of the two files, which no caller may publish as either outcome.
+  #
+  # ⚠️ THE DESTINATION DECIDES WHETHER THERE IS ANYTHING TO WRITE, and the tailnet is why. Promoting to an
+  # address the declaration does not name (a tailnet, a laptop) leaves the edge's hostnames alone: they are
+  # not addresses this box answers at, and writing them would publish a name nothing routes to and hand
+  # `bin/verify-config.mjs` six "published" faces to fail. The module says which state it chose, by name.
+  faces_plan="$(host_node "$HERE/bin/promotion-faces.mjs" --destination "${PROMOTE_HOST:-localhost}")"
+  case $? in
+    0) ;;
+    2) die "the faces this box declares could not be READ, so this promotion cannot know whether it would
+     leave one of them on a sentinel. The [promotion-faces] line above says which file it could not use —
+     that is a fact about this run, not about the box. Nothing was written." ;;
+    *) die "this promotion would leave a face of this box on its \`.unset.localhost\` sentinel — the
+     [promotion-faces] line(s) above name the variable and the line of caddy/Caddyfile that reads it.
+     Nothing was written: this box's .env is exactly as it was before this command." ;;
+  esac
+
   # ── WHAT THIS MACHINE PUBLISHES, READ ONCE ──────────────────────────────────────────────────────────────
   # BOTH directions need it, and `--localhost` for the sharper reason: releasing a door means naming it, and
   # after this change the name of a tenant's tailnet door is the PUBLISHED port. A reverse that could not
@@ -1025,6 +1088,21 @@ EOF
   put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host" "$sib_overrides")'"
   note "host → store map rebuilt · $store_hosts_count hostname(s)"
   note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
+
+  # ── ★ AND THE EDGE'S HOSTNAMES, FROM THE PLAN DERIVED ABOVE ────────────────────────────────────────────
+  # One line per face, `NAME<TAB>value`, and the list is EMPTY on every destination that owes none — the way
+  # back, a tailnet, a box whose `seed/box.json` declares no face at all. An empty plan is a state, not a
+  # failure: it is written as a count so that "none" is something the operator READ rather than something
+  # nobody printed.
+  faces_written=0
+  while IFS=$'\t' read -r face_env face_host; do
+    [ -n "${face_env:-}" ] || continue
+    put_env "$face_env" "$face_host"
+    faces_written=$((faces_written + 1))
+  done <<EOF
+$faces_plan
+EOF
+  [ "$faces_written" -eq 0 ] || note "the edge's hostnames · $faces_written face(s) written from seed/box.json"
 
   # ── ★ THE DOORS, PRINTED — because the port an operator has to type CHANGED ──────────────────────────────
   # The promotion already prints `$origin` a few lines down, so this adds no class of value to a scrollback
