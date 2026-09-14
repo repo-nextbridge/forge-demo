@@ -1,10 +1,31 @@
-// Font guard (DEMO-GATE DoD #5) — the gate uses the THEME's own type stack (Urbanist, inherited from the
-// storefront body). The design's display face (Geigyll) is dropped: no `@font-face`, no `@import`, no font CDN
-// (fonts.googleapis / fonts.gstatic) may enter the gate's diff. This proves the H1 rides the theme font, not a
-// bundled or fetched one — the fidelity contract's font clause.
+// Font guard (DEMO-GATE DoD #5) — WHAT THE GATE IS ALLOWED TO SET TEXT IN.
 //
-// ★ pk35/d1 — AND THE THIRD RULE IS NOW A PROPERTY RATHER THAN A WORD; see `fallsThroughToAGeneric` below for
-// the measurement that moved it.
+// ★★★ pk38/d7 — THE RULE CHANGED, DELIBERATELY AND IN ONE DIRECTION, AND THIS PARAGRAPH IS THE CHANGE.
+//
+// It used to be «no `@font-face` at all», and under it the H1 rode the theme's Urbanist and the design's serif
+// simply did not exist here. That was the right rule while the gate's first screen was a hero in one voice.
+// It stopped being the right rule when that screen became the 10/09 hub: there the SECOND tenant is a coffee
+// brand whose card — its headline and its two wordmarks (`design-base/gate.dc.html:79,84,93`) — is drawn in a
+// serif, and that contrast is the card's whole argument. A rule that forbids a font forbids the design.
+//
+// ⚠️ SO WHAT THE RULE PROTECTS HAD TO BE SAID PROPERLY, because «no @font-face» was never the point — the
+// point is that THE FIRST SCREEN OF THIS DEMO MUST NOT DEPEND ON A THIRD PARTY. A gate that fetches a face
+// from a CDN is a gate that renders in the fallback on a network that cannot reach it, and it is a request to
+// somebody else's server before the visitor has seen anything of ours. So, from here:
+//
+//   ALLOWED   an `@font-face` whose every `src: url(…)` is a RELATIVE path to a file this app ships, with the
+//             font's licence shipped beside it.
+//   REFUSED   any absolute or protocol-relative font url (a CDN, `fonts.googleapis`/`fonts.gstatic`, any
+//             host at all), an `@font-face` whose file is not in the tree, a font shipped with no licence,
+//             an `@import`, and any `font-family` that names a face with no generic tail.
+//
+// ⛔ AND THE DESIGN'S OWN DISPLAY FACE (Geigyll) STAYS OUT, unchanged and for the unchanged reason: nothing
+// licences it to this app, so naming it would be a promise this repository has no way to keep. The base HTML
+// falls back to `Fraunces` for the same role, which is SIL OFL and already travels with this box's coffee
+// theme — that is the face the hub ships.
+//
+// ★ pk35/d1 — AND THE GENERIC-TAIL RULE IS A PROPERTY RATHER THAN A WORD; see `fallsThroughToAGeneric` below
+// for the measurement that moved it.
 //
 // ⚠️ IT WALKS THE BLOCK DIRECTORY, IT DOES NOT READ TWO NAMES. Until FAXINA/F2a this file opened
 // `gate.module.css` and `gate.tsx` by name, and everything else the block ships was outside its eyes. That was
@@ -19,8 +40,8 @@
 // nothing would satisfy every forbidden-pattern assertion in this file by having nothing to match against, and
 // the `font-family` loop in particular would iterate zero declarations and pass on silence.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, extname, join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
 
 // vitest runs from the package root (extensions/demo-gate); resolve the source files relative to it. (jsdom's
@@ -44,9 +65,22 @@ function filesUnder(dir: string): string[] {
 
 const files = filesUnder(BLOCK).map((path) => ({
   name: path.slice(BLOCK.length + 1),
+  /** Where a relative `url(…)` inside this file resolves from. */
+  dir: dirname(path),
   source: readFileSync(path, 'utf8'),
 }));
 const stylesheets = files.filter((f) => f.name.endsWith('.css'));
+
+/** Every `url(…)` that a `src:` inside an `@font-face` points at, with the stylesheet that wrote it. */
+const fontSources = stylesheets.flatMap((sheet) =>
+  (sheet.source.match(/@font-face\s*\{[^}]*\}/gi) ?? []).flatMap((rule) =>
+    (rule.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/gi) ?? []).map((raw) => ({
+      where: sheet.name,
+      dir: sheet.dir,
+      url: (raw.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/i)?.[1] ?? '').trim(),
+    })),
+  ),
+);
 
 /** Assert a forbidden pattern over every shipped file, one at a time: the offender is NAMED. Asserting over the
  *  concatenation would report the defect against a wall of joined sources, which is the message nobody reads. */
@@ -73,8 +107,38 @@ test('the guard is looking at the whole block (it did not walk into an empty dir
   ).toBeGreaterThan(0);
 });
 
-test('the gate ships no @font-face', () => {
-  noneMatch(/@font-face/i, 'ships a bundled font rule');
+test('★★★ every face the gate declares is a FILE THIS APP SHIPS — never a fetch to anybody', () => {
+  // The rule that replaced «no @font-face». A face is allowed; a DEPENDENCY on somebody else's server is not,
+  // and those are different sentences. Each `src` is judged on its own and the offender is named with its url.
+  const remote = fontSources
+    .filter(({ url }) => /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(url) || url.startsWith('data:'))
+    .map(({ where, url }) => `${where}: ${url}`);
+  expect(
+    remote,
+    'a @font-face points off this app: the first screen of the demo would render in the fallback on any ' +
+      'network that cannot reach that host, and would call it before the visitor has seen anything of ours',
+  ).toEqual([]);
+
+  const missing = fontSources
+    .filter(({ dir, url }) => !existsSync(resolve(dir, url.replace(/[?#].*$/, ''))))
+    .map(({ where, url }) => `${where}: ${url}`);
+  expect(
+    missing,
+    'a @font-face names a file that is not in this tree — the declaration is a promise nothing keeps',
+  ).toEqual([]);
+});
+
+test('★ a face this app ships travels with its LICENCE', () => {
+  // Shipping a font file is redistributing it. The families used here are SIL OFL, which permits exactly that
+  // and requires the licence to travel along; a font in the tree with no licence beside it is the one state
+  // that is worse than fetching it.
+  const directories = new Set(
+    fontSources.map(({ dir, url }) => dirname(resolve(dir, url.replace(/[?#].*$/, '')))),
+  );
+  for (const directory of directories) {
+    const licences = readdirSync(directory).filter((entry) => /licen[cs]e|ofl/i.test(entry));
+    expect(licences, `${directory} ships a font and no licence beside it`).not.toEqual([]);
+  }
 });
 
 test('the gate imports no external font (no CDN, no @import)', () => {
@@ -83,6 +147,17 @@ test('the gate imports no external font (no CDN, no @import)', () => {
   expect(importing, 'a stylesheet pulls another one in, which is where a font rule hides').toEqual(
     [],
   );
+});
+
+test('⛔ ANTI-VACUUM for the two rules above — they are held against a face that IS declared', () => {
+  // Both rules iterate `fontSources`. With none found they assert over an empty list and pass on silence,
+  // which is exactly the state the block was in before the serif arrived — and the state a deleted
+  // `@font-face` would silently return it to. The design gives the second tenant's card a serif, so there is
+  // one to find; if that ever stops being true this line is the accusation, not a quiet green.
+  expect(
+    fontSources.map((f) => `${f.where}: ${f.url}`),
+    'no @font-face anywhere in the block: the self-hosting rules above assert nothing',
+  ).not.toEqual([]);
 });
 
 /**
@@ -132,14 +207,17 @@ test('★ the rule can say NO — the predicate, held against what it exists to 
   expect(fallsThroughToAGeneric("font-family: 'Geigyll Display', Geigyll")).toBe(false);
 });
 
-test('the gate sets no font-family that needs a face nobody has (the H1 uses the theme font)', () => {
+test('the gate sets no font-family that needs a face nobody has', () => {
   // Geigyll — the design's dropped display face — must not appear at all, generic tail or no generic tail.
   noneMatch(/geigyll/i, "names the design's dropped display face");
+  // ⚠️ THE `font-family` INSIDE AN `@font-face` IS NOT A USE, IT IS THE NAME OF THE FACE BEING DEFINED, and a
+  // generic tail there would be meaningless — `@font-face { font-family: "Fraunces", serif }` names nothing.
+  // The rule is about what TEXT is asked to render in, so the definitions are cut out before the scan; the
+  // rules above are what judge those, by the file they point at.
   const declarations = stylesheets.flatMap((sheet) =>
-    (sheet.source.match(/font-family:[^;]+/gi) ?? []).map((decl) => ({
-      where: sheet.name,
-      decl: decl.toLowerCase(),
-    })),
+    (sheet.source.replace(/@font-face\s*\{[^}]*\}/gi, '').match(/font-family:[^;]+/gi) ?? []).map(
+      (decl) => ({ where: sheet.name, decl: decl.toLowerCase() }),
+    ),
   );
   // Anti-vacuity for THIS loop specifically: with no declaration found it asserts nothing, and a walk that
   // stopped seeing stylesheets would read as "no bespoke font anywhere" rather than as "I looked nowhere".

@@ -1,12 +1,12 @@
 /* DEMO-GATE — the architecture screen, faithful to design-base/gate.dc.html (the `showArch` half). A deliberate,
- * fixed dark surface like the gate's own, one shade deeper (#0B0C0D against #17181A) so the switch between the two
- * reads as a move, not a reload. Literal design values are therefore correct here: this is not a themed
+ * fixed dark surface, one shade deeper than the first screen's ground (#0B0C0D against #0F1011) so the switch
+ * between the two reads as a move, not a reload. Literal design values are therefore correct here: this is not a themed
  * light/dark component.
  *
- * No font rule of any kind — the screen rides the storefront body's own type stack (Urbanist), and
- * `gate.font-guard.test.ts` walks this file to hold that: the only `font-family` allowed in the block is
- * `inherit`. The design's own `'Fraunces'` and `ui-monospace` declarations belong to the FIRST screen's café
- * cards and are not ported.
+ * No font rule of any kind — THIS screen rides the storefront body's own type stack (Urbanist), and the design
+ * sets no other face on it. The serif the design gives the coffee brand belongs to the FIRST screen's cards and
+ * is declared there (`hub.module.css`); `gate.font-guard.test.ts` walks this file too, and what it holds is that
+ * any face named here is one this app ships, never one it fetches.
  *
  * ⚠️ THE ONE PLACE THE DESIGN WOULD HAVE CRAMPED A PHONE. Inside each tenant card the canvas declares
  * `grid-template-columns:1fr 1fr` with NO minimum, and the width that reaches a row is worth doing by hand
@@ -22,7 +22,7 @@
  * three lines deep. Nothing is clipped (the cells are `1fr`, the text wraps), which is exactly why the design
  * could not reveal it. Stacking below 560 px gives each cell the full 296 px — ~47 characters — and every row
  * is one line again; at 560 px the two-column cell is back to 213 px of text (~34 characters), which the
- * longest row fits. This screen is opened on a real phone, and this is what that opening must not turn up. */
+ * longest row fits. This screen is tested on a real phone; this is what that test will not have to find. */
 
 .screen {
   min-height: 100vh;
@@ -44,7 +44,7 @@
   animation: archIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* The fade runs on BOTH directions of the switch: each screen animates itself in as it mounts
+/* The fade, on BOTH directions of the switch: each screen animates itself in as it mounts
  * (the other one is unmounted, so there is nothing to animate out). */
 @keyframes archIn {
   from {

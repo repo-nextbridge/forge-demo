@@ -1,25 +1,38 @@
-/* DEMO-GATE — the CHROME of the gate's first screen: the backdrop, the frame, the header, the footer and the
- * language selector. A deliberate, fixed dark surface (not a themed light/dark component), so literal design
- * values are correct here.
+/* DEMO-GATE — the PAGE of the gate's first screen: the ground it stands on, the wordmark, the headline and
+ * the lede beside it, the notice and the language selector at the foot, the way back. The cards themselves are
+ * `hub.module.css`. A deliberate, fixed dark surface (not a themed light/dark component), so literal design
+ * values are correct here — every number and colour below is read off `design-base/gate.dc.html`.
  *
- * ★ pk35/d1 — WHAT USED TO BE BETWEEN THE HEADER AND THE FOOTER IS NOW `hub.module.css`. This file carried the
- * two-card layout that PRECEDED the hub (one storefront card, one admin card, each with a
- * mini-mockup); the hub replaced both cards and both mockups, so those rules left with them rather than staying
- * as a second, unused vocabulary. No bundled font rule, no CDN, no imported font: the H1 uses the theme's own
- * type stack (Urbanist self-hosted), inherited from the storefront body — the design's own display face is
- * intentionally dropped (spec item 8). Responsive is pure CSS (@media 760px), the breakpoint of the design's
- * own matchMedia. */
+ * ★★★ THE FIRST SCREEN IS THE HUB, AND NOTHING SITS ABOVE IT. Until pk38/d7 this file drew a bordered frame
+ * around the page holding an eyebrow, a large "Loja demo." and a paragraph, and mounted the hub UNDER it. The
+ * 10/09 layout has none of that: the ground is `#0F1011`, the only frame on the screen is the tenant card's
+ * own, and the headline IS the count of what the box publishes. The old rules left with the screen they drew,
+ * rather than staying as a second, unused vocabulary.
+ *
+ * ── WHERE EACH VALUE COMES FROM (`design-base/gate.dc.html`) ───────────────────────────────────────────────
+ *   :24  the ground                 `#0F1011`, padding `clamp(24px,4vw,56px) clamp(16px,3vw,32px)`
+ *   :25  the column                 `max-width: 1080px`, the `dmIn` entrance
+ *   :27  the masthead               `flex-end` + `space-between`: the lede's LAST line sits on the headline's
+ *   :29  the wordmark               20px, the dot in `#C2410C`
+ *   :30  the headline               `clamp(26px,3.6vw,40px)`, three lines, `max-width: 14ch` as the measure
+ *   :31  the lede                   13.5px, `max-width: 330px`
+ *   :107 the notice + the selector  12px, `#6E6A63`
+ *   :117 the way back               13px, `#8A8478`
+ *
+ * Responsive with no breakpoint of its own: the masthead and the foot are `flex-wrap`, the cards are an
+ * `auto-fit` grid, and both come straight from the design. Measured at 400px in a headless render — the cards
+ * stack, nothing overflows. The `@media 760px` this file used to carry styled the hero that is gone. */
 
 .backdrop {
   min-height: 100vh;
   /* biome-ignore lint/suspicious/noDuplicateProperties: 100vh fallback, then 100dvh where supported (mobile chrome) */
   min-height: 100dvh;
   box-sizing: border-box;
-  background: #17181a;
+  background: #0f1011;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px;
+  padding: clamp(24px, 4vw, 56px) clamp(16px, 3vw, 32px);
   color: #ffffff;
 }
 
@@ -40,22 +53,26 @@
   }
 }
 
-.frame {
-  border: 1px solid rgba(255, 255, 255, 0.09);
-}
+/* ── the masthead: the wordmark and the headline on the left, the lede on the right ──────────────────────
+ * ⚠️ NOT `.head`. The tenant CARD's header is `.head` in `hub.module.css`, and while two CSS modules cannot
+ * collide in a build, one name meaning two things in one screen is how a reader — and a harness that renders
+ * both sheets together to compare against the design — ends up drawing the card's border under the page's
+ * title. Measured exactly that way. */
 
-.header {
-  padding: clamp(38px, 5.5vw, 64px) clamp(22px, 4vw, 52px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-  text-align: center;
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: clamp(20px, 3vw, 30px);
 }
 
 .brand {
   display: inline-flex;
   align-items: baseline;
-  font-size: 22px;
+  font-size: 20px;
   letter-spacing: -0.02em;
-  margin-bottom: 26px;
 }
 .brandName {
   font-weight: 700;
@@ -66,62 +83,62 @@
 }
 .brandDemo {
   font-weight: 500;
-  color: #a6a6a6;
+  color: #8a8478;
 }
 
-.eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #ffffff;
-}
-.eyebrowDot {
-  color: #c2410c;
-}
-
+/* ★ THE HEADLINE IS THE COUNT, AND IT IS THREE LINES BECAUSE IT IS THREE CLAUSES — one per line, each a span.
+ * The design gets its three lines from `max-width: 14ch` over a sentence whose numbers are spelled out
+ * ("Dois tenants. Quatro lojas. Dois admins."). This screen DERIVES those numbers and prints them as
+ * numerals, so the same sentence is shorter and the same measure broke it mid-clause ("2 tenants. 4 / lojas.
+ * 2 admins.") — measured in a headless render, which is the only place it shows. Declaring the clauses is
+ * what makes the shape survive any count and any of the three languages. The measure stays as a ceiling.
+ * Theme typography (Urbanist), inherited from the storefront body — the design sets no display face here. */
 .title {
-  /* Theme typography (Urbanist), inherited from the storefront body — display face dropped, no font imported. */
-  margin: 16px 0 0;
-  font-size: clamp(30px, 4.6vw, 52px);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-  font-weight: 500;
+  margin: 14px 0 0;
+  font-size: clamp(26px, 3.6vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 700;
   color: #ffffff;
+  max-width: 14ch;
+}
+.titleLine {
+  display: block;
 }
 
-.intro {
-  margin: 18px auto 0;
-  max-width: 520px;
-  font-size: clamp(15px, 1.8vw, 17px);
+.lede {
+  margin: 0;
+  max-width: 330px;
+  font-size: 13.5px;
   line-height: 1.6;
-  color: #a6a6a6;
+  color: #8a8478;
   text-wrap: pretty;
 }
-
-/* Where the hub is mounted. The frame's header sits above it; `hub.module.css` owns everything inside. */
-.body {
-  padding: clamp(20px, 3vw, 28px);
+.ledeWord {
+  color: #ffffff;
+  font-weight: 700;
 }
 
-.footer {
-  margin-top: 20px;
+/* ── the foot: the notice, the language selector, the way back ───────────────────────────────────────────── */
+
+.foot {
+  margin-top: 18px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.backLink {
-  font-size: 13px;
-  font-weight: 600;
-  color: #8a8478;
-  text-decoration: none;
-  transition: color 0.2s;
+
+.notice {
+  margin: 0;
+  max-width: 640px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6e6a63;
+  text-wrap: pretty;
 }
-.backLink:hover {
-  color: #ffffff;
-}
+
 .langWrap {
   display: flex;
   align-items: center;
@@ -147,8 +164,16 @@
   color: #ffffff;
 }
 
-@media (max-width: 760px) {
-  .body {
-    padding: 14px;
-  }
+.backRow {
+  margin-top: 14px;
+}
+.backLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a8478;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.backLink:hover {
+  color: #ffffff;
 }

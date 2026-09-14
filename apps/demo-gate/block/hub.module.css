@@ -1,20 +1,52 @@
-/* DEMO-GATE — the HUB: one card per tenant, one row per face. The settled layout
- * (`design-base/gate.dc.html`), ported in pk35/d1. A deliberate, fixed surface (not a themed light/dark
- * component), so literal design values are correct here, exactly as in `gate.module.css`.
+/* DEMO-GATE — the HUB: one card per tenant, one row per face. The 10/09 layout
+ * (`design-base/gate.dc.html`). A deliberate, fixed surface (not a themed light/dark component), so literal
+ * design values are correct here, exactly as in `gate.module.css`.
  *
  * ★ WHICH CARD IS LIGHT IS DERIVED FROM POSITION, NOT FROM A TENANT'S NAME. The design draws the first
  * tenant dark and the second light; `hub.tsx` alternates on the INDEX of the tenant in `seed/box.json`. A
  * third tenant declared tomorrow therefore gets a card that looks like one of these two, instead of falling
  * through a lookup keyed by an id somebody typed — the shape this repository keeps paying for.
  *
- * ⚠️ AND THE BADGES TAKE THE CARD'S TONE, not one colour per shop. The design gives each shop's tag its own
- * hue (orange, rose, green, sand); reproducing that needs a colour keyed by store handle, which is a list
- * that rots the day a fifth shop is declared. The tone of the card it sits on is derived, and it is the
- * difference a reader is actually being told about: which TENANT this is. */
+ * ★★ AND SO IS THE SECOND SHOP'S ACCENT, which is the rule pk38/d7 had to change rather than keep. This file
+ * used to give every badge the tone of its CARD, with the reason that a colour keyed by store handle is a list
+ * that rots the day a fifth shop is declared. That reason still stands — and the design does not need a lookup
+ * to be honoured: within a card the SECOND shop is drawn in the card's counter-tone (rose on the dark card,
+ * sand on the light one), which is exactly the same derivation as the card's own, one level in. So the fifth
+ * shop still gets a card that looks like one of these, and `SEGUNDA LOJA` is the magenta the design draws.
+ *
+ * ── THE SERIF, AND WHY IT IS A FILE THIS APP SHIPS ────────────────────────────────────────────────────────
+ * The second tenant is a coffee brand and the design sets its headline and its two wordmarks in a serif
+ * (`gate.dc.html:79,84,93`) — it is the one thing on the screen that says "another account, another skin"
+ * before a word is read. The face is self-hosted beside this file: an instance may sit on a network that
+ * cannot reach a font CDN, and the first screen of a demo is the worst possible place for a request to a
+ * third party. `gate.font-guard.test.ts` holds that rule and is what refuses a CDN or a missing file.
+ * Subset + instancing are the ones `themes/coffee-store/fonts.css` already derived for the same family. */
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("./fonts/fraunces-300-800-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("./fonts/fraunces-300-800-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 .hub {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
   gap: 16px;
 }
 
@@ -80,7 +112,10 @@
   font-weight: 600;
   color: #ffffff;
 }
+/* The serif, and 19px rather than 15px: the coffee brand's card is drawn in another voice (gate.dc.html:79). */
 .tenantLight .headline {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 19px;
   color: #241c14;
 }
 
@@ -105,8 +140,14 @@
   gap: 14px;
   flex: 1;
 }
+.faceSecond {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
 .tenantLight .face {
   border-bottom-color: rgba(43, 33, 24, 0.1);
+}
+.tenantLight .faceSecond {
+  border-bottom-color: rgba(43, 33, 24, 0.14);
 }
 
 .faceHead {
@@ -124,20 +165,33 @@
   font-weight: 700;
   color: #ffffff;
 }
+/* The coffee wordmarks are the serif too, 21px, and they do not split weight between word and tail. */
 .tenantLight .mark {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: #241c14;
 }
 .markDot {
   color: #c2410c;
 }
-.tenantLight .markDot {
+.faceSecond .markDot {
+  color: #e11d48;
+}
+.tenantLight .markDot,
+.tenantLight .faceSecond .markDot {
   color: #a9793f;
 }
 .markTail {
   font-weight: 500;
   color: #c2410c;
 }
-.tenantLight .markTail {
+.faceSecond .markTail {
+  color: #e11d48;
+}
+.tenantLight .markTail,
+.tenantLight .faceSecond .markTail {
   font-weight: 600;
   color: #241c14;
 }
@@ -151,9 +205,17 @@
   background: #e7e4de;
   padding: 3px 7px;
 }
+.faceSecond .faceBadge {
+  color: #ffffff;
+  background: #9f1239;
+}
 .tenantLight .faceBadge {
   color: #f3ede3;
   background: #2f3b30;
+}
+.tenantLight .faceSecond .faceBadge {
+  color: #2f3b30;
+  background: #dcd3c4;
 }
 
 .faceBlurb {
@@ -180,6 +242,7 @@
   border: 1px solid rgba(255, 255, 255, 0.24);
   cursor: pointer;
   font-family: inherit;
+  text-decoration: none;
   transition:
     background 0.2s,
     color 0.2s,
@@ -262,50 +325,42 @@
   color: #7a6a55;
 }
 
-/* ── the two lines under the cards ─────────────────────────────────────────────────────────────────────── */
-
-.counts {
-  margin: 18px 0 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #ffffff;
-}
-
-.lede {
-  margin: 6px auto 0;
-  max-width: 520px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: #8a8478;
-  text-wrap: pretty;
-}
-.ledeWord {
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.notice {
-  margin: 0;
-  max-width: 640px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: #6e6a63;
-  text-wrap: pretty;
-}
-
 /* ★ THE WAY IN WHEN THE VISITOR IS ON A FACE THIS BOX DOES NOT PUBLISH — a bench, a tailnet, a preview.
  * Every card above is an ordinary link to another origin, so without this row the hub would have no door at
- * all on such a host, and the birth would be a shop nobody can enter. It names the host it is talking about. */
+ * all on such a host, and the birth would be a shop nobody can enter.
+ *
+ * ⚠️ IT IS NOT A SEVENTH DESTINATION, and pk38/d7 is where that stopped being ambiguous. This used to be a
+ * button offered on every screen reading "carry on in this window", which on the six published faces means
+ * nothing — the cards ARE the choice, and the card the visitor is standing on is already the way in. What is
+ * left is the CONDITION: an address the box does not declare, said out loud, with the door beside it. Quiet,
+ * at the foot, under the notice — never a card. */
 .here {
   margin-top: 18px;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6e6a63;
 }
 .hereHost {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;
-  color: #6e6a63;
+  color: #8a8478;
+}
+.hereLink {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a8478;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.hereLink:hover {
+  color: #ffffff;
 }

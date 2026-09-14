@@ -14,8 +14,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import { GATE_FACES, GATE_TENANTS } from '../faces.generated';
-import { HUB, HUB_MARKS, LANGS } from '../i18n';
-import { GateHub, adminHrefOf, isHere, urlOf } from './hub';
+import { HUB, HUB_MARKS, LANGS, LOCALES } from '../i18n';
+import { GateHub, adminHrefOf, hubTally, isHere, urlOf } from './hub';
 
 const BOX_PATH = join(process.cwd(), '..', '..', 'seed', 'box.json');
 const box = JSON.parse(readFileSync(BOX_PATH, 'utf8')) as {
@@ -41,7 +41,10 @@ function must<T>(value: T | null | undefined, what: string): T {
 
 test('⛔ the declaration this whole file grades against is not empty', () => {
   expect(box.tenants.length, `${BOX_PATH} declares no tenant`).toBeGreaterThan(1);
-  expect(shops.length, 'the box declares no shop, so every rule below has no subject').toBeGreaterThan(1);
+  expect(
+    shops.length,
+    'the box declares no shop, so every rule below has no subject',
+  ).toBeGreaterThan(1);
   expect(admins.length).toBe(box.tenants.length);
 });
 
@@ -87,8 +90,14 @@ test('★★ FORGE_GATE_ADMIN_URL wins for the FIRST tenant only — the bench d
   const { container } = render(
     <GateHub lang="pt" here="x" adminUrl="https://bench.example:8443/" dismiss={noop} />,
   );
-  const first = must(must(GATE_TENANTS[0], 'a first tenant').faces.find((f) => f.kind === 'admin'), "the first tenant's admin");
-  const second = must(must(GATE_TENANTS[1], 'a second tenant').faces.find((f) => f.kind === 'admin'), "the second tenant's admin");
+  const first = must(
+    must(GATE_TENANTS[0], 'a first tenant').faces.find((f) => f.kind === 'admin'),
+    "the first tenant's admin",
+  );
+  const second = must(
+    must(GATE_TENANTS[1], 'a second tenant').faces.find((f) => f.kind === 'admin'),
+    "the second tenant's admin",
+  );
   expect(container.querySelector(`[data-face="${first.key}"]`)?.getAttribute('href')).toBe(
     'https://bench.example:8443/enter',
   );
@@ -102,8 +111,14 @@ test('★★★ the face the visitor is ON is a dismiss FORM, not a link — the
   const here = must(first.host, `an address for ${first.key}`);
   const { container } = render(<GateHub lang="pt" here={`${here}:8200`} dismiss={noop} />);
   const card = container.querySelector(`[data-face="${first.key}"]`);
-  expect(within(card as HTMLElement).queryByRole('button'), 'no dismiss button on the current face').toBeTruthy();
-  expect(card?.querySelector('a'), 'the current face is still a link, so the visitor leaves and comes back').toBeNull();
+  expect(
+    within(card as HTMLElement).queryByRole('button'),
+    'no dismiss button on the current face',
+  ).toBeTruthy();
+  expect(
+    card?.querySelector('a'),
+    'the current face is still a link, so the visitor leaves and comes back',
+  ).toBeNull();
   // …and the OTHER shops stay links, which is what makes the one above a statement.
   for (const face of shops.slice(1)) {
     expect(
@@ -119,11 +134,34 @@ test('★★★ ON A HOST THE BOX DOES NOT DECLARE THERE IS STILL A WAY IN, and 
   // ⛔ THE ONE THIS SLICE MUST NOT BREAK: the box is born on `localhost` and promoted later, so on a bench no
   // card matches. A hub made only of links would be a gate with no door — every birth would end with a shop
   // nobody can enter.
+  //
+  // ★ pk38/d7 — WHAT CHANGED IS WHAT IT SAYS, NOT WHETHER IT EXISTS. It used to be a button reading "carry on
+  // in this window", offered as if it were a seventh destination; now it states the CONDITION — this window is
+  // on an address the box does not publish — with the door beside it. The two halves are asserted separately
+  // so a rewrite that drops the condition and keeps the button is red.
   const { container } = render(<GateHub lang="pt" here="localhost:8200" dismiss={noop} />);
   const row = container.querySelector('[data-here-row]');
   expect(row, 'a bench host matched no face and the hub offered no way in').toBeTruthy();
-  expect(within(row as HTMLElement).getByRole('button').textContent).toContain(HUB.pt.here);
-  expect(row?.textContent, 'the row does not say WHICH host it is talking about').toContain('localhost:8200');
+  expect(row?.textContent, 'the row does not SAY why it is there').toContain(HUB.pt.hereNote);
+  expect(within(row as HTMLElement).getByRole('button').textContent).toContain(HUB.pt.hereCta);
+  expect(row?.textContent, 'the row does not say WHICH host it is talking about').toContain(
+    'localhost:8200',
+  );
+});
+
+test('⛔ and the words "continuar nesta janela" are gone from every language', () => {
+  // The contract is about the SENTENCE, not about one string constant: a copy edit that reintroduced it in
+  // any of the three would put a seventh choice back on the screen.
+  for (const lang of LANGS) {
+    const t = HUB[lang];
+    const said = [t.hereNote, t.hereCta, t.notice, ...Object.values(t.faces).map((f) => f.cta)];
+    for (const line of said) {
+      expect(
+        /continuar nesta janela|carry on in this window|continuar en esta ventana/i.test(line),
+        `[${lang}] "${line}" offers carrying on in this window`,
+      ).toBe(false);
+    }
+  }
 });
 
 // ★★★ THE «NO ADDRESS DECLARED» STATE LIVES IN `hub.unaddressed.test.tsx`, and it is a FILE of its own for a
@@ -152,7 +190,10 @@ test('★★ the copy is keyed by the BOX’s keys — no orphan copy, no unwrit
       ).toBeTruthy();
     }
     for (const tenant of GATE_TENANTS) {
-      expect(t.tenants[tenant.id], `[${lang}] no copy for the declared tenant ${tenant.id}`).toBeTruthy();
+      expect(
+        t.tenants[tenant.id],
+        `[${lang}] no copy for the declared tenant ${tenant.id}`,
+      ).toBeTruthy();
     }
     for (const id of Object.keys(t.tenants)) {
       expect(
@@ -172,12 +213,54 @@ test('★★ the copy is keyed by the BOX’s keys — no orphan copy, no unwrit
   }
 });
 
-test('★ the counting line is DERIVED from the faces, not written in the copy', () => {
+test('★ the tally the headline is written from is DERIVED from the faces, never typed', () => {
+  // The sentence itself is drawn by `./gate` (the design puts it in the page's header row, beside the
+  // wordmark); what lives here is the arithmetic, and `gate.test.tsx` holds that the heading prints it.
   const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
   expect(container.querySelector('[data-hub-faces]')?.getAttribute('data-hub-faces')).toBe(
     String(GATE_FACES.length),
   );
-  expect(screen.getByText(HUB.pt.counts(GATE_TENANTS.length, shops.length, admins.length))).toBeTruthy();
+  expect(hubTally()).toEqual({
+    tenants: GATE_TENANTS.length,
+    shops: shops.length,
+    admins: admins.length,
+    faces: GATE_FACES.length,
+  });
+});
+
+test('★★★ the number on a shop card is the PORT’s, and a missing answer is a sentence — never a zero', () => {
+  const first = must(shops[0], 'a first shop');
+  const withCount = render(
+    <GateHub lang="pt" here="x" counts={{ [first.key]: 2777 }} dismiss={noop} />,
+  );
+  const said = withCount.container.querySelector(`[data-face="${first.key}"] [data-products]`);
+  expect(said?.getAttribute('data-products')).toBe('2777');
+  expect(said?.textContent, 'the count the port answered is not on the card').toContain(
+    new Intl.NumberFormat(LOCALES.pt).format(2777),
+  );
+  expect(said?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(2777));
+  withCount.unmount();
+
+  // ⛔ THE FAILURE MODE, DECIDED AND HELD. No counts at all is what a bench, a refused read or a timeout looks
+  // like from here: the card keeps a complete sentence, and it must not contain a number for a shop whose size
+  // nobody could state.
+  const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
+  const quiet = container.querySelector(`[data-face="${first.key}"] [data-products]`);
+  expect(quiet?.getAttribute('data-products')).toBe('unknown');
+  expect(quiet?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(null));
+  expect(quiet?.textContent, 'the unanswered case prints a number').not.toMatch(/\d/);
+});
+
+test('⛔ a count of ZERO is drawn as zero, and never as the no-number sentence', () => {
+  // The two states are different facts — "this shop publishes nothing" and "nobody could say" — and the one
+  // way to collapse them is to treat 0 as falsy. A shop emptied by a bad seed has to be visible as empty.
+  const first = must(shops[0], 'a first shop');
+  const { container } = render(
+    <GateHub lang="pt" here="x" counts={{ [first.key]: 0 }} dismiss={noop} />,
+  );
+  const said = container.querySelector(`[data-face="${first.key}"] [data-products]`);
+  expect(said?.getAttribute('data-products')).toBe('0');
+  expect(said?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(0));
 });
 
 test('⚠️ "you are here" is ANCHORED on the host — a lookalike domain is not this box', () => {
@@ -193,8 +276,11 @@ test('⚠️ "you are here" is ANCHORED on the host — a lookalike domain is no
 for (const lang of LANGS) {
   test(`[${lang}] the hub speaks the gate's language`, () => {
     const { container } = render(<GateHub lang={lang} here="x" dismiss={noop} />);
-    const copy = must(HUB[lang].faces[must(shops[0], 'a first shop').key], 'copy for the first shop');
-    expect(screen.getByText(copy.blurb)).toBeTruthy();
+    const copy = must(
+      HUB[lang].faces[must(shops[0], 'a first shop').key],
+      'copy for the first shop',
+    );
+    expect(screen.getByText(copy.blurb(null))).toBeTruthy();
     expect(container.querySelectorAll('[data-face]').length).toBe(GATE_FACES.length);
   });
 }

@@ -1,7 +1,7 @@
 'use client';
 
 // ★★ THE GATE'S SECOND SCREEN — "A arquitetura da demo", faithful to the `showArch` half of
-// design-base/gate.dc.html. This layout is settled, and it is the answer to a question the first
+// design-base/gate.dc.html. The layout was closed on 10/09 and it is the answer to a question the first
 // screen cannot answer: that one says WHAT to open, this one says WHY it is hard. Its reader is a visitor who has
 // never heard the word multi-tenant, so it draws the box instead of describing it — the two tenants side by side,
 // each with its two shops and a single admin under both, and then the one stack they all stand on: the surfaces,
@@ -16,9 +16,9 @@
 // ⚠️ WHAT IS A FACT AND WHAT IS A WORD. The STRUCTURE below — two tenants, two shops each, which storefront is
 // forked, which theme each shop wears — is a fact about THIS box and lives in code; the words are in `../i18n`
 // in three languages. `arch.test.tsx` checks the structure against `seed/box.json`, the box's own declaration, so
-// a third tenant or a third shop turns a test red instead of leaving this screen quietly lying. The numbers on
-// the FIRST screen (2 777 products → 44 399 SKUs, 55 in the outlet) were measured against the live box by the
-// tech lead; nothing here recomputes them.
+// a third tenant or a third shop turns a test red instead of leaving this screen quietly lying. The shop sizes on
+// the FIRST screen are not measured by hand any more either: since pk38/d7 they are read off the port per
+// render window (`../counts`). Nothing HERE recomputes anything — this screen states structure, not size.
 
 import { ARCH, type ArchStrings, type Lang } from '../i18n';
 import styles from './arch.module.css';
