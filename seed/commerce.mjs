@@ -15,7 +15,7 @@
 // So this file places exactly ONE live order per selling store, and its job is not "have orders" — it is to
 // prove the box can still take an order TODAY, after everything above it ran. Two populations of orders would
 // be two sources for the same fact, and a dashboard that disagrees with itself. (Decision of the tech lead,
-// pre-seed wave: "duas populações seriam duas verdades".)
+// pre-seed wave.)
 //
 // **It creates no logistics.** Zone, method, rate and the pickup point belong to the filler slice, which
 // already creates them from the dataset. This file CONSUMES them: it reads the quote and picks what is there.

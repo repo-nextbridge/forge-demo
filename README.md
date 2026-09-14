@@ -977,6 +977,21 @@ bash bin/verify-composition.sh        # does the running image compose the apps 
 bash bin/test.sh                      # this repo's guards
 ```
 
+⚠️ **And one of those guards grades THIS REPOSITORY AS A DELIVERY, not as a box.** Forge is BSL /
+source-available: the customer, the partner and the product team read these files, so a person's name, a chat
+message carried in as evidence, an attribution by pronoun — the pronoun glued to a verb only a person
+conjugates — or a personal address is **published** the moment the box is handed over. A name in a test title
+or an `assert` message is published twice, because every run prints it. `bin/private-trace.mjs` is the scanner and
+`bin/private-trace.guard.mjs` is the verdict over every tracked file, 879 of them.
+
+★ **It never spells the name it forbids** — that would be the leak — it derives the register of humans from
+this repository's own commit graph at run time. And it is deliberately narrow where narrowness is the whole
+value: a **PT-BR screen string in quotes** (`«Compra Segura»`) is a VALUE and stays; `o dono`/`the owner` **of**
+something is a domain role and stays, while an owner who **acts** is a person; a **measurement** date stays and
+an attributed one does not. A finding that cannot be rewritten because the value is FUNCTIONAL is declared
+beside itself with `forge-private-ok: <reason>` — never as a path in an ignore list, and the guard goes red if
+the reason disappears. This tree declares none.
+
 ⚠️ **`bin/test.sh` is also who runs the FORKS' own suites.** `storefront-coffee/` and `totem/` carry vitest
 suites of their own — 774 and 171 tests — and until 2026-09-05 nothing ran them: not this script, not
 `bin/build-coffee.sh`, not the Dockerfiles, and this repository has no CI. `bin/fork-suite.guard.mjs` is the
