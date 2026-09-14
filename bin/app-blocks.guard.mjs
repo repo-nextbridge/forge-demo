@@ -28,15 +28,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { APP_BLOCK_APPS, APP_BLOCKS, STOREFRONT } from './app-blocks.mjs';
+import { ADMIN_SLOT, ADMIN_WIDGET_APPS, ADMIN_WIDGETS, APP_BLOCK_APPS, APP_BLOCKS, STOREFRONT } from './app-blocks.mjs';
 import { hooksOf, parseHooks } from './app-manifest.mjs';
 
 const say = (line) => console.error(`[app-blocks] ${line}`);
 
+/** Every app either fixture speaks for — the store blocks' and the admin board's — as ONE set, so a manifest
+ *  an app on both lists declares is read once. */
+const APPS = [...new Set([...APP_BLOCK_APPS, ...ADMIN_WIDGET_APPS])];
+
 /** What each app declares at the pinned commit: `id -> { hooks, from } | { tried }`, asked for once. */
-const DECLARED = new Map(APP_BLOCK_APPS.map((id) => [id, hooksOf(id)]));
+const DECLARED = new Map(APPS.map((id) => [id, hooksOf(id)]));
 
 say(`fixture: ${APP_BLOCKS.length} block(s) across ${APP_BLOCK_APPS.join(', ')}`);
+say(`board: ${ADMIN_WIDGETS.length} widget(s) at ${ADMIN_SLOT} from ${ADMIN_WIDGET_APPS.join(', ')}`);
 for (const [id, found] of DECLARED) {
   say(found.tried ? `${id}: NOT READ — ${found.tried.join(' · ')}` : `${id}: ${found.hooks.length} hook(s) from ${found.from}`);
 }
@@ -148,4 +153,63 @@ test('★★ and the omission is REAL — the release declares admin hooks this 
       'about a world that is gone — or this reader is looking at the wrong manifests.',
   );
   say(`deliberately outside the fixture: ${omitted.join(', ')}`);
+});
+
+// ── 3. the operator's board against the release (pk35/D6) ───────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, AND IT IS §2 OF THE SAME CARD THAT BOUGHT THIS FILE. pk34/D3 derived the STORE placements and
+// left the admin home's seven widgets typed inside `bin/verify-seed.test.mjs`, under a sentence nothing could
+// check. The remedy was already here: `hooksOf` returns the `admin:` hooks too — the rules above throw them
+// away on purpose, which is not the same thing as nobody grading them.
+
+/** The widgets one app declares at the admin home's slot, in the manifest's own order — `<app>/<component>`. */
+const widgetsDeclaredBy = (id) =>
+  DECLARED.get(id)
+    .hooks.filter((hook) => hook.target === ADMIN_SLOT)
+    .map((hook) => `${id}/${hook.component}`);
+
+test('★★★ the admin board is the one the PINNED manifests declare, widget for widget and in their order', (t) => {
+  if (unreadable.length > 0) {
+    t.skip(
+      `NOT CHECKED — ${unreadable.map(([id, f]) => `${id}: ${f.tried.join('; ')}`).join(' | ')} ` +
+        '(set FORGE_MONOREPO=<a Forge clone that has fetched the pinned commit>)',
+    );
+    return;
+  }
+  // ★ ORDER, NOT SET, and the manifest is what says so: `extensions/admin-dashboard/manifest.ts` (AJ4) —
+  // "THIS ARRAY'S ORDER IS THE HOME'S ORDER", because `seedDefaultPlacements` walks the hooks in array order
+  // giving each `position = max(position) + 1`. A sorted comparison would go green on a board shuffled
+  // upstream, and the section of the verifier this fixture feeds is ABOUT the order.
+  const declared = ADMIN_WIDGET_APPS.flatMap(widgetsDeclaredBy);
+  assert.deepEqual(
+    ADMIN_WIDGETS,
+    declared,
+    `the board fixture and the release disagree about the admin home. The manifest is the truth — it is what ` +
+      `\`extension.install\` materializes on a tenant — so this repository follows it: fix \`ADMIN_WIDGETS\` in ` +
+      `bin/app-blocks.mjs (and say in the commit WHICH widget moved, because a tenant that already has the ` +
+      `app keeps the arrangement it has: the seed is idempotent per (store, ext, component, slot) and ` +
+      `nobody's home is silently rewritten).`,
+  );
+});
+
+test('★★ the board fixture SEES the slot — the release declares widgets there this list is right to leave out', (t) => {
+  // ⛔ ANTI-VACUUM FOR THE RULE ABOVE, and it is not decoration: `ADMIN_WIDGET_APPS` is derived FROM the
+  // fixture, so the comparison is confined to the apps the fixture already names. Confined to nothing it
+  // would be `[] === []`. This proves the slot is SHARED — that some other app really does put a widget on
+  // this board — which is also what makes the verifier's sabotage a sabotage: it stages
+  // `subscriptions/latest_subscriptions` as the intruder on top, and an intruder that did not exist would
+  // make that test a statement about a fiction.
+  if (unreadable.length > 0) {
+    t.skip(`NOT CHECKED — ${unreadable.map(([id]) => id).join(', ')} could not be read at the pinned commit`);
+    return;
+  }
+  assert.ok(ADMIN_WIDGETS.length > 0, 'the board fixture is empty — there is nothing for the rule above to grade');
+  const foreign = APPS.filter((id) => !ADMIN_WIDGET_APPS.includes(id)).flatMap(widgetsDeclaredBy);
+  assert.ok(
+    foreign.length > 0,
+    `no app outside ${ADMIN_WIDGET_APPS.join(', ')} declares a widget at ${ADMIN_SLOT} in this release. Either ` +
+      'the product stopped shipping them — in which case the verifier stages an intruder that cannot occur — ' +
+      'or this reader is looking at the wrong manifests.',
+  );
+  say(`the board is shared: ${foreign.join(', ')} also land at ${ADMIN_SLOT} and are deliberately off the fixture`);
 });

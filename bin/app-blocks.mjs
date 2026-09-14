@@ -21,9 +21,10 @@
 // longer exists is worse than no test — it is the defect this arc is named after, a signal that does not
 // know it cannot know.
 //
-// ⛔ THE ADMIN HOOKS ARE DELIBERATELY ABSENT. `subscriptions/latest_subscriptions` is an `admin:` hook,
-// seeded ONCE PER TENANT with a null store, and mistaking it for a store block is the whole defect pk31/3e
-// was written after. The guard grades that omission as a rule rather than trusting this sentence.
+// ⛔ THE ADMIN HOOKS ARE DELIBERATELY ABSENT FROM `APP_BLOCKS`. `subscriptions/latest_subscriptions` is an
+// `admin:` hook, seeded ONCE PER TENANT with a null store, and mistaking it for a store block is the whole
+// defect pk31/3e was written after. The guard grades that omission as a rule rather than trusting this
+// sentence. The operator's board is a SECOND fixture, below, and it is graded by the same guard.
 
 /** `[extension_id, component, target]`, in the manifest's own order. */
 export const APP_BLOCKS = [
@@ -53,3 +54,42 @@ export const APP_BLOCK_APPS = [...new Set(APP_BLOCKS.map(([app]) => app))];
 
 /** The prefix a target must carry to be a block a SHOPPER can see. Everything else is the operator's face. */
 export const STOREFRONT = 'storefront:';
+
+// ── ★★ THE OPERATOR'S BOARD (pk35/D6) ──────────────────────────────────────────────────────────────────────
+//
+// ⛔ THE DEFECT, AND IT IS THE ONE ABOVE WEARING ANOTHER HAT. pk34/D3 derived the STORE placements against the
+// manifests of the pinned release and left this list behind, typed into `bin/verify-seed.test.mjs` under a
+// comment that called it "the seven the dataset declares, in the order he left them" — a sentence nothing
+// could check. Seven names about a screen in another repository, in a file that never opens that repository.
+// A widget renamed, dropped or added upstream and this list goes on describing a home nobody has, GREEN.
+//
+// ⇒ IT MOVED HERE FOR EXACTLY THE REASON `APP_BLOCKS` DID: the suite needs a fixture that runs on every
+// machine, and `bin/app-blocks.guard.mjs` needs something it can grade against the release when a clone is
+// within reach. Same division of labour, one more list.
+//
+// ★★ AND THE ORDER IS PART OF THE CLAIM, WHICH IS NOT AN ASSUMPTION — it is written in the manifest this is
+// graded against (`extensions/admin-dashboard/manifest.ts`, AJ4): *"THIS ARRAY'S ORDER IS THE HOME'S ORDER"*.
+// `seedDefaultPlacements` walks the hooks in array order giving each `position = max(position) + 1`, so the
+// declaration IS the sequence a fresh install opens on. A set comparison would go green on a board shuffled
+// upstream, which is the one thing the pk30/§11 section of the verifier is about.
+
+/** The slot the admin home's mosaic fills. An `admin:` target — never a shopper's. ⛔ RE-EXPORTED, not
+ *  re-typed: the string that matters is the one `seed/widgets.mjs` hands `composition.reorder` on the real
+ *  box, and a second copy of it here could go on grading a slot the seeder had stopped writing to. */
+export { ADMIN_WIDGETS_SLOT as ADMIN_SLOT } from '../seed/widgets.mjs';
+
+/** The board, as `<app>/<component>` names in the order a fresh install opens on. */
+export const ADMIN_WIDGETS = [
+  'admin-dashboard/revenue',
+  'admin-dashboard/recent_orders',
+  'admin-dashboard/shipping',
+  'admin-dashboard/order_status',
+  'admin-dashboard/stores_sales',
+  'admin-dashboard/promos',
+  'admin-dashboard/stock',
+];
+
+/** The apps this board speaks for, derived from it — never a second list beside it. ⚠️ It is deliberately
+ *  NOT every app that declares a widget: `subscriptions` declares one at the same slot and is NOT on the
+ *  board above, which is what makes it the intruder the verifier's sabotage stages. */
+export const ADMIN_WIDGET_APPS = [...new Set(ADMIN_WIDGETS.map((name) => name.split('/')[0]))];

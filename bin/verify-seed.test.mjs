@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { promisify } from 'node:util';
 
-import { APP_BLOCKS } from './app-blocks.mjs';
+import { ADMIN_SLOT, ADMIN_WIDGETS, APP_BLOCKS } from './app-blocks.mjs';
 import { COFFEE_PROMOTIONS, coffeePages, expectedCoffees } from '../seed/coffee.mjs';
 import { poolProducts } from '../seed/pool.mjs';
 import { outletPages } from '../seed/outlet.mjs';
@@ -1135,29 +1135,24 @@ test('★ a dataset dir that holds no storefront.json says "I could not look", n
 // right?" is green on the box of 10/09 and proves nothing — which is the whole reason the check lives in this
 // per-tenant verifier and not in the one-shot that only ever visits the dataset's own tenant.
 
-/** The seven the dataset declares, in the order he left them. Hand-written for the same reason `DATASET_HOME`
- *  is: the real file is a monorepo file a machine running this suite may not have. */
-const DECLARED_WIDGETS = [
-  'admin-dashboard/revenue',
-  'admin-dashboard/recent_orders',
-  'admin-dashboard/shipping',
-  'admin-dashboard/order_status',
-  'admin-dashboard/stores_sales',
-  'admin-dashboard/promos',
-  'admin-dashboard/stock',
-];
-const ADMIN_SLOT = 'admin:admin.home.widgets';
-/** A board, spelled as `<app>/<component>` names in the order it is placed in. */
+/** The seven the board opens on and the slot it fills are `ADMIN_WIDGETS` / `ADMIN_SLOT`, imported at the top
+ *  of this file. ★ pk35/D6: they left this suite the way `APP_BLOCKS` did on 2026-09-12, so that
+ *  `bin/app-blocks.guard.mjs` can grade them against the manifest of the PINNED release without importing a
+ *  test file. They used to be typed here under a sentence — "the seven the dataset declares, in the order he
+ *  left them" — that nothing could check: seven names about a screen declared in another repository, in a
+ *  file that never opens it. Their reasons live with them now.
+ *
+ *  A board, spelled as `<app>/<component>` names in the order it is placed in. */
 const boardRows = (names) =>
   names.map((name, i) => compositionRow(name.split('/')[0], name.split('/')[1], ADMIN_SLOT, i));
 /** A dataset that declares the seven AND the shop window the other section grades. */
-const datasetWithWidgets = () => ({ ...DATASET_HOME, admin_widgets: DECLARED_WIDGETS });
+const datasetWithWidgets = () => ({ ...DATASET_HOME, admin_widgets: ADMIN_WIDGETS });
 
 test('★★ the widget order the dataset declares, found on the board — the verifier settles and NAMES the tenant', async () => {
   const box = footwearBox();
   box.composition[FORGE] = [
     ...datasetHomeRows(),
-    ...boardRows([...DECLARED_WIDGETS, 'subscriptions/latest_subscriptions']),
+    ...boardRows([...ADMIN_WIDGETS, 'subscriptions/latest_subscriptions']),
   ];
   const mount = mountedDataset(datasetWithWidgets());
   const face = await serve(box);
@@ -1180,7 +1175,7 @@ test('★★★ SABOTAGE — ONE tenant\'s board is broken and the red NAMES tha
   const box = footwearBox();
   box.composition[FORGE] = [
     ...datasetHomeRows(),
-    ...boardRows(['subscriptions/latest_subscriptions', ...DECLARED_WIDGETS]),
+    ...boardRows(['subscriptions/latest_subscriptions', ...ADMIN_WIDGETS]),
   ];
   const mount = mountedDataset(datasetWithWidgets());
   const face = await serve(box);
@@ -1226,7 +1221,7 @@ test('⛔ a widget hook nobody PLACED is not on the board — it cannot fill the
   const box = footwearBox();
   box.composition[FORGE] = [
     ...datasetHomeRows(),
-    ...boardRows(DECLARED_WIDGETS).map((row, i) =>
+    ...boardRows(ADMIN_WIDGETS).map((row, i) =>
       i === 0 ? { ...row, placement_id: null, has_placement: false } : row,
     ),
   ];
@@ -1249,7 +1244,7 @@ test('★ a dataset that declares no admin_widgets is REPORTED, never judged', a
   // The one case where silence is a decision: the board keeps whatever order the installs left it in, and
   // saying so is different from saying it is correct.
   const box = footwearBox();
-  box.composition[FORGE] = [...datasetHomeRows(), ...boardRows(DECLARED_WIDGETS)];
+  box.composition[FORGE] = [...datasetHomeRows(), ...boardRows(ADMIN_WIDGETS)];
   const mount = mountedDataset();
   const face = await serve(box);
   try {

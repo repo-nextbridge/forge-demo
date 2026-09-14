@@ -23,30 +23,29 @@
 //
 //   node --test bin/dev-mail-promise.guard.mjs        (or: bash bin/test.sh)
 
-import { readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { fileAtPinned, pinnedCommit, ROOT } from './release-tree.mjs';
 const COMPOSE = join(ROOT, 'compose.yml');
 const ENV_SOURCE = join(ROOT, 'env-source.sh');
 
-/** Where this repo can read the kernel's mail driver from, if a Forge checkout is at hand. The premise test
- * SKIPS rather than fails when it is not: this repository does not vendor the kernel's source, and a guard
- * that goes red on a machine without a checkout is a guard people learn to ignore. */
+/** Where this repo reads the kernel's mail driver from. The premise test SKIPS rather than fails when this
+ * machine cannot reach it: this repository does not vendor the kernel's source, and a guard that goes red on
+ * a machine without a checkout is a guard people learn to ignore.
+ *
+ * ⛔ pk35/D6 — AND IT IS THE PINNED COMMIT, NOT "a Forge checkout". Until 2026-09-14 this took the first
+ * directory that happened to hold the file, out of `FORGE_MONOREPO` and two hard-coded neighbours, and never
+ * asked which commit it was — so the PREMISE of this whole file could be graded against a driver these
+ * images were never built from, and a stale worktree would have said the gate below was gone. `fileAtPinned`
+ * reads the blob AT the commit `forge.lock` names, from any clone that has fetched it. */
+const DRIVER = 'apps/api/src/smtp-channel-driver.ts';
 function driverSource() {
-  for (const base of [
-    process.env.FORGE_MONOREPO,
-    join(ROOT, '..', '..', 'wt-v03', 't-forno'),
-    join(ROOT, '..', '..', 'forge'),
-  ]) {
-    if (!base) continue;
-    const file = join(base, 'apps', 'api', 'src', 'smtp-channel-driver.ts');
-    if (existsSync(file)) return readFileSync(file, 'utf8');
-  }
-  return null;
+  const pinned = pinnedCommit();
+  if (!pinned) return { tried: ['forge.lock names registry digests, not a branch@sha — there is no commit to read'] };
+  return fileAtPinned(pinned, DRIVER);
 }
 
 /** The `NODE_ENV:` this compose hands the KERNEL, with a `${VAR:-default}` reduced to its default. The kernel's
@@ -61,11 +60,15 @@ function kernelNodeEnv() {
 }
 
 test('★ the PREMISE holds — the terminal mail transport is still gated on !production', (t) => {
-  const driver = driverSource();
-  if (driver === null) {
-    t.skip('no Forge checkout to read smtp-channel-driver.ts from (set FORGE_MONOREPO to grade the premise)');
+  const found = driverSource();
+  if (found.tried) {
+    t.skip(
+      `NOT CHECKED — cannot read ${DRIVER} at ${pinnedCommit()?.ref ?? 'the pinned commit'} ` +
+        `(tried: ${found.tried.join(' · ')}). Set FORGE_MONOREPO=<a Forge clone that has fetched it>.`,
+    );
     return;
   }
+  const driver = found.text;
   assert.ok(
     driver.includes("const production = env.NODE_ENV === 'production'"),
     'smtp-channel-driver.ts no longer derives `production` from NODE_ENV — re-read this guard before trusting it',

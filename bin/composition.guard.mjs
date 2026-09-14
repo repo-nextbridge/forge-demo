@@ -23,18 +23,39 @@
 // a machine that legitimately has no checkout is a guard people learn to ignore. The checks that need
 // nothing but this repo run ALWAYS, and they are the ones about the species split.
 //
+// ── ⛔ pk35/D6 — AND *WHICH* CHECKOUT IS NOT "the first one lying around" ────────────────────────────────
+//
+// Until 2026-09-14 this file took the FIRST directory holding `extensions/composition.base.json`, out of
+// `FORGE_MONOREPO` and three hard-coded neighbours, and never asked which COMMIT it was at. Measured on this
+// branch with `FORGE_MONOREPO=…/wt-v03/d2-onda1` (pk3/integra, hundreds of commits behind the pinned
+// `v03/integra@e8fc602d4`): TWO red rules — "content — the release carries no such app (rule not-carried)"
+// and the fleet mirror out of order — and BOTH are false about this box. At the pinned commit
+// `extensions/content` exists and `infra/fleet/lists/demo-instance.json` matches `composition.json` entry
+// for entry. A tree further back produces more of them; the number is not the point, the confidence is.
+//
+// ⇒ A GUARD THAT ACCUSES THE BOX BECAUSE IT IS READING THE WRONG TREE IS WORSE THAN NO GUARD: it sends a
+// human to fix what is not broken. It is this house's species — a signal that does not know it cannot know —
+// and the answer is the one the siblings already use, copied rather than reinvented:
+// `releaseTree(pinnedCommit())` (bin/release-tree.mjs), which accepts a tree ONLY when its HEAD is the
+// commit `forge.lock` says these images were baked from, expands a clone's worktrees looking for it, and
+// hands back `{ tried }` — what it looked at and why each was rejected — when the machine has none.
+// `bin/instance-app.guard.mjs` and `bin/app-blocks.guard.mjs` grade through the same door.
+//
+// ⚠️ AND IT SAYS SO OUT LOUD BEFORE ANY ASSERTION, because "NOT CHECKED" is only an answer when it names
+// what would fix it. `bin/composition-pin.test.mjs` holds both halves as a property, by running this file.
+//
 //   node --test bin/composition.guard.mjs        (or: bash bin/test.sh)
 //   FORGE_MONOREPO=~/path/to/forge node --test bin/composition.guard.mjs
 
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { inflateSync } from 'node:zlib';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (path) => JSON.parse(readFileSync(path, 'utf8'));
+import { pinnedCommit, readJson as read, releaseTree, ROOT } from './release-tree.mjs';
+
+const say = (line) => console.error(`[composition] ${line}`);
 
 const COMPOSITION = read(join(ROOT, 'composition.json'));
 
@@ -44,26 +65,34 @@ const BASE_LIST = join('extensions', 'composition.base.json');
 const MIRROR = join('infra', 'fleet', 'lists', 'demo-instance.json');
 
 /**
- * A Forge checkout, if this machine has one. Candidates are tried in order and the FIRST that actually holds
- * the product's list wins — `existsSync` on the directory is not enough, because a half-cloned or renamed
- * tree would make every rule below argue about an empty `extensions/`.
+ * ★★ THE RELEASE THESE IMAGES WERE BAKED FROM, or nothing. Not "a Forge checkout" — see the header: the tree
+ * is asked for through `releaseTree(pinnedCommit())`, which accepts one only when its HEAD is the commit
+ * `forge.lock` pins, so every accusation below is about the product this box actually runs.
  */
-function monorepo() {
-  for (const base of [
-    process.env.FORGE_MONOREPO,
-    join(ROOT, '..', '..', 'wt-v03', 'd2-onda1'),
-    join(ROOT, '..', '..', 'wt-v03', 't-forno'),
-    join(ROOT, '..', '..', 'forge'),
-  ]) {
-    if (base && existsSync(join(base, BASE_LIST))) return base;
-  }
-  return null;
+const PINNED = pinnedCommit();
+const TREE = PINNED
+  ? releaseTree(PINNED)
+  : { tried: ['forge.lock names registry digests, not a branch@sha — there is no release tree to grade against'] };
+const FORGE = TREE.path ?? null;
+
+// ── what every run says out loud, before any assertion ──────────────────────────────────────────────────
+
+say(`forge.lock pins: ${PINNED ? PINNED.ref : 'no branch@sha — this lock names registry digests'}`);
+if (FORGE) {
+  say(`grading against: ${FORGE} (${TREE.how})`);
+} else {
+  say(`⚠️ NOT CHECKED — no Forge checkout at ${PINNED ? PINNED.ref : 'the pinned commit'} on this machine.`);
+  for (const line of TREE.tried) say(`   tried: ${line}`);
+  say('   set FORGE_MONOREPO=<a Forge clone at that commit, or one with a worktree of it>.');
 }
 
-const FORGE = monorepo();
+/** The sentence a skipped rule carries. ⚠️ It names the PIN and what would fix it — a skip that says only
+ *  "not checked" is the silence this repository's strict mode exists to refuse (bin/test.sh). What was tried
+ *  is on the `[composition]` lines above, once, instead of being repeated onto every skipped rule. */
 const skip = FORGE
   ? false
-  : 'no Forge checkout on this machine (set FORGE_MONOREPO=<path>) — the rules that need the product\'s own list cannot run';
+  : `NOT CHECKED — no Forge checkout at ${PINNED ? PINNED.ref : 'the pinned commit'} on this machine ` +
+    '(set FORGE_MONOREPO=<a clone at that commit>; the [composition] lines above list what was tried)';
 
 /** Every app directory this release CARRIES, read the way `scripts/fleet/release.ts` reads it: a directory
  *  under `extensions/` with a readable `package.json`. A directory left behind with only `node_modules` in it
@@ -138,6 +167,36 @@ test('no id is listed twice', () => {
 });
 
 // ── what the product's own tree decides ─────────────────────────────────────────────────────────────────
+
+test('★ THE RELEASE WAS REALLY READ — a walk that finds no app passes every rule below', { skip }, () => {
+  // ⛔ ANTI-VACUUM, AND IT IS THE FIRST RULE THAT NEEDS THE PRODUCT ON PURPOSE. Every rule under this line is
+  // "this list agrees with the release": an empty `extensions/` or an empty OOTB list satisfies all of them
+  // by having no subject, and the run would be green while grading nothing. It is not hypothetical — the
+  // tree used to be accepted on the strength of one filename, so a half-cloned or partially checked-out
+  // monorepo was a tree this file was willing to argue about.
+  assert.ok(
+    existsSync(join(FORGE, BASE_LIST)),
+    `${FORGE} is checked out at ${PINNED.ref} and has no ${BASE_LIST} — that is a release this box cannot ` +
+      'be graded against, not a machine without a checkout.',
+  );
+  const base = read(join(FORGE, BASE_LIST)).apps;
+  assert.ok(Array.isArray(base) && base.length > 0, `${BASE_LIST} offers no app at all — there is nothing to require`);
+  const carriedDirs = carried(FORGE);
+  // Derived, never a number typed here: the release must at least CARRY everything its own list offers. A
+  // count would be a ceiling with a size inside it, which this house has paid for twice.
+  const offeredButAbsent = base.filter((entry) => !carriedDirs.has(entry.id)).map((entry) => entry.id);
+  assert.deepEqual(
+    offeredButAbsent,
+    [],
+    `${BASE_LIST} offers apps that ${FORGE}/extensions does not hold — this walk is reading a tree that is ` +
+      'not the release, and every rule below would be arguing about the difference.',
+  );
+  assert.ok(
+    [...carriedDirs.values()].some((app) => app.origin === 'platform'),
+    'no directory under extensions/ declares `forge.origin: "platform"` — the leak rule has no subject',
+  );
+  say(`${FORGE}/extensions holds ${carriedDirs.size} app(s); ${BASE_LIST} offers ${base.length}`);
+});
 
 test('★★ NOTHING LESS THAN THE PRODUCT OFFERS — every app on the OOTB list is composed here', { skip }, () => {
   // THE RULE THE SEVEN-APP BOX BROKE. Derived from `extensions/composition.base.json` and never from a list
