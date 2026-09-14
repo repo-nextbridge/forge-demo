@@ -1465,6 +1465,56 @@
   color: var(--totem-ink);
 }
 
+/* ── THE PROMOTION THAT IS STILL WAITING ─────────────────────────────────────────────────────────────────
+ *
+ * Drawn in the AMBER family, which is this artboard's accent — the kicker over a band, the caret, the bag
+ * badge — and never in a warning colour, because nothing has gone wrong: a question is open. The same
+ * sentence on a red or amber-alert ground would tell somebody at the glass that their order broke, which is
+ * the one reading it must not have. The soft ground follows `.couponButtonOn` next door, an offer drawn the
+ * same way one step earlier in the flow.
+ *
+ * ⚠️ THE SIZES ARE THE COUNTER'S, NOT THE KIT'S. `@forgecommerce/storefront-kit/promo/PendingIdentityNotice`
+ * ships a ready component, and this app takes its SENTENCE (`pendingIdentityLead`, `PENDING_IDENTITY_HINT`)
+ * and not its box: the kit styles against a semantic token vocabulary — `--color-accent-soft`,
+ * `--type-caption-size`, `--space-*`, `--radius-surface` — that this app does not declare and will not,
+ * because the counter's palette is nine SOURCE tokens pinned to the artboard by `palette.test.ts`. Mounted
+ * here the kit's block would inherit no ground and no scale at all on a 1080x1920 panel. */
+.pendingNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(176, 121, 60, 0.1);
+}
+
+.pendingLead {
+  font-size: 22px;
+  color: rgba(47, 38, 32, 0.72);
+}
+
+.pendingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The merchant's own words for the promotion, and the only emphatic thing in the block: what is being named
+   is the promotion, not the fact that a question is open. */
+.pendingLabel {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--totem-amber);
+}
+
+.pendingHint {
+  font-size: 20px;
+  color: rgba(47, 38, 32, 0.62);
+}
+
 /* ── IDENTIFY ────────────────────────────────────────────────────────────────────────────────────────── */
 
 .identifyBody {

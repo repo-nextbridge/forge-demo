@@ -12,7 +12,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const resetCounter = vi.fn().mockResolvedValue({ bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discounts: [], totalLabel: 'R$ 0,00', couponCode: null } });
+const resetCounter = vi.fn().mockResolvedValue({ bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discounts: [], totalLabel: 'R$ 0,00', pendingIdentity: [], couponCode: null } });
 const payWith = vi.fn();
 const simulatePixPayment = vi.fn();
 const resumePreviousOrder = vi.fn();
@@ -63,6 +63,7 @@ const bagWithSomething = {
   subtotalLabel: 'R$ 17,00',
   discounts: [],
   totalLabel: 'R$ 17,00',
+  pendingIdentity: [],
   couponCode: null,
 };
 

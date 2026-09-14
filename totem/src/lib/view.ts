@@ -34,6 +34,23 @@ export type BagLine = {
  */
 export type BagDiscount = { title: string; amountLabel: string };
 
+/**
+ * ★★ A PROMOTION THE ENGINE COULD NOT JUDGE BECAUSE NOBODY HAS SAID WHO THEY ARE — its NAME, and nothing else.
+ *
+ * ── THE DEFECT, MEASURED. The review printed **R$ 153,00** and the QR charged **R$ 137,40**. Both numbers
+ * were right: the review runs over a cart with no buyer on it, and "10% na primeira compra" cannot be judged
+ * until `cart.set_buyer` — which this counter sends 43 ms before it closes the order. So the screen was not
+ * wrong about the total; it was SILENT about the total still being open, and a silent provisional total
+ * reads as a final one.
+ *
+ * ⚠️ THERE IS NO AMOUNT IN THIS TYPE AND THERE MUST NEVER BE ONE. `CartPricing.pending_identity` carries no
+ * value on purpose: identifying may leave the promotion REJECTED (a returning customer earns no
+ * first-purchase discount), so any figure shown here would be a promise the engine already refused to make.
+ * The mapping below also drops the engine's `reason`, which is a verdict about an unknown person and says
+ * nothing a customer at the glass can act on.
+ */
+export type BagPendingPromotion = { promotionId: string; label: string };
+
 export type Bag = {
   cartId: string | null;
   lines: BagLine[];
@@ -42,6 +59,13 @@ export type Bag = {
   /** One row per discount the kernel actually applied. Empty when it applied none — never a row of zero. */
   discounts: BagDiscount[];
   totalLabel: string;
+  /**
+   * Promotions still waiting on an identity — see `BagPendingPromotion`. EMPTY means the screen says nothing,
+   * and three different facts collapse into that one silence ON PURPOSE: the cart already has a buyer, the
+   * engine named none, or the pinned port predates the field. A screen that guessed which of the three it was
+   * would be inventing the promotion the port declined to name.
+   */
+  pendingIdentity: BagPendingPromotion[];
   couponCode: string | null;
 };
 
@@ -53,6 +77,7 @@ export const EMPTY_BAG: Bag = {
   subtotalLabel: money(0),
   discounts: [],
   totalLabel: money(0),
+  pendingIdentity: [],
   couponCode: null,
 };
 
@@ -134,6 +159,17 @@ export function toBag(view: CheckoutView | null, products: ProductDoc[]): Bag {
     subtotalLabel: money(t.subtotal),
     discounts: t.discounts,
     totalLabel: money(t.total),
+    // ★ THE FRONT KEEPS ITS OWN HALF OF THE FENCE. The kernel already empties `pending_identity` once a buyer
+    // is on the cart, and this repeats it against `has_buyer` because the two facts arrive in the SAME
+    // payload: with a buyer loaded those same refusals stop being "nobody was asked" and become verdicts
+    // about a person the store knows, which a counter must not narrate back. A stale read or a future port
+    // that widens the field therefore cannot turn this into a sentence about a named customer.
+    pendingIdentity: view.has_buyer
+      ? []
+      : (view.pricing?.pending_identity ?? []).map((p) => ({
+          promotionId: p.promotion_id,
+          label: p.label,
+        })),
     couponCode: coupon?.code ?? null,
   };
 }
@@ -180,6 +216,11 @@ export function bagOfOrder(order: OrderConfirmationView): Bag {
     subtotalLabel: money(t.subtotal),
     discounts: t.discounts,
     totalLabel: money(t.total),
+    // ⛔ ALWAYS EMPTY, AND NOT FOR WANT OF A FIELD. A pending promotion is a question about a cart nobody has
+    // claimed; an order was placed with its buyer attached and at a price the kernel settled. Whatever was
+    // pending had its verdict before this existed, so the receipt has nothing open to announce — saying
+    // "there is a discount waiting" over money already charged would be the one place it could not be true.
+    pendingIdentity: [],
     // A coupon is a fact about a cart; the order carries its EFFECT (the discount totalizer above) and not
     // the code. Claiming one here would be inventing it.
     couponCode: null,

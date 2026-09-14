@@ -12,6 +12,10 @@
 // adds, discounts or totals. `bag.totalLabel` is `read.checkout`'s `total_amount`, formatted — which is what
 // makes "the coupon takes exactly 10%" a fact about the store and not about this file.
 
+import {
+  PENDING_IDENTITY_HINT,
+  pendingIdentityLead,
+} from '@forgecommerce/storefront-kit/promo/PendingIdentityNotice';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   addItem,
@@ -989,8 +993,41 @@ export function Totem({
                       <span>{d.amountLabel}</span>
                     </div>
                   ))}
+                  {/* ★★ pk39 — THE SECOND BIT THIS SCREEN NEVER HAD. Until now the review carried exactly one:
+                      is there a discount row? One bit cannot tell "there is nothing here to earn" from "this
+                      total is still open, because nobody has been asked who they are" — so the screen printed
+                      a provisional number in the size of a final bill. See `BagPendingPromotion` for the
+                      measurement (R$ 153,00 reviewed, R$ 137,40 charged, both correct).
+
+                      ⛔ NO AMOUNT, EVER: the promotion is NAMED and that is the whole of it. And it sits
+                      BETWEEN the discounts and the total on purpose — the reader's question at that exact
+                      line is "is this the price?", and this is the answer to it. */}
+                  {bag.pendingIdentity.length > 0 ? (
+                    <div className={styles.pendingNotice} data-testid="pending-identity">
+                      <p className={styles.pendingLead}>
+                        {pendingIdentityLead(bag.pendingIdentity.length)}
+                      </p>
+                      <ul className={styles.pendingList}>
+                        {bag.pendingIdentity.map((p) => (
+                          <li
+                            key={p.promotionId}
+                            className={styles.pendingLabel}
+                            data-testid="pending-identity-label"
+                          >
+                            {p.label}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className={styles.pendingHint}>{PENDING_IDENTITY_HINT}</p>
+                    </div>
+                  ) : null}
                   <div className={styles.grandRow}>
-                    <span className={styles.grandLabel}>Total</span>
+                    {/* The number is the kernel's either way — what changes is what the screen CLAIMS about
+                        it. "Total parcial" withdraws the claim of finality without promising a reduction,
+                        which matters: identifying can leave the promotion refused and this number standing. */}
+                    <span className={styles.grandLabel}>
+                      {bag.pendingIdentity.length > 0 ? 'Total parcial' : 'Total'}
+                    </span>
                     <span className={styles.grandValue}>{bag.totalLabel}</span>
                   </div>
                 </div>
@@ -1189,7 +1226,14 @@ export function Totem({
                 onClick={pay}
                 disabled={!readyToPay || busy}
               >
-                <span>Pagar {bag.totalLabel}</span>
+                {/* ★ THE SECOND PLACE THE COUNTER STATES THE NUMBER, and on this screen the pendency is
+                    still open — the name being typed above has not reached `cart.set_buyer` yet. "até"
+                    is the honest qualifier and it invents nothing: a promotion can only ever REDUCE the
+                    total, so this figure is a ceiling, and it is the same figure either way. */}
+                <span>
+                  Pagar {bag.pendingIdentity.length > 0 ? 'até ' : ''}
+                  {bag.totalLabel}
+                </span>
                 <span className={styles.arrow}>→</span>
               </button>
             </div>

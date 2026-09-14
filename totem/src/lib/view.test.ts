@@ -139,3 +139,72 @@ describe('the bag repeats the kernel', () => {
     expect(toBag(null, []).count).toBe(0);
   });
 });
+
+// ★★ THE PENDING PROMOTION — both directions, because the silence is as load-bearing as the sentence.
+//
+// The defect this closes is not a wrong number, it is a MISSING SECOND BIT: the review had only "is there a
+// discount row?", so it could not tell "nothing to earn here" from "this total is still open". The two cases
+// below are exactly those two, and the third is the fence that makes the first one safe.
+describe('the bag names a promotion that is still waiting on an identity', () => {
+
+/** A pricing block with only what this file is about filled in: the rest are the engine's empty answers. */
+const pricing = (pending: { promotion_id: string; label: string; reason: string }[]) =>
+  ({
+    discount_lines: [],
+    discount_total: 0,
+    shipping_gross: null,
+    shipping_discount: 0,
+    near_misses: [],
+    pending_identity: pending,
+    applied_coupons: [],
+    gift_lines: [],
+  }) as CheckoutView['pricing'];
+
+  const pending = [
+    // The shape the counter store really answers with, promotion included — the same one that priced the
+    // measured order at 137,40 while the review showed 153,00.
+    { promotion_id: 'promo_A', label: '10% na primeira compra', reason: 'buyer_not_identified' },
+  ];
+
+  it('★ carries the NAME the port sent, for every promotion, in the port’s own order', () => {
+    const bag = toBag(
+      view({
+        pricing: pricing([
+          ...pending,
+          { promotion_id: 'promo_B', label: 'Clube Forge · 5% OFF', reason: 'buyer_not_identified' },
+        ]),
+      }),
+      [doc],
+    );
+    expect(bag.pendingIdentity).toEqual([
+      { promotionId: 'promo_A', label: '10% na primeira compra' },
+      { promotionId: 'promo_B', label: 'Clube Forge · 5% OFF' },
+    ]);
+  });
+
+  it('⛔ carries NO amount of any kind — the engine sends none, and none may be invented here', () => {
+    const bag = toBag(view({ pricing: pricing(pending) }), [doc]);
+    // Every value that reached the screen, flattened: a number anywhere in this block is a promise the
+    // engine explicitly refused to make (identifying can leave the promotion REJECTED).
+    const values = bag.pendingIdentity.flatMap((p) => Object.values(p));
+    expect(values.every((v) => typeof v === 'string')).toBe(true);
+    expect(JSON.stringify(bag.pendingIdentity)).not.toMatch(/\d+[.,]\d\d/);
+  });
+
+  it('★ says NOTHING once the cart has a buyer, even if the payload still lists one', () => {
+    // A stale read, a cached fragment, or a port that one day widens the field. With somebody identified
+    // these refusals are verdicts about a person the store knows, and a counter does not narrate those back.
+    const bag = toBag(
+      view({ has_buyer: true, pricing: pricing(pending) }),
+      [doc],
+    );
+    expect(bag.pendingIdentity).toEqual([]);
+  });
+
+  it('says nothing when the engine named none, and nothing when the port predates the field', () => {
+    expect(toBag(view({ pricing: pricing([]) }), [doc]).pendingIdentity).toEqual([]);
+    // No `pricing` block at all — a pinned kernel older than this wave. The screen degrades to what it did
+    // before: a total it believes is final, which is the ONLY honest thing to say with nothing to go on.
+    expect(toBag(view(), [doc]).pendingIdentity).toEqual([]);
+  });
+});

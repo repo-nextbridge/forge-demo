@@ -20,6 +20,7 @@ const emptyBag = {
   subtotalLabel: 'R$ 0,00',
   discounts: [],
   totalLabel: 'R$ 0,00',
+  pendingIdentity: [],
   couponCode: null,
 };
 
@@ -72,6 +73,7 @@ const bag = {
   subtotalLabel: 'R$ 17,00',
   discounts: [],
   totalLabel: 'R$ 17,00',
+  pendingIdentity: [],
   couponCode: null,
 };
 

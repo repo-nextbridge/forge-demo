@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const payWith = vi.fn();
 const resetCounter = vi.fn().mockResolvedValue({
-  bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discounts: [], totalLabel: 'R$ 0,00', couponCode: null },
+  bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discounts: [], totalLabel: 'R$ 0,00', pendingIdentity: [], couponCode: null },
 });
 
 vi.mock('@/app/actions', () => ({
@@ -64,6 +64,7 @@ const basket = {
   subtotalLabel: 'R$ 7,00',
   discounts: [],
   totalLabel: 'R$ 7,00',
+  pendingIdentity: [],
   couponCode: null,
 };
 
@@ -100,6 +101,7 @@ const paidOrderBag = {
     { title: 'Combo da manhã · R$ 3,00 OFF', amountLabel: '−R$ 3,00' },
   ],
   totalLabel: 'R$ 137,40',
+  pendingIdentity: [],
   couponCode: null,
 };
 
