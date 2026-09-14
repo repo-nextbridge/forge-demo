@@ -62,14 +62,15 @@ did not move and still cedes its whole node; what changed in pk28 is who fills i
 
 | field | type | what it does |
 |---|---|---|
-| `logo` | `id` | an asset-library reference. The generated drawer renders the shared media picker and the kernel stamps `logo_url` beside it at read time — zero lines of admin code in this app. |
+| `logo` | `id` | an asset-library reference. The generated drawer renders the shared media picker and the kernel stamps **three** sidecars beside it at read time — `logo_url` (the master's address), `logo_kind` and `logo_provider_key` (the opaque catalog key) — zero lines of admin code in this app. The block draws the **key**, through the front's own `/api/media/<key>` door: a same-origin path, a 1-year immutable cache, and an address the warmer can reach. The master has none of the three. See *The media door*, below. |
 | `text` | `string` | the name. **With a logo it becomes the picture's alt** — a logo *is* the store's name to a screen reader. |
 | `tail` | `string` | drawn in `var(--color-accent)`. This is what makes one config look like two shops. |
 | `tagline` | `string` | **footer block only.** One line under the mark. |
 
 ⛔ **The picture and the words are EXCLUSIVE.** A block draws the image *or* the wordmark, never both — so a
-logo dropped beside a wordmark deletes the wordmark. That is why the two shoe shops keep TEXT (a word re-tints
-itself when the theme moves; a raster does not) and the café keeps its art.
+logo dropped beside a wordmark deletes the wordmark. That is why the two shoe shops keep TEXT — a word
+re-tints itself when the theme moves and a raster does not. **No store of this box declares a picture here
+since pk35/d7**: the café was the one that did, and its placements were removed (below).
 
 ⛔ **Nothing configured ⇒ nothing drawn.** These slots *replace* the front's own wordmark, so a block that
 fell back to Forge's would print our mark inside somebody else's shop — the exact outcome the mechanism exists
@@ -119,21 +120,69 @@ still counts as a *fill* in the slot — and because fills are counted before th
 slot then draws **nothing at all**, not even the `forge.` fallback. The only hand that removes it is
 `composition.remove`. A birth from zero never writes it in the first place, which is what this box gets.
 
-## ⚠️ THE CAFÉ IS DECLARED AND THE CAFÉ'S VITRINE CANNOT DRAW IT — measured 2026-09-11 (pk32/d1)
+⚠️ **And the same is now true of the café's three rows.** `"cafe": null` stops the seed from *writing* them;
+it does not *delete* rows a previous birth already wrote. On a box **re-seeded rather than reborn** the café
+keeps three `demo-setup` placements that draw nothing (they drew nothing before either — see below), and only
+`composition.remove` takes them out. The benches are reborn from zero at the end of a wave, which is the
+state this box is meant to be read in.
 
-`seed/demo-setup.json` places all three marks on **four** stores, `cafe` among them. The café is served by
-`storefront-coffee/`, which is a **fork** of the reference vitrine — and a fork reaches an app of this box only
-if somebody wires the two together. It is not wired: the fork's `package.json` does not name
+## The media door — the block draws the KEY, never the master url
+
+The kernel stamps `<field>_provider_key` beside `<field>_url` for exactly one reason, written in its own
+source: *"so a consumer can route the MASTER through its own `/api/media/<key>` door … instead of pointing an
+`<img>` at the raw bucket url"*. A block that reads the url and ignores the key walks past a door the kernel
+opened for it, and nothing goes red.
+
+⚠️ **It is a species, not a case.** The same cause has been repaired four times, one block at a time —
+`banners` (D2-F3), the theme's own images (K3-M2), the shelf banner (pk34/p5) and the whole `chrome` app
+(pk35/p2) — with nothing red in between. Measured on this bench 2026-09-13: the master answers **with no
+`Cache-Control` at all**, the same object through the door answers `public, max-age=31536000, immutable`, and
+`/v1/media/` is on no door the warmer knows — so such an image is cold for the first shopper of every page,
+forever. An absolute url is also a mixed-content hazard: a path has no origin to be wrong about.
+
+⇒ `bin/config-media-door.guard.mjs` derives the family from the **manifests** of every app of this box — every
+`type:'id'` field of every block, the same walk the kernel makes when it stamps — and goes red when a new
+block is born reading the url alone. **⛔ Never a list of blocks written by hand:** a typed list is exactly
+what rotted through four repairs.
+
+## ⛔ THE CAFÉ WEARS NONE OF THESE — the instance removed them (pk35/d7)
+
+`seed/demo-setup.json` says `"cafe": null`. The rule is the owner's, 11/09: *"o fork é do cliente, 100%
+liberdade"* ⇒ **when a fork draws by itself what a declared block would draw, the instance removes that
+store's placement.** The same pattern `seed/coffee.mjs::dropGateOnTheCafe` already uses for the gate.
+
+⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
+placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,
+2026-09-14:
+
+- the café's vitrine is the **fork**. `header.brand`, `header.drawer_brand` and `footer.brand` appear **nowhere**
+  in `storefront-coffee/src` (0 hits); a live fetch of the café home renders `CoffeeChrome_*` and **zero**
+  `demo-setup-*` marks;
+- the **account screens** mount `StorefrontChrome` and then **replace both of its regions**: the checkout's
+  layout wraps header and footer in `account.header` / `account.footer` outlets and passes the reference
+  chrome only as a *fallback*. Every store of this box has `chrome/account_header` and `chrome/account_footer`
+  placed, so the fallback never renders. A live fetch of the café's `/account/login`: **zero** `demo-setup-*`
+  marks, and 2 of 2 `<img>` from the `chrome` app.
+
+⇒ the three rows drew **nothing, anywhere** — *"three rows an operator can drag and never see the effect of"*,
+which is the sentence this box already writes for the counter.
+
+★ **Nothing is lost.** The café's mark on the screens **we host** is carried by `chrome`
+(`account_brand`, `account_header`, `checkout_header` all hold `forge-co-logo.png`), and its vitrine bundles
+its own copy of the same drawing. The art is still this repository's and still graded by
+`bin/chrome-logo-crop.guard.mjs`.
+
+## ⚠️ AND THE FORK STILL CANNOT REACH THIS APP'S CODE — measured 2026-09-11 (pk32/d1)
+
+That is a different question from which store is dressed, and removing the placements does not answer it. The
+café is served by `storefront-coffee/`, a **fork** of the reference vitrine, and a fork reaches an app of this
+box only if somebody wires the two together. It is not wired: the fork's `package.json` does not name
 `@forge/ext-demo-setup`, its `next.config.mjs` does not transpile it, and no file of it imports
-`@forge/ext-demo-setup/block/marks`. So the placement is real, it is `enabled`,
-`read.extension_composition` publishes it, the admin shows the app's card — **and the café's pages draw the
-fork's own mark instead, saying nothing to anybody.**
+`@forge/ext-demo-setup/block/marks`.
 
-★ **It is still a defect even though the page looks right.** The café has chrome of its own (`CoffeeChrome`)
-and a mark of its own, so the shop is not visibly broken; the fork's owner is entitled to *decide* he does not
-want this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
-it by name on every run, and the decision — today: "waiting on the regeneration tool" — is written there as a
-declared divergence rather than implied by silence.
+★ **So it stays a declared divergence even now that it costs a shopper nothing.** The day a café operator
+drops one of these blocks in Compose, it would draw nothing — and nobody is entitled to not know that. Since
+pk32/d1 `bin/front-app-reach.guard.mjs` says it by name on every run.
 
 ⚠️ **Why it is not simply wired yet:** the file that connects an app to a front is
 `storefront-coffee/src/lib/extensions/generated/registry.tsx`, a **generated** surface (its own first line says
@@ -153,6 +202,10 @@ rotted by the time pk31/d1 read it.
   place, and the filename becoming an asset id.
 - `bin/chrome-logo-crop.guard.mjs` — every declared logo in **both** declarations, by proportion, off the
   PNG's own pixels.
+- `bin/config-media-door.guard.mjs` — that no block of any app of this box paints the kernel's **master**
+  address while holding the catalog key it stamped beside it. Jurisdiction derived from the manifests, both
+  spellings of the sidecar name (written out and composed), and the scanner proven to read code rather than
+  the prose that explains it.
 - `bin/front-app-reach.guard.mjs` — whether a front of this box can actually DRAW each of the three, derived
   from `composition.json` + `forge.wiring` against each front's manifest, Next config and source. The rule
   itself is graded on fixtures in `bin/front-apps.test.mjs`, because this tree is healthy wherever its

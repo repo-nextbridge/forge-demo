@@ -752,11 +752,21 @@ test('★★★ the shop signs its footer with its OWN mark, spelled the way its
       continue;
     }
     const configs = Object.fromEntries(blocksFor(DATA, handle).map((b) => [b.component, b.config ?? {}]));
-    const brand = blocksFor(MARKS, handle).find((b) => b.component === 'header_brand')?.config ?? {};
+    // ★★ WHERE A SHOP'S MARK IS DECLARED IS ITSELF A FACT ABOUT THE SHOP, and since pk35/d7 there are two
+    // answers rather than one. A shop the REFERENCE vitrine dresses declares it in `seed/demo-setup.json`
+    // (`header_brand`); the café's vitrine is a FORK that draws its own, so the instance removed those rows
+    // and the mark it wears on the screens WE host is the `chrome` app's `account_brand`. Asking the first
+    // that answers is the derivation; naming one file would have made this rule silent for the café exactly
+    // when the café stopped being in it.
+    const brand =
+      blocksFor(MARKS, handle).find((b) => b.component === 'header_brand')?.config ??
+      configs.account_brand ??
+      {};
     const mark = `${(brand.text ?? '').trim()}${(brand.tail ?? '').trim()}`;
     assert.ok(
       mark.length > 0,
-      `store "${handle}" has no wordmark in seed/demo-setup.json to sign anything with`,
+      `store "${handle}" declares no wordmark in seed/demo-setup.json (header_brand) nor in ` +
+        'seed/chrome.json (account_brand), so there is nothing for its footer to sign with',
     );
     const signature = configs.account_footer?.end_text ?? '';
     assert.ok(

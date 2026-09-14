@@ -6,12 +6,19 @@
 // ── ⛔ THE SILENCE THIS ENDS (caderno pk32 §15, measured on this bench 2026-09-10/11) ─────────────────────
 //
 // `apps/demo-setup` declares three storefront blocks — the shop's mark in the header bar, in the mobile
-// drawer and in the footer. `seed/demo-setup.json` places all three on FOUR stores, the café's among them.
-// The placements are real and `enabled`, `read.extension_composition` publishes them, the admin shows the
+// drawer and in the footer. `seed/demo-setup.json` placed all three on THREE stores, the café's among them.
+// The placements were real and `enabled`, `read.extension_composition` published them, the admin showed the
 // app's card. And `storefront-coffee/` — the café's forked vitrine — names the app nowhere: not in its
-// `package.json`, not in `transpilePackages`, not in any registry. So the café's vitrine CANNOT draw the mark
-// its own box tells it to draw, and before this file nothing anywhere said so. Not the build, not the suite,
-// not the box's own verifier, not a log line at runtime.
+// `package.json`, not in `transpilePackages`, not in any registry. So the café's vitrine COULD NOT draw the
+// mark its own box told it to draw, and before this file nothing anywhere said so. Not the build, not the
+// suite, not the box's own verifier, not a log line at runtime.
+//
+// ★★ pk35/d7 — AND THE CAFÉ'S HALF OF THAT IS NOW DECIDED RATHER THAN PENDING: `seed/demo-setup.json` says
+// `"cafe": null`, so the instance places nothing there at all. The fork draws its own mark and its account
+// screens draw `chrome`'s — measured, zero `demo-setup-*` marks on either — which is the owner's rule of
+// 11/09 («o fork é do cliente, 100% liberdade» ⇒ the instance removes that store's placement). What this
+// file still grades is the OTHER question, and it is not about stores: the fork cannot reach this app's CODE
+// at all, so the day a café operator drops one of these blocks in Compose it would still draw nothing.
 //
 // ★ THAT IS THE DEFECT, AND IT IS THE DEFECT EVEN IF THE FORK DOES NOT WANT THE BLOCK. The café has chrome of
 // its own (`CoffeeChrome`) and draws a mark by its own hand — so nothing on screen looks wrong. The placement
@@ -69,7 +76,9 @@ const DIVERGENCES = [
       'exactly what `totem/src/lib/gate/registry.tsx` did, and that file\'s prose had already rotted by the ' +
       'time pk31/d1 read it. The tool is owed by the product and is being fiado by pk32/p1-parto (pack:surface ' +
       'born with the codegen vendored + the regeneration step wired); when it lands, the fix here is the three ' +
-      'gestures plus `npm run codegen`, and this entry goes away.',
+      'gestures plus `npm run codegen`, and this entry goes away. ★ pk35/d7 — WITH NOTHING PLACED ON THE CAFÉ ' +
+      'ANY MORE, this divergence costs a shopper nothing today; it stays because the reach is still absent and ' +
+      'the operator who drops one of these blocks tomorrow is entitled to know that it will draw nothing.',
   },
   {
     fork: 'storefront-coffee',
