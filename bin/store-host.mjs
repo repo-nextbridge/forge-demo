@@ -136,8 +136,8 @@ if (!api) cannotAsk('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIG
 if (!tenant) cannotAsk('no tenant. Pass --tenant <id> (this box has two: forgeco and forgecafe).');
 if (!token) {
   cannotAsk(
-    'no FORGE_SEED_TOKEN. Each tenant has its own — forgeco → forge-seed-token, forgecafe → ' +
-      'forge-seed-token-forgecafe — and step 3 of the birth files both into `.secrets`.',
+    'no FORGE_SEED_TOKEN. Each tenant has its own — forgeco → forge-operator-token, forgecafe → ' +
+      'forge-operator-token-forgecafe — and step 3 of the birth files both into `.secrets`.',
   );
 }
 

@@ -965,8 +965,8 @@ curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8201'   # {"
 curl -s 'http://localhost:8200/v1/read/admin.by_host?host=localhost:8202'   # {"tenant_id":"forgecafe"}
 ```
 
-⚠️ **Each tenant has its OWN seed credential.** `.secrets` carries `forge-seed-token` (forgeco) and
-`forge-seed-token-forgecafe`; `env-source.sh` exports both. A token pointed at the other tenant is refused —
+⚠️ **Each tenant has its OWN operator credential.** `.secrets` carries `forge-operator-token` (forgeco) and
+`forge-operator-token-forgecafe`; `env-source.sh` exports both. A token pointed at the other tenant is refused —
 and `bin/seed-box.mjs` asks `whoami` first so the refusal names the real cause instead of guessing.
 
 Then:
@@ -1094,7 +1094,7 @@ node bin/seed.mjs --api http://localhost:8200 --tenant forgecafe   # with THAT t
 ⚠️ **TWO TENANTS, TWO RUNS, TWO CREDENTIALS.** This demo is `forgeco` (the shoe brand: `forge` + `outlet`) and
 `forgecafe` (the coffee shop: `cafe` + `balcao`) — a shoe brand and a coffee shop are not one company. Each
 run fills only the stores of its own tenant and says, in a line, which ones it skipped. The box keeps one
-credential per tenant (`forge-seed-token` and `forge-seed-token-forgecafe`); export the right one before each
+credential per tenant (`forge-operator-token` and `forge-operator-token-forgecafe`); export the right one before each
 run.
 
 ⚠️⚠️ **AND THE INTERNAL READ FACE IGNORES `x-forge-tenant`** — it resolves the tenant from the CREDENTIAL,

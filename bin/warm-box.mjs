@@ -267,7 +267,7 @@ if (credentialTenant !== tenant) {
       `continuing would read "${credentialTenant ?? 'another tenant'}"'s stores, find none of the stores ` +
       `seed/box.json declares for "${tenant}", and report that the birth never built them — an innocent ` +
       'tenant accused, which is what this step did until 2026-09-07. Each tenant has its own token: ' +
-      'forgeco → forge-seed-token ($FORGE_SEED_TOKEN), forgecafe → forge-seed-token-forgecafe ' +
+      'forgeco → forge-operator-token ($FORGE_SEED_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
       '($FORGE_SEED_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the unsuffixed ' +
       'one, which is the shell this defect was found in.',
   );

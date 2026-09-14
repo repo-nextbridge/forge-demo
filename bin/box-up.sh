@@ -383,7 +383,7 @@ secret_name_for() { # <tenant> <kind: seed|driver|access>
   # each other by `bin/admin-access-key.test.mjs`.
   local t="$1" kind="$2" base
   case "$kind" in
-    seed)   base=forge-seed-token ;;
+    seed)   base=forge-operator-token ;;
     access) base=forge-admin-access-key ;;
     *)      base=forge-admin-service-token ;;
   esac
@@ -1730,7 +1730,7 @@ dc up -d --force-recreate admin >/dev/null 2>&1 || note '⚠️ the admin did no
 # ── 6 · the terrain, once per tenant ────────────────────────────────────────────────────────────────────────
 say '6 · seed-box (stores + settings, plus apps and freight for a non-dataset tenant, once per tenant)'
 for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-seed-token → FORGE_SEED_TOKEN
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-operator-token → FORGE_SEED_TOKEN
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment — step 3 filed it into .secrets; re-source env-source.sh."
   FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed-box.mjs" --tenant "$t" || die "seed-box failed for $t."

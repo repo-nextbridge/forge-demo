@@ -196,7 +196,7 @@ fi
 #
 # The `Reference Operator` credential that `provision-ref` prints at bootstrap holds every scope the seed
 # needs (`tenant.store.write`, `catalog.product.write`, `catalog.sku.write`, `custom_fields.write`,
-# `media.write`, and more). Capture it here as `forge-seed-token` and nothing else has to be minted.
+# `media.write`, and more). Capture it here as `forge-operator-token` and nothing else has to be minted.
 #
 # ⚠️ AND HERE IS THE PART THAT COST THIS SLICE AN EVENING. I reported that a tenant key could only be minted
 # by a human in the admin, because that credential answered 403 on `/v1/commands/*`. THAT WAS THE WRONG
@@ -207,7 +207,7 @@ fi
 #
 # With the header, this credential drives the whole first day: the seed, `iam.api_key.create` (so a narrower
 # key needs no admin either) and `extension.install`.
-export FORGE_SEED_TOKEN="$(optional_secret forge-seed-token)"
+export FORGE_SEED_TOKEN="$(optional_secret forge-operator-token)"
 
 # ★★ AND THE SECOND TENANT'S (PRE-SEED · P-A). A credential belongs to ONE tenant and the cross-tenant guard
 # refuses it against any other — that refusal is the boundary working, not a misconfiguration. So a box with
@@ -217,7 +217,7 @@ export FORGE_SEED_TOKEN="$(optional_secret forge-seed-token)"
 #   FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe
 #
 # Both are printed once by their own `provision-ref` run and captured into `.secrets`; neither is ever echoed.
-export FORGE_SEED_TOKEN_FORGECAFE="$(optional_secret forge-seed-token-forgecafe)"
+export FORGE_SEED_TOKEN_FORGECAFE="$(optional_secret forge-operator-token-forgecafe)"
 
 # ★★★ THE TWO ADMINS' FRONT DOOR — ONE REDEEMABLE KEY PER TENANT (pk38/d8).
 #

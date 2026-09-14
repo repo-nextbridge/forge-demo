@@ -217,7 +217,7 @@ Nem todo segredo é seu para criar. Estes o `box-up` **minta e arquiva** via `pu
 
 | segredo | quem cria | passo |
 |---|---|---|
-| `forge-seed-token[-<tenant>]` | `provision-ref` | 3 |
+| `forge-operator-token[-<tenant>]` | `provision-ref` | 3 |
 | `forge-admin-service-token[-<tenant>]` | `provision-ref` | 3 |
 | `forge-admin-platform-token` | `admin-platform-token` | 4 |
 | `forge-admin-access-key[-<tenant>]` | `bin/admin-access-key.mjs` (pela porta) | 5b |

@@ -57,7 +57,7 @@ if (!tenant) fail('no tenant. Pass --tenant <id> (this box has two: forgeco and 
 if (!token) {
   fail(
     'no FORGE_SEED_TOKEN. Capture the "Reference Operator" token `provision-ref` prints at bootstrap into\n' +
-      '  `.secrets` as `forge-seed-token` and re-source env-source.sh.\n' +
+      '  `.secrets` as `forge-operator-token` and re-source env-source.sh.\n' +
       '  ⚠️ EACH TENANT HAS ITS OWN. A token minted for one tenant is refused for the other by the\n' +
       '     cross-tenant guard — that refusal is the boundary working, not a misconfiguration.',
   );
@@ -97,8 +97,8 @@ async function call(path, init) {
           'this means the header never arrived'
         : res.status === 403
           ? `\n  ⚠️ The token in FORGE_SEED_TOKEN almost certainly belongs to a DIFFERENT tenant than ` +
-            `"${tenant}".\n     Each tenant has its own: forgeco → forge-seed-token, forgecafe → ` +
-            `forge-seed-token-forgecafe.\n     Run the second one as: FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" ` +
+            `"${tenant}".\n     Each tenant has its own: forgeco → forge-operator-token, forgecafe → ` +
+            `forge-operator-token-forgecafe.\n     Run the second one as: FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" ` +
             `node bin/seed-box.mjs --tenant forgecafe`
           : '';
     fail(`${path} → HTTP ${res.status} ${JSON.stringify(body)}${hint}`);
@@ -384,7 +384,7 @@ async function assertCredentialTenant() {
         '  Nothing has been written. The internal read face resolves the tenant from the CREDENTIAL and\n' +
         '  IGNORES the `x-forge-tenant` header, so without this check the run would have read the other\n' +
         "  tenant's stores, found this tenant's bootstrap store missing, and blamed the bootstrap.\n" +
-        '  Each tenant has its own token: forgeco → forge-seed-token, forgecafe → forge-seed-token-forgecafe.\n' +
+        '  Each tenant has its own token: forgeco → forge-operator-token, forgecafe → forge-operator-token-forgecafe.\n' +
         '    FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe',
     );
   }

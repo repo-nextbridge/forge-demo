@@ -204,7 +204,7 @@ if (credentialTenant !== tenant) {
       'The internal read face resolves the tenant from the CREDENTIAL and IGNORES `x-forge-tenant`, so ' +
       `continuing would open "${credentialTenant ?? 'another tenant'}"'s doors and sign "${tenant}" under ` +
       'them — which is exactly what this step did until 2026-09-07. Each tenant has its own token: ' +
-      'forgeco → forge-seed-token ($FORGE_SEED_TOKEN), forgecafe → forge-seed-token-forgecafe ' +
+      'forgeco → forge-operator-token ($FORGE_SEED_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
       '($FORGE_SEED_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the ' +
       'unsuffixed one, which is the shell this defect was found in.',
   );

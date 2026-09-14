@@ -48,7 +48,7 @@ export const KEY_LABEL = 'gate /enter door (minted at birth)';
  * WHERE ONE TENANT'S KEY IS FILED IN THE SECRET STORE, derived from `seed/box.json`'s declaration order.
  *
  * ⚠️ THE FIRST TENANT'S NAME CARRIES NO SUFFIX, and that is not tidiness: it is the rule every other
- * per-tenant secret on this box already follows (`forge-seed-token` / `forge-seed-token-<tenant>`,
+ * per-tenant secret on this box already follows (`forge-operator-token` / `forge-operator-token-<tenant>`,
  * `bin/box-up.sh::secret_name_for`), so a reader who has learned one has learned all three. The two authors
  * of the rule are pinned to each other by `bin/admin-access-key.test.mjs`.
  */
