@@ -27,7 +27,7 @@ defeito que este arco inteiro passou o mês pagando.
 Hoje a Demo é **uma** caixa: ela pina um release e nasce. A sequência da §2 descreve esse mundo, e **esse
 mundo vai acabar**.
 
-Quando a Demo ganhar o **staging dela** (card no roadmap do Renan, no vault — ainda **não** existe como card
+Quando a Demo ganhar o **staging dela** (card no roadmap do dono do produto, no vault — ainda **não** existe como card
 no `docs/roadmap/kanban.md` do produto), a sequência ganha **um degrau novo entre o passo 3 e o passo 5**: o
 release desce primeiro para o **staging da Demo**, é conferido lá, e só então desce para a caixa que o
 cliente vê. O passo 4 (assar o que é da Demo) passa a acontecer duas vezes, ou uma vez e ser promovido — é
@@ -50,7 +50,7 @@ Nenhuma linha de kernel. `README.md` abre com essa tabela e ela continua valendo
 
 ## 2. A ORDEM DO DEPLOY
 
-Ditada pelo Renan em 04/09 e conferida contra `docs/conventions/deploy-lifecycle.md` (produto).
+Ditada pelo dono do produto e conferida contra `docs/conventions/deploy-lifecycle.md` (produto).
 
 | # | o quê | onde | portão |
 |---|---|---|---|
@@ -67,7 +67,7 @@ Ditada pelo Renan em 04/09 e conferida contra `docs/conventions/deploy-lifecycle
 ### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
 
 Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas na estação
-de trabalho do Renan a partir de uma **branch**. `bin/build-local.sh:22` carrega a obrigação por escrito:
+de trabalho do dono do produto a partir de uma **branch**. `bin/build-local.sh:22` carrega a obrigação por escrito:
 
 > *"THE FIRST REAL DEPLOY **RE-STAMPS IT** with registry digests. That is not a reminder, it is **part of
 > that deploy's definition of done**"*
@@ -376,7 +376,7 @@ Medido em 03/09, antes disso: o diretório tinha reivindicação para `<tailnet>
 `unknown_admin_host`. **Ler nunca é configurar**: o script jamais roda `tailscale up` ou `serve`; entrar na
 rede continua sendo gesto do operador.
 
-**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — decisão do Renan em 05/09:** *"D1 - Pode ser
+**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — por decisão do dono do produto:** *"D1 - Pode ser
 só relatório"*. Ele **não** faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo
 nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
 do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
@@ -407,7 +407,7 @@ páginas declarariam). Então o teto que sobrevive **folga uma ordem de grandeza
 ★ E `stoppedBecause` tem **quatro** leituras, não três: **ausente** é *"esta corrida não pode dizer"* — nunca
 `finished`. É a mesma régua que a coluna `busy` já obedece.
 
-**★★ A derivação da pk21 (história, e ainda viva na exceção acima) — decisão do Renan em 07/09:** *"deriva do
+**★★ A derivação da pk21 (história, e ainda viva na exceção acima) — por decisão do dono do produto:** *"deriva do
 plano"*. A prosa antiga dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a
 rota para ver: `/api/warm?max_duration_ms=` sobrescrevia o default (`apps/storefront/src/app/api/warm/route.ts`,
 no bloco `parse`). O que
@@ -458,7 +458,7 @@ tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSIT
 aquecimento, é *"o nascimento não construiu"* — e o passo 14 é o **único** que enxerga: o 12 e o 14-bis
 percorrem as lojas que a **porta reporta**, então uma loja que nunca nasceu é uma loja sobre a qual nenhum
 dos dois pergunta.
-⇒ **Veredicto anterior do Renan sobre a LENTIDÃO (outro assunto):** *"nascer caixa ou aquecer será feito de
+⇒ **Veredicto anterior do dono do produto sobre a LENTIDÃO (outro assunto):** *"nascer caixa ou aquecer será feito de
 madrugada. Então nada a corrigir"*. ⛔ Não abra fatia para isso.
 ⚠️ E enquanto o passo 14 roda, a caixa **cobra o preço**: 41% de CPU na vitrine servindo o próprio
 aquecedor, e páginas a ~1,9 s pela rede (contra ~90 ms com a caixa parada). **Antes de acusar código de
