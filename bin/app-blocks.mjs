@@ -67,10 +67,26 @@ export const STOREFRONT = 'storefront:';
 // machine, and `bin/app-blocks.guard.mjs` needs something it can grade against the release when a clone is
 // within reach. Same division of labour, one more list.
 //
-// ★★ AND THE ORDER IS PART OF THE CLAIM, WHICH IS NOT AN ASSUMPTION — it is written in the manifest this is
-// graded against (`extensions/admin-dashboard/manifest.ts`, AJ4): *"THIS ARRAY'S ORDER IS THE HOME'S ORDER"*.
-// `seedDefaultPlacements` walks the hooks in array order giving each `position = max(position) + 1`, so the
-// declaration IS the sequence a fresh install opens on. A set comparison would go green on a board shuffled
+// ★★★ AND IT IS GRADED AGAINST TWO DECLARATIONS, NOT ONE (pk36/D2, 2026-09-14) — because there are two, and
+// the guard used to know only the older of them:
+//
+//   the MANIFEST (`extensions/admin-dashboard/manifest.ts`) is the PRODUCT's default — what a board opens on
+//   when nobody said anything;
+//   `<forge.lock → dataset.source>/storefront.json` → `admin_widgets` is the INSTANCE's arrangement, applied
+//   AT BIRTH by `seed/widgets.mjs` through `composition.reorder`, and it is the list THIS list is a copy of —
+//   `bin/verify-seed.test.mjs` stages it as the mounted dataset;
+//   and Compose is the MERCHANT's last word, which ⛔ neither of the two ever rewrites.
+//
+// Until pk36/D2 the guard compared only against the manifest. The two are byte-identical at the pinned
+// commit, so it passed BY COINCIDENCE: a reorder of the dataset alone would have left this list asserting the
+// manifest's order, GREEN, about every board born from that dataset. The guard now grades against the DATASET
+// when the dataset declares and against the MANIFESTS when it does not — and it prints which one answered.
+//
+// ★★ AND THE ORDER IS PART OF THE CLAIM, WHICH IS NOT AN ASSUMPTION — both declarations say so. The manifest
+// says it in prose (`extensions/admin-dashboard/manifest.ts`, AJ4): *"THIS ARRAY'S ORDER IS THE HOME'S
+// ORDER"*, because `seedDefaultPlacements` walks the hooks in array order giving each
+// `position = max(position) + 1`. The dataset says it by construction: `composition.reorder` writes
+// `position` in the order it is handed the placements. A set comparison would go green on a board shuffled
 // upstream, which is the one thing the pk30/§11 section of the verifier is about.
 
 /** The slot the admin home's mosaic fills. An `admin:` target — never a shopper's. ⛔ RE-EXPORTED, not

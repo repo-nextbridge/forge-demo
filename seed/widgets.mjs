@@ -59,9 +59,39 @@ export const ADMIN_WIDGETS_SLOT = 'admin:admin.home.widgets';
 /** The dataset key that carries the decision. Named once, read once. */
 export const ADMIN_WIDGETS_KEY = 'admin_widgets';
 
+/** The dataset file that carries it. ⛔ NAMED HERE AND NOWHERE ELSE: `bin/release-dataset.mjs` reads the same
+ *  file out of the RELEASE at the pinned commit, and a second spelling of the name would let one of the two
+ *  readers go on grading a file the other had stopped writing. */
+export const STOREFRONT_DECL_FILE = 'storefront.json';
+
 /**
- * ★ WHAT THE MOUNTED DATASET DECLARES — and the three answers are kept APART, because collapsing the first
- * two is how a guard goes green over nothing:
+ * ★ WHAT A PARSED `storefront.json` DECLARES — the shape half, with no filesystem under it.
+ *
+ * ⛔ IT IS A FUNCTION AND NOT FOUR LINES INSIDE THE READER BELOW because there are now TWO readers of this one
+ * key: the seeder's (the dataset this box MOUNTS, from disk) and the guard's (the dataset the RELEASE carries,
+ * from a git blob at the pinned commit — `bin/release-dataset.mjs`). Two copies of "what counts as a
+ * declaration" is exactly the drift that let a fixture and a dataset disagree in silence.
+ *
+ * The three answers are kept APART, because collapsing the first two is how a guard goes green over nothing:
+ *
+ *   `{ declared: null, why: … }`  it is THERE and it is not a declaration — malformed, never read as empty.
+ *   `{ declared: [], from }`      it was read and it declares NO order. The board keeps its install sequence.
+ *   `{ declared: [names…], from }` the decision, in the order it is to appear.
+ *
+ * @param parsed {unknown} the parsed contents of a `storefront.json`
+ * @param where {string} how to name that file in a sentence a human has to act on
+ */
+export function adminWidgetsIn(parsed, where) {
+  const raw = parsed?.[ADMIN_WIDGETS_KEY];
+  if (raw === undefined || raw === null) return { declared: [], from: where };
+  if (!Array.isArray(raw) || raw.some((name) => typeof name !== 'string' || name.trim() === '')) {
+    return { declared: null, why: `${where} → ${ADMIN_WIDGETS_KEY} is not a list of names` };
+  }
+  return { declared: raw.map((name) => name.trim()), from: where };
+}
+
+/**
+ * ★ WHAT THE MOUNTED DATASET DECLARES — `adminWidgetsIn` above, with the door in front of it.
  *
  *   `{ declared: null, why: … }`  I COULD NOT LOOK — no dataset is mounted, or it holds no `storefront.json`.
  *   `{ declared: [] }`            it was read and it declares NO order. The board keeps its install sequence.
@@ -72,7 +102,7 @@ export const ADMIN_WIDGETS_KEY = 'admin_widgets';
 export function declaredAdminWidgets(env = process.env) {
   const dir = datasetDir(env);
   if (!dir) return { declared: null, why: `no ${DATASET_DIR_ENV} — this box mounts no example dataset` };
-  const path = join(dir, 'storefront.json');
+  const path = join(dir, STOREFRONT_DECL_FILE);
   if (!existsSync(path)) return { declared: null, why: `${path} does not exist` };
   let parsed;
   try {
@@ -80,12 +110,7 @@ export function declaredAdminWidgets(env = process.env) {
   } catch (error) {
     return { declared: null, why: `${path} could not be parsed: ${error.message}` };
   }
-  const raw = parsed?.[ADMIN_WIDGETS_KEY];
-  if (raw === undefined || raw === null) return { declared: [], from: path };
-  if (!Array.isArray(raw) || raw.some((name) => typeof name !== 'string' || name.trim() === '')) {
-    return { declared: null, why: `${path} → ${ADMIN_WIDGETS_KEY} is not a list of names` };
-  }
-  return { declared: raw.map((name) => name.trim()), from: path };
+  return adminWidgetsIn(parsed, path);
 }
 
 /** The key a declaration spells a widget with: `<app>/<component>`. */
