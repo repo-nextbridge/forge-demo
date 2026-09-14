@@ -4,14 +4,17 @@
 // here). The brand ("forge.demo"), "Storefront", "Checkout", "Admin", "Totem", "Kernel" and the surface names
 // (API/CLI/MCP/SDK/Docs) stay verbatim across all three.
 //
-// ★ THE SELECTOR IS THE GATE'S LANGUAGE, NOT THE SHOPS'. The owner, 10/09: *"esse seletor é do idioma do DEMO
-// GATE e não dos sites… pode entrar um gringo para ver e ele vai cair em uma loja em pt, tudo bem, mas a
-// explicação no demo gate tem 3 idiomas."* The reference storefront is PT-BR and stays PT-BR; what gets three
-// languages is the EXPLANATION — which is why the architecture screen below is here and not a second mechanism.
+// ★ THE SELECTOR IS THE GATE'S LANGUAGE, NOT THE SHOPS'. The reference storefront is PT-BR and stays PT-BR; a
+// visitor from anywhere lands in a Portuguese shop and that is correct. What gets three languages is the
+// EXPLANATION — which is why the architecture screen below is here and not a second mechanism.
 
 export type Lang = 'pt' | 'en' | 'es';
 
 export const LANGS: readonly Lang[] = ['pt', 'en', 'es'] as const;
+
+/** The BCP-47 tag each gate language formats numbers in. The hub prints counts it read off the port, and a
+ *  thousands separator is the reader's, not the screen's: `2.777` in pt-BR and es, `2,777` in en. */
+export const LOCALES: Record<Lang, string> = { pt: 'pt-BR', en: 'en', es: 'es' };
 
 /** The chosen-language cookie. The gate splash writes it when the visitor picks a language in the footer
  * selector; the storefront layout reads it so the choice PERSISTS across the gate, the "demo store" ribbon, and
@@ -22,10 +25,14 @@ export type GateStrings = {
   /* ★ pk35/d1 — THE PER-CARD COPY LEFT THIS TYPE WITH THE CARDS. `storefrontDesc`/`storefrontCta`/
    * `adminDesc`/`adminCta` described the two-card screen that PRECEDED the hub; the hub writes one blurb and
    * one button per DECLARED face, keyed by the box's own keys, and those live in `HUB` at the foot of this
-   * file. What stays here is the chrome the hub sits inside. */
-  eyebrow: string;
-  title: string;
-  intro: string;
+   * file.
+   *
+   * ★★★ pk38/d7 — AND `eyebrow`/`title`/`intro` LEFT WITH THE SCREEN THEY BELONGED TO. They were the framed
+   * hero — a small uppercase line, a large "Loja demo." and a paragraph of prose — that the 10/09 layout
+   * REPLACES with the hub. The port that brought the hub in mounted it UNDER that hero instead of in its
+   * place, so the first screen said the same thing twice and neither in the design's shape. What the visitor
+   * is told now is the count of what this box publishes (`HUB.counts`) plus the notice at the foot; what
+   * stays in this type is the chrome around the hub that the design does keep. */
   back: string;
   /** The persistent bottom ribbon shown while browsing the store (gate dismissed). Clicking it re-opens the gate. */
   ribbon: string;
@@ -33,26 +40,14 @@ export type GateStrings = {
 
 export const STRINGS: Record<Lang, GateStrings> = {
   pt: {
-    eyebrow: 'Ambiente de demonstração',
-    title: 'Loja demo.',
-    intro:
-      'Tudo aqui é fictício: produtos, preços, pedidos e clientes. Nada é cobrado, nada é enviado. Clique em tudo, quebre o que quiser, é para isso que ela existe. E de tempos em tempos, tudo volta ao lugar.',
     back: '← voltar para forgecommerce.pro',
     ribbon: 'Loja demo: tudo fictício, nada será cobrado ou entregue.',
   },
   en: {
-    eyebrow: 'Demo environment',
-    title: 'Demo store.',
-    intro:
-      'Everything here is fictional: products, prices, orders and customers. Nothing is charged, nothing is shipped. Click everything, break whatever you want. That is what it is for. And from time to time, everything is reset.',
     back: '← back to forgecommerce.pro',
     ribbon: 'Demo store: everything is fictional, nothing will be charged or shipped.',
   },
   es: {
-    eyebrow: 'Entorno de demostración',
-    title: 'Tienda demo.',
-    intro:
-      'Todo aquí es ficticio: productos, precios, pedidos y clientes. No se cobra nada, no se envía nada. Haz clic en todo, rompe lo que quieras, para eso existe. Y de vez en cuando, todo vuelve a su lugar.',
     back: '← volver a forgecommerce.pro',
     ribbon: 'Tienda demo: todo es ficticio, no se cobrará ni se enviará nada.',
   },
@@ -195,13 +190,14 @@ export const ARCH: Record<Lang, ArchStrings> = {
 
 /* ── THE HUB: the copy of the six destinations ───────────────────────────────────────────────────────────
  *
- * The owner's 10/09 layout: two tenant cards, each with its shops and, at its foot, the row that opens that
- * tenant's admin. Same mechanism as everything above — embedded copy, three languages, one selector.
+ * The 10/09 layout (`block/design-base/gate.dc.html`): two tenant cards, each with its shops and, at its
+ * foot, the row that opens that tenant's admin. Same mechanism as everything above — embedded copy, three languages, one selector.
  *
  * ⚠️ WHAT IS *NOT* HERE, AND THE RULE IS THE ONE `ARCH` ALREADY LIVES BY. No ADDRESS and no COUNT is written
  * in this file. Which faces exist, which tenant each belongs to and what hostname each is published at come
  * from `seed/box.json` through `faces.generated.ts`; the numbers in `counts` are handed in by the screen,
- * which derives them from that list. A translator editing this file cannot invent a shop, and a fifth shop
+ * which derives them from that list, and the per-shop size in `blurb` is handed in by `block/counts.ts`,
+ * which asks the port. A translator editing this file cannot invent a shop, and a fifth shop
  * declared in the box makes `block/hub.test.tsx` red instead of making this screen quietly short.
  *
  * ⚠️ AND THE KEYS ARE THE BOX'S KEYS. `tenants` is keyed by tenant id and `faces` by `<tenant>/<handle>` —
@@ -231,22 +227,48 @@ export type HubTenantStrings = {
 export type HubFaceStrings = {
   /** The tag beside the wordmark ("Referência", "Totem"). */
   badge: string;
-  blurb: string;
+  /**
+   * ★★★ THE SENTENCE UNDER THE WORDMARK, AND IT TAKES A NUMBER THE SCREEN READ OFF THE PORT. The design
+   * writes the shop's size into this line ("Uma loja completa com 2 777 produtos."), and a size typed into a
+   * screen is a claim that goes stale the first time anybody seeds the box. `block/counts.ts` asks the public
+   * read face how many products each shop publishes and hands the answer in here.
+   *
+   * ⛔ `null` IS NOT ZERO AND MUST NOT READ LIKE IT. It means the question could not be answered right now —
+   * the face is not claimed at this address yet, the port refused, the request timed out. The sentence for
+   * that case is a COMPLETE sentence with no number in it, never "0 produtos" and never the number this
+   * screen was told last time.
+   */
+  blurb: (products: number | null) => string;
   /** The button ("Abrir a loja", "Abrir o totem"). */
   cta: string;
 };
 
 export type HubStrings = {
-  /** The line under the intro, from numbers the screen DERIVES — never typed here. */
-  counts: (tenants: number, shops: number, admins: number) => string;
+  /**
+   * The headline of the screen, from numbers it DERIVES off the declaration — never typed here.
+   *
+   * ★ THREE CLAUSES, ONE PER LINE, and that is the return type rather than a rendering detail. The design's
+   * headline is three lines because its sentence is long enough to break at 14 characters — and it is long
+   * because its numbers are spelled out. These are numerals, so the same measure broke the same sentence
+   * mid-clause instead. Declaring the clauses keeps the shape whatever the box declares and whichever of the
+   * three languages is on.
+   */
+  counts: (tenants: number, shops: number, admins: number) => readonly [string, string, string];
   /** [before, the emphasised word, after] — the emphasised word is "kernel", in all three languages. */
   lede: readonly [string, string, string];
   /** The row at the foot of a tenant card. */
   adminRow: string;
-  /** ⚠️ THE DOOR SHOWN WHEN THE HOST MATCHES NONE OF THE DECLARED FACES — a bench, a tailnet, a preview.
-   *  It must NOT claim the visitor is on one of the six (they are not): it says what the button DOES, which
-   *  is the one thing that is true in every case where it is drawn. */
-  here: string;
+  /**
+   * ⚠️ THE FOOT LINE SHOWN WHEN THE HOST MATCHES NONE OF THE DECLARED FACES — a bench, a tailnet, a preview.
+   *
+   * ⛔ IT IS NOT A SEVENTH CHOICE. The cards ARE the choice, and on a published face the card the visitor is
+   * standing on is already the way in — which is why the old "carry on in this window" button is gone. What
+   * is left is the CONDITION said out loud: this window is on an address the box does not publish, so none of
+   * the cards above is "here". `hereCta` is the door beside that sentence, and it must not claim the visitor
+   * is on one of the six.
+   */
+  hereNote: string;
+  hereCta: string;
   /** Said on a destination `seed/box.json` declares no address for. Never silence. */
   noAddress: string;
   /** The notice at the foot of the screen. */
@@ -255,17 +277,24 @@ export type HubStrings = {
   faces: Record<string, HubFaceStrings>;
 };
 
+/** A count as the gate's current language writes it. One place, so three copies cannot drift. */
+const count = (lang: Lang, n: number): string => new Intl.NumberFormat(LOCALES[lang]).format(n);
+
 export const HUB: Record<Lang, HubStrings> = {
   pt: {
-    counts: (tenants, shops, admins) =>
-      `${tenants} tenants. ${shops} lojas. ${admins} admins.`,
+    counts: (tenants, shops, admins) => [
+      `${tenants} tenants.`,
+      `${shops} lojas.`,
+      `${admins} admins.`,
+    ],
     lede: [
       'Cada tenant é uma conta isolada: banco, catálogo, pedidos e login próprios. Mas o mesmo ',
       'kernel',
       '.',
     ],
     adminRow: 'Admin do tenant',
-    here: 'Continuar nesta janela',
+    hereNote: 'Esta janela está num endereço que esta demo não publica:',
+    hereCta: 'entrar assim mesmo',
     noAddress: 'sem endereço publicado',
     notice:
       'Tudo fictício: nada é cobrado, nada é enviado. Pode quebrar: o ambiente volta ao lugar de tempos em tempos.',
@@ -286,36 +315,46 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Referência',
-        blurb: 'Uma loja completa, na vitrine que ninguém forkou.',
+        blurb: (n) =>
+          n === null
+            ? 'Uma loja completa, na vitrine que ninguém forkou.'
+            : `Uma loja completa com ${count('pt', n)} produtos.`,
         cta: 'Abrir a loja',
       },
       'forgeco/outlet': {
         badge: 'Segunda loja',
-        blurb: 'Multi-loja: o mesmo catálogo, tema e preços próprios.',
+        blurb: (n) =>
+          n === null
+            ? 'Multi-loja: o mesmo catálogo, tema e preços próprios.'
+            : `Multi-loja: ${count('pt', n)} produtos do mesmo catálogo, tema e preços próprios.`,
         cta: 'Abrir o outlet',
       },
       'forgecafe/cafe': {
         badge: 'Storefront forkado',
-        blurb: 'Outro storefront mas o mesmo checkout, repositório e imagem próprios.',
+        blurb: () => 'Outro storefront mas o mesmo checkout, repositório e imagem próprios.',
         cta: 'Abrir a loja',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: 'Totem de balcão: aplicação exclusiva própria falando direto com a porta.',
+        blurb: () => 'Totem de balcão: aplicação exclusiva própria falando direto com a porta.',
         cta: 'Abrir o totem',
       },
     },
   },
   en: {
-    counts: (tenants, shops, admins) =>
-      `${tenants} tenants. ${shops} shops. ${admins} admins.`,
+    counts: (tenants, shops, admins) => [
+      `${tenants} tenants.`,
+      `${shops} shops.`,
+      `${admins} admins.`,
+    ],
     lede: [
       'Each tenant is an isolated account: its own database, catalogue, orders and sign-in. But the same ',
       'kernel',
       '.',
     ],
     adminRow: "The tenant's admin",
-    here: 'Carry on in this window',
+    hereNote: 'This window is on an address this demo does not publish:',
+    hereCta: 'go in anyway',
     noAddress: 'no published address',
     notice:
       'All fictional: nothing is charged, nothing is shipped. Feel free to break it: the environment is reset from time to time.',
@@ -336,36 +375,47 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Reference',
-        blurb: 'A complete shop, on the storefront nobody forked.',
+        blurb: (n) =>
+          n === null
+            ? 'A complete shop, on the storefront nobody forked.'
+            : `A complete shop with ${count('en', n)} products.`,
         cta: 'Open the store',
       },
       'forgeco/outlet': {
         badge: 'Second shop',
-        blurb: 'Multi-store: the same catalogue, its own theme and its own prices.',
+        blurb: (n) =>
+          n === null
+            ? 'Multi-store: the same catalogue, its own theme and its own prices.'
+            : `Multi-store: ${count('en', n)} products of the same catalogue, its own theme and its own prices.`,
         cta: 'Open the outlet',
       },
       'forgecafe/cafe': {
         badge: 'Forked storefront',
-        blurb: 'Another storefront but the same checkout, with a repository and an image of its own.',
+        blurb: () =>
+          'Another storefront but the same checkout, with a repository and an image of its own.',
         cta: 'Open the shop',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: 'The counter totem: an application of its own, talking straight to the port.',
+        blurb: () => 'The counter totem: an application of its own, talking straight to the port.',
         cta: 'Open the totem',
       },
     },
   },
   es: {
-    counts: (tenants, shops, admins) =>
-      `${tenants} tenants. ${shops} tiendas. ${admins} admins.`,
+    counts: (tenants, shops, admins) => [
+      `${tenants} tenants.`,
+      `${shops} tiendas.`,
+      `${admins} admins.`,
+    ],
     lede: [
       'Cada tenant es una cuenta aislada: base de datos, catálogo, pedidos y acceso propios. Pero el mismo ',
       'kernel',
       '.',
     ],
     adminRow: 'Admin del tenant',
-    here: 'Continuar en esta ventana',
+    hereNote: 'Esta ventana está en una dirección que esta demo no publica:',
+    hereCta: 'entrar de todos modos',
     noAddress: 'sin dirección publicada',
     notice:
       'Todo es ficticio: no se cobra nada, no se envía nada. Puedes romperlo: el entorno vuelve a su lugar de vez en cuando.',
@@ -386,22 +436,28 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Referencia',
-        blurb: 'Una tienda completa, en la vitrina que nadie forkeó.',
+        blurb: (n) =>
+          n === null
+            ? 'Una tienda completa, en la vitrina que nadie forkeó.'
+            : `Una tienda completa con ${count('es', n)} productos.`,
         cta: 'Abrir la tienda',
       },
       'forgeco/outlet': {
         badge: 'Segunda tienda',
-        blurb: 'Multi-tienda: el mismo catálogo, tema y precios propios.',
+        blurb: (n) =>
+          n === null
+            ? 'Multi-tienda: el mismo catálogo, tema y precios propios.'
+            : `Multi-tienda: ${count('es', n)} productos del mismo catálogo, tema y precios propios.`,
         cta: 'Abrir el outlet',
       },
       'forgecafe/cafe': {
         badge: 'Storefront forkeado',
-        blurb: 'Otro storefront pero el mismo checkout, repositorio e imagen propios.',
+        blurb: () => 'Otro storefront pero el mismo checkout, repositorio e imagen propios.',
         cta: 'Abrir la tienda',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: 'Totem de mostrador: una aplicación propia hablando directo con la puerta.',
+        blurb: () => 'Totem de mostrador: una aplicación propia hablando directo con la puerta.',
         cta: 'Abrir el totem',
       },
     },

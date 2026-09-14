@@ -1,23 +1,37 @@
 'use client';
 
-// The demo-gate block — the full-screen "Demo store" interstitial, and the switch into the SECOND screen
+// The demo-gate block — the full-screen demo interstitial, and the switch into the SECOND screen
 // (`./arch`, "A arquitetura da demo"). A client component so the footer PT/EN/ES selector switches live, so
 // `?lang=` on the URL can win over the server's Accept-Language guess, and so the two screens can trade places
-// without a navigation (`view` below). Responsive is pure CSS (@media 760px).
+// without a navigation (`view` below). Responsive is pure CSS, with no breakpoint of the page's own.
 //
-// ★★★ pk35/d1 — THE FIRST SCREEN IS NOW THE OWNER'S 10/09 LAYOUT: a HUB over every face this box publishes
-// (`./hub`). The destinations are not written anywhere near here — `seed/box.json` declares them and
-// `bin/gate-faces.mjs` renders that declaration into `../faces.generated.ts`. The two paths a visitor has are
-// the hub's:
+// ★★★ THE FIRST SCREEN IS THE 10/09 LAYOUT (`design-base/gate.dc.html`) AND NOTHING ELSE. It is a HUB over
+// every face this box publishes (`./hub`), and this file is the page it sits on: the ground, the `forge.demo`
+// wordmark, the headline, the lede beside it, the notice and the language selector at the foot, the way back,
+// and the switch into the architecture screen.
+//
+// ⛔ pk38/d7 — WHAT THIS SCREEN NO LONGER DRAWS, because "replaces" had been read as "as well as". A framed
+// hero stood above the hub — an eyebrow, `<h1>Loja demo.</h1>` and a paragraph — so the first screen said the
+// same thing twice and the page wore two nested borders. All of it is gone, and with it:
+//   · the SECOND FRAME. One border on this screen, and it belongs to the tenant card.
+//   · the "carry on in this window" BUTTON. This window only exists while there is no dismissal cookie, so
+//     the six cards ARE the choice and "carry on here" names nothing. What is left of that door is a foot
+//     line drawn only on a host the box does not declare (`./hub`).
+// The headline that took the hero's place is not prose: it is the COUNT of what the box publishes, derived
+// from the declaration (`hubTally`), and each shop's own sentence carries a number read off the port.
+//
+// The destinations are not written anywhere near here — `seed/box.json` declares them and `bin/gate-faces.mjs`
+// renders that declaration into `../faces.generated.ts`. The two paths a visitor has are the hub's:
 //   · the destination the visitor is ALREADY on → a <form> posting the `dismiss` Server Action (sets the
 //     dismissal cookie); the SAME route then renders the real store, deep link preserved (the gate covers the
 //     route, it never redirects to home). When no declared face matches the host — a bench, a tailnet — that
-//     door moves to a row at the foot of the hub, which names the host it is talking about.
+//     door moves to a line at the foot of the hub, which names the host it is talking about.
 //   · every other destination → a top-level link to that face's own origin; an admin row goes to its `/enter`
 //     route, which redeems the operator access key server-side and lands signed in (the key never touches the
 //     browser; SameSite=Lax allows the nav).
-// The frame, text, buttons and footer are the CSS module. The H1 uses the theme's own font (Urbanist) — the
-// design's own display face is dropped (no bundled or fetched font).
+// The page and the cards are the two CSS modules. Text rides the theme's own stack (Urbanist, self-hosted by
+// the storefront); the one face this app ships is the serif the design gives the coffee brand's card, which
+// travels with the app rather than being fetched from a CDN — see `./hub.module.css` and the font guard.
 //
 // ⚠️ WHAT THIS PORT DID *NOT* BRING, AND THE REASON IS A REPOSITORY BOUNDARY. The head of this file used to
 // say the hub "needs a decision nobody in this repository can take alone", because `dismissGate()` set a
@@ -30,19 +44,20 @@
 // gate again on the next face that has one.
 //
 // ⇒ MEASURED, NOT ESTIMATED (bench `forge-preseed`, 2026-09-13): of the six, the two admins have no gate by
-// decision (pk33: «não precisa de portaria no admin»), the café declared `gate: false`, and the outlet and the
+// decision (pk33: an admin needs no front door), the café declared `gate: false`, and the outlet and the
 // counter DO show one. So it was two second gates, not five. ⚠️ THAT COUNT MOVED TO **THREE** IN pk36/d1 and
 // the sentence is corrected rather than left standing: the café's exception is gone — its fork regenerates a
-// gate registry of its own now — so four of the six faces carry a gate and only the two admins do not. The
-// owner's 13/09 decision — «não tem problema o cookie valer para todas» ⇒ a `.forgecommerce.pro` cookie, and a
-// ribbon that reopens all six — is a change to the KIT and belongs to the product; this repository names it
-// rather than remedying it from here, and the change above makes it worth one more face.
+// gate registry of its own now — so four of the six faces carry a gate and only the two admins do not. A
+// cookie scoped to the whole `.forgecommerce.pro` zone — decided on 13/09, one dismissal for all six faces,
+// with a ribbon that reopens any of them — is a change to the KIT and belongs to the product; this
+// repository names it rather than remedying it from here, and the change above makes it worth one more face.
 
 import { useEffect, useState } from 'react';
-import { ARCH, GATE_LANG_COOKIE, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
+import type { ShopCounts } from '../counts';
+import { ARCH, GATE_LANG_COOKIE, HUB, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import { ArchScreen, ArchSwitch } from './arch';
 import styles from './gate.module.css';
-import { GateHub } from './hub';
+import { GateHub, hubTally } from './hub';
 import { GATE_MARK } from './marks';
 
 export type GateBlockProps = {
@@ -53,6 +68,9 @@ export type GateBlockProps = {
   adminUrl?: string;
   /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
   here?: string;
+  /** How big each shop is, read off the port by `../counts` on the server. Absent ⇒ no numbers, and the copy
+   *  has a complete sentence for that. */
+  counts?: ShopCounts;
   /** The server's Accept-Language guess (PT default). `?lang=` on the URL overrides it on mount. */
   initialLang: Lang;
   /** A Server Action that sets the dismissal cookie; the way IN, on this origin. */
@@ -62,7 +80,14 @@ export type GateBlockProps = {
 /** Which of the gate's two screens is on. One at a time: the other is unmounted, so each fades itself in. */
 type View = 'gate' | 'arch';
 
-export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: GateBlockProps) {
+export function GateBlock({
+  siteUrl,
+  adminUrl,
+  here,
+  counts,
+  initialLang,
+  dismiss,
+}: GateBlockProps) {
   const [lang, setLang] = useState<Lang>(initialLang);
   const [view, setView] = useState<View>('gate');
 
@@ -92,6 +117,8 @@ export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: Gat
   }, [lang]);
 
   const t = STRINGS[lang];
+  const hub = HUB[lang];
+  const tally = hubTally();
 
   // The second screen REPLACES the first rather than sitting under it: the switch is a move between two
   // full-height pages, and the language the visitor chose travels with them.
@@ -102,31 +129,36 @@ export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: Gat
     // side of the wire has for "the visitor met the gate" (the class names are build hashes). See `./marks`.
     <div className={styles.backdrop} data-testid={GATE_MARK}>
       <div className={styles.shell}>
-        <div className={styles.frame}>
-          <div className={styles.header}>
+        <div className={styles.masthead}>
+          <div>
             <div className={styles.brand}>
               <span className={styles.brandName}>
                 forge<span className={styles.brandDot}>.</span>
               </span>
               <span className={styles.brandDemo}>demo</span>
             </div>
-            <div className={styles.eyebrow}>
-              <span className={styles.eyebrowDot}>.</span>
-              {t.eyebrow}
-            </div>
-            <h1 className={styles.title}>{t.title}</h1>
-            <p className={styles.intro}>{t.intro}</p>
+            {/* ★ THE HEADLINE IS A COUNT OF THIS BOX, not a sentence somebody wrote: two tenants, four shops,
+                two admins is what `seed/box.json` declares, and a fifth store rewrites this line by itself.
+                One clause per LINE, declared rather than left to a character measure — see `.title`. */}
+            <h1 className={styles.title}>
+              {hub.counts(tally.tenants, tally.shops, tally.admins).map((clause) => (
+                <span key={clause} className={styles.titleLine}>
+                  {clause}
+                </span>
+              ))}
+            </h1>
           </div>
-
-          <div className={styles.body}>
-            <GateHub lang={lang} here={here} adminUrl={adminUrl} dismiss={dismiss} />
-          </div>
+          <p className={styles.lede}>
+            {hub.lede[0]}
+            <strong className={styles.ledeWord}>{hub.lede[1]}</strong>
+            {hub.lede[2]}
+          </p>
         </div>
 
-        <div className={styles.footer}>
-          <a className={styles.backLink} href={siteUrl}>
-            {t.back}
-          </a>
+        <GateHub lang={lang} here={here} adminUrl={adminUrl} counts={counts} dismiss={dismiss} />
+
+        <div className={styles.foot}>
+          <p className={styles.notice}>{hub.notice}</p>
           <div className={styles.langWrap}>
             <svg
               width="12"
@@ -154,6 +186,12 @@ export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: Gat
               </button>
             ))}
           </div>
+        </div>
+
+        <div className={styles.backRow}>
+          <a className={styles.backLink} href={siteUrl}>
+            {t.back}
+          </a>
         </div>
 
         <ArchSwitch label={ARCH[lang].open} direction="open" onClick={() => show('arch')} />

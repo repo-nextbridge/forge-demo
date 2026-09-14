@@ -16,6 +16,7 @@
 // them (`GateBlock`, `GateRibbon`) is a client component, and gets its values as props already resolved.
 
 import { cookies, headers } from 'next/headers';
+import { readShopCounts } from '../counts';
 import { GATE_LANG_COOKIE, type Lang, resolveLang } from '../i18n';
 import { gateWiring } from '../wiring';
 import { GateBlock } from './gate';
@@ -39,8 +40,8 @@ async function initialLang(): Promise<Lang> {
  *
  * ⚠️ `x-forwarded-host` FIRST, AND THAT ORDER IS A MEASUREMENT, NOT A PREFERENCE. Behind the edge, `host` is
  * whatever reached this container; after a Server Action's `redirect()` it has been observed to be the
- * SERVER'S OWN address rather than the browser's (pack 03/09, p6-1: «todo formulário cai no Dashboard» was
- * exactly this), and the true one is in `x-forwarded-host`. Undefined when neither is there — the hub then
+ * SERVER'S OWN address rather than the browser's (pk6/p6-1: every submitted form landed on the Dashboard,
+ * and this was why), and the true one is in `x-forwarded-host`. Undefined when neither is there — the hub then
  * matches no face and shows its own door, which is the honest answer rather than a guessed one.
  */
 async function requestHost(): Promise<string | undefined> {
@@ -49,15 +50,29 @@ async function requestHost(): Promise<string | undefined> {
   return forwarded || h.get('host') || undefined;
 }
 
-/** The full-screen interstitial. `store` is deliberately unused: this gate is the demo's, and the demo is one
- * store's worth of stores — the copy says "Forge Demo", not the name of whichever store was asked for. */
-export async function GateInterstitial({ dismiss }: { store: string; dismiss: () => Promise<void> }) {
+/**
+ * The full-screen interstitial.
+ *
+ * ★ `store` IS NOT COPY AND NEVER WAS — the screen names the demo, not whichever store was asked for. What it
+ * is, since pk38/d7, is the one store id this process holds for FREE: the shop sizes on the cards are read off
+ * the port by face, and the face the visitor is standing on can skip the directory hop with this. It is also
+ * the only face that can answer at all on a box not yet promoted to its published hostnames.
+ */
+export async function GateInterstitial({
+  store,
+  dismiss,
+}: {
+  store: string;
+  dismiss: () => Promise<void>;
+}) {
   const { siteUrl, adminUrl } = gateWiring();
+  const here = await requestHost();
   return (
     <GateBlock
       siteUrl={siteUrl}
       adminUrl={adminUrl}
-      here={await requestHost()}
+      here={here}
+      counts={await readShopCounts({ here, store })}
       initialLang={await initialLang()}
       dismiss={dismiss}
     />
