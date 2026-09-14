@@ -31,6 +31,21 @@ secret() { # <name>
 
 optional_secret() { secret "$1" 2>/dev/null || printf ''; }
 
+# ★ WHAT `.env` DECLARES, read from HERE. `.env` is compose's file, not this shell's, so a value a container
+# is interpolated from is invisible to a script until somebody reads it — and two of the blocks below are
+# decisions `.env` makes about what this shell must export. Quotes are stripped the way both `source` and
+# compose see them. Defined up here because the mailbox block needs it long before the purge block does.
+_forge_env_declares() { # <VAR>
+  local file line
+  file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env"
+  [ -f "$file" ] || return 1
+  line="$(grep -m1 "^$1=" "$file" 2>/dev/null)" || return 1
+  line="${line#*=}"
+  line="${line%\'}"
+  line="${line#\'}"
+  printf '%s' "$line"
+}
+
 require() { # <VAR> <secret name>
   local var="$1" name="$2" value
   if ! value="$(secret "$name")" || [ -z "$value" ]; then
@@ -86,6 +101,53 @@ export FORGE_ADMIN_PLATFORM_TOKEN="$(optional_secret forge-admin-platform-token)
 # it: T1's happened to be exported and T2's was not.
 export FORGE_ADMIN_SERVICE_TOKEN_FORGECAFE="$(optional_secret forge-admin-service-token-forgecafe)"
 
+# ★★★ WHICH MAILBOX THIS BOX HAS, AND IT IS ONE FACT IN `.env` — `FORGE_BENCH_MAILBOX`.
+#
+# ⛔ THE DEFECT, MEASURED ON BOTH BENCHES 2026-09-13: zero mail containers, `FORGE_SMTP_*` on Resend, and the
+# only deliverable address on the box the owner's own (it is in the dataset). So nobody else could log in,
+# anywhere, as anyone. The escape a developer expects does not exist here: the transport that PRINTS the code
+# is constructible only under `!production` (apps/api/src/smtp-channel-driver.ts) and this compose declares
+# `NODE_ENV: production`. ⇒ a collector in the compose, which weakens nothing.
+#
+# ★★ ONE FACT, THREE EXPORTS, AND THAT IS DELIBERATE. Declaring the profile in `.env` and the addresses here
+# would be two declarations that can disagree, and the way they disagree is the worst one available: a box
+# that SENDS REAL MAIL while an operator believes it is being captured. So `.env` says only whether this box
+# has a collector, and this block derives everything the answer implies — the compose profile that creates
+# the container, the four addresses that reach it, and the certificate the kernel has to trust.
+#
+# ⛔ AND A DEPLOYMENT DECLARES NOTHING, so it takes the `else` below and keeps the real provider. The
+# collector's service carries `profiles:`, so it is not even created unless this block asks for it.
+if [ -n "$(_forge_env_declares FORGE_BENCH_MAILBOX || printf '')" ]; then
+  # ⚠️ `FORGE_SMTP_PORT` IS NOT ONE OF THE FOUR the kernel demands together (it defaults to 587), but it is
+  # the one that decides the handshake: `secure` is `port === 465`, and anything else is STARTTLS. 1025 is
+  # mailpit's submission port, reached by SERVICE NAME on the compose network — the SMTP port is not
+  # published to the host, because the kernel is the only thing that speaks it.
+  export FORGE_SMTP_HOST='mailpit'
+  export FORGE_SMTP_PORT='1025'
+  # Any credential is accepted by the collector (`--smtp-auth-accept-any`), and one has to be sent: the four
+  # travel together and the driver always offers `AUTH`. Nothing here is a secret and nothing here protects
+  # anything — which is exactly why it is written in the open instead of taken from the secret store.
+  export FORGE_SMTP_USER='forge'
+  export FORGE_SMTP_PASS='forge'
+  export FORGE_SMTP_FROM="${FORGE_SMTP_FROM:-hi@forgecommerce.pro}"
+  # ★★ THE HALF THAT IS NOT ABOUT ADDRESSES. The driver forces `STARTTLS` and nodemailer refuses to deliver
+  # if the upgrade fails, so the collector offers a self-signed certificate and the kernel is told to trust
+  # THAT ONE FILE. Measured 2026-09-14 (nodemailer 9.0.3, the pinned image's): without this the send dies
+  # `ESOCKET self-signed certificate`; with it, `250 2.0.0 Ok: queued`. The path is the container's — see the
+  # kernel's `./mail:/mail:ro` mount and mail/README.md.
+  export FORGE_MAIL_CA='/mail/bench-collector.crt'
+  # The profile that makes the service exist at all. Appended rather than assigned: a box that already asked
+  # for another profile keeps it.
+  case ",${COMPOSE_PROFILES:-}," in
+  *,bench-mailbox,*) ;;
+  *) export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}bench-mailbox" ;;
+  esac
+  echo "[env-source] ✉️  BENCH MAILBOX — every message this box sends is captured by the \`mailpit\`" >&2
+  echo "[env-source]     container and NOTHING leaves this machine. Read it (and the login codes) at" >&2
+  echo "[env-source]     http://\${FORGE_BENCH_BIND}:\${FORGE_MAIL_HTTP_PORT} — see mail/README.md." >&2
+  echo "[env-source]     ⛔ The Resend key, if this box has one, is NOT used while FORGE_BENCH_MAILBOX is set." >&2
+else
+
 # ★ THE MAILBOX (PRE-SEED · P-A) — Resend, the same account Staging uses, so a local test is the real test.
 #
 # ⚠️ ALL FOUR OR NONE. `FORGE_SMTP_HOST`, `USER` and `FROM` are not secrets and live in `.env`; only the
@@ -123,6 +185,11 @@ else
   echo "[env-source]     where the terminal transport is never built and every message FAILS BY NAME. No OTP" >&2
   echo "[env-source]     is delivered and nobody can log in. Add the Resend key to .secrets as" >&2
   echo "[env-source]     'forge-smtp-pass' and re-source this file." >&2
+fi
+# ⛔ EMPTY, NOT UNSET — same reason as the four above. A box that ran with the collector and then declared
+# nothing must not inherit the trust anchor from the old shell and go on trusting a certificate no container
+# is presenting.
+export FORGE_MAIL_CA=''
 fi
 
 # ★ THE SEED'S CREDENTIAL — and it already exists on this box.
@@ -181,16 +248,6 @@ export FORGE_BULK_READ_TOKEN="$(optional_secret forge-bulk-read-token)"
 # Two homes for one value is two answers, and the one the containers were interpolated from wins. The secret
 # store is still read for a box that keeps it there; when both answer and they DIFFER, this says so out loud
 # rather than shadowing one of them.
-_forge_env_declares() { # <VAR> — what `.env` declares, quotes stripped as bash's `source` and compose see it
-  local file line
-  file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env"
-  [ -f "$file" ] || return 1
-  line="$(grep -m1 "^$1=" "$file" 2>/dev/null)" || return 1
-  line="${line#*=}"
-  line="${line%\'}"
-  line="${line#\'}"
-  printf '%s' "$line"
-}
 _forge_revalidate_env="$(_forge_env_declares FORGE_REVALIDATE_SECRET || printf '')"
 _forge_revalidate_store="$(optional_secret forge-revalidate-secret)"
 if [ -n "$_forge_revalidate_env" ] && [ -n "$_forge_revalidate_store" ] &&

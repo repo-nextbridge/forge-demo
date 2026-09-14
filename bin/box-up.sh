@@ -1261,8 +1261,29 @@ say '1 · postgres + redis'
 # the `dc up` rather than after: a compose invocation that fails halfway can still have started a container,
 # and that container's log is precisely the one worth keeping.
 BOX_TOUCHED=1
-dc up -d postgres redis >/dev/null 2>&1 || die 'could not start postgres/redis.'
-note 'up'
+# ★★★ AND THE MAILBOX, IF THIS BOX HAS ONE OF ITS OWN — DERIVED, never a second list.
+#
+# ⛔ THE TRAP THIS LINE EXISTS FOR. Every `dc up` in this script NAMES its services (see the header: "a box
+# that comes up with four of them is missing exactly the two screens this demo exists to show, and it comes
+# up GREEN"), so a service nobody names is a service that never starts — and a bench whose `FORGE_SMTP_*`
+# point at a container that does not exist is a bench where EVERY login code fails to send, silently, with
+# `docker ps` all green.
+#
+# ★ THE CONDITION IS THE SAME DERIVATION `bin/bench-mailbox.guard.mjs` makes: is the host this box mails to a
+# service THIS compose declares, with the profiles this shell asked for? `docker compose config --services`
+# answers with the profile gate already applied, so a deployment — which asks for no profile and mails to a
+# real provider — gets an empty answer and starts nothing. No name is written twice.
+MAILBOX_SERVICE=''
+if [ -n "${FORGE_SMTP_HOST:-}" ] && dc config --services 2>/dev/null | grep -qx -- "$FORGE_SMTP_HOST"; then
+  MAILBOX_SERVICE="$FORGE_SMTP_HOST"
+fi
+# shellcheck disable=SC2086 -- deliberately unquoted: empty means "no third service", not an empty argument.
+dc up -d postgres redis $MAILBOX_SERVICE >/dev/null 2>&1 || die 'could not start postgres/redis.'
+if [ -n "$MAILBOX_SERVICE" ]; then
+  note "up — and the mail collector \`$MAILBOX_SERVICE\`: every message stays on this box, readable at http://${FORGE_BENCH_BIND:-127.0.0.1}:${FORGE_MAIL_HTTP_PORT:-8204}"
+else
+  note "up — ⚠️ no mail collector on this box: mail goes to ${FORGE_SMTP_HOST:-nowhere (FORGE_SMTP_* unset)}"
+fi
 
 # ── 2 · migrate ─────────────────────────────────────────────────────────────────────────────────────────────
 say '2 · migrate'
