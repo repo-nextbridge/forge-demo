@@ -48,9 +48,10 @@ import { GATE_MARK } from './marks';
 export type GateBlockProps = {
   /** The "← back" target (the marketing site). */
   siteUrl: string;
-  /** The FIRST tenant's admin origin as this box really publishes it (`FORGE_GATE_ADMIN_URL`); its row opens
-   *  `${adminUrl}/enter`, the server-side redeem handoff. Every other face is the declaration's. */
-  adminUrl?: string;
+  /** Each tenant's admin origin as this box really publishes it (`FORGE_GATE_ADMIN_URLS`), by tenant id; a
+   *  tenant's row opens `${origin}/enter`, the server-side redeem handoff. A face the map does not name keeps
+   *  the address the declaration carries. */
+  adminUrls?: Readonly<Record<string, string>>;
   /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
   here?: string;
   /** The server's Accept-Language guess (PT default). `?lang=` on the URL overrides it on mount. */
@@ -62,7 +63,7 @@ export type GateBlockProps = {
 /** Which of the gate's two screens is on. One at a time: the other is unmounted, so each fades itself in. */
 type View = 'gate' | 'arch';
 
-export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: GateBlockProps) {
+export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: GateBlockProps) {
   const [lang, setLang] = useState<Lang>(initialLang);
   const [view, setView] = useState<View>('gate');
 
@@ -119,7 +120,7 @@ export function GateBlock({ siteUrl, adminUrl, here, initialLang, dismiss }: Gat
           </div>
 
           <div className={styles.body}>
-            <GateHub lang={lang} here={here} adminUrl={adminUrl} dismiss={dismiss} />
+            <GateHub lang={lang} here={here} adminUrls={adminUrls} dismiss={dismiss} />
           </div>
         </div>
 

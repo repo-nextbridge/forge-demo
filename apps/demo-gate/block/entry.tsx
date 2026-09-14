@@ -52,11 +52,11 @@ async function requestHost(): Promise<string | undefined> {
 /** The full-screen interstitial. `store` is deliberately unused: this gate is the demo's, and the demo is one
  * store's worth of stores — the copy says "Forge Demo", not the name of whichever store was asked for. */
 export async function GateInterstitial({ dismiss }: { store: string; dismiss: () => Promise<void> }) {
-  const { siteUrl, adminUrl } = gateWiring();
+  const { siteUrl, adminUrls } = gateWiring();
   return (
     <GateBlock
       siteUrl={siteUrl}
-      adminUrl={adminUrl}
+      adminUrls={adminUrls}
       here={await requestHost()}
       initialLang={await initialLang()}
       dismiss={dismiss}

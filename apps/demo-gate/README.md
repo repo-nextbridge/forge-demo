@@ -77,7 +77,7 @@ const GATE_REGISTRY: Record<string, GateImplementation> = {
 ```
 
 Note where the per-instance knowledge lives: **inside the entry**, never in the layout. The two entries are
-Server Components, and reading the env (`FORGE_GATE_SITE_URL`, `FORGE_GATE_ADMIN_URL` — see `wiring.ts`),
+Server Components, and reading the env (`FORGE_GATE_SITE_URL`, `FORGE_GATE_ADMIN_URLS` — see `wiring.ts`),
 the request's own host and the language cookie is this gate's business. The layout that renders it hands
 over exactly `store` plus one Server Action and must not learn any of the rest.
 

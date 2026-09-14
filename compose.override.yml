@@ -71,14 +71,14 @@ services:
       # Measured on this file before the slice: `compose.yml` hands these two to the storefront (:174) and to
       # the checkout (:227), and the totem takes them below (:132) — this service took NEITHER. The gate's
       # entry is a Server Component, so its links are resolved where the component runs: the day this fork
-      # draws the gate, it would draw it HERE, with `apps/demo-gate/wiring.ts:18-19` falling back to the
+      # draws the gate, it would draw it HERE, with `apps/demo-gate/wiring.ts` falling back to the
       # canonical site and to NO admin link at all. And a fallback is exactly the shape nothing accuses — the
       # page renders, the button for the admin is simply not there, and every other front has it.
       #
       # ⚠️ SOFT (`:-`) LIKE ITS THREE SIBLINGS, and the emptiness is handled at the other end: `wiring.ts` uses
       # `||`, not `??`, because compose passes an UNSET variable as the empty string rather than as absent.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
-      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+      FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
     volumes:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
     depends_on:
@@ -143,7 +143,7 @@ services:
       # `compose.yml` gives the storefront and the checkout, for the same reason: the gate's entry is a
       # Server Component, so its links live where the component runs. They never reach the browser.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
-      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+      FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
     depends_on:
       - kernel
 

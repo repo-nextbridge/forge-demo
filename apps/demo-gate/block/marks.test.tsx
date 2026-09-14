@@ -52,7 +52,7 @@ test('★ the two marks are DIFFERENT — one mark cannot grade two opposite sta
 
 test('the interstitial RENDERS its mark — the attribute a probe reads off the wire', () => {
   const { container } = render(
-    <GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />,
+    <GateBlock siteUrl="https://x" adminUrls={{}} initialLang="pt" dismiss={noop} />,
   );
   expect(container.querySelector(`[data-testid="${GATE_MARK}"]`)).toBeTruthy();
   // …and it does NOT carry the other state's mark, which is what lets one body answer one question.

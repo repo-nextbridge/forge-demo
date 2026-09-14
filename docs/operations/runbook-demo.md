@@ -187,7 +187,7 @@ passo **nomeado**; a bancada usa `caddy/Caddyfile.local`, que não sabe o que é
 ★★★ **E um deployment também não as digita — a PROMOÇÃO as escreve (pk35/d4).**
 `bash bin/box-up.sh --promote store.forgecommerce.pro` (ou qualquer um dos seis nomes acima) escreve **as
 seis** a partir do `seed/box.json`. Até esta fatia **ninguém escrevia o valor**: a promoção reescrevia quatro
-variáveis (`FORGE_STORE_HOSTS`, `FORGE_PUBLIC_ORIGIN`, `FORGE_GATE_ADMIN_URL`, `FORGE_ADMIN_SIBLINGS`) e
+variáveis (`FORGE_STORE_HOSTS`, `FORGE_PUBLIC_ORIGIN`, `FORGE_GATE_ADMIN_URLS`, `FORGE_ADMIN_SIBLINGS`) e
 **nenhuma** das seis — então uma implantação preenchia à mão, ao lado de um arquivo que já as declarava.
 Detalhes em `bin/promotion-faces.mjs`, e a §5 tem a tabela dos três estados.
 
@@ -220,6 +220,7 @@ Nem todo segredo é seu para criar. Estes o `box-up` **minta e arquiva** via `pu
 | `forge-seed-token[-<tenant>]` | `provision-ref` | 3 |
 | `forge-admin-service-token[-<tenant>]` | `provision-ref` | 3 |
 | `forge-admin-platform-token` | `admin-platform-token` | 4 |
+| `forge-admin-access-key[-<tenant>]` | `bin/admin-access-key.mjs` (pela porta) | 5b |
 
 ⇒ **antes do primeiro `box-up` você precisa de dois**, e só dois: `forge-postgres-password` e
 `forge-vault-key`. O resto nasce durante o nascimento.
@@ -666,9 +667,8 @@ própria caixa** — se quem está na frente publica outra, é **aquele** endere
   `localhost:8201` e `localhost:8202`;
 - o passo 3b reescreve `FORGE_STORE_HOSTS` e **inclui** `$FORGE_TAILNET_HOST` ⇒ a **loja** continua
   respondendo no endereço público;
-- o passo 3d reescreve `FORGE_ADMIN_SIBLINGS` de volta para `localhost`;
-- `FORGE_PUBLIC_ORIGIN` e `FORGE_GATE_ADMIN_URL` não são reescritos no nascimento ⇒ continuam apontando para
-  o endereço público.
+- o passo 3d reescreve `FORGE_ADMIN_SIBLINGS` **e `FORGE_GATE_ADMIN_URLS`** de volta para `localhost`;
+- `FORGE_PUBLIC_ORIGIN` não é reescrito no nascimento ⇒ continua apontando para o endereço público.
 
 ⇒ **a loja abre no endereço público e o admin recusa o login com `unknown_admin_host`.**
 
@@ -938,6 +938,40 @@ links comuns para outras origens, e a linha do admin abre o `/enter`, que resgat
 servidor**. ⚠️ **Na bancada NENHUM dos seis casa com o host** (a caixa nasce em `localhost` e a promoção é passo
 à parte), então o hub desenha, no pé, **a sua própria porta**, dizendo em que host ela está — sem isso a caixa
 recém-nascida seria uma loja em que ninguém consegue entrar.
+
+#### ★★★ A PORTA DO ADMIN — a chave nasce com a caixa, e são DUAS (pk38/d8)
+
+⛔ **A frase acima era uma promessa que nada cumpria.** O `/enter` resgata uma **chave de acesso de operador**
+no servidor — mas **nenhum passo do nascimento cunhava uma**, e a variável que a entrega ao admin não era
+declarada em lugar nenhum: nem no `.env.example`, nem no compose, nem no `box-up.sh`. A rota lia uma variável
+ausente e caía no `/login`, **em toda caixa que este repositório já construiu**. Como a Demo se regenera, uma
+chave criada à mão depois de cada reset é uma porta que fica fechada quase sempre.
+
+**O que o nascimento faz agora:**
+
+| passo | o que escreve | onde mora |
+|---|---|---|
+| **3b** | `FORGE_ADMIN_STORE_IDS` = `{"<tenant>":"<loja>"}` | `.env` — não é segredo, e os ids são ULIDs novos a cada nascimento |
+| **5b** | uma chave por tenant, via `operator.access_key.create` **pela porta** | `.secrets` (`forge-admin-access-key`, e `-<tenant>` do segundo em diante) |
+| `env-source.sh` | junta as duas metades em `FORGE_ADMIN_ACCESS_KEYS` = `{"<tenant>":{"store":…,"key":…}}` | só na shell; **nunca** num arquivo ao lado do `.env` |
+
+★★★ **Uma entrada é INTEIRA ou AUSENTE — nunca emprestada.** As duas metades são procuradas sob o nome **do
+próprio tenant**; um tenant sem chave ou sem loja simplesmente **não aparece no mapa**, e o admin daquela marca
+cai no login de sempre. ⛔ Ele **não pode** herdar a entrada do vizinho: isso assinaria uma sessão do tenant A
+para quem abriu o hostname do tenant B, que é exatamente a fuga pela porta da frente que a rota recusa a
+adivinhar. Com `FORGE_ADMIN_TENANT` preenchido (modo *pinado*) **não há porta por hostname nenhuma** — esta
+caixa o deixa vazio de propósito (§3.1).
+
+★★ **E o link do hub também deixou de ser singular.** `FORGE_GATE_ADMIN_URLS` = `{"<tenant>":"<origem>"}`, uma
+por marca, escrito pelo passo **3d** a partir do `admin_host` de `seed/box.json` e **reescrito pela promoção**
+com as portas que o diretório aceitou. Antes era um valor só: uma das duas linhas de admin abria a porta certa
+e a outra ficava com o hostname **declarado**, que a bancada não publica. O passo **15** grada **cada entrada**
+— ausente, sem reivindicação no diretório, ou **reivindicada por outro tenant** são três ✗ diferentes, cada um
+nomeando a marca.
+
+⚠️ **A chave é recunhada a cada nascimento e as anteriores são revogadas** (ela é devolvida uma vez só, então um
+re-run não tem como reaproveitá-la). ⛔ **O valor nunca é impresso**: o script escreve a chave crua em `stdout`,
+o `box-up.sh` arquiva e destrói o arquivo temporário, e o que aparece na tela é o **id** (`oak_…`).
 
 ⚠️ **O admin NÃO tem portaria e isso é decisão dele** (11/09: *"não precisa de portaria no admin; se ele entrar
 na url do admin vai cair no login normalmente"*) — e como a loja e o admin são **origens diferentes**, o cookie

@@ -15,16 +15,23 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
+import { GATE_TENANTS } from '../faces.generated';
 import { ARCH, LANGS, STRINGS } from '../i18n';
 import { GateBlock } from './gate';
 
 const noop = async () => {};
 
+/** The declaration's own first tenant, named rather than typed — the ids live in `seed/box.json`. */
+function must<T>(value: T | undefined, what: string): T {
+  if (value === undefined) throw new Error(`seed/box.json declares no ${what}`);
+  return value;
+}
+
 test('renders the PT chrome, the back link, and the hub inside it', () => {
   const { container } = render(
     <GateBlock
       siteUrl="https://forgecommerce.pro"
-      adminUrl="https://admin.demo.example"
+      adminUrls={{}}
       initialLang="pt"
       dismiss={noop}
     />,
@@ -39,7 +46,7 @@ test('renders the PT chrome, the back link, and the hub inside it', () => {
 });
 
 test('the footer selector switches the copy live (PT → EN → ES)', () => {
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(<GateBlock siteUrl="https://x" adminUrls={{}} initialLang="pt" dismiss={noop} />);
   expect(screen.getByRole('heading', { name: 'Loja demo.' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'en' }));
   expect(screen.getByRole('heading', { name: 'Demo store.' })).toBeTruthy();
@@ -47,23 +54,24 @@ test('the footer selector switches the copy live (PT → EN → ES)', () => {
   expect(screen.getByRole('heading', { name: 'Tienda demo.' })).toBeTruthy();
 });
 
-test('the admin origin this box was promoted to reaches the hub, and lands on /enter', () => {
+test('the admin origins this box was promoted to reach the hub, and land on /enter', () => {
+  const tenant = must(GATE_TENANTS[0], 'a first tenant');
   const { container } = render(
     <GateBlock
       siteUrl="https://x"
-      adminUrl="https://admin.demo.example/"
+      adminUrls={{ [tenant.id]: 'https://admin.demo.example/' }}
       initialLang="en"
       dismiss={noop}
     />,
   );
-  // Which face it applies to, and why only the first, is hub.test.tsx's. Here: the wiring reaches the screen.
+  // Which face each origin applies to is hub.test.tsx's. Here: the wiring reaches the screen.
   const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
   expect(hrefs).toContain('https://admin.demo.example/enter');
 });
 
 test("the footer selector is the app's own language list, not a copy of it", () => {
   // `LANGS` is the one list; the screen used to transcribe it as `['pt','en','es']` beside it.
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(<GateBlock siteUrl="https://x" adminUrls={{}} initialLang="pt" dismiss={noop} />);
   for (const code of LANGS) expect(screen.getByRole('button', { name: code })).toBeTruthy();
   expect(LANGS.length, 'a one-language app would make the loop above vacuous').toBeGreaterThan(2);
 });
@@ -71,7 +79,7 @@ test("the footer selector is the app's own language list, not a copy of it", () 
 test('the gate switches to the architecture screen and back, and each screen HIDES the other', () => {
   const scrollTo = vi.fn();
   window.scrollTo = scrollTo;
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(<GateBlock siteUrl="https://x" adminUrls={{}} initialLang="pt" dismiss={noop} />);
 
   // On the gate: its own title is there and the architecture's is NOT (the control, before any click).
   expect(screen.getByRole('heading', { name: STRINGS.pt.title })).toBeTruthy();
@@ -99,7 +107,7 @@ for (const lang of LANGS) {
     // screen has to travel in whichever language the visitor chose, and it has no selector of its own.
     window.scrollTo = vi.fn();
     render(
-      <GateBlock siteUrl="https://x" adminUrl="https://a" initialLang={lang} dismiss={noop} />,
+      <GateBlock siteUrl="https://x" adminUrls={{}} initialLang={lang} dismiss={noop} />,
     );
     fireEvent.click(screen.getByRole('button', { name: ARCH[lang].open }));
     expect(screen.getByRole('heading', { name: ARCH[lang].title })).toBeTruthy();

@@ -81,16 +81,36 @@ test("★ every admin row opens its own host's /enter — the server-side redeem
   }
 });
 
-test('★★ FORGE_GATE_ADMIN_URL wins for the FIRST tenant only — the bench door, never the other brand’s', () => {
-  // `bin/box-up.sh` fills that variable from the first admin door the directory accepted, so handing it to
-  // both cards would point the second tenant's admin at the first tenant's.
-  const { container } = render(
-    <GateHub lang="pt" here="x" adminUrl="https://bench.example:8443/" dismiss={noop} />,
+test('★★★ FORGE_GATE_ADMIN_URLS overrides EVERY tenant it names — one door per brand, never one for all', () => {
+  // ⛔ THE DEFECT THIS PINS. The variable used to be singular, filled from the FIRST admin door the directory
+  // accepted, and the screen handed it to the first card only — so one brand's row carried the door this box
+  // really answers on and the other carried the hostname `seed/box.json` declares, which a bench does not
+  // publish. Both rows are derived from the same map now, keyed by tenant id.
+  const tenants = GATE_TENANTS.map((tenant) =>
+    must(tenant.faces.find((f) => f.kind === 'admin'), `${tenant.id}'s admin`),
   );
-  const first = must(must(GATE_TENANTS[0], 'a first tenant').faces.find((f) => f.kind === 'admin'), "the first tenant's admin");
-  const second = must(must(GATE_TENANTS[1], 'a second tenant').faces.find((f) => f.kind === 'admin'), "the second tenant's admin");
-  expect(container.querySelector(`[data-face="${first.key}"]`)?.getAttribute('href')).toBe(
-    'https://bench.example:8443/enter',
+  expect(tenants.length, 'one tenant makes the sentence above vacuous').toBeGreaterThan(1);
+  const adminUrls = Object.fromEntries(
+    GATE_TENANTS.map((tenant, i) => [tenant.id, `https://bench.example:${8443 + i}/`]),
+  );
+  const { container } = render(<GateHub lang="pt" here="x" adminUrls={adminUrls} dismiss={noop} />);
+  GATE_TENANTS.forEach((tenant, i) => {
+    const face = must(tenants[i], `${tenant.id}'s admin`);
+    expect(
+      container.querySelector(`[data-face="${face.key}"]`)?.getAttribute('href'),
+      `${tenant.id} did not get its OWN door`,
+    ).toBe(`https://bench.example:${8443 + i}/enter`);
+  });
+});
+
+test('★★ a tenant the map does not name keeps the address the DECLARATION carries', () => {
+  // The half that is not "it overrides": a door the directory refused reaches the screen as an absent key,
+  // and the card must fall back rather than render an empty origin.
+  const named = must(GATE_TENANTS[0], 'a first tenant');
+  const unnamed = must(GATE_TENANTS[1], 'a second tenant');
+  const second = must(unnamed.faces.find((f) => f.kind === 'admin'), "the second tenant's admin");
+  const { container } = render(
+    <GateHub lang="pt" here="x" adminUrls={{ [named.id]: 'https://bench.example:8443/' }} dismiss={noop} />,
   );
   expect(container.querySelector(`[data-face="${second.key}"]`)?.getAttribute('href')).toBe(
     `https://${second.host}/enter`,

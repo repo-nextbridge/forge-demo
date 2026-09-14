@@ -80,11 +80,15 @@ export const urlOf = (face: GateFace): string | null => (face.host ? `https://${
  * operator access key SERVER-SIDE and lands signed in; the key never touches the browser. A link to the bare
  * origin would be a link to a login form the visitor has no password for.
  *
- * ⚠️ `override` IS THE FIRST TENANT'S DOOR AS THE BOX REALLY PUBLISHES IT — `FORGE_GATE_ADMIN_URL`, which
- * `bin/box-up.sh` derives from what the admin directory ACCEPTED at promotion (see the comment at its «THE
- * GATE'S LINK TO THE ADMIN IS THE FIRST TENANT'S DOOR»). It wins over the declaration for exactly one face,
- * because a bench and a tailnet answer at an address this box does not declare, and an operator meeting a
- * dead admin link on every birth is how a feature stops being trusted.
+ * ⚠️ `override` IS THIS TENANT'S DOOR AS THE BOX REALLY PUBLISHES IT — its entry in
+ * `FORGE_GATE_ADMIN_URLS`, which `bin/box-up.sh` derives from what the admin directory ACCEPTED (from
+ * `seed/box.json`'s `admin_host` at birth, from the claimed doors at promotion). It wins over the
+ * declaration, because a bench and a tailnet answer at an address this box does not declare, and an operator
+ * meeting a dead admin link on every birth is how a feature stops being trusted.
+ *
+ * ★ ONE ORIGIN PER TENANT, AND THAT IS THE POINT OF THE MAP. While the variable was singular it could only
+ * be handed to ONE card, so the other brand's row printed the declared hostname while its neighbour printed
+ * the working one — the same screen answering the same question two ways.
  */
 export const adminHrefOf = (face: GateFace, override?: string): string | null => {
   const origin = override?.replace(/\/+$/, '') || urlOf(face);
@@ -118,8 +122,9 @@ export type HubProps = {
   lang: Lang;
   /** The host the browser asked for, as the server saw it. `undefined` when nothing could be read. */
   here?: string;
-  /** `FORGE_GATE_ADMIN_URL` — the FIRST tenant's admin as this box really publishes it. See `adminHrefOf`. */
-  adminUrl?: string;
+  /** `FORGE_GATE_ADMIN_URLS` — each tenant's admin as this box really publishes it, by tenant id. A tenant
+   *  absent from the map keeps the address `seed/box.json` declares for it. See `adminHrefOf`. */
+  adminUrls?: Readonly<Record<string, string>>;
   /** The slot's dismissal Server Action — the way IN, on this origin. */
   dismiss: () => Promise<void>;
 };
@@ -266,7 +271,7 @@ function TenantCard({
   );
 }
 
-export function GateHub({ lang, here, adminUrl, dismiss }: HubProps) {
+export function GateHub({ lang, here, adminUrls, dismiss }: HubProps) {
   const t = HUB[lang];
   const faces = GATE_TENANTS.flatMap((tenant) => tenant.faces);
   // ⛔ COUNTED, NEVER TYPED. The sentence the design writes out ("Dois tenants. Quatro lojas. Dois admins.")
@@ -295,10 +300,10 @@ export function GateHub({ lang, here, adminUrl, dismiss }: HubProps) {
             index={index}
             lang={lang}
             here={here}
-            // ⚠️ ONLY THE FIRST TENANT'S. `FORGE_GATE_ADMIN_URL` is one value and `bin/box-up.sh` fills it
-            // from the FIRST admin door the directory accepted; handing it to both cards would point the
-            // café's admin row at the shoe brand's.
-            adminUrl={index === 0 ? adminUrl : undefined}
+            // ★ THIS TENANT'S OWN DOOR, LOOKED UP BY ITS ID — never by position. The map is keyed the way
+            // `seed/box.json` names its tenants, so a third one declared tomorrow is overridden the moment
+            // the birth writes its door, and a tenant the map does not name keeps its declared address.
+            adminUrl={adminUrls?.[tenant.id]}
             dismiss={dismiss}
           />
         ))}
