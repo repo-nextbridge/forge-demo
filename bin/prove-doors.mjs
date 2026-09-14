@@ -229,6 +229,19 @@ const GATE_DISMISSED_VALUE = '1';
  * also match `demo-gate-ribbon`, and the two are the opposite states.
  */
 const mark = (id) => `data-testid="${id}"`;
+/**
+ * ★★★ pk35/d1 — THE OTHER HALF OF THE SAME SENTENCE, AND NOTHING HAD IT. The gate is TWO screens: the
+ * interstitial a first-time visitor meets, and the RIBBON at the foot of every page a visitor who came through
+ * is browsing — the one affordance that reopens the gate ("A demo gate tem uma feature que aparece uma
+ * barrinha no rodapé… só precisa checar se isso aparece nos 4 front", 13/09). Until this slice the cookie side
+ * was graded only for what it must NOT contain (the interstitial), so a front that stopped drawing the ribbon
+ * — a registry entry dropped, an image pinned before the ribbon existed, a fork that never had one — was a
+ * silent loss on a green birth.
+ *
+ * ⛔ IT IS DERIVED, NOT TYPED: the app's own convention is `<extension id>-ribbon`, held against `manifest.id`
+ * by `apps/demo-gate/block/marks.test.tsx` on the other end, exactly as the interstitial's mark is.
+ */
+const ribbonMark = (id) => mark(`${id}-ribbon`);
 /** The PRODUCT's visible refusal of a structural slot this build cannot draw
  *  (`packages/storefront-kit/src/extensions/CompositionGapNotice.tsx`). A different failure, so a different ✗. */
 const GAP_MARK = mark('composition-gap');
@@ -313,6 +326,9 @@ say();
 let opened = 0;
 /** ★ pk33 — doors whose TWO sides of the dismissal cookie were compared. Its own vacuum, below. */
 let gatesGraded = 0;
+/** Doors whose BODY was asked for the ribbon (2xx only — a redirect has none). Counted so the summary can
+ *  say it out loud: a run that graded zero of them proved nothing about the way back. */
+let ribbonsGraded = 0;
 
 /**
  * ── ★ WHICH STORE HAS WHICH GATE, ASKED FOR ALL OF THEM BEFORE THE FIRST DOOR IS OPENED ─────────────────
@@ -539,6 +555,25 @@ for (const row of rows) {
         );
         continue;
       }
+      // 4 · ★★★ AND THE WAY BACK MUST BE ON THE PAGE — the ribbon, on the front that answered THIS door.
+      //     ⚠️ ONLY WHERE THERE IS A PAGE, and that is measured rather than assumed: on the bench of
+      //     2026-09-13 the four doors of the outlet answered, with the cookie, `200 · storefront` (ribbon),
+      //     `200 · checkout` (ribbon), `307 · checkout` (a redirect — no body, no ribbon, correctly) and
+      //     `200 · checkout` (ribbon). Demanding it of a 3xx would redden the login redirect for having done
+      //     its job, so the question is asked of a door that RENDERED something.
+      if (code >= 200 && code < 300 && !through.body.includes(ribbonMark(gateOf))) {
+        bad(
+          label,
+          `THE WAY BACK IS MISSING. This door answered ${code}${servedBy ? ` from "${servedBy}"` : ''} to a ` +
+            `visitor carrying \`${GATE_DISMISSED_COOKIE}\`, and its body does not contain ` +
+            `\`${ribbonMark(gateOf)}\` — so the demo ribbon is not drawn there and nothing on the page reopens ` +
+            'the gate. The gate app ships BOTH faces from one module (`forge.wiring.gate`: an interstitial and ' +
+            'a ribbon); a front that mounts the first and not the second is installed, visible and half ' +
+            'wired. Look at the registry of the front named above.',
+        );
+        continue;
+      }
+      if (code >= 200 && code < 300) ribbonsGraded++;
       gatesGraded++;
     } else {
       // ★ THE PERMANENT NEGATIVE CONTROL, AND IT IS DERIVED. A store declared `gate: false` must show no gate
@@ -742,6 +777,18 @@ if (gatesGraded === 0) {
     `  ⓘ ${gatesGraded} door(s) proved on BOTH sides of \`${GATE_DISMISSED_COOKIE}\` — the gate without it, ` +
       'the shop with it, and the two bodies asserted DIFFERENT.',
   );
+  // ⚠️ SAID SEPARATELY BECAUSE IT IS A SEPARATE COUNT. Not every graded door renders a page (`/account`
+  // redirects an anonymous shopper), so «gates graded» does not imply «ribbons graded», and a run where the
+  // second is zero has said nothing about the way back — which is the shape this rule exists to end.
+  if (ribbonsGraded === 0) {
+    noted(
+      `NO PAGE OF ${tenant} WAS ASKED FOR THE DEMO RIBBON`,
+      'every gated door of this tenant answered a redirect, so no body carried the foot of a page. The ' +
+        'ribbon — the one affordance that reopens the gate — is ungraded on this run.',
+    );
+  } else {
+    say(`  ⓘ ${ribbonsGraded} page(s) carried the demo ribbon, on the front that served each one.`);
+  }
 }
 
 if (opened === 0) {

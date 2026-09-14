@@ -1444,12 +1444,25 @@ is forked, which theme each wears), one admin under both, and the stack they all
 SDK · Docs → the single command port → the kernel → PostgreSQL/Redis → infra). Both screens are PT/EN/ES, on
 the one selector the gate already had, and both are embedded copy — `config_schema` stays `[]`.
 
-⚠️ **The FIRST screen is not yet the owner's 10/09 layout, and the reason is a contract, not a backlog.** That
-layout is a HUB over six destinations; `dismissGate()` (`packages/storefront-kit/src/gate/actions.ts:15`, in the
-Forge monorepo) sets the dismissal cookie and returns `void`, so a gate can say *"let me through HERE"* and
-cannot say *"let me through and take me to /s/outlet"*. Five of the six destinations would therefore land the
-visitor on a gate again. The head of `apps/demo-gate/block/gate.tsx` carries the full note; the architecture
-screen needs no URL, which is why it did not have to wait.
+**THE FIRST SCREEN IS THE OWNER'S 10/09 LAYOUT SINCE pk35: a HUB over the six faces this box publishes** — two
+tenant cards, each with its shops and, at its foot, the row that opens that tenant's admin at `/enter`. ⛔ **Not
+one address is written in the app.** `seed/box.json` declares them (one `domain` per store, one `admin_domain`
+per tenant — a hostname is DATA, §"the six addresses"), `bin/gate-faces.mjs` renders that declaration into
+`apps/demo-gate/faces.generated.ts`, and `bin/gate-faces.guard.mjs` refuses to let the two drift: a fifth store
+is a fifth card with no edit to the screen, and a store whose `domain` is deleted is a card that SAYS SO rather
+than one that disappears. The destination the visitor is already on is the `dismiss` form (the deep link
+survives); every other one is an ordinary link. On a host this box does not declare — a bench, a tailnet — no
+card matches and the door moves to a row at the foot of the hub, which names the host it is talking about.
+
+⚠️ **WHAT THE PORT DID NOT BRING, AND IT IS THE PRODUCT'S.** This screen used to wait on a contract, and only
+half of that reason fell. `dismissGate()` now takes a destination (`packages/storefront-kit/src/gate/actions.ts:53`,
+in the Forge monorepo, since pk33), but `safeNextPath` admits **same-origin paths only** and five of the six
+faces are other hostnames. And the dismissal cookie is still written with **no `domain` attribute** (same file,
+`:57-64`), so it is host-only: a visitor who came through the gate here meets it again on the next face that has
+one. Measured on the bench, 2026-09-13: the two admins have no gate by decision (pk33), the café declares
+`gate: false`, and the outlet and the counter do show one — **two second gates, not five**. His 13/09 decision
+— *"não tem problema o cookie valer para todas"* ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all
+six — is a change to the **kit**, and this repository can only name it.
 
 **That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
 ONE box could not be on a composition list at all, and both front registries are built from that list — so

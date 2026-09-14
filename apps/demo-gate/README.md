@@ -4,6 +4,14 @@ The public **demo's** gate app: a full-screen interstitial ("Demo store" — not
 covers every storefront route until the visitor chooses a way in, plus the persistent ribbon that says it
 again while they browse. PT/EN/ES embedded.
 
+Its first screen is a **HUB over every face this box publishes** — one card per shop, one row per tenant
+admin. ⛔ **No address is written in this app.** `seed/box.json` declares them and `bin/gate-faces.mjs`
+renders that declaration into `faces.generated.ts`, which the screen imports; `bin/gate-faces.guard.mjs`
+regenerates and compares, so the two cannot drift. A face whose `domain` is deleted keeps its card and
+**says** it has no published address — it never disappears. The destination the visitor is already on is
+the one that posts `dismiss` (the deep link survives); every other one is an ordinary link, and on a host
+this box does not declare the door moves to a row at the foot of the hub that names that host.
+
 ## This app is one instance's, not the platform's
 
 It fills the neutral platform slot `storefront:gate`, and it is the demo's own implementation of that
@@ -45,44 +53,28 @@ it:
    > is why one of the four is deliberately taken back out: `seed/coffee.mjs::dropGateOnTheCafe` removes the
    > placement from `cafe`, whose forked vitrine carries no gate registry and would therefore refuse the page
    > rather than draw it. That store declares `gate: false` in `seed/box.json`, with the reason.
-2. **One import + one entry** in that storefront's `src/lib/extensions/gate-registry.tsx`:
+2. **One import + one entry** in that storefront's `src/lib/extensions/gate-registry.tsx` — and the two
+   names come from **this app's own declaration**, never from a reader's memory:
+   `package.json` → `forge.wiring.gate` names the module (`./block/entry`) and the two exports
+   (`GateInterstitial`, `GateRibbonEntry`). That is the same declaration the fleet oven reads when it
+   composes this app into an image, which is why a hand-written registry has to mirror it rather than
+   invent one (`totem/src/lib/gate/registry.test.ts` is what keeps the counter's copy mirrored).
 
 ```tsx
-import { GateBlock } from '@forge/ext-demo-gate/block/gate';
-import { GateRibbon } from '@forge/ext-demo-gate/block/ribbon';
-import { GATE_LANG_COOKIE, resolveLang } from '@forge/ext-demo-gate/i18n';
-import { gateWiring } from '@forge/ext-demo-gate/wiring';
-import { cookies, headers } from 'next/headers';
-
-/** The visitor's picked language PERSISTS via the gate's own cookie (the splash's footer selector writes
- *  it); it wins over the Accept-Language guess, so the splash, the ribbon and a re-opened splash agree. */
-async function initialLang() {
-  const picked = (await cookies()).get(GATE_LANG_COOKIE)?.value;
-  const accept = (await headers()).get('accept-language') ?? '';
-  return resolveLang(picked ?? accept.split(',')[0]);
-}
+import { GateInterstitial, GateRibbonEntry } from '@forge/ext-demo-gate/block/entry';
 
 const GATE_REGISTRY: Record<string, GateImplementation> = {
   'demo-gate': {
-    Interstitial: async ({ dismiss }) => {
-      const { siteUrl, adminUrl } = gateWiring();
-      return (
-        <GateBlock
-          siteUrl={siteUrl}
-          adminUrl={adminUrl}
-          initialLang={await initialLang()}
-          dismiss={dismiss}
-        />
-      );
-    },
-    Ribbon: async ({ reopen }) => <GateRibbon lang={await initialLang()} reopen={reopen} />,
+    Interstitial: GateInterstitial,
+    Ribbon: GateRibbonEntry,
   },
 };
 ```
 
-Note where the per-instance knowledge lives: **inside the entry**, never in the layout. Reading the env
-(`FORGE_GATE_SITE_URL`, `FORGE_GATE_ADMIN_URL` — see `wiring.ts`) and the language cookie is this gate's
-business, and the layout that renders it must not learn any of it.
+Note where the per-instance knowledge lives: **inside the entry**, never in the layout. The two entries are
+Server Components, and reading the env (`FORGE_GATE_SITE_URL`, `FORGE_GATE_ADMIN_URL` — see `wiring.ts`),
+the request's own host and the language cookie is this gate's business. The layout that renders it hands
+over exactly `store` plus one Server Action and must not learn any of the rest.
 
 3. **One line in `next.config`.** This package ships its components as **source** (`.tsx` + CSS Modules),
    so your bundler compiles them along with your own code — that is what keeps the styles, the tokens and

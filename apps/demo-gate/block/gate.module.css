@@ -1,13 +1,14 @@
-/* DEMO-GATE — the full-screen gate screen as it ships today. A deliberate, fixed dark surface (not a themed
- * light/dark component), so literal design values are correct here.
+/* DEMO-GATE — the CHROME of the gate's first screen: the backdrop, the frame, the header, the footer and the
+ * language selector. A deliberate, fixed dark surface (not a themed light/dark component), so literal design
+ * values are correct here.
  *
- * ⚠️ IT IS NOT THE `showGate` HALF OF design-base/gate.dc.html, and the comment here used to claim it was (it
- * named a design file that the owner's 10/09 layout superseded and that is now deleted). This is the layout that
- * PRECEDED the hub: one storefront card and one admin card. The head of `gate.tsx` says what the hub needs before
- * it can be ported; the screen that DID land from that file is `arch.module.css`. No bundled font rule,
- * no CDN, no imported font: the H1 uses the theme's own type stack (Urbanist self-hosted), inherited from the
- * storefront body — the design's own display face is intentionally dropped (spec item 8). Responsive is pure CSS
- * (@media 760px), the breakpoint of the design's own matchMedia. */
+ * ★ pk35/d1 — WHAT USED TO BE BETWEEN THE HEADER AND THE FOOTER IS NOW `hub.module.css`. This file carried the
+ * two-card layout that PRECEDED the owner's 10/09 hub (one storefront card, one admin card, each with a
+ * mini-mockup); the hub replaced both cards and both mockups, so those rules left with them rather than staying
+ * as a second, unused vocabulary. No bundled font rule, no CDN, no imported font: the H1 uses the theme's own
+ * type stack (Urbanist self-hosted), inherited from the storefront body — the design's own display face is
+ * intentionally dropped (spec item 8). Responsive is pure CSS (@media 760px), the breakpoint of the design's
+ * own matchMedia. */
 
 .backdrop {
   min-height: 100vh;
@@ -24,7 +25,7 @@
 
 .shell {
   width: 100%;
-  max-width: 920px;
+  max-width: 1080px;
   animation: dmIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -98,86 +99,9 @@
   text-wrap: pretty;
 }
 
-/* The body row: hatched side gutters framing the two-card middle. */
-.grid {
-  display: grid;
-  grid-template-columns: 48px 1fr 48px;
-}
-.hatch {
-  background: repeating-linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.07) 0 1px,
-    transparent 1px 8px
-  );
-}
-.hatchLeft {
-  border-right: 1px solid rgba(255, 255, 255, 0.09);
-}
-.hatchRight {
-  border-left: 1px solid rgba(255, 255, 255, 0.09);
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.card {
-  box-sizing: border-box;
-  aspect-ratio: 1 / 1;
-  padding: clamp(22px, 3vw, 32px);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-}
-.cardDivided {
-  border-left: 1px solid rgba(255, 255, 255, 0.09);
-}
-
-.mockWrap {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cardTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffffff;
-}
-.cardDesc {
-  margin: 8px 0 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: #8a8478;
-  text-wrap: pretty;
-}
-
-.cta {
-  margin-top: 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 14.5px;
-  font-weight: 600;
-  padding: 13px 20px;
-  background: transparent;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  transition:
-    background 0.2s,
-    border-color 0.2s,
-    color 0.2s;
-  cursor: pointer;
-  font-family: inherit;
-}
-.cta:hover {
-  background: #ffffff;
-  border-color: #ffffff;
-  color: #17181a;
+/* Where the hub is mounted. The frame's header sits above it; `hub.module.css` owns everything inside. */
+.body {
+  padding: clamp(20px, 3vw, 28px);
 }
 
 .footer {
@@ -224,17 +148,7 @@
 }
 
 @media (max-width: 760px) {
-  .grid {
-    grid-template-columns: 18px 1fr 18px;
-  }
-  .cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .card {
-    aspect-ratio: auto;
-  }
-  .cardDivided {
-    border-left: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.09);
+  .body {
+    padding: 14px;
   }
 }
