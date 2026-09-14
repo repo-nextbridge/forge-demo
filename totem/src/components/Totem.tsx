@@ -895,7 +895,6 @@ export function Totem({
         {screen === 'cart' && (
           <div className={styles.step}>
             <div className={styles.stepHeader}>
-              <div className={styles.stepEyebrow}>Etapa 1 de 2</div>
               <div className={styles.stepTitle}>Seu pedido</div>
               <div className={styles.stepNote}>
                 {bag.count === 1 ? '1 item · confira antes de pagar' : `${bag.count} itens · confira antes de pagar`}
@@ -945,9 +944,13 @@ export function Totem({
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                className={`${styles.couponButton} ${bag.couponCode ? styles.couponButtonOn : ''}`}
+              {/* ★★ B14 — NOTHING IS OFFERED THAT THE BASKET CANNOT HONOUR. An empty review used to show
+                  "Adicionar cupom de desconto" over a basket with nothing in it: a coupon applied there has no
+                  line to reduce, so the offer is a door onto a wall. It returns with the first line. */}
+              {bag.lines.length > 0 ? (
+                <button
+                  type="button"
+                  className={`${styles.couponButton} ${bag.couponCode ? styles.couponButtonOn : ''}`}
                 onClick={() =>
                   bag.couponCode
                     ? dropCoupon()
@@ -965,27 +968,33 @@ export function Totem({
                       : 'Toque para digitar o código do seu cupom'}
                   </div>
                 </div>
-                <div className={styles.couponIcon}>{bag.couponCode ? '✓' : '+'}</div>
-              </button>
+                  <div className={styles.couponIcon}>{bag.couponCode ? '✓' : '+'}</div>
+                </button>
+              ) : null}
             </div>
 
             <div className={styles.stepFooter}>
-              <div className={styles.totals}>
-                <div className={styles.totalRow}>
-                  <span>Subtotal</span>
-                  <span>{bag.subtotalLabel}</span>
-                </div>
-                {bag.discounts.map((d) => (
-                  <div key={d.title} className={`${styles.totalRow} ${styles.discountRow}`}>
-                    <span>{d.title}</span>
-                    <span>{d.amountLabel}</span>
+              {/* ★★ B14 — A SUM OF NOTHING IS NOT PRINTED. Subtotal and Total over an empty basket are both
+                  honest arithmetic and neither is a fact anybody needs: the screen already says the basket is
+                  empty, and a total in the size of a real bill reads as a price at a glance. */}
+              {bag.lines.length > 0 ? (
+                <div className={styles.totals}>
+                  <div className={styles.totalRow}>
+                    <span>Subtotal</span>
+                    <span>{bag.subtotalLabel}</span>
                   </div>
-                ))}
-                <div className={styles.grandRow}>
-                  <span className={styles.grandLabel}>Total</span>
-                  <span className={styles.grandValue}>{bag.totalLabel}</span>
+                  {bag.discounts.map((d) => (
+                    <div key={d.title} className={`${styles.totalRow} ${styles.discountRow}`}>
+                      <span>{d.title}</span>
+                      <span>{d.amountLabel}</span>
+                    </div>
+                  ))}
+                  <div className={styles.grandRow}>
+                    <span className={styles.grandLabel}>Total</span>
+                    <span className={styles.grandValue}>{bag.totalLabel}</span>
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div className={styles.stepActions}>
                 <button type="button" className={styles.ghostButton} onClick={() => setScreen('menu')}>
                   <span className={styles.arrow}>←</span>
@@ -1002,6 +1011,9 @@ export function Totem({
                 </button>
               </div>
             </div>
+
+            {/* The step seal, at the foot of the panel — see `stepSeal` in Totem.module.css for the measurement. */}
+            <div className={styles.stepSeal}>Etapa 1 de 2</div>
 
             {couponOpen ? (
               <div className={styles.overlay} style={{ zIndex: 50 }}>
@@ -1075,7 +1087,6 @@ export function Totem({
         {screen === 'identify' && (
           <div className={styles.step}>
             <div className={styles.stepHeader}>
-              <div className={styles.stepEyebrow}>Etapa 2 de 2</div>
               <div className={styles.stepTitle}>Quem vai retirar?</div>
               <div className={styles.stepNote}>Chamamos esse nome quando o pedido ficar pronto</div>
             </div>
@@ -1182,6 +1193,9 @@ export function Totem({
                 <span className={styles.arrow}>→</span>
               </button>
             </div>
+
+            {/* The step seal, at the foot of the panel — see `stepSeal` in Totem.module.css for the measurement. */}
+            <div className={styles.stepSeal}>Etapa 2 de 2</div>
           </div>
         )}
 
