@@ -18,9 +18,10 @@
 
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { fileAtPinned, pinnedCommit } from '../bin/release-tree.mjs';
 import { discountPercent, outletPages, seedPages } from './outlet.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -596,42 +597,43 @@ test('★ pk5 — every LINE of a banner block on this home is full: a short row
 // against `navTree.ts`, and it was named and left to a human.
 //
 // It does not have to be. `bin/composition.guard.mjs` already solved this shape for the app list: read the
-// product's own copy when the machine has a checkout, SKIP with the reason when it does not — a guard that is
-// red on a machine that legitimately has no monorepo is a guard people learn to ignore. Same decision here,
-// same env var, the same candidate paths.
+// product's own copy when the machine can reach it, SKIP with the reason when it cannot — a guard that is red
+// on a machine that legitimately has no monorepo is a guard people learn to ignore. Same decision here.
+//
+// ⛔ pk35/D6 — AND "the product's own copy" MEANS THE PINNED ONE. Until 2026-09-14 both rules below took the
+// first directory that happened to hold the file, out of `FORGE_MONOREPO` and four hard-coded neighbours, and
+// never asked which commit it was: a stale worktree turned a CORRECT mirror into a named accusation. They now
+// read the blob AT the commit `forge.lock` pins — the release these images were baked from — through
+// `fileAtPinned`, which answers from any clone that has fetched it, whatever that clone has checked out.
 //
 // ⛔ AND IT ONLY EVER READS. Deriving those eight from the store's own assortment is a change to the VITRINE,
 // which is the product's forkable reference storefront and not this box's to patch — the Renan's ruling of
 // 03/09, twice over ("tem coisa que é do produto forge, tem coisa que é só do repo da demo"). This guard says
 // when the two copies part company; the fix on the day they do is to re-mirror here, or to card it there.
 
-/** A Forge checkout holding `marker`, if this machine has one — the same probe `bin/composition.guard.mjs`
- *  uses. The marker is passed in because two different files are read from over there and a checkout that
- *  has one and not the other must not be reported as the other's source. */
-function forgeCheckout(marker = BRANDS_GRID) {
-  const REPO_ROOT = join(SEED, '..');
-  for (const base of [
-    process.env.FORGE_MONOREPO,
-    join(REPO_ROOT, '..', '..', 'wt-v03', 'd2-onda1'),
-    join(REPO_ROOT, '..', '..', 'wt-v03', 't-forno'),
-    join(REPO_ROOT, '..', '..', 'forge'),
-    join(REPO_ROOT, '..', '..', '..', 'forge'),
-  ]) {
-    if (base && existsSync(join(base, marker))) return base;
-  }
-  return null;
+/** One file of the RELEASE these images were baked from — `{ text, from }`, or `{ tried }` for a rule that
+ *  must then say NOT CHECKED. ⛔ Never "a Forge checkout": see the header. */
+function atPinned(relPath) {
+  const pinned = pinnedCommit();
+  if (!pinned) return { tried: ['forge.lock names registry digests, not a branch@sha — there is no commit to read'] };
+  return fileAtPinned(pinned, relPath.split(sep).join('/'));
 }
+
+/** The sentence a rule that could not reach the release carries — it names the pin and what was tried. */
+const notChecked = (found, relPath) =>
+  `NOT CHECKED — cannot read ${relPath} at ${pinnedCommit()?.ref ?? 'the pinned commit'} ` +
+  `(tried: ${found.tried.join(' · ')}). Set FORGE_MONOREPO=<a Forge clone that has fetched it>.`;
 
 /** Where the vitrine keeps the list the home's «Marcas que amamos» tiles are built from. */
 const BRANDS_GRID = join('apps', 'storefront', 'src', 'components', 'BrandsGrid.tsx');
 
 test('★ s2-4 — `featured_brands` still MIRRORS the vitrine\'s own list', (t) => {
-  const forge = forgeCheckout();
-  if (!forge) {
-    t.skip(`no Forge checkout on this machine (set FORGE_MONOREPO=<path>) — cannot read ${BRANDS_GRID}`);
+  const found = atPinned(BRANDS_GRID);
+  if (found.tried) {
+    t.skip(notChecked(found, BRANDS_GRID));
     return;
   }
-  const src = readFileSync(join(forge, BRANDS_GRID), 'utf8');
+  const src = found.text;
   const block = /const FEATURED_BRANDS = \[([^\]]*)\]/.exec(src);
   assert.ok(
     block,
@@ -663,12 +665,12 @@ test('★ s2-4 — `featured_brands` still MIRRORS the vitrine\'s own list', (t)
 const DATASET_WINDOW = join('instances', 'demo', 'dataset', 'storefront.json');
 
 test('★ pk5 — the kids shelf is shaped like the shelf-with-a-banner that ALREADY WORKS', (t) => {
-  const forge = forgeCheckout(DATASET_WINDOW);
-  if (!forge) {
-    t.skip(`no Forge checkout on this machine (set FORGE_MONOREPO=<path>) — cannot read ${DATASET_WINDOW}`);
+  const found = atPinned(DATASET_WINDOW);
+  if (found.tried) {
+    t.skip(notChecked(found, DATASET_WINDOW));
     return;
   }
-  const window = JSON.parse(readFileSync(join(forge, DATASET_WINDOW), 'utf8'));
+  const window = JSON.parse(found.text);
   const gabaritos = (window.shelves ?? []).filter((shelf) => shelf.banner);
   assert.ok(
     gabaritos.length > 0,
