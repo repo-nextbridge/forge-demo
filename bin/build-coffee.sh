@@ -65,8 +65,15 @@ bash "$here/bin/install-storefront.sh"
 #    the path the Dockerfile looks for and the only layout that works outside a monorepo.
 ( cd "$app" && FORGE_BUILD_STANDALONE=1 npm run build )
 
-[ -f "$app/.next/standalone/server.js" ] || {
-  echo "[coffee] the build produced no .next/standalone/server.js — the image would fail to copy it." >&2
+# ★★ pk35/d3 — AND THE ENTRY MOVED ONE DIRECTORY DOWN, because the tracing root moved one directory UP.
+# This front imports `@forge/ext-demo-gate` from `file:../apps/demo-gate`; the standalone tracer copies
+# nothing from above its root, so `next.config.mjs` roots it at the repository and Next mirrors the path from
+# there. The path is DERIVED from the directory this script already knows, so a rename moves both at once.
+entry="$app/.next/standalone/$(basename "$app")/server.js"
+[ -f "$entry" ] || {
+  echo "[coffee] the build produced no ${entry#"$here/"} — the image would fail to copy it." >&2
+  echo "[coffee] (if it landed at .next/standalone/server.js instead, next.config.mjs's outputFileTracingRoot" >&2
+  echo "[coffee]  is back at this directory — and then the gate app one level up is NOT in the image.)" >&2
   exit 1
 }
 

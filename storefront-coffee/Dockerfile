@@ -26,8 +26,14 @@ WORKDIR /app
 
 # The standalone server and its traced dependencies. `.next/static` is emitted separately and must sit next to
 # it.
+#
+# ⚠️ ★★ pk35/d3 — THE ENTRY IS UNDER `storefront-coffee/`, NOT AT THE ROOT OF `standalone/`, and the reason is
+# one directory up. This front imports an app THIS BOX wrote (`@forge/ext-demo-gate`, installed from
+# `file:../apps/demo-gate`), and the standalone tracer never copies a file from above its root — so
+# `next.config.mjs` sets `outputFileTracingRoot` to the REPOSITORY root, and Next mirrors the path from that
+# root into the output. `totem/Dockerfile` carries the same three lines for the same app and the same reason.
 COPY .next/standalone ./
-COPY .next/static ./.next/static
+COPY .next/static ./storefront-coffee/.next/static
 
 # ★ YOUR OWN STATIC FILES. The tracer does NOT copy `public/` for you — a standalone build traces the modules
 # the server reaches, and a file nothing imports is reached by nobody. So it is copied explicitly, and the
@@ -37,7 +43,7 @@ COPY .next/static ./.next/static
 # reachable. `src/middleware.ts` rewrites a bare path into the store tree (`/logo.png` -> `/s/<store>/logo.png`),
 # where no such file exists, and the asset 404s with the file sitting right here in the image. `assets/` is
 # excluded from that rewrite; nothing else in `public/` is.
-COPY public ./public
+COPY public ./storefront-coffee/public
 
 EXPOSE 3000
 
@@ -56,4 +62,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "server.js"]
+CMD ["node", "storefront-coffee/server.js"]

@@ -61,40 +61,39 @@ const DIVERGENCES = [
     fork: 'storefront-coffee',
     app: 'demo-setup',
     why:
-      'THE SPECIMEN, AND IT IS WAITING ON A PRODUCT ARTIFACT RATHER THAN ON A DECISION. The three marks are ' +
-      'reachable only once this fork can REGENERATE `storefront-coffee/src/lib/extensions/generated/' +
-      'registry.tsx`, which is a GENERATED surface (its own first line says "do not edit") and which nothing ' +
-      'in this repository regenerates: `bin/build-coffee.sh` and `bin/build-totem.sh` mention no codegen, and ' +
-      'the 18 tarballs in `storefront-coffee/vendor/` do not include one. Welding the import by hand is ' +
-      'exactly what `totem/src/lib/gate/registry.tsx` did, and that file\'s prose had already rotted by the ' +
-      'time pk31/d1 read it. The tool is owed by the product and is being fiado by pk32/p1-parto (pack:surface ' +
-      'born with the codegen vendored + the regeneration step wired); when it lands, the fix here is the three ' +
-      'gestures plus `npm run codegen`, and this entry goes away.',
+      'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
+      'It used to blame a missing product artifact ("the tool is owed by the product and is being fiado by ' +
+      'pk32/p1-parto"); that tool SHIPPED — `@forgecommerce/surface-codegen` is in the release, the fork ' +
+      'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
+      'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
+      'would draw a second one. His own rule decides it — 11/09, «o fork é do cliente, 100% liberdade» ⇒ when ' +
+      'a fork draws for itself what a declared block would draw, the INSTANCE removes the placement (the ' +
+      'shape `seed/outlet.mjs` already uses). ⇒ the fix is a seed change, not three gestures, and it is not ' +
+      'this slice\'s to make: `seed/demo-setup.json` still places all three marks on the café. Until it does, ' +
+      'the placement is real, enabled and published, and this entry is what keeps that visible.',
   },
   {
     fork: 'storefront-coffee',
     app: 'demo-gate',
     why:
-      'THE SAME MISSING TOOL, PLUS A SECOND HOLE THAT IS THE PRODUCT\'S: this cut (2026-09-01, commit 0d1c37f) ' +
-      'predates the gate seam by hours, so it has NEITHER `src/lib/extensions/generated/gate-registry.tsx` NOR ' +
-      '`src/lib/extensions/gate.ts` — the reference grew both on 2026-09-01 (ff2006e9d). Its ' +
-      '`src/app/s/[store]/layout.tsx:22` still resolves the gate through `@forgecommerce/storefront-kit/gate/' +
-      'registry`, whose map is EMPTY and whose header tells a forker to weld his entry into that very file — ' +
-      'which a `pack:surface` fork CANNOT do, because it installs the kit as a tarball and owns no copy of it. ' +
-      '⇒ reported upstream, not patchable from here (repo boundary): ' +
-      'packages/storefront-kit/src/gate/registry.tsx:20-26 and :42-48. ' +
-      '★★★ pk33 — AND THE CONSEQUENCE IS NO LONGER LEFT TO THE BOX. The gate app is installed at birth for ' +
-      'BOTH tenants now, and an install is TENANT-wide: it would place the gate on the café too, whose front ' +
-      'is this fork. Since pk32 a structural slot a build cannot draw REFUSES the page, so that would be a ' +
-      'coffee shop whose every page reads «Esta loja está temporariamente indisponível». ⇒ ' +
-      '`seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement from the café alone (the counter, whose ' +
-      'front is the totem, keeps its gate and draws it), `seed/box.json` declares `gate: false` + the reason ' +
-      'on that store, and `bin/prove-doors.mjs` grades the declaration against the port AND against the ' +
-      'screen. So the café is gateless BY DECLARATION rather than by accident — which is his own rule ' +
-      '(11/09: «o fork é do cliente, 100% liberdade» ⇒ the instance removes the placement). ⛔ THIS ENTRY ' +
-      'STILL STANDS, and it is what keeps the arrangement temporary: it is printed on every run and goes RED ' +
-      'the day it stops matching a finding. The day this fork can regenerate its registry, the removal, the ' +
-      '`gate: false` and this entry go together.',
+      'THREE OF THE FOUR GESTURES ARE DONE; THE FOURTH IS BLOCKED UPSTREAM AND `bin/fork-codegen.guard.mjs` ' +
+      'RUNS IT EVERY DAY. pk35/d3 gave this fork the dependency (`file:../apps/demo-gate`), the ' +
+      '`transpilePackages` entry and a tracing root that covers it (proven by a real standalone build and by ' +
+      'the image booting) — so the finding here is `unreached` and nothing else. What is left is the ' +
+      'REGENERATION: `src/lib/extensions/generated/` is a generated surface, and the tool that would write it ' +
+      '(`@forgecommerce/surface-codegen`, installed here) cannot run against a fork that installs the ' +
+      'RELEASE\'s tarballs — the front generator demands each app\'s kernel-side exports (`./manifest`, the ' +
+      'driver module) which a front tarball strips on purpose. Measured on this fork and reproduced on a ' +
+      'pristine `pnpm pack:surface` cut; the two walls, with their upstream file and line, are declared and ' +
+      'exercised in `bin/fork-codegen.guard.mjs`, which goes RED the day either falls. ' +
+      '⛔ AND WELDING THE IMPORT BY HAND IS NOT THE ANSWER — that is what `totem/src/lib/gate/registry.tsx` ' +
+      'did, and that file\'s prose had rotted by the time pk31/d1 read it. ' +
+      '★★ THE CONSEQUENCE IS STILL DECLARED, NOT LEFT TO THE BOX: the gate app is installed for BOTH tenants ' +
+      'at birth and an install is TENANT-wide, so `seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement ' +
+      'from the café alone (the counter keeps its gate and the totem draws it), `seed/box.json` declares ' +
+      '`gate: false` + the reason on that store, and `bin/prove-doors.mjs` grades the declaration against the ' +
+      'port AND the screen. The day the walls fall, the regeneration, the removal, the `gate: false` and this ' +
+      'entry go together — which is the slice after this one.',
   },
 ];
 
