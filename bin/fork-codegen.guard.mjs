@@ -61,42 +61,23 @@ const TOOL_DIR = join('packages', 'surface-codegen');
  * held by a fact on disk instead, further down. Grading both against the run would have demanded that a wall
  * stop a run this file deliberately prevents it from reaching.
  */
-const UPSTREAM_WALLS = [
-  {
-    id: 'no-shebang',
-    graded: 'ondisk',
-    why:
-      'THE LINKED COMMAND IS NOT EXECUTABLE. `packages/surface-codegen/dist/main.js` is emitted by tsup with ' +
-      'no `#!/usr/bin/env node` (packages/surface-codegen/src/main.ts:1 has none, and its build line — ' +
-      'packages/surface-codegen/package.json:38 — adds none), so `node_modules/.bin/forge-surface-codegen` is ' +
-      'a symlink the KERNEL hands to /bin/sh. Measured in a pristine `pnpm pack:surface storefront` cut ' +
-      'installed from the release tarballs: `npm run build` printed `import: unable to grab mouse` — the ' +
-      'shell ran ImageMagick\'s `import` on the ESM import statement — and then HUNG. Compare ' +
-      'apps/cli/dist/main.js, whose first line IS the shebang. ⇒ this guard invokes the tool through `node`, ' +
-      'which is the only way it runs today, and grades the missing shebang separately below.',
-  },
-  {
-    id: 'kernel-side-exports',
-    graded: 'outcome',
-    match: (outcome) =>
-      /has no "\.\/manifest" export/.test(outcome) || /declares a "[^"]+" driver at [^,]+, which it does not export/.test(outcome),
-    why:
-      'THE FRONT GENERATOR DEMANDS THE KERNEL HALF OF AN APP, AND A FRONT TARBALL DELIBERATELY DOES NOT SHIP ' +
-      'IT. `packages/codegen/src/composition.ts` resolves every listed app WHOLE — it refuses one that does ' +
-      'not export `./manifest` (:401-402), then one whose declared driver module is not exported — while ' +
-      '`packages/surface-codegen/src/regenerate.ts` keeps only the artifacts of ONE FRONT and writes neither ' +
-      'of those specifiers into any file. Each published app strips exactly those from its tarball on purpose ' +
-      '(`files` + `publishConfig.exports` in extensions/<app>/package.json: a front must not link the ' +
-      'kernel\'s manifest). MEASURED: all 11 platform apps this fork installs lack `./manifest`, and with ' +
-      'that stood in the next refusal is `@forgecommerce/ext-payment-mercadopago declares a "payment" driver ' +
-      'at ./provider, which it does not export`. Only `@forge/ext-demo-gate` — this box\'s own app, which ' +
-      'arrives as a DIRECTORY — satisfies it. ⇒ the tool cannot regenerate any fork that installs the ' +
-      'release, and it is not one line: the front-side generation has to stop asking for the kernel-side ' +
-      'exports. ⚠️ The product\'s own guard cannot see it — ' +
-      'scripts/publishing/surface-codegen.guard.test.ts:57-68 stands each app\'s manifest in from the ' +
-      'WORKSPACE instead of from the installed tarball, which is a shape no fork ever has.',
-  },
-];
+// ⛔ AQUI VIVIAM DOIS MUROS DECLARADOS, E OS DOIS CAÍRAM EM 14/09 (pk35) — a lápide fica porque a razão é o
+// achado, não a lista.
+//   · `no-shebang` — `packages/surface-codegen/dist/main.js` saía sem `#!`, então o
+//     `node_modules/.bin/forge-surface-codegen` era entregue ao `/bin/sh`, que rodava o `import {` como o
+//     `import` do ImageMagick e PENDURAVA esperando capturar o mouse no display X, em vez de falhar.
+//     ★ O sinal falava de janelas do X sobre um arquivo que só não tinha uma primeira linha.
+//   · `kernel-side-exports` — o gerador do lado FRONT exigia os exports do lado KERNEL (`./manifest`, o módulo
+//     do driver), que o tarball de front tira DE PROPÓSITO: um front não linka o manifesto do kernel.
+// ★★ E o motivo de ninguém os ter visto: o único teste que instala um corte de verdade
+// (`packed-surface.guard.test.ts`) morria no `npm install` desde a pk32/p1 — um `EOVERRIDE` — e nunca chegou a
+// rodar um build. ⇒ os muros eram invisíveis porque o instrumento morria antes da porta. Tudo isso caiu na
+// pk35/p6, e a prova é um corte virgem verde.
+//
+// ⚠️ A REGRA ABAIXO CONTINUA, e é ela que vale: o gerador tem de RODAR em todo fork de superfície — limpo, ou
+// parado por um muro DECLARADO. Com a lista vazia, "limpo" é a única saída aceita, e qualquer falha nova é
+// vermelha nomeando o fork. Um muro novo se declara aqui, com `arquivo:linha`, e morre do mesmo jeito.
+const UPSTREAM_WALLS = [];
 
 const PINNED = pinnedCommit();
 const TREE = PINNED ? releaseTree(PINNED) : { tried: [] };

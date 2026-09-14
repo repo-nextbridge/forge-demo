@@ -101,35 +101,15 @@ const DIVERGENCES = [
       'drops one of these blocks on the café in Compose it would draw nothing, and nobody is entitled to ' +
       'not know that.',
   },
-  {
-    fork: 'storefront-coffee',
-    app: 'demo-gate',
-    // ★ pk35, o corte — ESTA ENTRADA ESPERA POR OUTRO REPO, não por este. A d3 deu ao fork as três peças
-    // (`composition.json`, script `codegen`, dependência de verdade) e o gerador AINDA não roda: os muros
-    // são do PRODUTO e estão declarados um a um em `bin/fork-codegen.guard.mjs::UPSTREAM_WALLS`, que os
-    // RODA e fica vermelho quando um cai. ⛔ Um `until` de disco aqui duplicaria aquele instrumento e
-    // mentiria: as condições de disco JÁ estão cumpridas e o alcance continua ausente.
-    waitsOn: 'bin/fork-codegen.guard.mjs::UPSTREAM_WALLS',
-    why:
-      'THREE OF THE FOUR GESTURES ARE DONE; THE FOURTH IS BLOCKED UPSTREAM AND `bin/fork-codegen.guard.mjs` ' +
-      'RUNS IT EVERY DAY. pk35/d3 gave this fork the dependency (`file:../apps/demo-gate`), the ' +
-      '`transpilePackages` entry and a tracing root that covers it (proven by a real standalone build and by ' +
-      'the image booting) — so the finding here is `unreached` and nothing else. What is left is the ' +
-      'REGENERATION: `src/lib/extensions/generated/` is a generated surface, and the tool that would write it ' +
-      '(`@forgecommerce/surface-codegen`, installed here) cannot run against a fork that installs the ' +
-      'RELEASE\'s tarballs — the front generator demands each app\'s kernel-side exports (`./manifest`, the ' +
-      'driver module) which a front tarball strips on purpose. Measured on this fork and reproduced on a ' +
-      'pristine `pnpm pack:surface` cut; the two walls, with their upstream file and line, are declared and ' +
-      'exercised in `bin/fork-codegen.guard.mjs`, which goes RED the day either falls. ' +
-      '⛔ AND WELDING THE IMPORT BY HAND IS NOT THE ANSWER — that is what `totem/src/lib/gate/registry.tsx` ' +
-      'did, and that file\'s prose had rotted by the time pk31/d1 read it. ' +
-      '★★ THE CONSEQUENCE IS STILL DECLARED, NOT LEFT TO THE BOX: the gate app is installed for BOTH tenants ' +
-      'at birth and an install is TENANT-wide, so `seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement ' +
-      'from the café alone (the counter keeps its gate and the totem draws it), `seed/box.json` declares ' +
-      '`gate: false` + the reason on that store, and `bin/prove-doors.mjs` grades the declaration against the ' +
-      'port AND the screen. The day the walls fall, the regeneration, the removal, the `gate: false` and this ' +
-      'entry go together — which is the slice after this one.',
-  },
+  // ⛔ AQUI VIVIA A DIVERGÊNCIA `storefront-coffee × demo-gate`, E ELA MORREU EM 14/09 (pk35).
+  // Ela dizia que o fork não alcançava a portaria porque `src/lib/extensions/generated/` é superfície GERADA e
+  // a ferramenta que a escreve não conseguia rodar contra um fork que instala os tarballs do RELEASE — o
+  // gerador do lado FRONT exigia os exports do lado KERNEL, que o tarball de front tira de propósito.
+  // ★ Os muros caíram na mesma leva (pk35/p6, no produto), o fork ganhou `composition.json` + `codegen` +
+  // dependência de verdade (pk35/d3), `npm run codegen` escreveu `generated/gate-registry.tsx`, e
+  // `src/lib/extensions/gate.ts` o lê antes do registro soldado. ⇒ o alcance existe, e uma dispensa que
+  // sobrevive ao próprio motivo é a tampa que este arquivo inteiro existe para impedir.
+  // ⚠️ Se o café voltar a não desenhar a portaria, a regra abaixo fica VERMELHA sozinha — que é o certo.
 ];
 
 /**

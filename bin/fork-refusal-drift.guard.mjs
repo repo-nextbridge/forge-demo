@@ -83,7 +83,38 @@ const KIT_SCOPE = '@forgecommerce/';
  * divergence can never be quietly permanent; and an entry naming a refusal the reference no longer makes is
  * RED, so a waiver outlives its reason by exactly one run.
  */
-const DIVERGENCES = [];
+const DIVERGENCES = [
+  {
+    fork: 'storefront-coffee',
+    route: 'src/app/sitemap.ts',
+    question: 'instanceReadClient().storeFlags',
+    // ⚠️ DECLARADA NO CORTE DO pk35, 14/09, e a razão é de TAMANHO, não de desacordo.
+    //
+    // A `pk35/p9` tirou o sitemap da REFERÊNCIA da face anônima: ele caminhava em `readClient()` e gastava o
+    // balde do COMPRADOR daquela loja — e numa loja grande demais para caber no cache a caminhada roda em TODA
+    // requisição (55 chamadas por requisição a 50 000 produtos; oito visitas de robô num minuto gastam a janela
+    // inteira de que as páginas do comprador vivem). Ela trocou por `instanceReadClient()`.
+    //
+    // O fork faz A MESMA PERGUNTA — `storeFlags` antes de servir — só que pela face antiga. ⇒ ⛔ não é uma loja
+    // servindo o que o produto recusa: é a MESMA recusa, comprada com o orçamento errado.
+    //
+    // ⛔ POR QUE NÃO FOI FEITO AQUI, dito de frente: trocar a chamada é uma linha, mas o fork carrega a PRÓPRIA
+    // cópia da caminhada (`src/lib/sitemap-data.ts`) e a própria suíte — medido no corte: 26 testes vermelhos,
+    // porque o mock do módulo conhece só a face antiga. Adotar a face de verdade é a mesma fatia que a `p9` fez
+    // do outro lado, com o mesmo cuidado, e o corte não é hora de escrevê-la cansado.
+    //
+    // ★ O QUE ISSO CUSTA HOJE, medido pela `p9` na bancada: 6 chamadas por MISS = 1,5 % da janela daquela loja,
+    // no máximo 12× por hora, e ZERO em regime quente. ⇒ risco de mecanismo, sem estrago hoje — e o número que
+    // justifica a fatia é o da loja grande, que esta demo não tem.
+    why:
+      'THE SAME REFUSAL, BOUGHT WITH THE WRONG BUDGET. pk35/p9 moved the reference sitemap off the anonymous ' +
+      'face so a crawler stops spending the shopper rate-limit window; this fork asks the identical ' +
+      '`storeFlags` question, still through `readClient()`. Adopting the instance face here is one line in ' +
+      'the route and a slice in the fork: it carries its own `src/lib/sitemap-data.ts` and its own suite (26 ' +
+      'tests go red, the module mock knows only the old face). Measured cost today: 6 port calls per cache ' +
+      'MISS, 1.5% of that store window, at most 12 times an hour, ZERO while warm.',
+  },
+];
 
 const PINNED = pinnedCommit();
 const TREE = PINNED ? releaseTree(PINNED) : { tried: [] };

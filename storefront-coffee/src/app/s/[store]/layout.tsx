@@ -24,7 +24,7 @@ import {
   isStructuralTarget,
 } from '@forgecommerce/storefront-kit/extensions/composition-gap';
 import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
-import { resolveGate } from '@forgecommerce/storefront-kit/gate/registry';
+import { resolveGate } from '@/lib/extensions/gate';
 import {
   requestAddresses,
   requirePublicStorefront,
