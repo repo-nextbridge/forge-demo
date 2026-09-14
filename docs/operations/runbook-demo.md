@@ -391,6 +391,12 @@ teto.**
 sabe dizer como parou é imagem que **não consegue se limitar por progresso** — está num relógio de qualquer
 jeito, e um teto derivado é maior que os 900 000 ms dela. Então a derivação **sobrevive exatamente ali**, e o
 relatório diz que é isso que está fazendo. ⛔ Quem decide é o **campo**, nunca o `skipped`.
+⚠️ **E onde ela sobrevive, sobrevive como REDE.** A versão do tamanho-do-juiz desse número é justamente o que
+cortou o outlet: `4 034 947 ms` contra um plano final de `planned=22047` que, ao custo de 180–200 ms/url que a
+própria corrida mediu, precisava de **4 043 880–4 493 200 ms** — curto em 0,2–11%. Não podia ser diferente: o
+plano observado é um **piso** (corrida cortada dentro da passada de PÁGINAS nunca vê as imagens que aquelas
+páginas declarariam). Então o teto que sobrevive **folga uma ordem de grandeza** sobre o trabalho medido
+(`NET_HEADROOM`) e é **nomeado** rede — múltiplo de uma medição, nunca número de tamanho.
 ★ E `stoppedBecause` tem **quatro** leituras, não três: **ausente** é *"esta corrida não pode dizer"* — nunca
 `finished`. É a mesma régua que a coluna `busy` já obedece.
 

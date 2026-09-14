@@ -1202,6 +1202,30 @@ test('★★★ …and on THAT image the derivation SURVIVES, because there the 
   }
 });
 
+test('★★★ the surviving ceiling is a NET and not a JUDGE — it CLEARS the work it measured', async () => {
+  // ⛔ THE MEASUREMENT THIS ASSERTION EXISTS FOR. On 2026-09-13 the derived number was `4 034 947 ms`,
+  //    sized to exactly the work the cut run's plan implied — and the derived run WAS CUT TOO, because the
+  //    final plan was `planned=22047` and at the 180–200 ms/url it really cost, that plan plus its verify
+  //    pass needed 4 043 880–4 493 200 ms. Short by 0.2–11%. A number sized to a FLOOR is a number that
+  //    decides, whatever it is called.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const { stdout } = await runStep({ box });
+    const [, net] = ceilings(box);
+    const work = 20_800 * 100; // (400 pages + 20 000 images + 400 verify) × the cost the run measured
+    assert.ok(net, `nothing was sent at all:\n${stdout}`);
+    assert.ok(
+      net >= work * 5,
+      `the ceiling sent was ${net}ms against ${work}ms of measured work — that is a judge, not a net:\n${stdout}`,
+    );
+    // ⛔ AND IT SAYS WHICH IT IS. A net that reads like a deadline gets raised by hand next time it fires.
+    assert.match(stdout, /SAFETY NET/i, `the number is not named as a net:\n${stdout}`);
+    assert.match(stdout, /FLOOR/i, `the reason the net needs headroom is not given:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
 test('★★★ …and the SAME plan on an image that CAN say gets no clock at all — the field is what decides', async () => {
   // ⛔ THE CONTROL. Same box, same plan, same cut: only the word changes. If the ceiling still went out, the
   //    step is deriving from `skipped` and the field is decoration.

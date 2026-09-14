@@ -286,6 +286,14 @@ own 900 000 ms. So the derivation survives **exactly there**, and the report say
 discriminator is the **field**, never `skipped`: the same plan and the same cut, on a run that publishes
 `no-progress`, gets **no ceiling at all**.
 
+⚠️ **And where it survives, it survives as a NET.** The judge-sized version of that number is exactly what
+cut the outlet: `4 034 947 ms`, against a final plan of `planned=22047` which, at the 180–200 ms/url that run
+really cost, needed **4 043 880–4 493 200 ms** — short by 0.2–11%. It could not have been otherwise: the
+observed plan is a **floor** (a run cut inside the pages pass never sees the images those pages would have
+declared), and a number sized to a floor is a number that **decides**. So the surviving ceiling clears the
+measured work by an order of magnitude (`NET_HEADROOM`) and is **named** a net — a multiple of a measurement,
+never a number of size: a plan ten times bigger gets a net ten times bigger with no edit.
+
 ★ And `stoppedBecause` has **four** readings, not three: **absent** is *"this run cannot say"* — never
 `finished`. It is the same rule the `busy` column already obeys.
 

@@ -637,6 +637,9 @@ const warmRun = async (maxDurationMs, waitMs) => {
 // clock is the judge whether this step likes it or not, and the derived ceiling is the only thing standing
 // between the birth and `15865 urls were never visited`. So the derivation survives EXACTLY where the run
 // cannot say how it stopped, and the report says that is what it is doing and why.
+// ⚠️ AND WHERE IT SURVIVES IT SURVIVES AS A **NET**, `NET_HEADROOM`× the work it measured — because the
+// judge-sized version of that number is precisely what cut the outlet: `4 034 947 ms` against a final plan
+// that needed 4 043 880–4 493 200 ms at its own measured cost. See `NET_HEADROOM`.
 // ⛔ THE DISCRIMINATOR IS THE FIELD, NEVER `skipped`: same plan, same cut, and a run that publishes
 // `no-progress` gets no ceiling at all. `bin/warm-box.test.mjs` runs both halves of that control.
 //
@@ -768,6 +771,28 @@ const measure = (run) => {
   };
 };
 
+/**
+ * ★★★ pk35/d5 — HOW FAR THE SURVIVING CEILING CLEARS THE WORK IT MEASURED, so it is a NET and not a JUDGE.
+ *
+ * ⛔ MEASURED, AND IT IS WHY THIS NUMBER EXISTS AT ALL. On 2026-09-13 this step derived `4 034 947 ms` —
+ * exactly the work the cut run's plan implied — and the derived run WAS CUT TOO: the final report said
+ * `planned=22047`, and at the 180–200 ms/url that run really cost, the plan plus its verify pass needed
+ * 4 043 880–4 493 200 ms. The derivation was short by 0.2–11%. ★ IT COULD NOT HAVE BEEN OTHERWISE: this file
+ * already says the observed plan is a FLOOR (a run cut inside the PAGES pass never sees the images those
+ * pages would have declared), and a number sized to a floor is a number that decides.
+ *
+ * ⚠️ THIS IS A MULTIPLE OF A MEASUREMENT, NEVER A NUMBER OF SIZE. It carries no idea of how big a catalogue
+ * is: a plan ten times larger gets a net ten times larger, with no edit. What it buys is that the clock can
+ * no longer be the REASON a run stops while the box is working — which is the whole rule
+ * (*limit by progress; the clock is a net, never a judge*), honoured as far as an image that cannot bound
+ * itself by progress allows.
+ *
+ * ⛔ AND IT IS NOT WHAT KEEPS THE RUN FINITE. That guarantee already exists elsewhere and was checked first:
+ * the plan is finite, every request is bounded by the vitrine's `timeoutMs`, and this script's own poll
+ * gives up at `waitFor(ceiling)` — a birth may not hang on a poll.
+ */
+const NET_HEADROOM = 10;
+
 const FIRST_WAIT_MS = 20 * 60_000;
 /** The poll always outlasts the ceiling: the ceiling bounds the FETCHING, and the enumeration is outside it.
  *  The third is the ratio this file already carried (20 min of waiting for a 15-minute ceiling). */
@@ -834,10 +859,12 @@ if (observed && observed.skipped > 0 && stopWord !== null) {
   } else if (noDerive) {
     noted('the ceiling', `${cut}. \`--no-derive\` was given, so the ceiling was NOT derived and the run stands as it is.`);
   } else {
-    const ceiling = Math.ceil(observed.plan * observed.msPerUrl);
+    const work = Math.ceil(observed.plan * observed.msPerUrl);
+    const ceiling = work * NET_HEADROOM;
     noted(
       'the ceiling',
-      `${cut}. ↻ re-running under a ceiling DERIVED from that plan: ${ceiling}ms. ⚠️ THIS IS ` +
+      `${cut}. ↻ re-running under a SAFETY NET of ${ceiling}ms — ${NET_HEADROOM}× the ${work}ms of work ` +
+        'that plan measures, because the plan is a FLOOR and a net sized like the work is a judge. ⚠️ THIS IS ' +
         'COMPATIBILITY, NOT THIS STEP\'S OPINION OF HOW LONG A HEALTHY BOX SHOULD TAKE: the vitrine that ' +
         'answered publishes no `stoppedBecause`, so it predates pk35/p1 and CANNOT BOUND ITSELF BY ' +
         'PROGRESS — its only run-wide limit is a clock, and a derived one is larger than the 900 000 ms ' +

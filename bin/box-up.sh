@@ -2004,8 +2004,9 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # 2026-09-11. `pk35/p1` made PROGRESS the product's judge (a window of NON-progress) and demoted
 # `max_duration_ms` to an optional net; ⇒ STEP 14 NO LONGER SENDS ONE. ⚠️ WITH ONE MEASURED EXCEPTION: a
 # front whose image predates p1 publishes no `report.stoppedBecause` and cannot bound itself by progress, so
-# there the derived ceiling survives — and `bin/warm-box.mjs` says out loud when that is what it did. The
-# storefront pinned in `forge.lock` today is exactly such an image. Warmth stays a REPORT either way: the
+# there the derived ceiling survives — as a NET this time (`NET_HEADROOM`× the work it measured, because the
+# judge-sized version of that number is what cut the outlet), and `bin/warm-box.mjs` says out loud when that
+# is what it did. The storefront pinned in `forge.lock` today is exactly such an image. Warmth stays a REPORT either way: the
 # false red of `failed=198` is untouched, and so is the reasoning above.
 #
 # ⛔ IT WAS NOT DELETED, SILENCED OR `|| true`d. It runs, and it now says MORE than it did: which URLs did not
