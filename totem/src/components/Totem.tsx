@@ -261,6 +261,32 @@ export function Totem({
     screen === 'pix' && paid?.outcome.kind === 'pix_pending' ? paid.outcome.expiresInSeconds : null;
 
   /**
+   * ★★ THE COUNTER GOES HOME — ONE FUNCTION, BECAUSE THERE ARE NOW TWO WAYS TO REACH IT.
+   *
+   * It used to live inside the inactivity effect, where the clock was the only caller. The receipt screen
+   * now has a button of its own (see `.doneFooter`), and a second copy of this reset would be a second
+   * answer to "what does an empty till look like" — the two would drift the day a screen adds state.
+   *
+   * ⚠️ `resetCounter` IS A SERVER WRITE AND NOT A STATE CHANGE. The cart pointer is an httpOnly cookie, so a
+   * reset that only cleared React state would look identical on the glass and leave the basket alive on the
+   * next render. That is what `Totem.idle.test.tsx` measures, and the button inherits the same guarantee.
+   */
+  const goHome = useCallback(async () => {
+    const { bag: empty } = await resetCounter();
+    setBag(empty);
+    setScreen('menu');
+    setDetail(null);
+    setCouponOpen(false);
+    setCouponInput('');
+    setCouponError(null);
+    setIdleWarning(false);
+    setName('');
+    setMethod(null);
+    setPaid(null);
+    setAttract(true);
+  }, []);
+
+  /**
    * ★★ THE RESET BETWEEN CUSTOMERS — the whole reason a kiosk is different from a phone.
    *
    * Any touch anywhere restarts the clock. When it runs out the screen goes back to "Toque para começar" AND
@@ -276,20 +302,6 @@ export function Totem({
     if (attract) return;
     let warn: ReturnType<typeof setTimeout>;
     let timer: ReturnType<typeof setTimeout>;
-    const goHome = async () => {
-      const { bag: empty } = await resetCounter();
-      setBag(empty);
-      setScreen('menu');
-      setDetail(null);
-      setCouponOpen(false);
-      setCouponInput('');
-      setCouponError(null);
-      setIdleWarning(false);
-      setName('');
-      setMethod(null);
-      setPaid(null);
-      setAttract(true);
-    };
     // ★★★ PAYMENT IN FLIGHT: the inactivity clock is not armed at all, and neither is its question. What runs
     // in its place is the pix's own window — see `pixWindowSeconds` above for why one replaces the other.
     if (pixWindowSeconds !== null) {
@@ -323,7 +335,7 @@ export function Totem({
       rearmIdle.current = () => {};
       for (const e of events) window.removeEventListener(e, arm, true);
     };
-  }, [attract, idleSeconds, pixWindowSeconds]);
+  }, [attract, goHome, idleSeconds, pixWindowSeconds]);
 
   /**
    * ★★ THE BACK GESTURE STAYS INSIDE THE KIOSK (s5-6, 03/09).
@@ -556,6 +568,27 @@ export function Totem({
       if (r.paid) setScreen('done');
       else say('O pagamento ainda não foi confirmado.', true);
     });
+  }
+
+  /**
+   * ★★★ THE QUEUE'S WAY PAST A RECEIPT THAT IS NOT THEIRS (M9).
+   *
+   * ── THE DEFECT. The confirmation screen had no control on it at all: the only thing that cleared it was
+   * the inactivity clock, so after "Pagamento confirmado" the glass held the previous customer's order
+   * number, name and basket for the whole window — measured on the bench at ~90s — while the next person in
+   * line stood reading somebody else's receipt and had no way to say "I am next".
+   *
+   * ⚠️ THE FIX IS A BUTTON, AND DELIBERATELY NOT A SHORTER WINDOW. A window tuned short enough to free the
+   * till takes the receipt away from the person who is still writing down their number; one tuned long
+   * enough to keep it blocks the queue. No number is both, so the answer is not a number — it is a target
+   * for the finger that is already there. The inactivity reset stays exactly as it was, for the customer who
+   * walks off without tapping anything.
+   *
+   * It is the SAME `goHome` the clock runs — server reset included — so "the next person never inherits the
+   * previous person's order" holds however the till was freed.
+   */
+  async function newOrder() {
+    await exclusive(goHome);
   }
 
   // ── the counter is not visible on the public face yet ────────────────────────────────────────────────
@@ -808,7 +841,6 @@ export function Totem({
         {screen === 'cart' && (
           <div className={styles.step}>
             <div className={styles.stepHeader}>
-              <div className={styles.stepEyebrow}>Etapa 1 de 2</div>
               <div className={styles.stepTitle}>Seu pedido</div>
               <div className={styles.stepNote}>
                 {bag.count === 1 ? '1 item · confira antes de pagar' : `${bag.count} itens · confira antes de pagar`}
@@ -858,47 +890,66 @@ export function Totem({
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                className={`${styles.couponButton} ${bag.couponCode ? styles.couponButtonOn : ''}`}
-                onClick={() =>
-                  bag.couponCode
-                    ? dropCoupon()
-                    : (setCouponInput(''), setCouponError(null), setCouponOpen(true))
-                }
-              >
-                <div className={styles.couponMark}>%</div>
-                <div className={styles.couponCopy}>
-                  <div className={styles.couponTitle}>
-                    {bag.couponCode ? `Cupom ${bag.couponCode} aplicado` : 'Adicionar cupom de desconto'}
+              {/*
+                ★★ B14 — THE COUPON IS OFFERED WHEN THERE IS SOMETHING TO DISCOUNT, AND NOT BEFORE.
+                An empty review used to carry the whole card: "Adicionar cupom de desconto", a keyboard
+                behind it, and a code the customer could type into a basket with no lines — `cart.apply_coupon`
+                is capped at ten a minute for the WHOLE counter, so an invitation that can only be refused
+                spends a shared budget on nothing. `bag.lines` is the condition rather than `couponCode`,
+                because it is the LINES that a promotion takes its percentage of.
+              */}
+              {bag.lines.length > 0 ? (
+                <button
+                  type="button"
+                  className={`${styles.couponButton} ${bag.couponCode ? styles.couponButtonOn : ''}`}
+                  onClick={() =>
+                    bag.couponCode
+                      ? dropCoupon()
+                      : (setCouponInput(''), setCouponError(null), setCouponOpen(true))
+                  }
+                >
+                  <div className={styles.couponMark}>%</div>
+                  <div className={styles.couponCopy}>
+                    <div className={styles.couponTitle}>
+                      {bag.couponCode ? `Cupom ${bag.couponCode} aplicado` : 'Adicionar cupom de desconto'}
+                    </div>
+                    <div className={styles.couponSub}>
+                      {bag.couponCode
+                        ? `${bag.discountTitle ?? 'Desconto'} no seu pedido · toque para remover`
+                        : 'Toque para digitar o código do seu cupom'}
+                    </div>
                   </div>
-                  <div className={styles.couponSub}>
-                    {bag.couponCode
-                      ? `${bag.discountTitle ?? 'Desconto'} no seu pedido · toque para remover`
-                      : 'Toque para digitar o código do seu cupom'}
-                  </div>
-                </div>
-                <div className={styles.couponIcon}>{bag.couponCode ? '✓' : '+'}</div>
-              </button>
+                  <div className={styles.couponIcon}>{bag.couponCode ? '✓' : '+'}</div>
+                </button>
+              ) : null}
             </div>
 
             <div className={styles.stepFooter}>
-              <div className={styles.totals}>
-                <div className={styles.totalRow}>
-                  <span>Subtotal</span>
-                  <span>{bag.subtotalLabel}</span>
-                </div>
-                {bag.discountLabel ? (
-                  <div className={`${styles.totalRow} ${styles.discountRow}`}>
-                    <span>{bag.discountTitle}</span>
-                    <span>{bag.discountLabel}</span>
+              {/*
+                ★★ B14 — A SUM OF NOTHING IS NOT PRINTED. An empty review used to state **Subtotal R$ 0,00**
+                and **Total R$ 0,00** in the same type as a real bill. Both are honest arithmetic and neither
+                is a fact anybody needs: the screen already says "Sua sacola está vazia" above, and a total
+                the size of the one a customer is about to pay reads as a price at a glance. The numbers come
+                back the moment there is a line to total — they are never computed here either way.
+              */}
+              {bag.lines.length > 0 ? (
+                <div className={styles.totals}>
+                  <div className={styles.totalRow}>
+                    <span>Subtotal</span>
+                    <span>{bag.subtotalLabel}</span>
                   </div>
-                ) : null}
-                <div className={styles.grandRow}>
-                  <span className={styles.grandLabel}>Total</span>
-                  <span className={styles.grandValue}>{bag.totalLabel}</span>
+                  {bag.discountLabel ? (
+                    <div className={`${styles.totalRow} ${styles.discountRow}`}>
+                      <span>{bag.discountTitle}</span>
+                      <span>{bag.discountLabel}</span>
+                    </div>
+                  ) : null}
+                  <div className={styles.grandRow}>
+                    <span className={styles.grandLabel}>Total</span>
+                    <span className={styles.grandValue}>{bag.totalLabel}</span>
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div className={styles.stepActions}>
                 <button type="button" className={styles.ghostButton} onClick={() => setScreen('menu')}>
                   <span className={styles.arrow}>←</span>
@@ -915,6 +966,9 @@ export function Totem({
                 </button>
               </div>
             </div>
+
+            {/* The step seal, at the foot of the panel — see `stepSeal` in Totem.module.css for the measurement. */}
+            <div className={styles.stepSeal}>Etapa 1 de 2</div>
 
             {couponOpen ? (
               <div className={styles.overlay} style={{ zIndex: 50 }}>
@@ -988,7 +1042,6 @@ export function Totem({
         {screen === 'identify' && (
           <div className={styles.step}>
             <div className={styles.stepHeader}>
-              <div className={styles.stepEyebrow}>Etapa 2 de 2</div>
               <div className={styles.stepTitle}>Quem vai retirar?</div>
               <div className={styles.stepNote}>Chamamos esse nome quando o pedido ficar pronto</div>
             </div>
@@ -1095,6 +1148,9 @@ export function Totem({
                 <span className={styles.arrow}>→</span>
               </button>
             </div>
+
+            {/* The step seal, at the foot of the panel — see `stepSeal` in Totem.module.css for the measurement. */}
+            <div className={styles.stepSeal}>Etapa 2 de 2</div>
           </div>
         )}
 
@@ -1197,6 +1253,15 @@ export function Totem({
             <div className={styles.doneFooter}>
               <div className={styles.doneCall}>Retire no balcão quando chamarmos {paid.orderNumber}</div>
               <div className={styles.doneCallNote}>Fique de olho no painel · tempo médio de 6 minutos</div>
+              <button
+                type="button"
+                className={styles.newOrderButton}
+                onClick={newOrder}
+                disabled={busy}
+                data-testid="new-order"
+              >
+                Novo pedido
+              </button>
             </div>
           </div>
         )}
