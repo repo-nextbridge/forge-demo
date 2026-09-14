@@ -193,10 +193,12 @@ test('★★ a birth with nothing wrong exits 0 — the control, without which e
 // during a birth, `failed=0` for the same URLs on the idle box minutes later, because it is the last step of
 // the birth and races the tail of the seed.
 //
-// ⚠️ HALF OF THAT WAS REPAIRED IN pk21/d2 AND THIS TEST STAYS ANYWAY. The ceiling is no longer a constant —
-// `bin/warm-box.mjs` re-runs a cut run under a ceiling DERIVED from the plan it measured, so "red by
-// construction" is gone. The FALSE red is not, and neither is a cold box on a day the vitrine misbehaves;
-// warmth is still a report, and these two tests are what stop it drifting back.
+// ⚠️ HALF OF THAT WAS REPAIRED — TWICE — AND THIS TEST STAYS ANYWAY. pk21/d2 replaced the constant with a
+// ceiling `bin/warm-box.mjs` DERIVED from the plan it measured; pk35/p1 then took the clock out of the
+// product's judgement altogether (a window of NON-progress), and pk35/d5 stopped this repository sending a
+// ceiling to a front that can bound itself. So "red by construction" is gone. The FALSE red is not, and
+// neither is a cold box on a day the vitrine misbehaves; warmth is still a report, and these two tests are
+// what stop it drifting back.
 //
 // ★ A step that is ALWAYS red is a step people learn to skip, and then it is worth nothing on the day it is
 // right. So warmth is printed and not counted — and these two tests are what stops it drifting back, in EITHER

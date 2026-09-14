@@ -22,16 +22,22 @@
 //
 // Three measurements, all of them from real births on the promoted bench, say this one was always red:
 //
-//   1 · RED BY CONSTRUCTION — ★ AND THIS ONE IS FIXED (pk21/d2, see §3b). The plan is not made of pages:
-//       ~420 pages plus ~20 400 IMAGE derivatives found in each HTML's `srcset` — `planned=20822`,
-//       `warmed=4964`, `15865 urls were never visited`. What cut it is the VITRINE's own DEFAULT,
-//       `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, in the product).
-//       ⚠️ THIS FILE USED TO SAY THAT DEFAULT COULD NOT BE OVERRIDDEN. It was wrong, and one look at the
-//       route settles it: `/api/warm?max_duration_ms=` overrides it
-//       (`apps/storefront/src/app/api/warm/route.ts:183`). Since pk21 a run that is CUT is re-run under a
-//       ceiling DERIVED from the plan it just measured (Renan, 07/09: *"deriva do plano"*), so the step is
-//       no longer red by construction. The `--deadline-ms` below is still a different number: the wait for
-//       an answer, and it derives from the ceiling rather than being a constant.
+//   1 · RED BY CONSTRUCTION — ★ AND THIS ONE IS FIXED, TWICE (pk21/d2, then pk35/d5; see §3b). The plan is
+//       not made of pages: ~420 pages plus ~20 400 IMAGE derivatives found in each HTML's `srcset` —
+//       `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cut it was the VITRINE's own
+//       15-minute default, `DEFAULT_MAX_DURATION_MS` in `apps/storefront/src/lib/warm/warm.ts`. pk21 raised
+//       that clock from here, by deriving a ceiling from the plan the cut run had just measured (Renan,
+//       07/09: *"deriva do plano"*) and sending it as `/api/warm?max_duration_ms=`.
+//       ⛔ AND THAT DERIVED CLOCK IS WHAT CUT THE OUTLET ON 2026-09-13: `4 034 947 ms`, with `failed=0` and
+//       `busy=0`, over a box that was filling its derivative cache at ~330 images/min. A clock that grows
+//       with the plan is still a clock pretending to know when a healthy box should be done — the shape this
+//       house forbade on 2026-09-11 (*a ceiling does not carry a number of SIZE inside it*).
+//       ★ `pk35/p1` MOVED THE JUDGE INTO THE PRODUCT: a window of NON-progress (`lib/warm/limit.ts`), with
+//       `max_duration_ms` demoted to an optional safety net nobody buys by default, and a new
+//       `report.stoppedBecause` (`finished` · `no-progress` · `safety-net`) saying which limit fired. ⇒ THIS
+//       STEP STOPPED SENDING A CEILING — except to an image that publishes no `stoppedBecause`, which is an
+//       image that cannot bound itself by progress and is therefore on a clock either way. See §3b.
+//       The `--deadline-ms` below is still a different number: how long THIS SCRIPT waits for an answer.
 //   2 · AND IT INVENTS RED. `failed=198` and `failed=189` on two births — and the very same brands and
 //       collections answer 200 on the idle box, with this same step reporting `failed=0`. Those failures are
 //       the load the warmer imposes on a box that is still settling; it is the last step of the birth and it
@@ -535,8 +541,9 @@ const stop = (label, detail) => {
 };
 
 /**
- * One warm run, from POST to settled — under `maxDurationMs`, or under the VITRINE's own default when that
- * is `null`. Returns the last snapshot the poll saw; a run still `running` when `waitMs` expires comes back
+ * One warm run, from POST to settled — under `maxDurationMs`, or under whatever the VITRINE bounds itself
+ * with when that is `null` (since pk35/p1 a window of NON-progress; on an older image its own 900 000 ms
+ * ceiling). Returns the last snapshot the poll saw; a run still `running` when `waitMs` expires comes back
  * as it is, because a birth may not hang on a poll.
  */
 const warmRun = async (maxDurationMs, waitMs) => {
@@ -544,9 +551,13 @@ const warmRun = async (maxDurationMs, waitMs) => {
   for (const s of toWarm) params.append('store', s.id);
   params.set('depth', WARM.depth ?? 'products');
   if (WARM.products !== undefined) params.set('products', String(WARM.products));
-  // ★ The endpoint is TOLD the ceiling as well as this script grading it, so the run's own `reasons` name the
-  //   breach in the box's words rather than only in ours.
+  // ★ The endpoint is TOLD the threshold as well as this script grading it, so the run's own `reasons` name
+  //   the breach in the box's words rather than only in ours.
   if (thresholdMs !== null) params.set('threshold_ms', String(thresholdMs));
+  // ⛔ pk35/d5 — `maxDurationMs` is `null` on every call this step makes to a front that can bound itself by
+  //   PROGRESS, and the parameter is then absent rather than zero: since p1 an absent `max_duration_ms` means
+  //   "no safety net", and a `0` would mean the smallest net that can be honoured. See §3b for the one image
+  //   that still gets a number.
   if (maxDurationMs !== null) params.set('max_duration_ms', String(maxDurationMs));
 
   let started;
@@ -609,7 +620,27 @@ const warmRun = async (maxDurationMs, waitMs) => {
   return run;
 };
 
-// ── ★★★ 3b · THE PRAZO DERIVES FROM THE PLAN ────────────────────────────────────────────────────────────
+// ── ★★★ 3b · THE CLOCK IS NOT THE JUDGE ANY MORE, AND THIS STEP STOPPED BUYING ONE ──────────────────────
+//
+// ⛔⛔ READ THIS FIRST, BECAUSE THE SECTION BELOW IS HISTORY NOW. pk21 taught this step to DERIVE a ceiling
+// and send it; on 2026-09-13 that derived number came out `4 034 947 ms` and cut the `outlet` at
+// `879/1 224` images with `failed=0` and `busy=0` — a box that was working, filling its derivative cache at
+// ~330 images/min. ★ THE DERIVATION FIXED THE SYMPTOM AND KEPT THE SHAPE: a ceiling that carries a number of
+// SIZE inside it, forbidden here since 2026-09-11. `pk35/p1` replaced the judge in the PRODUCT with a window
+// of NON-progress (`apps/storefront/src/lib/warm/limit.ts`) and demoted `max_duration_ms` to an optional
+// safety net, absent unless a caller with a deadline of its own buys one.
+//
+// ⇒ ★★★ THIS STEP SENDS NO `max_duration_ms` — WITH ONE MEASURED EXCEPTION, AND IT IS NOT A HEDGE.
+// This box pins its fronts BY DIGEST. The storefront `forge.lock` pins today (`v0.3.0-pre.e8fc602d4`, the
+// commit before p1) compiles `max_duration_ms")??9e5` into its warm route and carries the string
+// `stoppedBecause` nowhere at all — MEASURED on the bench `forge-preseed`, 2026-09-13. On that image the
+// clock is the judge whether this step likes it or not, and the derived ceiling is the only thing standing
+// between the birth and `15865 urls were never visited`. So the derivation survives EXACTLY where the run
+// cannot say how it stopped, and the report says that is what it is doing and why.
+// ⛔ THE DISCRIMINATOR IS THE FIELD, NEVER `skipped`: same plan, same cut, and a run that publishes
+// `no-progress` gets no ceiling at all. `bin/warm-box.test.mjs` runs both halves of that control.
+//
+// ──────────────────────── what follows is pk21's reasoning, kept because the exception above still runs it
 //
 // ⛔ THE DEFECT, MEASURED ON FOUR BIRTHS (three in the 05/09 notebook, again on 07/09). The plan of this box
 // is not a page count: ~420 pages plus the ~20 400 IMAGE derivatives those pages declare in their `srcset`.
@@ -620,10 +651,11 @@ const warmRun = async (maxDurationMs, waitMs) => {
 // from this slice, so the reconcilable pair above is the one cited here. ★ A STEP THAT IS ALWAYS RED IS A STEP
 // PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
 //
-// ⚠️ AND THIS FILE USED TO SAY THE BOX "CANNOT RAISE" THAT CEILING. That was FALSE, and checking it is what
-// this slice did first: `DEFAULT_MAX_DURATION_MS` (`apps/storefront/src/lib/warm/warm.ts:51`) is a DEFAULT,
-// and `/api/warm?max_duration_ms=` overrides it — `apps/storefront/src/app/api/warm/route.ts:183`. The
-// product had always exposed exactly what this box needed. What was missing was a number to send.
+// ⚠️ AND THIS FILE USED TO SAY THE BOX "CANNOT RAISE" THAT CEILING. That was FALSE: `DEFAULT_MAX_DURATION_MS`
+// (`apps/storefront/src/lib/warm/warm.ts`) was a DEFAULT, and `/api/warm?max_duration_ms=` overrode it
+// (`apps/storefront/src/app/api/warm/route.ts`, the `parse` block). The product had always exposed exactly
+// what this box needed. What was missing was a number to send. ⚠️ Since p1 the product ships NO such default
+// at all, so on a rebaked front there is nothing to raise and nothing to send.
 //
 // ★★ AND THE NUMBER IS DERIVED, NEVER CHOSEN (Renan, 07/09: *"deriva do plano"*). A bigger constant is the
 // same trap one house further along: it fits today's catalogue and lies again the day the catalogue grows,
@@ -635,13 +667,14 @@ const warmRun = async (maxDurationMs, waitMs) => {
 // spent divided by the urls it actually warmed. Nothing here is a constant, which is why a plan 2× bigger
 // gets a ceiling 2× bigger with no edit anywhere.
 //
-// ── WHY THE FIRST RUN STILL USES THE PRODUCT'S DEFAULT, and it is not an oversight ───────────────────────
+// ── WHY THE FIRST RUN SENDS NOTHING, and it is not an oversight ─────────────────────────────────────────
 // The plan CANNOT be known before the run: the pages come from the port's enumeration and the images come
 // from the BYTES those pages serve (`imageUrlsFrom` reads each `srcset`), so nothing outside the run can
 // count them. A box that guessed would be inventing the very number this slice removes. So the first run is
-// the OBSERVATION — it runs under the product's own default, which is not a promise but a first probe — and
-// the second run is this box correcting it with what the first one measured. On a box whose plan already
-// fits, the first run is not cut and there IS no second: the cost is paid only where the defect is.
+// the OBSERVATION — it runs under whatever the product bounds itself with, which since p1 is the no-progress
+// window and on an older image is that image's own 900 000 ms — and the second run is this box correcting a
+// PRE-p1 image with what the first one measured. On a box whose plan already fits, and on every rebaked
+// front, the first run is not cut and there IS no second.
 //
 // ⚠️ ONE derived re-run, not a loop. If the plan grew again under the bigger ceiling (a run cut inside the
 // PAGES pass never sees the images those pages would have declared, so its `planned` is a FLOOR), that is
@@ -660,6 +693,53 @@ const cutUrls = (report) =>
     (n, s) => n + (s.pages?.skipped ?? 0) + (s.images?.skipped ?? 0) + (s.verify?.skipped ?? 0),
     0,
   );
+
+// ── ★★★ pk35/d5 · HOW THE RUN STOPPED IS THE RUN'S OWN WORD, AND THERE ARE FOUR OF THEM ─────────────────
+//
+// `pk35/p1` publishes `report.stoppedBecause`: `finished` · `no-progress` · `safety-net`. Before it, a box
+// that had GONE QUIET and a box merely bigger than somebody's clock produced the same sentence — and those
+// are opposite instructions to whoever reads the report ("your shop stopped answering" against "the number
+// I handed the run was too small").
+//
+// ⛔ AND THE FOURTH READING IS ABSENCE, WHICH IS NOT `finished`. This box pins its fronts BY DIGEST, so the
+// image that answers can predate the field entirely — MEASURED on the bench of 2026-09-13, on the storefront
+// `forge.lock` pins today: its compiled warm route carries `max_duration_ms")??9e5` and the string
+// `stoppedBecause` appears nowhere in it. `stoppedBecause ?? 'finished'` would render "nobody said" and "it
+// finished" identically, which is the same rule the `busy` half of this file already obeys.
+
+/** The word, verbatim, or `null` when the image publishes none. ⛔ Never defaulted — see above. */
+const stopWordOf = (report) =>
+  typeof report?.stoppedBecause === 'string' && report.stoppedBecause ? report.stoppedBecause : null;
+
+/**
+ * Why a pass has urls it never TRIED, in terms of the run's own word.
+ *
+ * ⚠️ THIS SENTENCE USED TO BE A CONSTANT that blamed `DEFAULT_MAX_DURATION_MS` on every cut run. Since p1
+ * that is a HALF-TRUTH at best: the clock is no longer the product's judge, so a cut can mean the box went
+ * quiet — and printing the clock's words over a quiet box is a signal asserting about the WORLD what it only
+ * knows about ITSELF.
+ */
+const neverVisitedWhy = (word) => {
+  if (word === 'no-progress') {
+    return 'the box STOPPED ANSWERING before the run reached them — the run\'s own word is `no-progress`, and ' +
+      'no clock was involved. A bigger ceiling buys nothing here; find what stopped answering.';
+  }
+  if (word === 'safety-net') {
+    return 'a SAFETY NET the run was handed fired first, while the box was still answering — the run\'s own ' +
+      'word is `safety-net`. The store is not smaller than its plan; the clock was too short.';
+  }
+  if (word === 'finished') {
+    return 'the run says it FINISHED, which CONTRADICTS this column: `finished` means every url of the plan ' +
+      'was attempted. One of the two numbers is wrong, and this step is not guessing which.';
+  }
+  if (word !== null) {
+    return `the run stopped because \`${word}\` — a word this step does not know, so it names it rather than ` +
+      'rounding it to one it does.';
+  }
+  return 'the run\'s own ceiling arrived first. This image publishes no `stoppedBecause` (it predates ' +
+    'pk35/p1), and the only run-wide ceiling an image of that age has is the vitrine\'s ' +
+    'DEFAULT_MAX_DURATION_MS — never this script\'s --deadline-ms.';
+};
 
 /**
  * What the observation run measured, or `null` when it measured nothing to derive from.
@@ -695,8 +775,53 @@ const waitFor = (ceilingMs) => deadlineArg ?? Math.ceil((ceilingMs * 4) / 3);
 
 let run = await warmRun(null, deadlineArg ?? FIRST_WAIT_MS);
 const observed = measure(run);
+/** How the FIRST run says it stopped. `null` ⇒ the image cannot say, and that decides everything below. */
+const stopWord = stopWordOf(run?.report);
 
-if (observed && observed.skipped > 0) {
+if (observed && observed.skipped > 0 && stopWord !== null) {
+  // ★★★ THE RUN CAN SAY, SO THIS STEP DOES NOT INVENT A CLOCK. Each of the words is a different instruction,
+  //     and none of them is answered by a bigger ceiling: `no-progress` says the box went quiet (a clock
+  //     would only let it stay quiet for longer), `safety-net` says somebody ELSE's clock fired on a box that
+  //     was working, and `finished` beside unvisited urls is two numbers that cannot both be true.
+  const facts =
+    `the run was CUT: ${observed.skipped} url(s) were never TRIED. It warmed ${observed.warmed} url(s) in ` +
+    `${observed.elapsed}ms` +
+    (observed.msPerUrl === null ? '' : ` (${observed.msPerUrl.toFixed(1)} ms/url)`) +
+    `, over a plan of ${observed.plan} url(s)`;
+  if (stopWord === 'no-progress') {
+    noted(
+      'how it stopped',
+      `${facts}. The run says it STOPPED MAKING PROGRESS: the box WENT QUIET — nothing answered for the ` +
+        'whole no-progress window. ⛔ nothing was re-run, and nothing should be: a bigger clock buys ' +
+        'nothing from a box that is not answering. Read the ✗/⚠ lines for what stopped answering.',
+    );
+  } else if (stopWord === 'safety-net') {
+    noted(
+      'how it stopped',
+      `${facts}. The run says a SAFETY NET fired WHILE THE BOX WAS STILL WORKING — the store is not ` +
+        'smaller than its plan. ⛔ This step sends no ceiling of its own (pk35/d5), so that clock is ' +
+        'somebody else\'s: a `--max-duration-ms` typed by hand, or a run already flying that this call did ' +
+        'not start (the line above names that case). Nothing was re-run; raise or drop THAT clock.',
+    );
+  } else if (stopWord === 'finished') {
+    noted(
+      'how it stopped',
+      `${facts}. ⛔ AND THE RUN SAYS IT \`finished\`, WHICH CONTRADICTS THAT COUNT: \`finished\` means ` +
+        'every url of the plan was attempted, so one of the two numbers is wrong. This step reports both ' +
+        'rather than picking the one it prefers — a signal that cannot tell must never choose.',
+    );
+  } else {
+    noted(
+      'how it stopped',
+      `${facts}. The run stopped because \`${stopWord}\` — a word this step does not know, so it is ` +
+        'printed as itself and nothing is derived from it. Whoever added the word owns the sentence.',
+    );
+  }
+} else if (observed && observed.skipped > 0) {
+  // ── ⚠️ THE PRE-p1 IMAGE, AND THIS IS THE ONE PLACE THE DERIVED CLOCK SURVIVES ─────────────────────────
+  // An image that cannot say how it stopped is an image that CANNOT BOUND ITSELF BY PROGRESS: its only
+  // run-wide limit is `DEFAULT_MAX_DURATION_MS`, and that clock is bought whether this step sends a number
+  // or not. Sending a derived one is strictly better than letting the 900 000 ms default cut the birth.
   const cut =
     `the run was CUT: ${observed.skipped} url(s) were never TRIED. It warmed ${observed.warmed} url(s) in ` +
     `${observed.elapsed}ms` +
@@ -710,7 +835,14 @@ if (observed && observed.skipped > 0) {
     noted('the ceiling', `${cut}. \`--no-derive\` was given, so the ceiling was NOT derived and the run stands as it is.`);
   } else {
     const ceiling = Math.ceil(observed.plan * observed.msPerUrl);
-    noted('the ceiling', `${cut}. ↻ re-running under a ceiling DERIVED from that plan: ${ceiling}ms.`);
+    noted(
+      'the ceiling',
+      `${cut}. ↻ re-running under a ceiling DERIVED from that plan: ${ceiling}ms. ⚠️ THIS IS ` +
+        'COMPATIBILITY, NOT THIS STEP\'S OPINION OF HOW LONG A HEALTHY BOX SHOULD TAKE: the vitrine that ' +
+        'answered publishes no `stoppedBecause`, so it predates pk35/p1 and CANNOT BOUND ITSELF BY ' +
+        'PROGRESS — its only run-wide limit is a clock, and a derived one is larger than the 900 000 ms ' +
+        'it would otherwise use. Rebake the fronts and this step sends no ceiling at all.',
+    );
     run = await warmRun(ceiling, waitFor(ceiling));
     const again = measure(run);
     if (again && again.skipped > 0) {
@@ -734,9 +866,11 @@ if (observed && observed.skipped > 0) {
 // replaces a gate has to be readable, or the gate was worth more.
 //
 // ★ AND "DID NOT ANSWER" IS NOT "NEVER VISITED". The vitrine has always carried the two apart — `failed` is a
-// url that answered badly, `skipped` is a url the run's ceiling arrived before — but this file used to fold
+// url that answered badly, `skipped` is a url the run stopped before it reached — but this file used to fold
 // them into one word and left the difference to a sentence in `reasons`. They are different repairs: one is a
-// page, the other is a ceiling.
+// page, the other is whatever stopped the run. ⚠️ AND WHICH OF THOSE IT WAS IS THE RUN'S WORD, NOT AN
+// INFERENCE FROM `skipped`: since pk35/p1 a cut can mean the box went quiet, and printing the clock's
+// sentence over a quiet box is the same defect one field along (see `neverVisitedWhy`).
 
 /** A url, short enough to read in a terminal and long enough to paste. */
 const shortUrl = (u) => {
@@ -843,8 +977,10 @@ const canGradeHosts = Boolean(declaration);
  */
 const busyOf = (o) => (Number.isFinite(o?.busy) ? o.busy : null);
 
-/** One pass of one store, in the words the pass itself uses. Returns whether it was whole. */
-const passLine = (label, pass) => {
+/** One pass of one store, in the words the pass itself uses. Returns whether it was whole.
+ *  `why` is the run's own account of what cut it (`neverVisitedWhy`), passed in rather than assumed here:
+ *  since pk35/p1 a pass with unvisited urls is not proof that a clock was involved. */
+const passLine = (label, pass, why) => {
   if (!pass) return true;
   const planned = pass.planned ?? 0;
   const done = pass.done ?? 0;
@@ -870,10 +1006,7 @@ const passLine = (label, pass) => {
     );
   }
   if (skipped > 0) {
-    say(
-      `              never visited: ${skipped} url(s) were never TRIED — the run's own ceiling arrived first. ` +
-        'That is the vitrine\'s DEFAULT_MAX_DURATION_MS, not this script\'s --deadline-ms.',
-    );
+    say(`              never visited: ${skipped} url(s) were never TRIED — ${why}`);
   }
   // ⚠️ A pass whose image cannot count busy is not asserted WHOLE — it is a pass this run cannot grade.
   return failed.length === 0 && skipped === 0 && busy === 0;
@@ -899,8 +1032,13 @@ if (!run) {
   const r = run.report ?? {};
   const runBusy = busyOf(r);
   const busyTotal = `busy=${runBusy === null ? '? (this image does not publish the column)' : runBusy}`;
+  // ★★★ pk35/d5 — THE RUN'S OWN WORD, in the totals rather than only in a branch: an operator comparing two
+  //     births needs to see that one of them was cut and the other was not without reading further.
+  const runStop = stopWordOf(r);
+  const stoppedTotal = `stopped=${runStop ?? '? (this image does not publish it)'}`;
+  const whyUnvisited = neverVisitedWhy(runStop);
   const line =
-    `planned=${r.planned ?? 0} warmed=${r.warmed ?? 0} failed=${r.failed ?? 0} ${busyTotal} ` +
+    `planned=${r.planned ?? 0} warmed=${r.warmed ?? 0} failed=${r.failed ?? 0} ${busyTotal} ${stoppedTotal} ` +
     `p95=${r.p95 ?? 0}ms (${r.p95Pass ?? '?'} pass) · ${names}`;
   if ((r.planned ?? 0) === 0) {
     // ⚠️ THE VACUUM, AND IT WAS GREEN UNTIL pk21. A run that finished `ok` having planned NOTHING printed
@@ -941,6 +1079,19 @@ if (!run) {
           'answer. Read `failed` above as "did not answer OR was refused". Rebake the fronts to split them.',
       );
     }
+    if (runStop === null) {
+      // ⚠️ THE SAME RULE, ONE FIELD LATER, AND IT DOES NOT COST THE VERDICT. An image older than pk35/p1
+      //    publishes no `stoppedBecause`; `?? 'finished'` would print a green word this run did not earn.
+      //    Making it a shortfall would make the step red on every box not yet rebaked, and a step that is
+      //    always red is a step people skip.
+      noted(
+        'how it stopped',
+        'this run CANNOT SAY HOW IT STOPPED: the vitrine image that answered does not publish ' +
+          '`report.stoppedBecause` (it predates pk35/p1), so «it finished» and «a ceiling cut it» are the ' +
+          'same silence here. It also means that image is still bounded by a CLOCK rather than by progress ' +
+          '— which is why this step may still have sent it one. Rebake the fronts and both go away.',
+      );
+    }
   } else cold('the stores', `${line}${(r.reasons ?? []).length ? ` — ${r.reasons.join(' · ')}` : ''}`);
 
   // ★ THE BREAKDOWN, per store and per pass. It is printed on a GREEN run too: an operator who only ever sees
@@ -954,9 +1105,9 @@ if (!run) {
     for (const reason of store.short ?? []) {
       say(`      ⚠ the URL LIST is incomplete, so the plan is not the store: ${reason}`);
     }
-    passLine('pages', store.pages);
+    passLine('pages', store.pages, whyUnvisited);
     if (store.images) {
-      passLine('images', store.images);
+      passLine('images', store.images, whyUnvisited);
       if (store.images.cut) {
         say(`              the image list was CUT at the run's ceiling: ${store.images.declared ?? 0} declared by the HTML`);
       }
@@ -1008,7 +1159,7 @@ if (!run) {
         );
       }
     }
-    passLine('verify', store.verify);
+    passLine('verify', store.verify, whyUnvisited);
   }
 
   if (thresholdMs === null) {
