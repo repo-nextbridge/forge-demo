@@ -3,7 +3,7 @@
  * values are correct here.
  *
  * ★ pk35/d1 — WHAT USED TO BE BETWEEN THE HEADER AND THE FOOTER IS NOW `hub.module.css`. This file carried the
- * two-card layout that PRECEDED the owner's 10/09 hub (one storefront card, one admin card, each with a
+ * two-card layout that PRECEDED the hub (one storefront card, one admin card, each with a
  * mini-mockup); the hub replaced both cards and both mockups, so those rules left with them rather than staying
  * as a second, unused vocabulary. No bundled font rule, no CDN, no imported font: the H1 uses the theme's own
  * type stack (Urbanist self-hosted), inherited from the storefront body — the design's own display face is

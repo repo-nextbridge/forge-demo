@@ -21,7 +21,7 @@
 //   · the SEVEN institutional pages, published — the shop had zero of them while its own footer and the
 //     institutional sidebar linked all seven (measured 05/09; `seed/outlet.json` → `_pages_why`);
 //   · the four Compose placements that ARE the home: the announcement band, the five-tile banner mosaic in
-//     `home.hero` (08/09, his call — above «Compre por categoria»), and the "Quase de graça" and "Outlet
+//     `home.hero` (by decision — above «Compre por categoria»), and the "Quase de graça" and "Outlet
 //     Kids" shelves in `home.below_categories`, the latter carrying the «Outlet Kids» campaign art as the
 //     promo picture of its own first grid cell (pk5).
 //
@@ -209,10 +209,10 @@ async function declareFields({ command, read, rows, log }) {
 }
 
 // ── 2b. the categories ──────────────────────────────────────────────────────────────────────────────
-// A40, the Renan on 2026-09-02: the vanilla vitrine's header menu is a hand-curated literal in the kit
+// A40, decided 2026-09-02: the vanilla vitrine's header menu is a hand-curated literal in the kit
 // (`storefront-kit/.../header/navTree.ts`) — 5 tops, 28 leaves, 33 links — and EVERY store the vanilla
 // serves wears it whole. So the assortment either covers that tree or the shop ships links to an empty
-// list. His ruling was to populate the demo, not to teach the shared storefront a new trick. This step is
+// list. THE RULING WAS TO POPULATE the demo, not to teach the shared storefront a new trick. This step is
 // the first half of that: the tree has to EXIST before a product can name a node of it.
 //
 // ⚠️ THIS SEED IS NOT THE ONLY AUTHOR OF THESE 33, AND THAT IS FINE BY CONSTRUCTION. `seed/forge.mjs`
@@ -394,7 +394,7 @@ async function seedProducts({ command, readAll, log }, store, assets, categories
       // through and one to pay.
       //
       // ⛔⛔ AND THE `compare_at_amount` IS **NOT** WRITTEN HERE. It used to be, and it did not survive the
-      // birth — this is the defect the Renan saw as "2 of the 8 have a discount". See `priceOutlet()` at the
+      // birth — this is the defect reported as "2 of the 8 have a discount". See `priceOutlet()` at the
       // foot of this file for the whole story; the short version is that a LATER step of the birth converges
       // every dataset SKU's `compare_at` to the dataset's own figure, and every product this file names is a
       // dataset product. Written here it is erased minutes later, in silence.
@@ -485,7 +485,7 @@ async function setStock({ command }, product, skuIds) {
 //
 // ⚠️ IT DOES NOT TOUCH `amount` — measured, that field is not in its diff. So the failure is the nastiest
 // shape there is: the "por" survives and the "de" vanishes, leaving a clearance store with low prices and no
-// visible discount anywhere. That is precisely what the Renan reported ("2 of the 8 have a discount") and
+// visible discount anywhere. That is precisely what was reported ("2 of the 8 have a discount") and
 // what the audit shows: 52 `catalog.sku.update` at 00:45:06, right after the massive step finished.
 //
 // SO THE WRITE MOVES TO THE PHASE DESIGNED FOR IT. The window exists because "the window promotes products
@@ -662,11 +662,11 @@ export function outletPages() {
 // THE BLOCKS ARE THE WHOLE PAGE, and that is still the thesis of this slice: the Outlet's home is the
 // reference vitrine with three rows of configuration in it, and not one line of front-end code.
 //
-// ★★ 08/09 — THE MOSAIC IS IN `home.hero` AND THE PAGE IS TWO SLOTS, NOT ONE. His words, at the live store:
-// «eu achei melhor os banners da home em cima do compre por categoria… arrastei os banners para o slot hero
-// e ficou melhor. Então deixa assim no dataset.» «Compre por categoria» and «Marcas que amamos» are FIXED
+// ★★ 08/09 — THE MOSAIC IS IN `home.hero` AND THE PAGE IS TWO SLOTS, NOT ONE. Judged at the live store: the
+// home's banners look better ABOVE «Compre por categoria», so they were dragged into the hero slot and the
+// dataset now says so. «Compre por categoria» and «Marcas que amamos» are FIXED
 // SECTIONS of the reference home (theme chrome over core reads, not slots); the hero draws ABOVE the first
-// of them, which is exactly the change he asked for. So: the mosaic in `home.hero#0`, the two shelves in
+// of them, which is exactly the change that was asked for. So: the mosaic in `home.hero#0`, the two shelves in
 // `home.below_categories#0..1`. `home.banner_strip`, `home.below_shelf` and `home.below_brands` stay empty
 // ON PURPOSE, and so does the PLP. See `outlet.json`'s `_home_why` — including why the 02/09 paragraph that
 // argued the opposite is deleted rather than kept.
@@ -685,7 +685,7 @@ export function outletPages() {
 // Worse, appending is WRONG in a way nothing would report, and THIS SLICE IS THE LIVE CASE OF IT: every box
 // running today has the mosaic in `home.below_categories#0` and the shelves at 1 and 2. A seed that only
 // added would leave a second mosaic under the categories, beside the new one in the hero, and report
-// success — the page he asked us to change, still there, twice. (The 02/09 rewrite faced the same shape from
+// success — the page we were asked to change, still there, twice. (The 02/09 rewrite faced the same shape from
 // the other side: the pages it had to converge had the mosaic in `home.hero` and the shelves in
 // `home.banner_strip` / `home.below_shelf`.)
 //
@@ -697,7 +697,7 @@ export function outletPages() {
 //     That is right for the `forge` store, whose window is curated by hand. It is wrong here: this home has a
 //     declared shape and a block nobody declared is what a half-migrated box looks like.
 //   · IT CLEANS THE PLP. `extension.install` of `shelves` places an empty instance in `list.below_shelf` in
-//     EVERY store of the tenant; he asked for a PLP with nothing on it, so the outlet's copy is reused as the
+//     EVERY store of the tenant; the instruction was a PLP with nothing on it, so the outlet's copy is reused as the
 //     host of a shelf that IS wanted, or removed. Nothing is placed in `list.*`.
 //
 // The announcement band is NOT governed here: it lives in `header.announcement`, it is a `single` block, and

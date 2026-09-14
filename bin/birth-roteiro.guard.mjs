@@ -6,9 +6,9 @@
 //
 // `bin/box-up.sh` ran step 14 — ~1h10 of warming — unconditionally, and the only flags it accepted were
 // `--tailnet` and `--localhost`. A pipeline that wanted a fast birth and a warm-up on a cron had no way to
-// ask for one, so the answer was going to be somebody's hand on a keyboard. The ruler of this sprint (Renan,
-// 08/09) is that this is a defect: *describe the pipeline — bake → be born → seed → prove — without a single
-// sentence that starts with "and then I…"*.
+// ask for one, so the answer was going to be somebody's hand on a keyboard. THE RULER OF THIS SPRINT MAKES
+// THAT A DEFECT: the pipeline — bake → be born → seed → prove — must be describable without a single
+// sentence that starts with "and then I…".
 //
 // ⚠️ AND THE FLAG IS THE EASY HALF. The moment a step can be skipped, the birth can be WRONG IN SILENCE: a
 // run that skipped something and never said so is a summary that lies, and this repository has been caught
@@ -245,7 +245,7 @@ test('★★ --plan and --no-warm are refused where they mean nothing, instead o
 // written (`e6df443`, 2026-09-05) and FALSE two days later: `b72eca4` (2026-09-07) gave `bin/prove-doors.mjs`
 // the same loop over the same two sources, reds on it, and its own suite covers it. Nobody updated the
 // sentence — and this slice copied it, in good faith, into the message an operator reads AT THE MOMENT OF
-// DECIDING to skip. It told him he was giving up a check that 14-bis goes on making.
+// DECIDING to skip. It told the operator they were giving up a check that 14-bis goes on making.
 //
 // ★ SO THE CLAIM IS DERIVED FROM THE SOURCE THAT WOULD HAVE TO CHANGE. If `prove-doors` still grades the
 // declared-store disagreement, no file may say the warmer is the only one that can. If it ever loses that
@@ -286,7 +286,7 @@ test('★★★ nothing claims the warming step is the ONLY one that sees a decl
   //    file still making it. Measured here — the first correction of bin/box-up.sh quoted it and went red.
   //
   // 3 · and the message an operator reads NAMES the step that keeps asking. Deleting the false half without
-  //     putting the true half in its place would leave him guessing what --no-warm costs.
+  //     putting the true half in its place would leave the operator guessing what --no-warm costs.
   const message = BOX_UP.match(/^WARM_SKIP_WHY='([^']*)'/m);
   assert.ok(message, 'bin/box-up.sh no longer declares WARM_SKIP_WHY — the skip has no reason to print.');
   assert.match(message[1], /14-bis/, 'the --no-warm message does not name the step that goes on asking the declared-store question.');

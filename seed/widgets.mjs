@@ -1,9 +1,9 @@
 // ★★★ THE ADMIN HOME'S WIDGET ORDER — the one thing about this box's admin that was decided by the ORDER ITS
 // APPS HAPPENED TO BE INSTALLED IN.
 //
-// ⛔ THE DEFECT THIS FILE IS THE ANSWER TO, reported by the owner on 10/09 after using both admins: *"o bloco
-// de últimas assinaturas na demo ainda está vindo no topo, o admin de café está certo mas o de sapato está
-// errado."* Measured on the live box, `hook_placement` where `target_override = 'admin:admin.home.widgets'`:
+// ⛔ THE DEFECT THIS FILE IS THE ANSWER TO, reported from the screen after using both admins: the LATEST
+// SUBSCRIPTIONS block still comes out on TOP — the coffee admin's board is right and the shoe admin's is
+// wrong. Measured on the live box, `hook_placement` where `target_override = 'admin:admin.home.widgets'`:
 //
 //   forgeco  (shoes)  subs · bt-curator · revenue · recent · shipping · status · stores · promos · stock
 //   forgecafe (coffee) bt-curator · revenue · recent · shipping · status · stores · promos · stock · subs
@@ -12,7 +12,7 @@
 // app AUTO-PLACES its widgets at `coalesce(max(position)+1, 0)`, so a widget's position IS the order its app
 // was installed in. `forge_control.extension_installation`, measured: `forgecafe` installed recommendations →
 // admin-dashboard → subscriptions (last), `forgeco` installed subscriptions FIRST. Two tenants in two install
-// states, and one of them happened to land on what the owner wanted. The coffee shop turns wrong the day
+// states, and one of them happened to land on the order that was wanted. The coffee shop turns wrong the day
 // somebody reorders `apps` in `seed/box.json` or `STOREFRONT_MANIFESTS` upstream, and NOTHING would say so.
 //
 // ── ★ WHY THE DEMO NEEDS ITS OWN STEP WHEN THE KERNEL ALREADY HAS ONE ────────────────────────────────────
@@ -33,7 +33,7 @@
 // ── ★★ WHY THE DECLARATION IS THE DATASET'S AND NOT `seed/box.json`'s ────────────────────────────────────
 //
 // Because it is already written there and read from there. `<dataset>/storefront.json` → `admin_widgets` is
-// where the owner's evening of dragging widgets by hand was finally recorded (upstream, 09/09), and the
+// where an evening of dragging widgets by hand was finally recorded (upstream, 09/09), and the
 // kernel's step reads that key and no other. A copy in this repository would be a second declaration of one
 // decision — and the one that goes stale is always the copy nobody's tooling validates.
 //

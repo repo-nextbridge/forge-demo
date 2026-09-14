@@ -52,7 +52,7 @@
 //
 // ⚠️ A RED HERE IS NOT AUTOMATICALLY "GO COPY THE PRODUCT". It says the reference grew a refusal on a route
 // nothing else can refuse for, and this fork did not follow. The fork's owner may answer "I do not want it",
-// in DIVERGENCES below. What he is not allowed to do is not know.
+// in DIVERGENCES below. What the fork may NOT do is not know.
 //
 // ⚠️ IT COMPARES SOURCE, so it proves the ASKING and never the response. What the fork actually serves is
 // proven by the fork's own suite (`storefront-coffee/src/app/sitemap.test.ts`), which `bin/test.sh` reaches

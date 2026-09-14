@@ -18,7 +18,7 @@
 // zeroes in it, printed over whatever really went wrong. The only check that can redden the way back is the
 // shop's ADDRESS in the kernel's directory — a completely different question, about a completely different
 // register — and the run blamed admin doors for it, told the operator to read REFUSED lines that did not
-// exist, and left him concluding that zero was being read as incomplete.
+// exist, and left the reader concluding that zero was being read as incomplete.
 //
 // ⇒ It is the leva's own thread in its last costume: A SIGNAL THAT CANNOT SAY WHAT IS NOT WELL. The exit code
 //   was right; the sentence was about another check.

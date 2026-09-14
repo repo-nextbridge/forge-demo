@@ -154,7 +154,7 @@ test('the verified ones are the MINORITY — they are expensive, and that is the
   assert.equal(split.verified.length + split.open.length, rows.length);
 });
 
-// ── ⛔ THE COUNTER SENDS NOTHING AT ALL — his word was "as mensagens", not "as do comprador" ──────────────
+// ── ⛔ THE COUNTER SENDS NOTHING AT ALL — the instruction said "the messages", not "the buyer's" ─────────
 test('★ the counter is not re-armed for the OPERATOR notice either', () => {
   const on = channelPlan(STORES, { enabled: true });
   assert.equal(
@@ -565,8 +565,8 @@ test('⛔ the silencing header no longer claims the send decision is taken at EM
 // ── ★★ A47 · THE REVIEW WALL — six per product, and a queue that still has something on it ──────────────
 //
 // Measured on the pre-seed box (2026-09-02): SIX reviews in the coffee tenant, exactly one per coffee, five
-// approved and one rejected. The Renan: *"os reviews também estão bem pobrinhos, tem um por café e às vezes
-// nenhum, ideal pelo menos uns 6 por produto"*.
+// approved and one rejected. That is a threadbare wall — one review per coffee and sometimes none — and the
+// floor asked for is at least six per product.
 //
 // ⚠️ AND THE VOCABULARY IS `approved | pending | rejected`, NEVER `published`. A question asked with the
 // wrong value returns zero and LOOKS like a finding — it happened three times in this round. These tests

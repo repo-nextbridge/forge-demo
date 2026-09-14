@@ -252,9 +252,10 @@ test('an allow-list name the dataset no longer carries FAILS, naming it — a li
 
 // ── ★★ L24 · THE ANNOUNCEMENT BAND, AND THE NUMBER IN IT ────────────────────────────────────────────────
 //
-// His instruction was one clause: "Frete grátis para compras acima de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE
-// FRETE GRÁTIS." The band is a promise on the first line of every page, and nothing in this repository
-// compares a sentence to a price — so a typed number is advertising that stays green forever.
+// THE INSTRUCTION WAS ONE CLAUSE: a sentence reading «Frete grátis para compras acima de…», and ONLY IF a
+// free-shipping promotion actually exists. The band is a promise on the first line of every page, and
+// nothing in this repository compares a sentence to a price — so a typed number is advertising that stays
+// green forever.
 //
 // ⚠️ THE COINCIDENCE THESE BREAK is that this store has TWO active free-shipping promotions with different
 // rules (floors R$ 300 and R$ 299), and the one a person would notice first is the one that is NOT free
@@ -435,8 +436,9 @@ test('★ two uncapped promises: the LOWEST floor carries the bar, and a tie is 
 
 // ── ★★ HOW MANY BARS THIS SHOP DRAWS, and it is TWO ─────────────────────────────────────────────────────
 //
-// The owner saw two bars at once and asked whether that was the shop or a glitch (03/09). It is the shop,
-// and this pins it: the count is not a number anybody chose, it falls out of the marking. `seed/vitrine.mjs`
+// Two bars were seen at once on the shop, raising the question of whether that was the shop or a glitch.
+// It is the shop, and this pins it: the count is not a number anybody chose, it falls out of the marking.
+// `seed/vitrine.mjs`
 // carries the chain in prose; this grades the half that lives in this repository — WHICH promotions come out
 // of the pass carrying a bar.
 //

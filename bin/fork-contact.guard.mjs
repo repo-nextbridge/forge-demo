@@ -12,7 +12,7 @@
 //
 //   1. EVERY CHANNEL IS FICTIONAL. `.example` is reserved by RFC 2606 and can never be registered; a real TLD
 //      here is a stranger's inbox on a demo screen. ⚠️ THIS IS NOT HYPOTHETICAL IN THIS REPOSITORY: this
-//      dataset shipped the owner's PERSONAL address once, in fifteen files. `seed/chrome.test.mjs` carries
+//      dataset shipped a real PERSONAL address once, in fifteen files. `seed/chrome.test.mjs` carries
 //      the same rule for `seed/chrome.json`; this file is the half of the rule that reaches the fork.
 //
 //   2. THEY ARE THE CAFÉ'S OWN CHANNELS, THE SAME ONES ITS FUNNEL SHOWS. The café's account footer already

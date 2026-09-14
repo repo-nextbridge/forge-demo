@@ -112,8 +112,8 @@ export function placeholderForPhoto(file) {
 /**
  * ⭐ WHERE A DECLARED PHOTOGRAPH ACTUALLY COMES FROM — the A50 rule as a function.
  *
- * *"prefiro que suba algo errado do que não subir, senão fica difícil eu saber o que preciso criar"* (Renan,
- * 2026-09-01). So a story frame whose real file is not on disk resolves to its stand-in and the shop is born
+ * SHIPPING SOMETHING WRONG BEATS SHIPPING NOTHING: a hole nobody can see is a hole nobody knows to fill.
+ * So a story frame whose real file is not on disk resolves to its stand-in and the shop is born
  * with four photographs, one of which visibly says it is a placeholder. The day the real file lands in
  * `seed/photos/` under the name the dataset already declares, this function stops choosing the stand-in —
  * the dataset is not edited, and the seed re-points the picture on its next run.

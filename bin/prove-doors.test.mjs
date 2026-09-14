@@ -738,8 +738,8 @@ test('★★★ SABOTAGE — THE GATE WILL NOT LET GO (the gate on both sides) �
 });
 
 test('★★★ SABOTAGE — THE FRONT DROPS THE RIBBON ⇒ red, naming the door and the front that served it', async () => {
-  // ⛔ THE SILENCE THIS CLOSES, and it is the one he asked about on 13/09: «a demo gate tem uma feature que
-  // aparece uma barrinha no rodapé… só precisa checar se isso aparece nos 4 front». Until pk35/d1 the cookie
+  // ⛔ THE SILENCE THIS CLOSES: the gate draws a small bar in the footer of every front it hands a visitor
+  // to, and nothing checked that the bar reached all four. Until pk35/d1 the cookie
   // side was graded only for what it must NOT contain, so a front that mounted the interstitial and not the
   // bar under it was a GREEN birth with no way back to the gate. The box below is byte-identical to a healthy
   // one except for that one element on ONE door, which is what makes this a statement about the ribbon.
@@ -774,8 +774,9 @@ test('★★ SABOTAGE — the front CANNOT DRAW the declared gate ⇒ its own re
 });
 
 test('★★★ pk36/d1 — THE CAFÉ IS GATED, like every other store: the exception is over, in the file and on the screen', async () => {
-  // ★ HIS DECISION, 13/09 («o café ganha portaria? Sim ganha portaria»), confirmed 14/09. What made it
-  // possible is pk35/d2: the fork regenerates its own surfaces, so it owns a gate registry and DRAWS the slot.
+  // ★ THE CAFÉ GETS THE GATE TOO — decided in pk36/d1, ending the one exception this step used to carry.
+  // What made it possible is pk35/d2: the fork regenerates its own surfaces, so it owns a gate registry and
+  // DRAWS the slot.
   // A test that only read the probe's output would stay green if the key came back and the whole shop went
   // quietly back to having no front door — so the FILE is asserted here too, and it is asserted as an ABSENCE.
   const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });

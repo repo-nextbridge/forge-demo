@@ -104,10 +104,10 @@ export FORGE_ADMIN_SERVICE_TOKEN_FORGECAFE="$(optional_secret forge-admin-servic
 # ★★★ WHICH MAILBOX THIS BOX HAS, AND IT IS ONE FACT IN `.env` — `FORGE_BENCH_MAILBOX`.
 #
 # ⛔ THE DEFECT, MEASURED ON BOTH BENCHES 2026-09-13: zero mail containers, `FORGE_SMTP_*` on Resend, and the
-# only deliverable address on the box the owner's own (it is in the dataset). So nobody else could log in,
-# anywhere, as anyone. The escape a developer expects does not exist here: the transport that PRINTS the code
-# is constructible only under `!production` (apps/api/src/smtp-channel-driver.ts) and this compose declares
-# `NODE_ENV: production`. ⇒ a collector in the compose, which weakens nothing.
+# only deliverable address on the box a single personal mailbox (it is in the dataset). So nobody else could
+# log in, anywhere, as anyone. The escape a developer expects does not exist here: the transport that PRINTS
+# the code is constructible only under `!production` (apps/api/src/smtp-channel-driver.ts) and this compose
+# declares `NODE_ENV: production`. ⇒ a collector in the compose, which weakens nothing.
 #
 # ★★ ONE FACT, THREE EXPORTS, AND THAT IS DELIBERATE. Declaring the profile in `.env` and the addresses here
 # would be two declarations that can disagree, and the way they disagree is the worst one available: a box

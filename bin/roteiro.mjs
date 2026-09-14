@@ -6,8 +6,8 @@
 //
 // ── WHY THIS EXISTS ──────────────────────────────────────────────────────────────────────────────────────
 //
-// Renan's ruler for this sprint: *describe the pipeline — bake → be born → seed → prove — without a single
-// sentence that starts with "and then I…"*. `bin/box-up.sh` could not: its step list lived in a comment at
+// THE RULER OF THIS SPRINT: describe the pipeline — bake → be born → seed → prove — without a single
+// sentence that starts with "and then I…". `bin/box-up.sh` could not: its step list lived in a comment at
 // the top of the file, so the only way to know what a run DID was to read four hundred lines of scrollback
 // and trust that every step still had a `say` line. A step that stops running is then invisible, and a step
 // that is SKIPPED ON PURPOSE (pk24: the birth can now be asked not to warm) is indistinguishable from one

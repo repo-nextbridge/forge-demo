@@ -1,6 +1,6 @@
 // ★★ WHAT THE COUNTER'S CONFIRMATION BLOCK SAYS — including the case where it must say nothing at all.
 //
-// THE DEFECT THIS EXISTS FOR, AND IT HAPPENED IN FRONT OF THE OWNER (caderno pk21 §R3, 07/09). An order in
+// THE DEFECT THIS EXISTS FOR, AND IT WAS SEEN ON THE BENCH, ON SCREEN (caderno pk21 §R3). An order in
 // the COFFEE store — `payment-reference`, card, Entrega Expressa, a delivery address in Alphaville — was
 // answered with:
 //

@@ -4,10 +4,10 @@
 // here). The brand ("forge.demo"), "Storefront", "Checkout", "Admin", "Totem", "Kernel" and the surface names
 // (API/CLI/MCP/SDK/Docs) stay verbatim across all three.
 //
-// ★ THE SELECTOR IS THE GATE'S LANGUAGE, NOT THE SHOPS'. The owner, 10/09: *"esse seletor é do idioma do DEMO
-// GATE e não dos sites… pode entrar um gringo para ver e ele vai cair em uma loja em pt, tudo bem, mas a
-// explicação no demo gate tem 3 idiomas."* The reference storefront is PT-BR and stays PT-BR; what gets three
-// languages is the EXPLANATION — which is why the architecture screen below is here and not a second mechanism.
+// ★ THE SELECTOR IS THE GATE'S LANGUAGE, NOT THE SHOPS'. A visitor from anywhere may pick a language here and
+// still land in a PT-BR shop, and that is accepted rather than a gap: the reference storefront is PT-BR and
+// stays PT-BR; what gets three languages is the EXPLANATION — which is why the architecture screen below is
+// here and not a second mechanism.
 
 export type Lang = 'pt' | 'en' | 'es';
 
@@ -195,7 +195,7 @@ export const ARCH: Record<Lang, ArchStrings> = {
 
 /* ── THE HUB: the copy of the six destinations ───────────────────────────────────────────────────────────
  *
- * The owner's 10/09 layout: two tenant cards, each with its shops and, at its foot, the row that opens that
+ * The hub's layout: two tenant cards, each with its shops and, at its foot, the row that opens that
  * tenant's admin. Same mechanism as everything above — embedded copy, three languages, one selector.
  *
  * ⚠️ WHAT IS *NOT* HERE, AND THE RULE IS THE ONE `ARCH` ALREADY LIVES BY. No ADDRESS and no COUNT is written

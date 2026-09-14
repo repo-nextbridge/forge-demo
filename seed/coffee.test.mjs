@@ -176,7 +176,7 @@ test('★★ A50, CORRECTED — the "data is missing" marker NEVER travels insid
   // cannot reach them and cannot avoid reaching the buyer.
   //
   // The marker's legitimate homes are the seed's own report, a field of its own, and a stand-in PICTURE the
-  // merchant must replace (`seed/placeholder-media/`, Renan's explicit order — the merchant cannot write a
+  // merchant must replace (`seed/placeholder-media/`, deliberate — the merchant cannot write a
   // photograph, so the hole has no other way to be seen). A producer's name is not in that class: this is a
   // demonstration shop, so fictional content IS the content.
   //

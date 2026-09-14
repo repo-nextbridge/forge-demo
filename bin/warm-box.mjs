@@ -9,13 +9,13 @@
 //
 // ── WHY WARMING IS PART OF "DONE" AND NOT A COURTESY ─────────────────────────────────────────────────────
 //
-// Renan, 04/09: *"ele também vai ser testado por exemplo performance e tal, se ele falhar em um teste de
-// performance é prejudicial ao meu comercial"*. A box handed over cold makes the FIRST VISITOR pay for every
+// ★ THE ARGUMENT IS COMMERCIAL: this box is evaluated, performance included, and a box that fails that kind
+// of look costs the sale. A box handed over cold makes the FIRST VISITOR pay for every
 // route cache, ISR entry and image derivative this box could have filled by itself in the minutes nobody was
 // watching — and on this box that first visitor is whoever is evaluating it. So warming still runs at the end
 // of every birth, and it still says everything it learned.
 //
-// ── ★★ AND WHY IT REPORTS RATHER THAN GRADES (Renan, 05/09: *"D1 - Pode ser só relatório"*) ──────────────
+// ── ★★ AND WHY IT REPORTS RATHER THAN GRADES (warmth was demoted to a report on 05/09) ──────────────────
 //
 // ★ THE ARGUMENT, AND IT IS THE WHOLE REASON THIS STEP CHANGED SHAPE: A STEP THAT IS ALWAYS RED IS A STEP
 // PEOPLE LEARN TO SKIP — and then it stops being worth anything on the day it is right.
@@ -26,8 +26,8 @@
 //       not made of pages: ~420 pages plus ~20 400 IMAGE derivatives found in each HTML's `srcset` —
 //       `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cut it was the VITRINE's own
 //       15-minute default, `DEFAULT_MAX_DURATION_MS` in `apps/storefront/src/lib/warm/warm.ts`. pk21 raised
-//       that clock from here, by deriving a ceiling from the plan the cut run had just measured (Renan,
-//       07/09: *"deriva do plano"*) and sending it as `/api/warm?max_duration_ms=`.
+//       that clock from here, by deriving a ceiling from the plan the cut run had just measured — the
+//       ceiling DERIVES FROM THE PLAN — and sending it as `/api/warm?max_duration_ms=`.
 //       ⛔ AND THAT DERIVED CLOCK IS WHAT CUT THE OUTLET ON 2026-09-13: `4 034 947 ms`, with `failed=0` and
 //       `busy=0`, over a box that was filling its derivative cache at ~330 images/min. A clock that grows
 //       with the plan is still a clock pretending to know when a healthy box should be done — the shape this
@@ -666,7 +666,7 @@ const warmRun = async (maxDurationMs, waitMs) => {
 // what this box needed. What was missing was a number to send. ⚠️ Since p1 the product ships NO such default
 // at all, so on a rebaked front there is nothing to raise and nothing to send.
 //
-// ★★ AND THE NUMBER IS DERIVED, NEVER CHOSEN (Renan, 07/09: *"deriva do plano"*). A bigger constant is the
+// ★★ AND THE NUMBER IS DERIVED, NEVER CHOSEN — it derives from the PLAN. A bigger constant is the
 // same trap one house further along: it fits today's catalogue and lies again the day the catalogue grows,
 // silently, in the direction of "never visited". So:
 //

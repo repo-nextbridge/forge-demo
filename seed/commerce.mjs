@@ -63,20 +63,20 @@ export const BUYER_ORDER_TYPES = [
 export const SEED_NOISE_TYPES = ['order.placed.operator', 'ext.reviews.review_request'];
 
 /** Everything the seed switches. Two lists because they mean different things; one rule because, after
- * Renan's literal word (below), they are treated the same. */
+ * the literal instruction (below), they are treated the same. */
 export const SEED_MANAGED_TYPES = [...BUYER_ORDER_TYPES, ...SEED_NOISE_TYPES];
 
 /**
  * ⛔ THE STORE THAT SENDS NO E-MAIL AT ALL, FOREVER — not just during the seed.
  *
- * Renan's own words, and they are literal: *"a loja totem não faz sentido mandar email; ela pode nascer com
- * as mensagens desligadas, só as de account ligada"*. The shopper at a kiosk typed a name, not an address —
+ * THE INSTRUCTION, and it is literal: the totem store has no business sending e-mail; it may be born with
+ * the messages OFF and only the account ones on. The shopper at a kiosk typed a name, not an address —
  * the synthetic `balcao+…@forge.demo` the totem mints exists so the kernel has an e-mail field, and mailing
  * it would be mailing nobody. The number is called out loud at the counter, which is the whole point of it.
  *
  * ⚠️ AND THAT INCLUDES THE OPERATOR'S OWN "an order came in". An earlier draft of this file re-armed it here,
- * reasoning that whoever runs the counter would want to know — a defensible inference, and wrong: his word
- * was "as mensagens", not "as mensagens do comprador". One e-mail per coffee is noise nobody reads.
+ * reasoning that whoever runs the counter would want to know — a defensible inference, and wrong: the
+ * instruction said "the messages", not "the buyer's messages". One e-mail per coffee is noise nobody reads.
  * **Inverting it is one line** — take the handle out of this list — and it is the report's job to say so, so
  * that testing the bench and wanting the notice back costs a sentence rather than an investigation.
  */
@@ -601,7 +601,7 @@ const CAUGHT_UP = 0;
  * ever make: waiting for it is waiting forever, and on this box it is the `550` population by construction.
  *
  * ⛔⛔ AND THIS WHOLE FUNCTION IS PROVISIONAL — it is the safety net, not the fix. The fix is the kernel
- * learning to REGISTER an order instead of PLACING one (caderno pk32 §13, the owner's decision of 2026-09-10):
+ * learning to REGISTER an order instead of PLACING one (caderno pk32 §13, decided 2026-09-10):
  * `apps/api/src/seed-history.ts` does not write orders, it DRIVES THE PORT — `checkout.place_order`,
  * `order.mark_paid`, `order.shipment.mark_ready_for_pickup` — so the history's orders really are placements
  * and really do deserve a confirmation e-mail. When the ACT carries the fact ("this already happened, in
@@ -966,7 +966,7 @@ export function liveProofBuyerOf(handle) {
  * the SAME mailbox, and the shape is not decoration: the buyer's order mail is re-armed at the end of this
  * pass, so a bounce is somebody's postmaster problem. `hi@forgecommerce.pro` is the box that exists.
  *
- * ⛔ AND NEVER A REAL PERSON'S ADDRESS. This dataset shipped the owner's personal one once, in fifteen files.
+ * ⛔ AND NEVER A REAL PERSON'S ADDRESS. This dataset shipped a real personal one once, in fifteen files.
  * A tag here is a name that reads like a person and a mailbox that is ours.
  */
 export const buyerEmail = (tag) => `hi+${tag}@forgecommerce.pro`;
@@ -1392,8 +1392,8 @@ const ROW_METADATA_KEYS = ['id', 'created_at', 'updated_at'];
  * however wide it is — a generic sentence is reusable precisely because it says nothing about the product.
  *
  * ★ WHAT IS PRESERVED FROM THE POOL VERSION, deliberately, because it was right:
- *   · 6..10 reviews per product (the Renan: *"ideal pelo menos uns 6 por produto"*) — 52 rows over the six
- *     coffees, 8.7 each, which is what the bench measured and what he approved;
+ *   · 6..10 reviews per product (the floor asked for is at least six each) — 52 rows over the six
+ *     coffees, 8.7 each, which is what the bench measured and what was accepted;
  *   · ratings that VARY, averaging 4.2 — a shop people like, not a shop nobody criticises;
  *   · exactly ONE held row per product, never moderated, so the queue is inhabited whenever anybody opens
  *     it and the seed still CONVERGES (a held row is pending after run one and after run five);

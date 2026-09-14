@@ -7,7 +7,7 @@
 //
 // ★ WHY IT IS NOT COPIED, and the decision is deliberate (S1, 2026-09-01, measured before it was taken).
 //
-// The obvious alternative is "a customer's catalogue is his own data, so commit it here". Measured, that
+// The obvious alternative is "a customer's catalogue is their own data, so commit it here". Measured, that
 // alternative does not deliver what it promises: `instances/demo/dataset/` is 41 MB of catalogue and shared
 // art, and the 3.6 GB of per-product photographs are GIT-IGNORED in the monorepo too
 // (`instances/demo/dataset/assets/catalog/.gitignore`). They live in a public bucket and are pulled on

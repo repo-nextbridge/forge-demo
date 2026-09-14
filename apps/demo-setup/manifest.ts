@@ -4,14 +4,13 @@
 // `forge.origin: "instance"` in package.json is the declaration; `instanceApps` in this repository's
 // composition.json is where it is asked for; no Forge release carries it, and a fleet list that named it
 // would be refused with rule `not-carried`. It is the third specimen of the species this box already owned
-// (`demo-gate` is UI, `payment-pos` is a payment driver) and the one written to be LOOKED AT: the owner's
-// words, 08/09 — «esse app me ajuda a mostrar para os clientes como eles podem fazer apps livremente
-// (principal forma de extensão do Forge) … esse mostra mais claramente e de forma simples um logo virando
-// outro».
+// (`demo-gate` is UI, `payment-pos` is a payment driver) and the one written to be LOOKED AT: it exists to
+// show a customer how freely apps can be written — apps being the main way Forge is extended — and it does
+// that in the plainest shape available, one logo becoming another.
 //
 // ★★ WHY THE MARK IS AN APP'S AND NOT THE PLATFORM'S. The régua of CLAUDE.md decides it in one line: a logo
 // is CONTENT, and content is never dictated by the product. The alternative that was considered and refused
-// by the owner was "the mark becomes a field of the store" — which would weld a content field into the Forge
+// was "the mark becomes a field of the store" — which would weld a content field into the Forge
 // admin and make every customer carry a shape most of them will never use. So the product ships SLOTS with a
 // bare default (pk26/P1) and whoever wants a mark writes the block. This app is that, for this box.
 //
@@ -25,8 +24,8 @@
 // customisation contracts (trava 4 of AGENTS.md). The vitrine is FORKABLE and a customer makes it theirs, so
 // identity there can live in an app of that customer's own — which is this app. The checkout is hosted by us
 // and nobody forks it, so identity there has to be configurable WITHOUT a fork, which makes it a capability of
-// the PRODUCT. The owner said it in one line, 09/09: «no chrome OOTB fica para pôr logo na caixa de login. E o
-// config da demo fica só as outras 3 … pois essas 3 são do storefront e a caixa de login é do checkout». So
+// the PRODUCT. In one line: the login box's mark belongs to the OOTB `chrome` app and this box's config keeps
+// only the other three, because those three are the storefront's and the login box is the checkout's. So
 // the OOTB `chrome` app grows an `account_brand` (its sibling slice) and this app keeps the shop window.
 //
 // ⚠️ THE SLOT DID NOT GO ANYWHERE — only this app's block did. `storefront:account.brand` still exists and

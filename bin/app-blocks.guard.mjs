@@ -1,6 +1,6 @@
 // ★★ pk34/D3 — THE FIXTURE THAT SAYS WHERE AN APP'S BLOCKS LAND, GRADED AGAINST THE RELEASE THAT PLACES THEM.
 //
-// ⛔ THE DEFECT, MEASURED 2026-09-12. The owner moved `subscriptions/my_subscriptions` from `account.top` to
+// ⛔ THE DEFECT, MEASURED 2026-09-12. `subscriptions/my_subscriptions` moved from `account.top` to
 // `account.bottom` on 11/09 — a one-line change to the manifest, IN THE PRODUCT. This repository's only
 // mention of that placement is a fixture (`bin/app-blocks.mjs`, then inside `bin/verify-seed.test.mjs`), and
 // nothing here could notice: the fixture went on asserting the old slot, green, describing a bench that no
@@ -170,7 +170,7 @@ test('★★ and the omission is REAL — the release declares admin hooks this 
 // the two are byte-identical, so the rule passed BY COINCIDENCE: reorder only the dataset and this file would
 // have gone on asserting the manifest's order, green, about boards that open in another one.
 //
-// ★★★ THE ORDER HAS THREE OWNERS (his decision of 2026-09-14, after withdrawing a stronger one): the MANIFEST
+// ★★★ THE ORDER HAS THREE OWNERS (settled 2026-09-14, after a stronger rule was withdrawn): the MANIFEST
 // is the product's default, the DATASET is this instance's arrangement applied AT BIRTH, and COMPOSE is the
 // merchant's last word that ⛔ nobody rewrites. So the fixture answers to the dataset when the dataset
 // declares and to the manifests when it does not — and `boardAuthority` makes the run SAY WHICH, because an

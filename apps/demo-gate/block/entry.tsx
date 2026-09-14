@@ -39,8 +39,8 @@ async function initialLang(): Promise<Lang> {
  *
  * ⚠️ `x-forwarded-host` FIRST, AND THAT ORDER IS A MEASUREMENT, NOT A PREFERENCE. Behind the edge, `host` is
  * whatever reached this container; after a Server Action's `redirect()` it has been observed to be the
- * SERVER'S OWN address rather than the browser's (pack 03/09, p6-1: «todo formulário cai no Dashboard» was
- * exactly this), and the true one is in `x-forwarded-host`. Undefined when neither is there — the hub then
+ * SERVER'S OWN address rather than the browser's (pack 03/09, p6-1 — "every form lands on the Dashboard" —
+ * was exactly this), and the true one is in `x-forwarded-host`. Undefined when neither is there — the hub then
  * matches no face and shows its own door, which is the honest answer rather than a guessed one.
  */
 async function requestHost(): Promise<string | undefined> {

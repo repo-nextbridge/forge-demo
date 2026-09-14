@@ -6,8 +6,8 @@
 //
 // ⚠️ THIS IS NOT A SEEDER AND IT IS NOT TRYING TO BE. Forge ships one (`node dist/seed-demo.js`, the
 // `demo-data` app) that fills a store with a rich generated catalogue. This is not that: it is the MINIMUM
-// that makes this demo stand up — the stores, and the six coffees the coffee store lists. Decision of Renan,
-// 2026-08-31: no full seed yet, because "fica mais claro como rechear" once the whole demo exists. Building
+// that makes this demo stand up — the stores, and the six coffees the coffee store lists. Decided
+// 2026-08-31: no full seed yet, because how to fill the demo gets clearer once the whole demo exists. Building
 // an importer now would be guessing at the shape of data the finished demo has not asked for.
 //
 // EVERY WRITE GOES THROUGH THE DOOR. Not one line of this file knows a table name, and it holds no database
@@ -726,7 +726,7 @@ async function customFields() {
 //
 // ── ★★ THE CONTENT INDEX — how this seed notices that a FILE CHANGED ──────────────────────────────────
 //
-// THE HOLE IT FILLS, and it cost a slice of its own. The Renan re-cut the six coffee photographs (less
+// THE HOLE IT FILLS, and it cost a slice of its own. The six coffee photographs were re-cut (less
 // transparent margin, 1024x1536 -> 733x1266) and re-running the seed changed NOTHING: `products()` skips a
 // product that already exists, and `upload()` only ever ran for a product being created. The bytes on disk
 // were new and the shop kept serving the old picture, in silence. Swapping a photo needed a human driving
@@ -1236,8 +1236,8 @@ const slug = (text) =>
 /**
  * ★ THE PLACEHOLDER ART, INTO THE ASSET LIBRARY — where the curation happens.
  *
- * Order of the Renan: *"onde precisa de banner mas não tem imagem, cria uma imagem qualquer e sobe. Eu depois
- * faço a curadoria."* `bin/make-placeholders.mjs` DRAWS them (deterministic, captioned with their own slot,
+ * THE RULE: where a banner is needed and no image exists, put ANY image there and let the curation happen
+ * afterwards. `bin/make-placeholders.mjs` DRAWS them (deterministic, captioned with their own slot,
  * store and size); this puts them where a person can find and replace them.
  *
  * ⚠️ `library: true` IS THE WHOLE POINT. A product photograph needs no asset row — but these exist to be

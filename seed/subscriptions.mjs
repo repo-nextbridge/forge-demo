@@ -50,8 +50,8 @@
 // by running the app's own actions through the tenant action face. No status is invented here.
 
 /**
- * ⛔ THE CAFÉ AND ONLY THE CAFÉ. His correction, 08/09: *"O de assinatura, precisa ver se tem no de café, é o
- * de café que exercita assinatura, o de tênis não é pra demo vir instalado assinatura."* The app is installed
+ * ⛔ THE CAFÉ AND ONLY THE CAFÉ. THE CORRECTION: subscriptions are exercised by the COFFEE shop, and the
+ * shoe brand is not meant to come with the app installed at all. The app is installed
  * by `seed/coffee.mjs` for that tenant alone (`seed/box.json` says so with all the letters), so a run against
  * the shoe brand finds no install and this whole step is a no-op with a line, never a failure.
  */
@@ -77,7 +77,7 @@ export const PLAN_FIELD = 'sub_plan';
  *   plausible Brazilian names from the dated history. `PRE SEED` in that list reads as a bug in the import
  *   and not as a shop — the same lesson `LIVE_PROOF_BUYERS` already paid for.
  * · THE ADDRESSES are plus-tags on the mailbox this box owns (`seed/commerce.mjs` → `buyerEmail`). ⛔ Never
- *   a real person's: this dataset shipped the owner's personal address once, in fifteen files.
+ *   a real person's: this dataset shipped a real personal address once, in fifteen files.
  * · THE RHYTHMS are three of the store's OFFER, and the offer is read from the box rather than assumed —
  *   see `offeredRhythms`. A contract on a rhythm the product page cannot sell is a screen that contradicts
  *   the shop beside it.

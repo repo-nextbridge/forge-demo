@@ -25,9 +25,9 @@
 // disagree with nobody watching, and that the disagreement is indistinguishable, by eye, from the tarball
 // being unstable. This file removes the first and settles the second: it RECOMPUTES the integrity from the
 // pinned tree and compares, and the measurement above is why its failure message can tell the reader that a
-// moved hash means moved SOURCE. (An executable "pack it twice" rule was written and then cut on the tech
-// lead's instruction once the same measurement was reproduced on his side — the property holds, and paying
-// half a second a run to re-prove it every time was not the fatia.)
+// moved hash means moved SOURCE. (An executable "pack it twice" rule was written and then cut once the same
+// measurement had been reproduced independently — the property holds, and paying half a second a run to
+// re-prove it every time buys nothing this file does not already state.)
 //
 // ★ AND THE FIRST RUN PROVED THE POINT AGAIN, exactly as `fork-suite.guard.mjs`'s did: pointed at the tree
 // as handed over, it went red on `@forgecommerce/contracts` — one package out of fifteen, whose committed

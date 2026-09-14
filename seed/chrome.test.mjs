@@ -104,7 +104,7 @@ test('★★★ every dressed store declares EVERY block — a half-dressed shop
 });
 
 test('★★★ and every block is FILLED IN — placed-and-empty draws nothing at all', () => {
-  // The achado was «não sei bem pra onde arrastar», and the answer is a finished example. A block placed
+  // The achado was not knowing WHERE TO DRAG the blocks, and the answer is a finished example. A block placed
   // with `{}` adds a row to the Compose board and changes no pixel, which teaches less than no app.
   for (const [handle] of dressed) {
     for (const block of blocksFor(DATA, handle)) {
@@ -257,24 +257,24 @@ test('★★ the picture list is SCOPED to the tenant’s own stores — a libra
 // ══ pk19/D1 — WHAT THE BLOCKS SAY, and why a second table is worth its own weight ═════════════════════════
 //
 // Everything above grades the SHAPE: five blocks, real slots, no invented key, nothing placed empty. All of
-// it stayed green through the state the owner asked us to replace — three institutional sentences he called
-// bad, a security claim in the header he wanted in the footer, and `Sacola` written over a shoe store whose
-// vitrine says `Carrinho`. A shape test cannot tell those from the words he dictated, so the words are
-// pinned here, by store, verbatim (07/09).
+// it stayed green through the state this pass replaced — three institutional sentences judged bad, a security
+// claim in the header that belonged in the footer, and `Sacola` written over a shoe store whose
+// vitrine says `Carrinho`. A shape test cannot tell those from the dictated words, so the words are
+// pinned here, by store, verbatim.
 //
 // ⛔ AND THE TABLE COVERS THE WHOLE TOPOLOGY, INCLUDING THE STORE WITH NO CHROME. Every rule below is driven
 // off `DICTATED`, and `DICTATED` is asserted to name EXACTLY the stores `seed/chrome.json` declares —
 // `balcao` included, as `null`. A loop over a store that quietly went missing would iterate zero times and
 // report success, which is the one failure this repository has already paid for twice.
 
-/** The owner's own words, 07/09, per store. `null` = a store deliberately without chrome (see `_balcao_why`).
- *  A field he did not touch is absent here: this table grades what he dictated, not the whole config.
+/** THE DICTATED WORDS, per store. `null` = a store deliberately without chrome (see `_balcao_why`).
+ *  A field the dictation did not touch is absent here: this table grades what was dictated, not the whole config.
  *
- *  ★★ pk20/D1 adds the MARK to the same table — the second dictation of the same day: *"O logo de outlet na
- *  vitrina normal está errado, o certo é forge.outlet"*, *"E o da storefront demo tbm é forge.store"*,
- *  *"minúsculo"*, and *"Não aparece o logo no checkout e minha conta nas lojas de sapato e outlet"*. The café's
- *  mark is pinned here too although he did not change it: leaving it alone was itself the instruction, and the
- *  same shape already worked once in this file for `cart: 'Sacola'`. */
+ *  ★★ pk20/D1 adds the MARK to the same table — the second dictation of the same pass: the outlet's mark on the
+ *  vanilla vitrine was wrong and the right one is `forge.outlet`; the reference storefront's is `forge.store`;
+ *  both LOWERCASE; and the logo was drawn in neither the checkout nor the account screens of the two shoe
+ *  shops. The café's mark is pinned here too although it did not change: leaving it alone was itself the
+ *  instruction, and the same shape already worked once in this file for `cart: 'Sacola'`. */
 const DICTATED = {
   forge: {
     checkout_header: { logo: 'forge-store-logo.png', back: 'Voltar à loja', seal: '' },
@@ -310,7 +310,7 @@ const DICTATED = {
     },
   },
   cafe: {
-    // ★ THE STORE HE DID NOT TOUCH, pinned so that "já está certo" survives the next pass. ★★ pk26/D2 — its
+    // ★ THE UNTOUCHED STORE, pinned so that "already correct" survives the next pass. ★★ pk26/D2 — its
     // MARK is pinned in `seed/demo-setup.test.mjs` now, for the same reason and by the same table.
     checkout_header: { logo: 'forge-co-logo.png', seal: '' },
     checkout_footer: {
@@ -318,13 +318,13 @@ const DICTATED = {
       middle_text: '',
       end_text: 'Compra Segura',
     },
-    // ★ THE ONE STORE THAT KEEPS THE OLD WORD, and it is a quotation: «na de café deixa como está».
+    // ★ THE ONE STORE THAT KEEPS THE OLD WORD, named as the exception to the dictation.
     account_header: { logo: 'forge-co-logo.png', back: 'Voltar à loja', cart: 'Sacola' },
     account_footer: {
       start_text: '(11) 4000-3000',
       middle_text: 'contato@cafe.example',
       // ★ pk21/D3 — this shop was already spelled the way the régua asks, and that is why the régua exists:
-      // the rule below was DERIVED from what the store the owner did not touch already said.
+      // the rule below was DERIVED from what the one untouched store already said.
       end_text: 'forge.co · café de origem',
     },
   },
@@ -340,7 +340,7 @@ test('★★ the dictation table names EVERY store the declaration does — a va
   assert.equal(DATA.stores.balcao, null);
 });
 
-test('★★★ every word the owner dictated on 07/09 is the word the box is born with', () => {
+test('★★★ every DICTATED word is the word the box is born with', () => {
   for (const [handle, blocks] of Object.entries(DICTATED)) {
     if (blocks === null) continue;
     const configs = Object.fromEntries(
@@ -353,7 +353,7 @@ test('★★★ every word the owner dictated on 07/09 is the word the box is bo
           value,
           `store "${handle}", block ${component}: "${key}" is ${JSON.stringify(
             configs[component]?.[key],
-          )} and the owner dictated ${JSON.stringify(value)} on 07/09.`,
+          )} and the dictation says ${JSON.stringify(value)}.`,
         );
       }
     }
@@ -390,7 +390,7 @@ test('⛔ an emptied field is DECLARED empty — a key this file drops is a key 
   assert.deepEqual(planChrome([wanted], stale), [
     { action: 'update', placement_id: 'hp_9', ...wanted },
   ]);
-  // ⇒ so every area the owner emptied is spelled `''` in the declaration, never removed from it.
+  // ⇒ so every EMPTIED area is spelled `''` in the declaration, never removed from it.
   for (const [handle, blocks] of Object.entries(DICTATED)) {
     if (blocks === null) continue;
     const configs = Object.fromEntries(
@@ -437,7 +437,7 @@ test('★★ one store, ONE word for the cart — the account header and the vit
   }
 });
 
-test('★★ no contact detail is a REAL one — this dataset shipped the owner’s personal address once', () => {
+test('★★ no contact detail is a REAL one — this dataset shipped a real personal address once', () => {
   // ⛔ IT HAPPENED, IN FIFTEEN FILES. Everything a shopper could dial or write to here is reserved by RFC
   // 2606 (`.example`) or is a number nobody answers. The rule is checked over the WHOLE declaration and not
   // just over the fields this pass wrote, because the next e-mail will be added somewhere else.
@@ -463,7 +463,7 @@ test('★★ no contact detail is a REAL one — this dataset shipped the owner�
 //
 // The table above pins the words. These three rules pin the two things a table of literals cannot see:
 //   · WHY the outlet's tail is `.outlet` and not `" Outlet"` — the separator has to survive `wordOf`'s trim;
-//   · that every shop wears its OWN mark in BOTH bars the owner named (checkout and account);
+//   · that every shop wears its OWN mark in BOTH of the named bars (checkout and account);
 //   · that a declared FILENAME actually becomes an ASSET ID in the placement, which is the whole silent
 //     failure this file's own header describes ("the config would keep a filename where the kernel expects an
 //     asset id, and the header would draw nothing").
@@ -483,7 +483,7 @@ test('★★ no contact detail is a REAL one — this dataset shipped the owner�
  */
 
 test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a space never reaches a screen', () => {
-  // ⛔ THE MEASUREMENT BEHIND THE OWNER'S "o certo é forge.outlet". The outlet's mark used to be
+  // ⛔ THE MEASUREMENT BEHIND `forge.outlet` BEING THE RIGHT MARK. The outlet's mark used to be
   // `text: "Forge"` + `tail: " Outlet"` and the shop's header read `ForgeOutlet`, glued: every configured word
   // goes through `wordOf`, which returns `raw.trim()` (extensions/chrome/logic.ts:38, in the product repo), and
   // `brand.tsx:46-49` concatenates `text` and `tail` with NOTHING between them. So a leading or trailing space
@@ -509,9 +509,9 @@ test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a spa
   }
 });
 
-test('★★★ every dressed shop wears its OWN mark in BOTH bars the owner named — checkout AND account', () => {
-  // ⛔ THE ACHADO, VERBATIM: «Não aparece o logo no checkout e minha conta nas lojas de sapato e outlet». Two
-  // bars, named separately, because they are two placements and one of them can be forgotten in silence: the
+test('★★★ every dressed shop wears its OWN mark in BOTH named bars — checkout AND account', () => {
+  // ⛔ THE ACHADO: the logo was drawn in NEITHER the checkout nor the account screens of the two shoe shops.
+  // Two bars, named separately, because they are two placements and one of them can be forgotten in silence: the
   // app writes no default anywhere, so a bar with no `logo` renders a bar with no mark and nothing goes red.
   //
   // ⚠️ AND THE MARK IS THE STORE'S OWN FILE. Two shops sharing one is the exact state this app exists to
@@ -535,7 +535,7 @@ test('★★★ every dressed shop wears its OWN mark in BOTH bars the owner nam
       const logo = configs[bar].logo;
       assert.ok(
         typeof logo === 'string' && logo.trim().length > 0,
-        `store "${handle}", block ${bar}: no logo. The owner reported this bar as unmarked on 07/09, and the ` +
+        `store "${handle}", block ${bar}: no logo. This bar was REPORTED unmarked, and the ` +
           'app draws no default mark anywhere — an absent `logo` is a bar with nothing in it, silently.',
       );
       assert.ok(
@@ -664,9 +664,9 @@ test('★★ …and the declared FILENAME becomes an ASSET ID in the placement �
 
 // ══ pk21/D3 — THE SEAL, AND THE SHOP'S NAME SPELLED ONE WAY ══════════════════════════════════════════════
 //
-// Two owner's instructions of 07/09, and the rules they need are of different kinds:
-//   · *"compra segura precisa usar o do app, precisa preencher pois quero mostrar isso na demo"* — the
-//     `end_image` half of the footer area, which until this pass no store in this dataset used at all. The
+// Two instructions, and the rules they need are of different kinds:
+//   · the security seal has to be the APP's own, and FILLED IN, because showing it is the point of the demo —
+//     the `end_image` half of the footer area, which until this pass no store in this dataset used at all. The
 //     demo therefore demonstrated the words of a block and never its PICTURE. The ink of that picture is
 //     graded where it can be measured — `bin/chrome-seal-ink.guard.mjs`, off the PNG's own pixels;
 //   · the mark, minúsculo, everywhere it is a MARK. `pk20` lowercased the header (`forge.outlet`) and left
@@ -742,7 +742,7 @@ test('★★★ the shop signs its footer with its OWN mark, spelled the way its
   // side — one of the two files can lose a store, and each rule catches the loss in its own.)
   //
   // ⚠️ IT WOULD HAVE GONE RED ON BOTH SHOE SHOPS BEFORE THIS PASS («Forge Outlet», «Forge · calçados e
-  // acessórios») AND GREEN ON THE CAFÉ («forge.co · café de origem») — the store the owner told us was
+  // acessórios») AND GREEN ON THE CAFÉ («forge.co · café de origem») — the one store that was
   // already right. That is where the rule comes from: it was read off the shop nobody had to correct, not
   // invented to justify an edit.
   let signed = 0;

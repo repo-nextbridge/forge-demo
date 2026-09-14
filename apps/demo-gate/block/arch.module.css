@@ -22,7 +22,7 @@
  * three lines deep. Nothing is clipped (the cells are `1fr`, the text wraps), which is exactly why the design
  * could not reveal it. Stacking below 560 px gives each cell the full 296 px — ~47 characters — and every row
  * is one line again; at 560 px the two-column cell is back to 213 px of text (~34 characters), which the
- * longest row fits. The owner tests the phone himself; this is what he will not have to find. */
+ * longest row fits. This screen is opened on a real phone, and this is what that opening must not turn up. */
 
 .screen {
   min-height: 100vh;
@@ -44,7 +44,7 @@
   animation: archIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* The fade the owner asked for, on BOTH directions of the switch: each screen animates itself in as it mounts
+/* The fade runs on BOTH directions of the switch: each screen animates itself in as it mounts
  * (the other one is unmounted, so there is nothing to animate out). */
 @keyframes archIn {
   from {

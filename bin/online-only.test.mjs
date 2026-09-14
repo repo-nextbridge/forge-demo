@@ -1,9 +1,9 @@
 // ★★ WHAT ONLY EXISTS ONLINE MAY NOT BE A STEP THAT SAYS NOTHING.
 //
-// Renan, 04/09: *"ele precisaria também garantir que ligue tudo que só tem online, exemplo cdn se tiver na
-// demo… ou qualquer coisa assim que morre no reset."* On the bench there is no CDN and no bucket, so both
-// facilities are no-ops — and a no-op that prints nothing is indistinguishable from work done. What is
-// graded here is therefore the SPEECH as much as the behaviour.
+// A reset must turn back on everything that only exists ONLINE — a CDN in front of the demo, and anything
+// else of that species. On the bench there is no CDN and no bucket, so both facilities are no-ops — and a
+// no-op that prints nothing is indistinguishable from work done. What is graded here is therefore the
+// SPEECH as much as the behaviour.
 //
 //   node --test bin/online-only.test.mjs      (or: bash bin/test.sh)
 

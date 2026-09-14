@@ -8,10 +8,10 @@
 //     docker ps -a            forge-preseed · k8-midia → ZERO mail containers
 //     docker inspect kernel   FORGE_SMTP_HOST=smtp.resend.com, FORGE_SMTP_FROM=hi@forgecommerce.pro
 //
-// So the only deliverable address this box had was the owner's own (it is in the dataset), and NOBODY ELSE
-// COULD LOG IN — not as a shopper, not as an operator. `pk34/p1` stopped on exactly that and refused to
-// derive a code from `code_hash`, which was right: the box was not measurable, and pretending otherwise is
-// the disease this house is named after.
+// So the only deliverable address this box had was a single personal mailbox (it is in the dataset), and
+// NOBODY ELSE COULD LOG IN — not as a shopper, not as an operator. `pk34/p1` stopped on exactly that and
+// refused to derive a code from `code_hash`, which was right: the box was not measurable, and pretending
+// otherwise is the disease this house is named after.
 //
 // ⚠️ AND THE ESCAPE A DEVELOPER EXPECTS DOES NOT EXIST HERE. The transport that PRINTS the code to a terminal
 // is constructible only under `!production` (apps/api/src/smtp-channel-driver.ts, deliberately) and this
@@ -380,7 +380,7 @@ test('★ the bench\'s OWN configuration declares the mailbox — otherwise this
     declared[1].trim(),
     '',
     '.env.example declares FORGE_BENCH_MAILBOX empty. A bench born from this file then mails through the ' +
-      'real provider, whose only deliverable address is the owner\'s — which is exactly the state of ' +
-      '2026-09-13, where no executor could log in as anybody and `pk34/p1` had to stop.',
+      'real provider, whose only deliverable address is one personal mailbox — which is exactly the state ' +
+      'of 2026-09-13, where no executor could log in as anybody and `pk34/p1` had to stop.',
   );
 });

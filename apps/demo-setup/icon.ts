@@ -7,10 +7,10 @@
 // the admin's Apps area silently falls back to the name's initial. The bytes below and `icon.png` are the
 // same image, and `bin/composition.guard.mjs` compares them.
 //
-// ★ pk28/D1 — THIS IS THE ART RENAN SENT, and the placeholder it replaces is gone. PNG in base64, 128x128
-// (the admin's card draws it at 34px and the sheet at 44px, so 128 covers a 3x screen). The source carried a
-// dark frame; it was shaved and the result measured afterwards — the perimeter reads 254-255 on all four
-// sides, the white ground its twenty-four siblings in the same delivered set carry.
+// ★ pk28/D1 — THIS IS THE REAL ART, delivered for the demo, and the placeholder it replaces is gone. PNG in
+// base64, 128x128 (the admin's card draws it at 34px and the sheet at 44px, so 128 covers a 3x screen). The
+// source carried a dark frame; it was shaved and the result measured afterwards — the perimeter reads 254-255
+// on all four sides, the white ground its twenty-four siblings in the same delivered set carry.
 //
 // ⛔ TRUECOLOUR WITHOUT AN ALPHA CHANNEL (PNG colour type 2), WHICH IS OPACITY BY CONSTRUCTION. What stood
 // here was a 1 003-byte provisional drawing with 2 879 of its 16 384 pixels below full alpha — 2 731 of them

@@ -1,7 +1,7 @@
 // THE PICKUP WEEK, AS ONE RULE — because this repository declares pickup points in TWO files and only one of
 // them was ever graded.
 //
-// ⛔ THE DEFECT THIS FILE IS THE ANSWER TO, reported by the owner on 05/09 with a screenshot: the counter's
+// ⛔ THE DEFECT THIS FILE IS THE ANSWER TO, reported from the screen with a screenshot: the counter's
 // pickup card listed the seven days as «Fechado» and its today-line said «Fechado hoje». Measured against the
 // source: `seed/totem.json` → `pickup.location` carried `name`, `addr_line1`, `district`, `city`, `uf`,
 // `postal_code` and `instructions` — and no `hours` key at all, while each of the four points of
@@ -45,7 +45,7 @@ const HHMM = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
  *   · a foreign day name (`seg`) — REFUSED by `.strict()`, and the refusal is why the schema is strict;
  *   · a missing day — ACCEPTED as closed, which is right for the kernel and ambiguous for a dataset;
  *   · a day that closes before it opens — REFUSED (`open < close`), so an overnight shift needs two days;
- *   · all seven `null` — ACCEPTED, and it is exactly the screen the owner photographed.
+ *   · all seven `null` — ACCEPTED, and it is exactly the screen that was photographed.
  */
 export function pickupWeekProblem(point) {
   const name = point?.name ?? '(a point with no name)';

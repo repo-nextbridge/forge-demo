@@ -204,7 +204,7 @@ test("★★ A15 — it READS what the tailnet publishes and never WRITES it: ge
 // ── THE ONE THING THAT MUST STAY FALSE ────────────────────────────────────────────────────────────────────
 //
 // ★★ NO PRIVATE ADDRESS IN A VERSIONED FILE. This is why A15 was left undone in the first place — the fix
-// looked like writing Renan's own tailnet name into a tracked file, which is the same mistake as the personal
+// looked like writing a private tailnet name into a tracked file, which is the same mistake as the personal
 // e-mail in the dataset, with another kind of value. The variables are named; the values live in `.env`,
 // which is gitignored. This is the check that keeps that true after the next person edits it.
 test('★★ no tailnet hostname or address is committed anywhere in this repository', () => {
@@ -487,10 +487,10 @@ test('★★★ pk6·D2 — `--tailnet` claims the PUBLISHED door, not the inter
   // 6 · and the host → store map answers for the address the vitrine is actually opened at.
   const map = JSON.parse(env.FORGE_STORE_HOSTS.replace(/^'|'$/g, ''));
   assert.ok(map[FAKE_TAILNET_HOST], 'the tailnet host resolves to no store — every page would 404.');
-  assert.ok(map.localhost, 'localhost lost its store. That is how Renan works on the machine, and it must keep working.');
+  assert.ok(map.localhost, 'localhost lost its store. That is the local working door, and it must keep working.');
 
   // 7 · …and the promotion NEVER touches a `localhost` claim. `localhost:8201` / `:8202` are written at
-  //     BIRTH and they are the door Renan works through on the machine; a promotion that released or
+  //     BIRTH and they are the door the box is worked through locally; a promotion that released or
   //     re-pointed them would take the laptop away to give the tailnet back.
   assert.ok(
     !calls.some((c) => /\blocalhost\b|\b127\.0\.0\.1\b/.test(c)),

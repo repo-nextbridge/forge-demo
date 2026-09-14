@@ -39,7 +39,7 @@
 //      (And it was never only a move: here it busted ONE store of four and ran with three writers still to
 //      come in the same phase. Both facts are measured in that file's header.)
 //
-//   ⛔ THE PROMOTIONS CANNOT MOVE FROM THIS REPOSITORY, AND THE OWNER IS THE PRODUCT. Measured 2026-09-09:
+//   ⛔ THE PROMOTIONS CANNOT MOVE FROM THIS REPOSITORY, AND THE PRODUCT IS THE REASON. Measured 2026-09-09:
 //      · `dist/seed-demo.js` → `seedCuratedStorefront` (apps/api/src/seed-storefront.ts) drives no
 //        `promotion.*` at all — and the comment that explains why, at line 857, describes a world that no
 //        longer exists: *"promotions do not exist on this branch: there is no `promotion.*` command"*.
@@ -613,8 +613,9 @@ export function selectPromotions(declared, allow, fail) {
 /**
  * ★★ THE FIRST LINE OF THE SHOP, AND THE NUMBER IN IT IS READ OFF THE PROMOTION.
  *
- * His instruction was one clause: *"no storefront sapato coloca uma frase: Frete grátis para compras acima
- * de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE FRETE GRÁTIS."* The whole slice is in the second half. A band is
+ * THE INSTRUCTION WAS ONE CLAUSE: on the shoe storefront, put up a sentence — «Frete grátis para compras
+ * acima de…» — and ONLY IF a free-shipping promotion actually exists. The whole slice is in the second
+ * half. A band is
  * a promise on the first line of every page; if the kernel does not keep it, it is advertising that passes
  * every green test in the repository, because nothing anywhere compares a sentence to a price.
  *

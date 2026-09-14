@@ -95,7 +95,7 @@ test('the gate switches to the architecture screen and back, and each screen HID
 
 for (const lang of LANGS) {
   test(`[${lang}] the architecture screen opens in the language the gate is in`, () => {
-    // The selector is the GATE's language (the owner's decision, 10/09: the shops stay PT-BR) — so the second
+    // The selector is the GATE's language (by decision the shops themselves stay PT-BR) — so the second
     // screen has to travel in whichever language the visitor chose, and it has no selector of its own.
     window.scrollTo = vi.fn();
     render(

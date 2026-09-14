@@ -58,9 +58,9 @@ const STORE_HANDLE = 'cafe';
  * had answered 200. Composed is not installed, and the admin's "Available / Install" was telling the
  * truth nobody read.
  *
- * ★★★ pk33 — `demo-gate` JOINED THIS LIST, and it is HIS decision rather than a tidy-up (11/09): *"sim a
- * portaria vem instalada no nascimento da demo"*, and *"sapatos, outlet, café, totem"* — the whole demo, the
- * counter included. Until this slice NOTHING in the birth installed it: not `bin/seed-box.mjs`, not
+ * ★★★ pk33 — `demo-gate` JOINED THIS LIST, and it is a DECISION rather than a tidy-up: the gate arrives
+ * INSTALLED at the demo's birth, and the demo is the four shops — shoes, outlet, café, totem — the whole of
+ * it, the counter included. Until this slice NOTHING in the birth installed it: not `bin/seed-box.mjs`, not
  * `seed/vitrine.mjs`, not `seed/outlet.mjs`, not this file. The app's own README said "Install the app for the
  * tenant", i.e. a HAND GESTURE somebody had to remember, and on the bench of 11/09 nobody had — the demo had
  * been served with its front door wide open for days with every birth green underneath.
@@ -226,8 +226,8 @@ const SUBSCRIBED_LINE = { kind: 'custom_field', field: 'sub_plan', operator: 'ex
  * freight was a sentence. A subscriber reached the payment step and paid the R$ 19,90 the shop had just told
  * them they would not pay.
  *
- * ⇒ THE DATA IS MADE TRUE RATHER THAN THE SENTENCE MADE SMALLER (Renan, 2026-09-03: *"Dataset com promoção,
- * é justamente pra mostrar para o prospect essa possibilidade"*). The perk line is a constant of the FORK —
+ * ⇒ THE DATA IS MADE TRUE RATHER THAN THE SENTENCE MADE SMALLER: a dataset WITH promotions is precisely
+ * what shows a prospect that the capability exists. The perk line is a constant of the FORK —
  * the shop's own chrome — and what a seed can honestly do about a promise a shop makes is make the shop able
  * to keep it. Same reasoning, and the same words, as the coupon in `seed/commerce.mjs`.
  *
