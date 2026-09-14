@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { AXIS, MIN_REASON, humanTokens, report, scanRepo, scanText } from './private-trace.mjs';
+import { AXIS, MIN_REASON, RULE_SOURCES, humanTokens, report, scanRepo, scanText } from './private-trace.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -367,4 +367,21 @@ test('★★ CONTROL — the name is matched as a WORD: it does not fire inside 
   //    one absurd finding and the next reader stops reading the rest.
   const inside = `// o cano está d${SHORT}ndo a caixa, e ${SHORT}tes disso nada acontecia\n`;
   assert.deepEqual(scan(inside), [], `the register token fired inside a longer word:\n${shown(inside)}`);
+});
+
+test('★★ THE SELF-REFERENCE IS EXACTLY TWO FILES, and both are real — never an ignore list growing a third', () => {
+  // The scanner and this guard spell the forbidden shapes on purpose, so they cannot be graded by them. That
+  // exemption is the one thing here that could quietly become the ignore list the whole rule refuses, so it
+  // is pinned: exactly two entries, both tracked, and both actually the rule's own source.
+  assert.deepStrictEqual(
+    [...RULE_SOURCES].sort(),
+    ['bin/private-trace.guard.mjs', 'bin/private-trace.mjs'],
+    'the rule may exempt its OWN source and nothing else — a third path here is an ignore list wearing a name',
+  );
+  const tracked = new Set(
+    execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean),
+  );
+  for (const path of RULE_SOURCES) {
+    assert.ok(tracked.has(path), `${path} is exempted from the rule and is not in the repository`);
+  }
 });

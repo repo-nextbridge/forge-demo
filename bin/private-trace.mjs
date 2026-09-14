@@ -513,6 +513,20 @@ export function trackedFiles(root) {
 const extOf = (p) => (p.includes('.') ? p.slice(p.lastIndexOf('.') + 1).toLowerCase() : '');
 
 /**
+ * ★★ THE FILE THAT DEFINES A RULE IS NOT EVIDENCE OF BREAKING IT.
+ *
+ * This scanner and its guard are where the forbidden SHAPES are written down: the vocabulary, the example
+ * phrase inside each `why`, and the sabotage fixtures, which have to CONTAIN a violation to prove the rule
+ * bites. Grading them finds the dictionary guilty of the words it defines, and the only way to make them pass
+ * would be to stop explaining what is forbidden — which is the half of a guard a reader actually uses.
+ *
+ * ⛔ IT IS NOT AN IGNORE LIST, and it is kept from becoming one: the set is exactly these two, the guard
+ * asserts both are tracked, and a third entry turns it red. Everything else in the repository is graded,
+ * including every other file that merely TALKS about the rule.
+ */
+export const RULE_SOURCES = ['bin/private-trace.mjs', 'bin/private-trace.guard.mjs'];
+
+/**
  * Scan a whole checkout.
  *
  * ⛔ AN EMPTY POPULATION IS A FAILURE, NOT A PASS. A scanner that found nothing because it looked at nothing
@@ -533,6 +547,8 @@ export function scanRepo(root, { tokens } = {}) {
   const scanned = [];
   let bytes = 0;
   for (const path of files) {
+    // ★ The two files that DEFINE the rule are not graded by it — see `RULE_SOURCES` above.
+    if (RULE_SOURCES.includes(path)) continue;
     // The PATH is graded for everything, binary included: a photograph can be named after somebody.
     const onPath = scanText(path, { tokens: register, path });
     for (const f of onPath.findings) findings.push({ ...f, line: 0, where: 'path' });
