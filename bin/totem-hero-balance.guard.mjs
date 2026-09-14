@@ -134,8 +134,9 @@ test('★★★ the band SPLITS its free space instead of parking all of it belo
     `.${BAND} declares justify-content: ${value}. The band is a fixed 372px and its three children measure ` +
       '214px together (measured in headless Chromium with the counter\'s own fonts: wordmark 79px + margins ' +
       '18, title 57px, arrow 44px, two 8px gaps), so 142px of it is empty — and this value puts all 142 in ' +
-      'one lump. The owner asked for the opposite on 2026-09-08: «quero deixar essa parte mais centralizada, ' +
-      'tem muito espaço verde embaixo». ⛔ The fix is to SHARE the slack, not to shrink the band: 372px is ' +
+      'one lump. The band is specified to do the opposite — the slack is SHARED between the three ' +
+      'children, so no single pool of empty green sits under the arrow. ⛔ The fix is to SHARE the slack, ' +
+      'not to shrink the band: 372px is ' +
       'the artboard\'s (design-base/Totem forge.co.dc.html:35) and the scroller\'s spacer is cut to it.',
   );
 });
@@ -177,7 +178,7 @@ test('★★ the band really does lay out THREE things — centring one item pro
   );
 });
 
-test('⛔ the panel is still NOT responsive, and the touch target the owner settled is untouched', () => {
+test('⛔ the panel is still NOT responsive, and the settled touch target is untouched', () => {
   // ⚠️ THE TWO DECISIONS OF 2026-09-08 THIS SLICE WAS TOLD NOT TO CROSS, kept as assertions so that crossing
   // them is a red build and not a diff nobody reads.
   //
@@ -193,7 +194,7 @@ test('⛔ the panel is still NOT responsive, and the touch target the owner sett
   assert.equal(
     decl('dialogPrimary', 'height'),
     '104px',
-    '«Estou aqui» changed height. The owner settled this on 2026-09-08 after it was measured: 104px in a ' +
+    '«Estou aqui» changed height. This height is settled by measurement: 104px in a ' +
       'fixed 1080x1920 panel is 2.4x the 44px touch floor, and the "thin" button was the browser\'s scale. ' +
       'If it is being changed on purpose, this line is the place to say so.',
   );

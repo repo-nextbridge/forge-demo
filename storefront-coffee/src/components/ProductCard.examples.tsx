@@ -190,7 +190,7 @@ export function ProductCardExamples() {
           }}
         >
           {/* PACK item 16 — this card EARNS three badges (-20% from the struck "was", "Frete grátis" because
-              R$ 799 clears the R$ 600 floor, and NOVO) and shows TWO: the cap is Renan's, the precedence is the
+              R$ 799 clears the R$ 600 floor, and NOVO) and shows TWO: the cap is the card's, the precedence is the
               theme's (money first), so NOVO is the one that yields. */}
           <ProductCard
             base={HOST_BASE}

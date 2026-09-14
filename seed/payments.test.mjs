@@ -44,13 +44,14 @@ test('★★★ no tenant of this box installs the Mercado Pago at birth', () =>
   assert.ok(!COFFEE.includes(MP), 'seed/coffee.mjs names the Mercado Pago in its APPS list');
 });
 
-test('★★★ …and it is STILL COMPOSED, so he can install it by hand when he wants to show it', () => {
+test('★★★ …and it is STILL COMPOSED, so it can be installed by hand when the demo has to show it', () => {
   // The half that is easy to get wrong: removing the app from the composition would ALSO stop it being
   // installed, and it would do it by deleting the app from the image. That is not the same outcome.
   assert.ok(
     COMPOSITION.apps.some((app) => app.id === MP),
-    'the Mercado Pago left composition.json. It then has no row in the admin\'s Apps area, and «eu instalo ' +
-      'manualmente e mostro» stops being possible — which was the condition he accepted the removal under.',
+    'the Mercado Pago left composition.json. It then has no row in the admin\'s Apps area, and installing ' +
+      'it by hand to demonstrate it stops being possible — which is the condition the removal was ' +
+      'accepted under.',
   );
 });
 
@@ -78,8 +79,8 @@ test('⛔ `payment-zero` was neither removed from the shoe brand nor INVENTED in
   const cafeApps = BOX.tenants.find((t) => t.id === 'forgecafe')?.apps ?? [];
   assert.ok(
     !cafeApps.includes('payment-zero'),
-    'the coffee tenant now installs payment-zero. It never had it, and «mesma coisa para o café» was about ' +
-      'the Mercado Pago — adding a capability is not removing one.',
+    'the coffee tenant now installs payment-zero. It never had it: the café mirrors the shoe brand for the ' +
+      'Mercado Pago and for nothing else — adding a capability is not removing one.',
   );
 });
 

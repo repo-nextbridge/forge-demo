@@ -444,7 +444,7 @@ export function MinicartDrawer({
             {!isEmpty ? <span className={styles.headline}>Adicionados agora</span> : null}
           </header>
 
-          {/* MINICART-ERRO — what the last refused command has to say, INSIDE the drawer (his decision: not a
+          {/* MINICART-ERRO — what the last refused command has to say, INSIDE the drawer (by decision: not a
            * toast, not a banner, not a page). It sits ABOVE the two slots and OUTSIDE the isEmpty branch on
            * purpose: the commonest failure of all is the very first add, when the cart is still empty and that
            * branch renders nothing but "Seu carrinho está vazio". `role="alert"` announces it without stealing

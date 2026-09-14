@@ -321,7 +321,7 @@ const datasetHomeRows = (declared = DATASET_HOME) => [
 
 /** The apps' own storefront blocks — `APP_BLOCKS`, imported at the top of this file. It left this suite on
  *  2026-09-12 (pk34/D3) so that `bin/app-blocks.guard.mjs` could grade it against the manifests of the pinned
- *  release without importing a test file: it had spent a day green while asserting a slot the owner had moved.
+ *  release without importing a test file: it had spent a day green while asserting a slot that had moved.
  *  Its reasons — why it is hand-written, and why the `admin:` hooks are deliberately absent — live with it.
  *
  *  Those blocks as one store's rows. `extra` stages a block the box does NOT really show (`placement_id: null`
@@ -825,7 +825,7 @@ test('★★ both tenants, with the week the seed declares — the verifier sett
   }
 });
 
-test('★★ SABOTAGE — the point the owner found: it exists, and its week is EMPTY. Accused, by name', async () => {
+test('★★ SABOTAGE — the point exists, and its week is EMPTY. Accused, by name', async () => {
   // ★ THE REPORTED BOX, STAGED FROM A MEASUREMENT AND NOT FROM AN IDEA OF ONE. On the bench of 05/09,
   //     select name, hours from <coffee schema>.pickup_location
   //   answered `Balcão · Forge Café | {}` while the shoe brand's four each answered a full week — the create

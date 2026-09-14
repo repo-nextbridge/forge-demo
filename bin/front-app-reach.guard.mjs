@@ -91,7 +91,8 @@ const DIVERGENCES = [
       'pk32/p1-parto"); that tool SHIPPED — `@forgecommerce/surface-codegen` is in the release, the fork ' +
       'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
       'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
-      'would draw a second one. His own rule decides it — 11/09, «o fork é do cliente, 100% liberdade» ⇒ when ' +
+      'would draw a second one. The rule that decides it is that a fork is the client\'s, with full ' +
+      'freedom over what it draws: when ' +
       'a fork draws for itself what a declared block would draw, the INSTANCE removes the placement (the ' +
       'shape `seed/outlet.mjs` already uses). ⇒ the fix is a seed change, not three gestures, and it is not ' +
       'this slice\'s to make. ★ pk35/d7 MADE IT: `seed/demo-setup.json` now declares `"cafe": null`, after ' +

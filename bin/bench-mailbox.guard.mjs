@@ -380,7 +380,7 @@ test('★ the bench\'s OWN configuration declares the mailbox — otherwise this
     declared[1].trim(),
     '',
     '.env.example declares FORGE_BENCH_MAILBOX empty. A bench born from this file then mails through the ' +
-      'real provider, whose only deliverable address is the owner\'s — which is exactly the state of ' +
+      'real provider, whose only deliverable address is one personal inbox — which is exactly the state of ' +
       '2026-09-13, where no executor could log in as anybody and `pk34/p1` had to stop.',
   );
 });

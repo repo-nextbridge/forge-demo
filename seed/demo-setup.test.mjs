@@ -103,7 +103,7 @@ test('★★ the LOGIN BOX is not this file’s — the block moved to the produ
     undefined,
     `the \`slots\` map still names "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
       'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by an ' +
-      'app of one instance. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».',
+      'app of one instance. The three blocks this file dresses belong to the storefront; the login box does not.',
   );
   for (const [handle, spec] of Object.entries(DATA.stores)) {
     if (spec === null) continue;
@@ -112,7 +112,7 @@ test('★★ the LOGIN BOX is not this file’s — the block moved to the produ
       undefined,
       `store "${handle}" declares "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
         'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by ' +
-        'an app of one instance. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».',
+        'an app of one instance. The three blocks this file dresses belong to the storefront; the login box does not.',
     );
   }
 });
@@ -185,8 +185,8 @@ test('⛔ and ONLY those two say it — the café has a footer of its own and th
       assert.equal(
         block.config?.tagline,
         undefined,
-        `store "${handle}", block ${block.component}: a tagline. The owner named the two shoe shops and no ` +
-          'other; this one did not ask for a sentence.',
+        `store "${handle}", block ${block.component}: a tagline. The tagline belongs to the two shoe shops ` +
+          'named in `SIGNS` and to no other store.',
       );
     }
   }

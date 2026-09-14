@@ -87,13 +87,13 @@ describe('every write that builds a basket goes through the door that refuses a 
 
 describe('the pay path keeps its leniency — the retry a customer is told to make', () => {
   it('payWith asks for ensureCartId, so a placed-but-unpaid order can still be settled', async () => {
-    await payWith('Renan', 'card');
+    await payWith('Test Buyer', 'card');
     expect(ensureCartId).toHaveBeenCalledTimes(1);
     expect(cartForThisCustomer).not.toHaveBeenCalled();
   });
 
   it('★ and it places the order against THAT cart, with the cart id as the idempotency key', async () => {
-    await payWith('Renan', 'card');
+    await payWith('Test Buyer', 'card');
     // The third argument is the idempotency key (kit: placeOrder(store, cartId, idempotencyKey)). It being
     // the cart id is what makes the retry return the same order — and is exactly why a NEW customer must
     // never arrive here on the previous customer's cart.

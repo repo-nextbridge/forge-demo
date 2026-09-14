@@ -113,7 +113,7 @@ test('★★★ warming stopped being a GATE and did not stop RUNNING — the th
   );
   assert.ok(
     !/\bCOLD\b/.test(conjunction),
-    `COLD is back in the exit conjunction: ${conjunction}\nIt was removed on purpose (Renan, 05/09) — the ` +
+    `COLD is back in the exit conjunction: ${conjunction}\nIt was removed on purpose — the ` +
       'warming step was red on every birth of this box by construction, so it graded nothing.',
   );
   assert.ok(conjunction.includes('MISSING_STORE'), `MISSING_STORE left the exit conjunction: ${conjunction}`);
@@ -209,7 +209,7 @@ test('★★★ a tenant that did NOT come out warm still exits 0 — warmth is 
   assert.equal(
     status,
     0,
-    `a cold tenant failed the birth. Warmth was taken out of the conjunction on purpose (Renan, 05/09) — a ` +
+    `a cold tenant failed the birth. Warmth was taken out of the conjunction on purpose — a ` +
       `step that is red on every run grades nothing:\n${out}`,
   );
 });

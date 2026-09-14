@@ -340,7 +340,7 @@ test('★★ the dictation table names EVERY store the declaration does — a va
   assert.equal(DATA.stores.balcao, null);
 });
 
-test('★★★ every word the owner dictated on 07/09 is the word the box is born with', () => {
+test('★★★ every DICTATED word is the word the box is born with', () => {
   for (const [handle, blocks] of Object.entries(DICTATED)) {
     if (blocks === null) continue;
     const configs = Object.fromEntries(
@@ -353,7 +353,7 @@ test('★★★ every word the owner dictated on 07/09 is the word the box is bo
           value,
           `store "${handle}", block ${component}: "${key}" is ${JSON.stringify(
             configs[component]?.[key],
-          )} and the owner dictated ${JSON.stringify(value)} on 07/09.`,
+          )} and the DICTATED table states ${JSON.stringify(value)}.`,
         );
       }
     }
@@ -437,7 +437,7 @@ test('★★ one store, ONE word for the cart — the account header and the vit
   }
 });
 
-test('★★ no contact detail is a REAL one — this dataset shipped the owner’s personal address once', () => {
+test('★★ no contact detail is a REAL one — this dataset shipped a real personal address once', () => {
   // ⛔ IT HAPPENED, IN FIFTEEN FILES. Everything a shopper could dial or write to here is reserved by RFC
   // 2606 (`.example`) or is a number nobody answers. The rule is checked over the WHOLE declaration and not
   // just over the fields this pass wrote, because the next e-mail will be added somewhere else.
@@ -463,7 +463,7 @@ test('★★ no contact detail is a REAL one — this dataset shipped the owner�
 //
 // The table above pins the words. These three rules pin the two things a table of literals cannot see:
 //   · WHY the outlet's tail is `.outlet` and not `" Outlet"` — the separator has to survive `wordOf`'s trim;
-//   · that every shop wears its OWN mark in BOTH bars the owner named (checkout and account);
+//   · that every shop wears its OWN mark in BOTH bars (checkout and account);
 //   · that a declared FILENAME actually becomes an ASSET ID in the placement, which is the whole silent
 //     failure this file's own header describes ("the config would keep a filename where the kernel expects an
 //     asset id, and the header would draw nothing").
@@ -509,7 +509,7 @@ test('★★ no configured word leans on WHITESPACE — `wordOf` trims, so a spa
   }
 });
 
-test('★★★ every dressed shop wears its OWN mark in BOTH bars the owner named — checkout AND account', () => {
+test('★★★ every dressed shop wears its OWN mark in BOTH bars — checkout AND account', () => {
   // ⛔ THE ACHADO, VERBATIM: «Não aparece o logo no checkout e minha conta nas lojas de sapato e outlet». Two
   // bars, named separately, because they are two placements and one of them can be forgotten in silence: the
   // app writes no default anywhere, so a bar with no `logo` renders a bar with no mark and nothing goes red.
@@ -535,7 +535,7 @@ test('★★★ every dressed shop wears its OWN mark in BOTH bars the owner nam
       const logo = configs[bar].logo;
       assert.ok(
         typeof logo === 'string' && logo.trim().length > 0,
-        `store "${handle}", block ${bar}: no logo. The owner reported this bar as unmarked on 07/09, and the ` +
+        `store "${handle}", block ${bar}: no logo. This bar has shipped unmarked before, and the ` +
           'app draws no default mark anywhere — an absent `logo` is a bar with nothing in it, silently.',
       );
       assert.ok(

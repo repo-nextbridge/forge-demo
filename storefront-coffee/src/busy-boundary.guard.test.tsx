@@ -90,7 +90,7 @@ test('★★★ every error boundary RENDERS a ceiling refusal as busy, with the
     expect(
       busyHtml,
       `${where} does not say WHEN to come back. The port published \`Retry-After: 40\` and this page dropped ` +
-        'it — which leaves the customer with the same "try again" he had when nobody knew anything.',
+        'it — which leaves the customer with the same "try again" they had when nobody knew anything.',
     ).toContain(ceilingWaitSentence(40));
     expect(
       busyHtml,

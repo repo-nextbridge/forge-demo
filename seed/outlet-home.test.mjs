@@ -75,7 +75,7 @@ test('★★ the previous page is REUSED, not appended to — nothing is placed 
   ]);
 });
 
-test('★ the PLP instance is surplus and goes — he asked for a page with nothing on it', () => {
+test('★ the PLP instance is surplus and goes — a placement that renders nothing is a page with nothing on it', () => {
   // `extension.install` of `shelves` places one empty instance in `list.below_shelf` in EVERY store of the
   // tenant. It renders nothing, so leaving it is invisible on the storefront and wrong in Compose.
   const plan = planHome(previousPage(), WANTED, GOVERNED);
@@ -339,14 +339,14 @@ test('★★ THE DECLARED SHAPE IS THE ONE THE PLAN IS FED — the fixtures abov
   ];
   assert.equal(declared.length, WANTED_NOW.length, 'outlet.json no longer declares the number of blocks these fixtures model');
 
-  // ★ HIS DECISION OF 08/09, AS AN ASSERTION: the mosaic is in the HERO. It is stated on its own, before the
+  // ★ THE 08/09 DECISION, AS AN ASSERTION: the mosaic is in the HERO. It is stated on its own, before the
   // shape checks, because this is the line somebody undoes by accident when they "tidy the page back into one
   // slot" — and every other assertion here would still pass while it did.
   assert.equal(
     data.mosaic.slot,
     HERO,
-    'the outlet mosaic left `home.hero`. He moved it there on 08/09 («arrastei os banners para o slot hero e ' +
-      'ficou melhor. Então deixa assim no dataset») — putting it back under the categories undoes his call.',
+    'the outlet mosaic left `home.hero`. The mosaic belongs in the HERO and the dataset is where that is ' +
+      'settled — putting it back under the categories undoes the move.',
   );
   assert.equal(data.mosaic.position, 0, 'the hero holds one block and it is not at 0 — the run is not dense');
   assert.deepEqual(

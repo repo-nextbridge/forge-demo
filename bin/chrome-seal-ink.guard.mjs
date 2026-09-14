@@ -323,15 +323,15 @@ test('★★ every store of the box is DECIDED here — dressed with a seal, dre
   assert.deepEqual(
     withSeal.sort(),
     ['forge', 'outlet'],
-    'the two shoe shops are the ones the owner asked to fill in on 07/09 ("compra segura precisa usar o do ' +
-      'app, precisa preencher pois quero mostrar isso na demo"). A shop leaving this list has lost its ' +
-      'seal, and every ink and shape rule below would then pass by iterating over one store less.',
+    'the two shoe shops are the two that carry the checkout seal — the demo shows «Compra Segura» in both. ' +
+      'A shop leaving this list has lost its seal, and every ink and shape rule below would then pass by ' +
+      'iterating over one store less.',
   );
   assert.deepEqual(
     withoutSeal.sort(),
     ['cafe'],
-    'the café is the ONE shop deliberately left alone — it has a footer of its own and the owner did not ' +
-      'name it. Named here rather than absent, because a store missing from a list is indistinguishable ' +
+    'the café is the ONE shop deliberately left alone — it has a footer of its own, so no seal was asked ' +
+      'of it. Named here rather than absent, because a store missing from a list is indistinguishable ' +
       'from one that failed.',
   );
   assert.deepEqual(noChrome, ['balcao'], 'the counter has no chrome at all — see `_balcao_why`');

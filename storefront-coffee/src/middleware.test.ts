@@ -180,7 +180,7 @@ test('★ every root-level icon asset is excluded from the host rewrite', async 
   }
 });
 
-// ★★ D2-C1 — THE OWNER'S ASSET DIRECTORY, and why this assertion is here and not only in the packed guard.
+// ★★ D2-C1 — THE STOREFRONT'S OWN ASSET DIRECTORY, and why this assertion is here and not only in the packed guard.
 //
 // `public/assets/` is where whoever owns this storefront puts a logo. Next serves it at `/assets/<name>`, and
 // without an exclusion the host->store rewrite turns that into `/s/<store>/assets/<name>`, which is not a page:
@@ -191,7 +191,7 @@ test('★ every root-level icon asset is excluded from the host rewrite', async 
 // from a running container, `packed-surface.guard.test.ts`) runs only in the release job — and because the
 // claim is about THIS storefront, which is exactly as true in a fork as it is here. The pairing with the
 // surface registry's `ownerAssets` is that guard's job; this one is the fast red.
-test('★ the owner asset prefix is excluded from the host rewrite', () => {
+test('★ the /assets subtree (`ownerAssets`) is excluded from the host rewrite', () => {
   const matches = new RegExp(`^${config.matcher[0] as string}$`);
   for (const path of ['/assets/logo.png', '/assets/brand/mark.svg']) {
     expect(
@@ -201,7 +201,7 @@ test('★ the owner asset prefix is excluded from the host rewrite', () => {
     ).toBe(false);
   }
   // ⚠️ THE PREFIX IS `assets/` WITH THE SLASH, and this is the half that says so. A store may legitimately
-  // have a category called `assets`; only its SUBTREE belongs to the owner's files, and a bare `/assets` must
+  // have a category called `assets`; only its SUBTREE belongs to the storefront's own files, and a bare `/assets` must
   // still route. Widening the exclusion to `assets` would take that address away silently.
   expect(
     matches.test('/assets'),

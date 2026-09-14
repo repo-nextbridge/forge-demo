@@ -57,7 +57,7 @@ test('★★ …and the collector COUNTS, so a rule proved over nothing cannot p
   );
   assert.ok(
     found.some((d) => d.point.name === TOTEM.pickup.location.name && d.store === 'balcao'),
-    "the COUNTER's point — the one the owner found shut all week — is not in the collector's list",
+    "the COUNTER's point — the one that shipped shut all week — is not in the collector's list",
   );
 });
 
@@ -130,7 +130,7 @@ test('⛔ SABOTAGE — the two shapes the KERNEL itself refuses are refused here
   assert.match(pickupWeekProblem(aPoint({ ...aWeek(), mon: 'aberto' })), /HH:MM/);
 });
 
-test('★★ THE COUNTER — the point the owner photographed — is open on days a person can actually go there', () => {
+test('★★ THE COUNTER — the point that shipped shut all week — is open on days a person can actually go there', () => {
   // The regression, named. A week that parses is not the fix; a week nobody can collect in is the defect.
   const counter = TOTEM.pickup.location;
   assert.equal(pickupWeekProblem(counter), null);

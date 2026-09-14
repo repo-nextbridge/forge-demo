@@ -1060,7 +1060,7 @@ say('THE HOME — the blocks of the shop window, and the slot each one is really
             `${handle}'s home`,
             `is ${got.join(' · ') || '(no block at all)'} — seed/outlet.json declares ${want.join(' · ')}. ` +
               'The banner mosaic belongs in `home.hero` since 08/09, ABOVE «Compre por categoria»; a home ' +
-              'that came back with it under the categories is a re-seed that undid his call.',
+              'that came back with it under the categories is a re-seed that undid that move.',
           );
         }
         return;
