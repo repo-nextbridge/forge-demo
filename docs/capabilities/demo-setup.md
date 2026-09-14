@@ -18,9 +18,9 @@ footer's block also carries the shop's own **tagline**.
 **checkout**, which Forge hosts and nobody forks; the vitrine is the one a customer forks and makes theirs.
 Identity in something you fork may live in an app of your own — that is this app. Identity in something you
 cannot fork has to be configurable **without** a fork, which makes it a capability of the **product**: from
-pk28 the OOTB `chrome` app carries the login box's mark. The owner said it in one line, 09/09: *"no chrome
-OOTB fica para pôr logo na caixa de login. E o config da demo fica só as outras 3 … pois essas 3 são do
-storefront e a caixa de login é do checkout."*
+pk28 the OOTB `chrome` app carries the login box's mark. In one line: the OOTB `chrome` app is where the login
+box's logo goes and this demo's config keeps only the other three — **those three are the storefront's, and the
+login box is the checkout's.**
 
 ## Why it is an app, and why it is OURS
 
@@ -38,16 +38,16 @@ this directory, and the answer is a package and a declaration.
 
 Until pk26 the mark was the `brand` block of the platform's `chrome` app: **one placement read in four
 renders**. An operator dragged one row in Compose and changed four places, with no way for the board to say
-where. The owner named the defect — *"o compose não faz sentido, está configurando algo lá que nem sabe onde
-vai aparecer"* — Forge gave each place its own slot, and the mark moved here.
+where. That is the defect by name — **a Compose board that configures something without knowing where it will
+show up makes no sense** — so Forge gave each place its own slot, and the mark moved here.
 
 ⛔ **One component per place is the kernel's rule, not a preference.** `placement: 'single'` is enforced per
 *(store, app, component)*: the same component dropped into a second slot is refused with `conflict`. So four
 places require four components — which is what makes the Compose board literal again.
 
 ★ **And the liberty is the point.** A shop may now put a different mark in each of its places. This box does
-not (a rule holds its spellings equal), but the ability is real and was accepted out loud:
-*"tudo bem se tiver que configurar a logo em cada lugar, normal, e dá mais liberdade ainda."*
+not (a rule holds its spellings equal), but the ability is real and was accepted deliberately: configuring
+the logo in each place is a fair price, and it buys more freedom.
 
 | block | slot | draws in |
 |---|---|---|
@@ -85,8 +85,8 @@ same defect one element to the right. ⇒ **placing a mark in the footer deletes
 how a shop says one of its own, and from pk26 on the demo's two shoe shops say that line **because they
 configured it** — which is a better thing to show a customer than a shop that inherited it.
 
-⛔ Only `forge` and `outlet` say it (the owner named those two). The café has a footer of its own; the counter
-has no shop window at all and is declared `null`.
+⛔ Only `forge` and `outlet` say it — those two are the declared ones. The café has a footer of its own;
+the counter has no shop window at all and is declared `null`.
 
 ## Where the demo's own answers live
 
@@ -147,15 +147,15 @@ what rotted through four repairs.
 
 ## ⛔ THE CAFÉ WEARS NONE OF THESE — the instance removed them (pk35/d7)
 
-`seed/demo-setup.json` says `"cafe": null`. The rule is the owner's, 11/09: *"o fork é do cliente, 100%
-liberdade"* ⇒ **when a fork draws by itself what a declared block would draw, the instance removes that
+`seed/demo-setup.json` says `"cafe": null`. The rule: **a fork is the customer's, with 100% freedom** ⇒ **when
+a fork draws by itself what a declared block would draw, the instance removes that
 store's placement.** `seed/outlet.mjs` uses the same pattern for the PLP shelf.
 
 ⚠️ **This line used to cite `seed/coffee.mjs::dropGateOnTheCafe` as the other example and that function no
 longer exists (pk36/d1).** The café's gate was removed for a different reason — the fork could not DRAW the
 structural slot — and once it learned to regenerate its own registry the removal and the `gate: false` that
 declared it went together. ⇒ ★ **The two cases were never the same rule**: this one is a fork that draws the
-thing ITSELF, that one was a fork that could draw NOTHING. Only this one is the owner's *"100% liberdade"*.
+thing ITSELF, that one was a fork that could draw NOTHING. Only this one is the 100%-freedom rule.
 
 ⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
 placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,
@@ -187,8 +187,8 @@ box only if somebody wires the two together. It is not wired: the fork's `packag
 `@forge/ext-demo-setup/block/marks`.
 
 ★ **It is still a defect even though the page looks right.** The café has chrome of its own (`CoffeeChrome`)
-and a mark of its own, so the shop is not visibly broken; the fork's owner is entitled to *decide* he does not
-want this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
+and a mark of its own, so the shop is not visibly broken; whoever owns the fork is entitled to *decide* against
+this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
 it by name on every run, and the decision is written there as a declared divergence rather than implied by
 silence.
 

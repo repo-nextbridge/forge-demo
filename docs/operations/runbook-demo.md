@@ -27,7 +27,7 @@ defeito que este arco inteiro passou o mês pagando.
 Hoje a Demo é **uma** caixa: ela pina um release e nasce. A sequência da §2 descreve esse mundo, e **esse
 mundo vai acabar**.
 
-Quando a Demo ganhar o **staging dela** (card no roadmap do Renan, no vault — ainda **não** existe como card
+Quando a Demo ganhar o **staging dela** (card no roadmap, no vault — ainda **não** existe como card
 no `docs/roadmap/kanban.md` do produto), a sequência ganha **um degrau novo entre o passo 3 e o passo 5**: o
 release desce primeiro para o **staging da Demo**, é conferido lá, e só então desce para a caixa que o
 cliente vê. O passo 4 (assar o que é da Demo) passa a acontecer duas vezes, ou uma vez e ser promovido — é
@@ -50,7 +50,7 @@ Nenhuma linha de kernel. `README.md` abre com essa tabela e ela continua valendo
 
 ## 2. A ORDEM DO DEPLOY
 
-Ditada pelo Renan em 04/09 e conferida contra `docs/conventions/deploy-lifecycle.md` (produto).
+Conferida contra `docs/conventions/deploy-lifecycle.md` (produto).
 
 | # | o quê | onde | portão |
 |---|---|---|---|
@@ -66,8 +66,8 @@ Ditada pelo Renan em 04/09 e conferida contra `docs/conventions/deploy-lifecycle
 
 ### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
 
-Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas na estação
-de trabalho do Renan a partir de uma **branch**. `bin/build-local.sh:22` carrega a obrigação por escrito:
+Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas numa estação
+de trabalho local a partir de uma **branch**. `bin/build-local.sh:22` carrega a obrigação por escrito:
 
 > *"THE FIRST REAL DEPLOY **RE-STAMPS IT** with registry digests. That is not a reminder, it is **part of
 > that deploy's definition of done**"*
@@ -164,7 +164,7 @@ configuração:
 
 ### 3.1-bis ★★★ AS SEIS URLS DESTA DEMO — onde cada uma mora, e o que acontece se você esquecer uma
 
-Ele nomeou os endereços da demo em **12/09** — *"vão ser essas urls das demos"* — e são **seis**:
+Os endereços desta demo estão **nomeados**, e são **seis**:
 
 | endereço | o que serve | variável |
 |---|---|---|
@@ -334,7 +334,7 @@ a face que recusou. O seed avisa em voz alta se achar a variável setada.
 | recusa | onde | o que ela evita |
 |---|---|---|
 | Node abaixo do piso do release | `bin/require-node.sh`, **antes de tudo** | uma caixa verde nascida em node não suportado — aconteceu, três vezes, e ninguém percebeu |
-| `forge.lock` com imagem por **tag** | `bin/images-from-lock.sh` | o dono da tag repontar os bytes debaixo da sua instância |
+| `forge.lock` com imagem por **tag** | `bin/images-from-lock.sh` | quem controla a tag repontar os bytes debaixo da sua instância |
 | semear de um dataset que **não é o das imagens** | passo 0c, `bin/box-up.sh:1029` | 2 790 produtos de um checkout velho, caixa verde, painel de estoque nascido vazio |
 | promover sem dizer **para onde** | `bin/box-up.sh:114` (o destino) e `:669` (o tailnet sem nome) | `FORGE_PUBLIC_ORIGIN=http://:8200`, que é a origem de toda URL de imagem |
 
@@ -375,8 +375,8 @@ Medido em 03/09, antes disso: o diretório tinha reivindicação para `<tailnet>
 `unknown_admin_host`. **Ler nunca é configurar**: o script jamais roda `tailscale up` ou `serve`; entrar na
 rede continua sendo gesto do operador.
 
-**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — decisão do Renan em 05/09:** *"D1 - Pode ser
-só relatório"*. Ele **não** faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo
+**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — por decisão: este passo pode ser só relatório.**
+Ele **não** faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo
 nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
 do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
 HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que cortava é o **default** da
@@ -406,8 +406,8 @@ páginas declarariam). Então o teto que sobrevive **folga uma ordem de grandeza
 ★ E `stoppedBecause` tem **quatro** leituras, não três: **ausente** é *"esta corrida não pode dizer"* — nunca
 `finished`. É a mesma régua que a coluna `busy` já obedece.
 
-**★★ A derivação da pk21 (história, e ainda viva na exceção acima) — decisão do Renan em 07/09:** *"deriva do
-plano"*. A prosa antiga dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a
+**★★ A derivação da pk21 (história, e ainda viva na exceção acima) — a regra: o teto DERIVA DO PLANO.**
+A prosa antiga dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a
 rota para ver: `/api/warm?max_duration_ms=` sobrescrevia o default (`apps/storefront/src/app/api/warm/route.ts`,
 no bloco `parse`). O que
 faltava era um **número para mandar**, e o único honesto é derivado:
@@ -457,8 +457,8 @@ tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSIT
 aquecimento, é *"o nascimento não construiu"* — e o passo 14 é o **único** que enxerga: o 12 e o 14-bis
 percorrem as lojas que a **porta reporta**, então uma loja que nunca nasceu é uma loja sobre a qual nenhum
 dos dois pergunta.
-⇒ **Veredicto anterior do Renan sobre a LENTIDÃO (outro assunto):** *"nascer caixa ou aquecer será feito de
-madrugada. Então nada a corrigir"*. ⛔ Não abra fatia para isso.
+⇒ **Veredicto já dado sobre a LENTIDÃO (outro assunto):** nascer caixa e aquecer rodam de **madrugada**, então
+não há nada a corrigir. ⛔ Não abra fatia para isso.
 ⚠️ E enquanto o passo 14 roda, a caixa **cobra o preço**: 41% de CPU na vitrine servindo o próprio
 aquecedor, e páginas a ~1,9 s pela rede (contra ~90 ms com a caixa parada). **Antes de acusar código de
 lentidão, pergunte se a caixa estava nascendo.**
@@ -547,7 +547,7 @@ existe: se ela apareceu, **houve exposição** e ela está nomeada. Numa bancada
 é inofensivo; numa caixa com e-mail real de alguém, não é, e a resposta é **parar e avisar**, não subir o teto.
 
 📌 **E isto é rede de segurança, não o conserto.** O conserto é o kernel saber **REGISTRAR** um pedido em vez de
-**colocar** um (caderno pk32 §13, decisão do dono em 10/09): os pedidos do passado são colocações de verdade —
+**colocar** um (caderno pk32 §13): os pedidos do passado são colocações de verdade —
 `apps/api/src/seed-history.ts` dirige a porta (`checkout.place_order`, `order.mark_paid`, …) e só as **datas**
 são ficção — então eles realmente merecem confirmação. Quando o **ato** carregar o fato *"isto já aconteceu,
 noutro sistema, noutro mês"*, cada consumidor deriva a própria resposta **do evento** e a resposta deixa de
@@ -576,7 +576,7 @@ reivindicada **pela porta**. Então o destino agora é argumento:
 | `--tailnet` / `--localhost` | apelidos, mantidos: são o que todo runbook e comentário daqui digita |
 
 ★★ **pk29/D1 — e o NASCIMENTO agora diz quando a promoção ficou por fazer.** No nascimento de 09/09 tudo
-ficou verde e o dono abriu `https://<tailnet>:8443/login` e viu **`?error=unknown_host`** — «This address is
+ficou verde, e abrir `https://<tailnet>:8443/login` devolvia **`?error=unknown_host`** — «This address is
 not registered on this instance». Medido: `forge_control.admin_directory` tinha só `localhost:8201` e
 `localhost:8202`. O mecanismo estava certo (a caixa **nasce em `localhost` por decisão**, §0b do `box-up.sh`);
 o que faltava era o nascimento **dizer** que tinha ficado pela metade.
@@ -719,7 +719,7 @@ sabe qual árvore o visitante alcança pode ter aquecido páginas que ninguém a
 4. **Sourceie os segredos.** A unidade precisa do mesmo `env-source.sh` (ou do backend real) exportado antes
    do `box-up`; sem `DATABASE_URL` o passo 0 morre pelo nome, que é o comportamento certo.
 5. **Janela.** ~19 min de nascimento + o teto de 15 min do aquecimento — ou ~19 min secos com `--no-warm`,
-   e o aquecimento numa segunda entrada de cron. Madrugada, como o dono decidiu.
+   e o aquecimento numa segunda entrada de cron. Madrugada, por decisão (§4).
 
 ---
 
@@ -743,11 +743,11 @@ resposta que falta**.
 | os **apps desta caixa nos FRONTS desta caixa** | `bash bin/test.sh` (`bin/front-app-reach.guard.mjs`) | pk32/d1 — todo componente de front que um app **nosso** declara, alcançável pelo front que tem de desenhá-lo |
 
 ★★ **pk30/§11 — a ORDEM DOS WIDGETS da home do admin, e ela era decidida pela ordem de instalação dos apps.**
-Achado dele em 10/09, usando os dois admins: *"o bloco de últimas assinaturas na demo ainda está vindo no topo,
-o admin de café está certo mas o de sapato está errado."* Instalar um app **auto-coloca** os widgets dele no
+Achado comparando os dois admins lado a lado: o bloco de últimas assinaturas vinha **no topo** no admin da loja
+de sapato e no lugar declarado no admin do café. Instalar um app **auto-coloca** os widgets dele no
 **fim** de `admin:admin.home.widgets` — então a posição de um widget **É** a ordem em que o app dele foi
 instalado. `forgeco` instalou `subscriptions` primeiro, `forgecafe` instalou por último, e **nenhum dos dois
-tinha decidido nada**: um deles calhou de bater com o que ele queria.
+tinha decidido nada**: um deles calhou de bater com a ordem desejada.
 ⇒ A ordem agora é **declarada** (`admin_widgets` do dataset montado — a mesma chave que o passo do kernel lê) e
 **aplicada a TODOS os tenants** no passo 11. Essa metade nenhum one-shot conseguia fazer: `dist/seed-demo.js`
 roda só para o tenant **do dataset**, então o quadro do café nunca tinha sido tocado por nada.
@@ -767,7 +767,7 @@ ninguém nunca tinha lido essa tabela. A regra é **derivada** do próprio `read
 responde o hook declarado mesmo sem colocação) e o veredicto é **por BLOCO e por TENANT**, não por loja: *um
 bloco que não está vivo em NENHUMA loja é uma capacidade que a caixa carrega e não mostra a ninguém*.
 ⚠️ **Por tenant de propósito**, e o Outlet é o motivo: `seed/outlet.mjs` **remove** a prateleira que o install
-deixa em `storefront:list.*` (ele pediu uma PLP limpa). Isso é decisão, não defeito — e uma regra por loja
+deixa em `storefront:list.*` (o Outlet quer uma PLP limpa). Isso é decisão, não defeito — e uma regra por loja
 precisaria de uma **lista de exceções digitada** para se calar. "Vivo em algum lugar" não precisa de nenhuma, e
 um bloco colocado em lugar nenhum continua sem conseguir se esconder.
 
@@ -798,8 +798,8 @@ commitada e travada no `totem/package-lock.json`. ⇒ **o gêmeo front-side do `
 de empacotar: não há o que empacotar.** O kernel precisa de artefato porque **lê** manifestos de um diretório
 montado no boot; um front precisa de um **módulo que o bundler resolva**, e isso são as quatro linhas acima.
 
-★★★ **pk36/d1 — O CAFÉ GANHOU PORTARIA, e agora as QUATRO lojas nascem com ela.** Decisão dele (13/09:
-*"o café ganha portaria? Sim ganha portaria"*, confirmada em 14/09), e o que a destravou foi a pk35/d2.
+★★★ **pk36/d1 — O CAFÉ GANHOU PORTARIA, e agora as QUATRO lojas nascem com ela.** É decisão declarada — o café
+ganha portaria como as outras três —, e o que a destravou foi a pk35/d2.
 ⚠️ **O arranjo anterior está descrito aqui porque ele explica o mecanismo, não porque ainda valha:**
 `extension.install` é **por TENANT** e o kernel coloca o bloco **em toda loja do tenant**, então instalar para o
 `forgecafe` alcança o **café** e o **balcão** — e até a pk35 só um dos dois sabia desenhar (o balcão é o totem,
@@ -924,7 +924,7 @@ visitante encontre a portaria, quer entre direto na loja: **a portaria responde 
 | `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão, e essa recusa é **acima** da portaria | **404**, idêntico |
 | `/s/<cafe>/…` | a **portaria** — desde a pk36/d1 o café é gradado como as outras três (§6.1 acima) | a **loja**, com a **faixa** no rodapé |
 
-★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout dele de 10/09): dois cartões de tenant,
+★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS**: dois cartões de tenant,
 cada um com as suas lojas e, no pé, a linha que abre o admin daquele tenant. ⛔ **Nenhum endereço está escrito no
 app** — quem os declara é `seed/box.json` (`domain` por loja, `admin_domain` por tenant), `bin/gate-faces.mjs`
 renderiza essa declaração em `apps/demo-gate/faces.generated.ts` e `bin/gate-faces.guard.mjs` impede as duas
@@ -939,15 +939,15 @@ servidor**. ⚠️ **Na bancada NENHUM dos seis casa com o host** (a caixa nasce
 à parte), então o hub desenha, no pé, **a sua própria porta**, dizendo em que host ela está — sem isso a caixa
 recém-nascida seria uma loja em que ninguém consegue entrar.
 
-⚠️ **O admin NÃO tem portaria e isso é decisão dele** (11/09: *"não precisa de portaria no admin; se ele entrar
-na url do admin vai cair no login normalmente"*) — e como a loja e o admin são **origens diferentes**, o cookie
+⚠️ **O admin NÃO tem portaria e isso é decisão declarada**: quem abre a url do admin cai no login normalmente,
+e portaria ali não acrescenta nada — e como a loja e o admin são **origens diferentes**, o cookie
 de dispensa **não** acompanha esse salto. Isso é correto e esperado.
 
-⛔ **E O MESMO VALE ENTRE AS SEIS LOJAS, o que AINDA não é o que ele decidiu.** O cookie de dispensa é escrito
+⛔ **E O MESMO VALE ENTRE AS SEIS LOJAS, o que AINDA não é o que está decidido.** O cookie de dispensa é escrito
 **sem atributo `domain`** (`packages/storefront-kit/src/gate/actions.ts:57-64`, no monorepo do Forge), logo é
 *host-only*: quem passou pela portaria em `store.forgecommerce.pro` encontra portaria de novo em cada uma das
 outras (medido 13/09: os dois admins não têm portaria por decisão, e desde a pk36/d1 o café tem — então são
-**três** fronts de loja, não dois). A decisão dele de 13/09 — *"não tem problema o cookie valer para todas"* ⇒ cookie de domínio
+**três** fronts de loja, não dois). A decisão — **uma dispensa pode valer para todas** ⇒ cookie de domínio
 `.forgecommerce.pro`, e a barrinha reabrindo nas seis — é mudança **no kit**, ou seja, **no outro repositório**;
 uma fatia nomeia um repo só.
 

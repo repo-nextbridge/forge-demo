@@ -11,7 +11,7 @@ The kernel runs `NODE_ENV=production` on this box (compose.yml), and the mail tr
 to the terminal is constructible only under `!production` — deliberately, by construction, in
 `apps/api/src/smtp-channel-driver.ts`. So a production box with no mail configured does not "log the code":
 every message FAILS BY NAME and nobody can log in. Until this service existed, the only mailbox this box had
-was the real Resend account, whose only deliverable address is the owner's own — which is why an executor
+was the real Resend account, whose only deliverable address is a single real inbox — which is why an executor
 could not log in as a shopper, and why `pk34/p1` stopped rather than fake it.
 
 ## Why the collector has to speak TLS, measured rather than assumed
