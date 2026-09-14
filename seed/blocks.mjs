@@ -4,8 +4,9 @@
 // It was `seed/chrome.mjs` in its entirety until pk26/D2 split the shop's MARK out of the `chrome` app and
 // into `demo-setup`, this box's own. That split created a second declaration with the same three verbs
 // (install · upload · place-and-fill-in) and the same four traps, and this repository has already written
-// down what a second copy costs: «uma lista em DOIS repos não tem quem a sincronize». Two copies in ONE repo
-// have the same problem with less excuse — so the declaration format is shared and so is the hand.
+// down what a second copy costs: a list living in TWO repositories has nobody to keep the two in step.
+// Two copies in ONE repo have the same problem with less excuse — so the declaration format is shared, and
+// so is the hand that writes it.
 //
 // A DECLARATION is `{ app, slots, stores }`:
 //   · `app`    the extension id to install (`chrome`, `demo-setup`);

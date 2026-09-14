@@ -24,8 +24,8 @@
 //
 // ★ AND IT MEASURES THE NEGATIVE, which is the half nobody remembers to measure. "The counter got its pickup
 // point" is easy to see; "the counter got NO freight and NO free-shipping promotion" is the half that would
-// go unnoticed for a month, and it is the Renan's own rule — *"não faz sentido nascer dado de promoção de
-// frete grátis para o totem"*.
+// go unnoticed for a month, and it is this repository's own rule: a free-shipping promotion makes no sense
+// as birth data for the counter, which has nothing to ship.
 //
 // ── ★★ AND IT MAY NOT ASK WHAT THE READ DOES NOT ANSWER (see `field`, below) ─────────────────────────────
 // Every name this file takes off a live response goes through an assertion that THE KEY CAME BACK. A name
@@ -360,11 +360,10 @@ const PAGES_DECLARED = {
 /**
  * ★★ 08/09 — THE HOME'S BLOCKS, PER STORE, EACH DERIVED FROM THE FILE THAT DECLARES THAT STORE.
  *
- * ⛔ THE DEFECT THIS EXISTS FOR IS A PAGE THAT LOOKS RIGHT IN THE ADMIN AND IS WRONG THE NEXT MORNING. He
- * moved the Outlet's banner mosaic into `home.hero` by dragging it in Compose — «arrastei os banners para o
- * slot hero e ficou melhor. Então deixa assim no dataset» — and the seed is RESET + SEED by definition, so
- * the next re-semeadura writes whatever the dataset says and the drag is gone. Nothing measured whether the
- * box came back up in the slot he chose.
+ * ⛔ THE DEFECT THIS EXISTS FOR IS A PAGE THAT LOOKS RIGHT IN THE ADMIN AND IS WRONG THE NEXT MORNING. The
+ * Outlet's banner mosaic was moved into `home.hero` by dragging it in Compose, and kept there on purpose —
+ * and the seed is RESET + SEED by definition, so the next re-semeadura writes whatever the dataset says and
+ * the drag is gone. Nothing measured whether the box came back up in the chosen slot.
  *
  * ⚠️ AND THE TWO SHOPS ARE DECLARED IN TWO DIFFERENT REPOSITORIES, which is why this is two expectations and
  * not one list. `outlet` is `seed/outlet.json`, right here. `forge` is the MOUNTED DATASET's
@@ -563,7 +562,7 @@ say();
 
 // ── 2c. ★★ THE PICKUP WEEK — the half of a point the box can hold WRONG while every other check is green ──
 //
-// ⛔ THE DEFECT, reported by the owner on 05/09 with a screenshot: the counter's pickup card listed the seven
+// ⛔ THE DEFECT, reported from the screen on 05/09: the counter's pickup card listed the seven
 // days as «Fechado» and its today-line said «Fechado hoje». Section 2 above already asserted the point EXISTS
 // and was green about it — because `points.length >= 1` is true of a point nobody can ever collect from.
 //
@@ -1025,7 +1024,7 @@ say();
 //
 // The page is what `hook_placement` says it is, and until now nothing here read that table at all: every
 // check above graded catalogue, pages, stock and promotions, and the SHOP WINDOW — the one thing a person
-// looks at first — was measured by nobody. His 08/09 move is what made the gap expensive: a re-seed that put
+// looks at first — was measured by nobody. The 08/09 move is what made the gap expensive: a re-seed that put
 // the Outlet's mosaic back under «Compre por categoria» would be green everywhere and wrong on the screen.
 //
 // ⚠️ ONLY PLACED, ENABLED INSTANCES COUNT. `read.extension_composition` is the ADMIN EDITOR's model: it also
@@ -1060,7 +1059,7 @@ say('THE HOME — the blocks of the shop window, and the slot each one is really
             `${handle}'s home`,
             `is ${got.join(' · ') || '(no block at all)'} — seed/outlet.json declares ${want.join(' · ')}. ` +
               'The banner mosaic belongs in `home.hero` since 08/09, ABOVE «Compre por categoria»; a home ' +
-              'that came back with it under the categories is a re-seed that undid that move.',
+              'that came back with it under the categories is a re-seed that undid that decision.',
           );
         }
         return;
@@ -1102,11 +1101,11 @@ say('THE HOME — the blocks of the shop window, and the slot each one is really
 say();
 // ── 3d. ★★★ THE ADMIN HOME'S WIDGET ORDER — PER TENANT, because "some tenant is right" is how this hid ─────
 //
-// ⛔ THE DEFECT, reported by the owner on 10/09 from the screen: *"o bloco de últimas assinaturas na demo ainda
-// está vindo no topo, o admin de café está certo mas o de sapato está errado."* Measured on the live box, the
+// ⛔ THE DEFECT, reported from the screen on 10/09: the latest-subscriptions block was still coming out at
+// the TOP — right in the café's admin and wrong in the shoe shop's. Measured on the live box, the
 // two boards came back in DIFFERENT orders — `forgeco` with `subscriptions` at position 0 and `forgecafe` with
 // it at 7 — because installing an app auto-places its widgets at the end, so a widget's position IS the order
-// its app was installed in. One of the two tenants happened to land on what he wanted.
+// its app was installed in. One of the two tenants happened to land on the declared order by accident.
 //
 // ★★ SO THE CHECK IS PER TENANT AND NEVER "DOES SOME TENANT LOOK RIGHT". This verifier already runs once per
 // tenant, which is what makes that free — and it is the whole reason this check belongs here and not in a
@@ -1191,8 +1190,8 @@ say();
 //   **a block that is live in NO store of this tenant is a capability this box carries and shows nowhere.**
 //
 // ⚠️ PER TENANT AND NOT PER STORE, DELIBERATELY, and the Outlet is the reason. `seed/outlet.mjs` REMOVES the
-//   `shelves/shelf` instance that `extension.install` drops into `storefront:list.*` — he asked for a PLP
-//   with nothing on it. That is a decision, not a defect, and a check that demanded every declared block in
+//   `shelves/shelf` instance that `extension.install` drops into `storefront:list.*` — the Outlet's PLP is
+//   meant to carry nothing. That is a decision, not a defect, and a check that demanded every declared block in
 //   every store would go red on it and would need an exception list to shut up. An exception list typed here
 //   is the thing this house keeps being bitten by. "Live somewhere" needs none: the shoe shop still shows a
 //   shelf, so the capability is demonstrated, and a block nobody placed ANYWHERE still cannot hide.

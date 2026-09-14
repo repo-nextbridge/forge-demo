@@ -6,9 +6,9 @@
 //
 // ── WHY THIS EXISTS ─────────────────────────────────────────────────────────────────────────────────────
 //
-// Order of the Renan, 2026-09-01: *"onde precisa de banner mas não tem imagem, cria uma imagem qualquer e
-// sobe. Eu depois faço a curadoria."* A shop window with an empty slot is not a shop that is "missing art":
-// it is a shop that renders wrong, and the wrongness is invisible in a seed log.
+// A SLOT THAT NEEDS A BANNER AND HAS NO PICTURE GETS SOME PICTURE, AND CURATION FOLLOWS LATER. A shop window
+// with an empty slot is not a shop that is "missing art": it is a shop that renders wrong, and the wrongness
+// is invisible in a seed log.
 //
 // ── THE FIVE DECISIONS, AND EACH ONE IS THE DIFFERENCE BETWEEN USEFUL AND LANDFILL ──────────────────────
 //

@@ -321,7 +321,7 @@ const datasetHomeRows = (declared = DATASET_HOME) => [
 
 /** The apps' own storefront blocks — `APP_BLOCKS`, imported at the top of this file. It left this suite on
  *  2026-09-12 (pk34/D3) so that `bin/app-blocks.guard.mjs` could grade it against the manifests of the pinned
- *  release without importing a test file: it had spent a day green while asserting a slot that had moved.
+ *  release without importing a test file: it had spent a day green while asserting a slot that had been moved.
  *  Its reasons — why it is hand-written, and why the `admin:` hooks are deliberately absent — live with it.
  *
  *  Those blocks as one store's rows. `extra` stages a block the box does NOT really show (`placement_id: null`
@@ -792,8 +792,8 @@ test('★ a read that stops publishing `published` is the verifier\'s wrong ques
 // ── ★★ THE PICKUP WEEK (pk14/d1) ─────────────────────────────────────────────────────────────────────────
 //
 // The defect these grade is the one section 2 was GREEN about: it asserted the counter's pickup point exists,
-// and `points.length >= 1` is true of a point whose week nobody wrote. The owner photographed the result —
-// seven «Fechado» on the pickup card — and the box was correct in every respect: `pickup_location.create`
+// and `points.length >= 1` is true of a point whose week nobody wrote. The result was photographed off the
+// screen — seven «Fechado» on the pickup card — and the box was correct in every respect: `pickup_location.create`
 // accepts a point with no `hours`, and an omitted day is closed exactly like a `null` one.
 //
 // ⚠️ AND THE SEED CANNOT REPAIR AN EXISTING BOX. Both pickup steps are idempotent BY NAME, so a bench born
@@ -825,7 +825,7 @@ test('★★ both tenants, with the week the seed declares — the verifier sett
   }
 });
 
-test('★★ SABOTAGE — the point exists, and its week is EMPTY. Accused, by name', async () => {
+test('★★ SABOTAGE — the point as it was found: it exists, and its week is EMPTY. Accused, by name', async () => {
   // ★ THE REPORTED BOX, STAGED FROM A MEASUREMENT AND NOT FROM AN IDEA OF ONE. On the bench of 05/09,
   //     select name, hours from <coffee schema>.pickup_location
   //   answered `Balcão · Forge Café | {}` while the shoe brand's four each answered a full week — the create
@@ -871,7 +871,7 @@ test('★★ SABOTAGE — ONE day dropped from one shoe-brand point, and the ver
 });
 
 test('★ SABOTAGE — a point shut all seven days is a valid week and still a door nobody opens', async () => {
-  // `null` on all seven is accepted by the kernel and is the exact screen the owner photographed. A rule that
+  // `null` on all seven is accepted by the kernel and is the exact screen that was photographed. A rule that
   // only compared day names would have called this box clean.
   const box = declaredBox();
   for (const row of box.pickupLocations) {
@@ -918,8 +918,8 @@ test("★ a read that stops publishing `hours` is the verifier's wrong question,
 
 // ── ★★ THE SHOP WINDOW (pk25/d3) ─────────────────────────────────────────────────────────────────────────
 //
-// On 08/09 he dragged the Outlet's banner mosaic from `home.below_categories` into `home.hero` and asked for
-// it in the dataset — «arrastei os banners para o slot hero e ficou melhor. Então deixa assim no dataset».
+// On 08/09 the Outlet's banner mosaic was dragged from `home.below_categories` into `home.hero` in Compose,
+// and the dataset was to keep it there: it reads better in the hero.
 // The seed is RESET + SEED by definition, so a dataset that did not learn it puts the page back the next
 // time anybody re-seeds, and until this section nothing in this repository read `hook_placement` at all: the
 // one thing a person looks at first was measured by nobody.
@@ -942,7 +942,7 @@ test('★★ the two windows, each graded against the file that DECLARES it — 
 });
 
 test('★★ SABOTAGE — the Outlet mosaic goes back under the categories, and the verifier names the slot', async () => {
-  // The re-seed that undoes his call: the box comes back up with the mosaic where it used to be. Every other
+  // The re-seed that undoes that decision: the box comes back up with the mosaic where it used to be. Every other
   // check in this file is green about that box — the catalogue, the pages, the promotions are all untouched —
   // which is exactly why the window needed a check of its own.
   const box = footwearBox();
@@ -968,8 +968,8 @@ test('★★ SABOTAGE — the Outlet mosaic goes back under the categories, and 
 });
 
 test('★★ SABOTAGE — the `forge` store loses ONE of its two banner blocks, and it is the DATASET that accuses', async () => {
-  // ⛔ THE NEIGHBOURING DAMAGE. The shoe shop carries two `banners/banner` blocks and he asked for nothing to
-  // change there; the way to lose one is to "unify" two homes that now both put a banner in the hero. No file
+  // ⛔ THE NEIGHBOURING DAMAGE. The shoe shop carries two `banners/banner` blocks and nothing was to change
+  // there; the way to lose one is to "unify" two homes that now both put a banner in the hero. No file
   // of THIS repository declares that shop's window, so the expectation is read off the MOUNTED dataset — the
   // same file `seed/vitrine.mjs` composes from — and the accusation is therefore not an invention.
   const box = footwearBox();
@@ -1126,8 +1126,8 @@ test('★ a dataset dir that holds no storefront.json says "I could not look", n
 
 // ── ★★★ THE ADMIN HOME'S WIDGET ORDER (pk30/§11) ─────────────────────────────────────────────────────────
 //
-// ⛔ THE DEFECT, from his screen on 10/09: *"o bloco de últimas assinaturas na demo ainda está vindo no topo, o
-// admin de café está certo mas o de sapato está errado."* Measured on the live box, the two boards came back in
+// ⛔ THE DEFECT, from the screen on 10/09: the latest-subscriptions block was still coming out at the TOP —
+// right in the café's admin and wrong in the shoe shop's. Measured on the live box, the two boards came back in
 // DIFFERENT orders because installing an app auto-places its widgets at the END of the slot — so a widget's
 // position IS the order its app was installed in, and `forgeco` happened to install `subscriptions` first.
 //
@@ -1139,8 +1139,9 @@ test('★ a dataset dir that holds no storefront.json says "I could not look", n
  *  of this file. ★ pk35/D6: they left this suite the way `APP_BLOCKS` did on 2026-09-12, so that
  *  `bin/app-blocks.guard.mjs` can grade them against the PINNED release without importing a test file —
  *  ★ pk36/D2: against the release's own instance dataset when it declares `admin_widgets` (which is what THIS
- *  suite stages as the mounted dataset), and against the manifests when it does not. They used to be typed here under a sentence — "the seven the dataset declares, in the order he
- *  left them" — that nothing could check: seven names about a screen declared in another repository, in a
+ *  suite stages as the mounted dataset), and against the manifests when it does not. They used to be typed
+ *  here under a sentence — "the seven the dataset declares, in the order they were left in" — that nothing
+ *  could check: seven names about a screen declared in another repository, in a
  *  file that never opens it. Their reasons live with them now.
  *
  *  A board, spelled as `<app>/<component>` names in the order it is placed in. */
@@ -1264,7 +1265,7 @@ test('★ a dataset that declares no admin_widgets is REPORTED, never judged', a
 //
 // ⛔ THE DEFECT THESE EXIST FOR IS A WRONG ANSWER THIS HOUSE GAVE, not a wrong box. pk31/§6 reported that the
 // `subscriptions` app's `confirmation_note` — the sentence a shopper who just signed a subscription reads on
-// the receipt — *"está publicado e chega VAZIO na demo"*, derived by counting: five declared blocks, four
+// the receipt — was published and arriving EMPTY on the demo, derived by counting: five declared blocks, four
 // rows, so the missing one is that one.
 //
 // ★ MEASURED ON THE LIVE BOX (2026-09-11, `hook_placement` in both tenant schemas): `confirmation_note` was
@@ -1349,8 +1350,8 @@ test('★★ SABOTAGE — a block SWITCHED OFF in every store is the same silenc
 
 test("⛔ a block live in ONE store and absent from the other SETTLES — that is the Outlet's own decision", async () => {
   // ★ WHY THE VERDICT IS PER TENANT AND NOT PER STORE, and it is not a softening. `seed/outlet.mjs` REMOVES
-  // the `shelves/shelf` instance `extension.install` drops into `storefront:list.*` — he asked for a PLP with
-  // nothing on it (that file's own comment: *"Nothing is placed in `list.*`"*). A per-store rule would accuse
+  // the `shelves/shelf` instance `extension.install` drops into `storefront:list.*` — the Outlet's PLP is
+  // meant to carry nothing (that file's own comment: *"Nothing is placed in `list.*`"*). A per-store rule would accuse
   // that decision and would then need an exception list typed here to shut up, which is the failure mode this
   // house keeps paying for. "Live somewhere" needs none, and a block placed NOWHERE still cannot hide.
   const box = footwearBox();

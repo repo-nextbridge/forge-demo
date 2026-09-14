@@ -4,8 +4,8 @@
 // ★★ THERE WAS A FOURTH AND IT LEFT IN pk28, ON THE AXIS OF THE DEPLOYABLE. `account.brand` — the login box —
 // is drawn by the CHECKOUT, which we host and nobody forks, so a mark there has to be configurable without a
 // fork and is therefore the PRODUCT's job (the OOTB `chrome` app carries it now). The vitrine is the opposite:
-// a customer forks it and makes it theirs, so identity there can live in an app of that customer's own. The
-// owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».
+// a customer forks it and makes it theirs, so identity there can live in an app of that customer's own. In
+// one line: these three are the STOREFRONT's, and the login box is the CHECKOUT's.
 //
 // ⛔ THREE EXPORTS AND NOT ONE COMPONENT PLACED THREE TIMES, and the kernel is what says so: `placement:
 // 'single'` is enforced per (store, app, COMPONENT) — `assertSingleFree`,
@@ -16,7 +16,7 @@
 //
 // ★ THE DRAWING IS SHARED AND THE DECLARATION IS NOT. `Mark` below is the one implementation; the three
 // exports differ only where the PLACE differs, which today is one thing: the footer's column is the one that
-// also carries a sentence under the mark. Sharing the render is why «a logo virando outro» is a config change
+// also carries a sentence under the mark. Sharing the render is why one logo becoming another is a config change
 // and not three maintenance jobs; declaring three is why the operator can see where each one lands.
 //
 // ★★ AND THE TAGLINE EXISTS BECAUSE THE FOOTER'S FALLBACK CEDES ITS WHOLE NODE. `footer.brand` draws, when

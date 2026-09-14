@@ -1,7 +1,7 @@
 // THE OUTLET HOME'S RECONCILIATION — `node --test seed/outlet-home.test.mjs` (or: `bash bin/test.sh`).
 //
 // WHY THIS FILE EXISTS AT ALL. Until 02/09 the home was four blocks in four different slots, and "is there a
-// placement of this app+component in this slot?" identified each one exactly. He then asked for an order the
+// placement of this app+component in this slot?" identified each one exactly. Then came a request for an order the
 // template can only express as `position` inside ONE slot, and the moment two `banners/banner` blocks share a
 // slot that question identifies NOTHING — it matched the mosaic and the kids banner equally. (pk5 folded the
 // kids art into a shelf and left one banner block on this page; the pairing stays positional, because the
@@ -11,7 +11,7 @@
 //   · it DUPLICATES — the page grows a second mosaic on every run, and each run still reports success;
 //   · it LEAVES THE OLD PAGE — every box that ran the previous version has the mosaic in `home.hero` and the
 //     two shelves in `home.banner_strip` / `home.below_shelf`, i.e. drawn ABOVE «Compre por categoria», which
-//     is the one thing he asked to change. A seed that only appends is green and wrong.
+//     is the one thing we were asked to change. A seed that only appends is green and wrong.
 //
 // So the pairing is tested against the two states that actually exist in the world — the previous version's
 // page, and a box that has only ever run `extension.install` — and not against an empty database, which is
@@ -28,7 +28,7 @@ const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)
 
 const GOVERNED = { apps: new Set(['banners', 'shelves']), slot: /^storefront:(home|list)\./ };
 const SLOT = 'storefront:home.below_categories';
-/** ★ 08/09 — WHERE THE MOSAIC LIVES NOW. His call, at the live store: the banners belong ABOVE «Compre
+/** ★ 08/09 — WHERE THE MOSAIC LIVES NOW. Judged at the live store: the banners belong ABOVE «Compre
  *  por categoria», which is the hero. The page is therefore TWO slots, and each carries its own dense
  *  0..N-1 run of positions — see `outlet.json`'s `_home_why`. */
 const HERO = 'storefront:home.hero';
@@ -75,7 +75,7 @@ test('★★ the previous page is REUSED, not appended to — nothing is placed 
   ]);
 });
 
-test('★ the PLP instance is surplus and goes — a placement that renders nothing is a page with nothing on it', () => {
+test('★ the PLP instance is surplus and goes — the PLP was asked for with nothing on it', () => {
   // `extension.install` of `shelves` places one empty instance in `list.below_shelf` in EVERY store of the
   // tenant. It renders nothing, so leaving it is invisible on the storefront and wrong in Compose.
   const plan = planHome(previousPage(), WANTED, GOVERNED);
@@ -172,7 +172,7 @@ test('the ops come out in ASCENDING position, whatever order they were declared 
 // ── 03/09 (pk5) — THE HOME LOSES TWO BLOCKS, AND THE PAIRING REUSES WHAT IS LEFT ───────────────────────
 //
 // s2-8 gave the «Outlet Kids» banner a body: an "Outlet Kids" shelf, appended at position 4, sourcing the
-// collection the banner points at. pk5 then did two things on his instruction — «Acabando!» left the home
+// collection the banner points at. pk5 then did two things on instruction — «Acabando!» left the home
 // (the collection stays; the ROW goes) and the kids ART moved OUT of its `banners/banner` block and INTO the
 // kids shelf, as the `banner_asset` of its first grid cell. So the declaration is THREE blocks: the mosaic,
 // «Quase de graça» and «Outlet Kids».
@@ -240,7 +240,7 @@ test('★★ the 03/09 page loses TWO — the banner block and the SURPLUS shelf
 
 // ── 08/09 — THE MOSAIC RISES TO THE HERO, AND THE THIRD WORLD STATE IS THE ONE ON THE BENCH RIGHT NOW ───
 //
-// He dragged the block in Compose and asked for it in the dataset, so the seed has to MOVE what every live
+// The block was dragged in Compose and then asked for in the dataset, so the seed has to MOVE what every live
 // box is already showing: mosaic in `home.below_categories#0`, the two shelves at 1 and 2. Nothing is added
 // and nothing is deleted — the same three rows change slot and number.
 //
@@ -270,7 +270,7 @@ test('★★ the page ON THE BENCH TODAY is MOVED, not re-placed — three rows,
   // mosaics on one page.
   assert.ok(plan.ops.every((op) => op.reuse), 'a block was PLACED where an existing row could host it');
   assert.deepEqual(plan.remove, [], 'the move deleted a row it should have carried');
-  // And WHERE each one lands, which is the whole of his instruction plus the renumbering it forces.
+  // And WHERE each one lands, which is the whole of the instruction plus the renumbering it forces.
   assert.deepEqual(
     plan.ops.map((op) => [op.block.what, op.block.slot, op.block.position]),
     [
@@ -339,14 +339,14 @@ test('★★ THE DECLARED SHAPE IS THE ONE THE PLAN IS FED — the fixtures abov
   ];
   assert.equal(declared.length, WANTED_NOW.length, 'outlet.json no longer declares the number of blocks these fixtures model');
 
-  // ★ THE 08/09 DECISION, AS AN ASSERTION: the mosaic is in the HERO. It is stated on its own, before the
+  // ★ THE DECISION OF 08/09, AS AN ASSERTION: the mosaic is in the HERO. It is stated on its own, before the
   // shape checks, because this is the line somebody undoes by accident when they "tidy the page back into one
   // slot" — and every other assertion here would still pass while it did.
   assert.equal(
     data.mosaic.slot,
     HERO,
-    'the outlet mosaic left `home.hero`. The mosaic belongs in the HERO and the dataset is where that is ' +
-      'settled — putting it back under the categories undoes the move.',
+    'the outlet mosaic left `home.hero`. It was moved there deliberately — the banners read better above ' +
+      '«Compre por categoria» — so putting it back under the categories undoes that decision.',
   );
   assert.equal(data.mosaic.position, 0, 'the hero holds one block and it is not at 0 — the run is not dense');
   assert.deepEqual(
@@ -378,7 +378,7 @@ test('★★ THE DECLARED SHAPE IS THE ONE THE PLAN IS FED — the fixtures abov
 });
 
 test('⛔ THE `forge` STORE IS NOT DECLARED HERE, AND THAT IS WHAT KEEPS ITS TWO BANNERS', () => {
-  // ★ WHY THIS GUARD EXISTS. On 08/09 he moved the OUTLET's banners and said nothing about the shoe shop —
+  // ★ WHY THIS GUARD EXISTS. That pass moved the OUTLET's banners and said nothing about the shoe shop —
   // whose home carries TWO `banners/banner` blocks, a carousel in `home.hero` and a mosaic in
   // `home.below_categories`. The obvious way to lose one of them is to "unify" the two homes into one
   // declaration here, because both stores now put a banner in the hero and the files look redundant.

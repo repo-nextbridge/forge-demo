@@ -5,8 +5,8 @@
 //
 // ── THE QUESTION THIS ANSWERS, AND THE ANSWER IT REFUSES TO BE ───────────────────────────────────────────
 //
-// Renan, 04/09: *"ele precisaria também garantir que ligue tudo que só tem online, exemplo cdn se tiver na
-// demo… ou qualquer coisa assim que morre no reset."*
+// A RESET MUST TURN BACK ON EVERYTHING THAT ONLY EXISTS ONLINE — a CDN in front of the demo, and anything
+// else of that species, which the reset destroys and no local step recreates.
 //
 // ⛔ THE WRONG ANSWER IS A LIST OF THINGS TO TURN BACK ON. A list ages in silence: somebody makes an
 // adjustment on the live box, forgets to add it, and the next reset erases it with nothing saying so — the

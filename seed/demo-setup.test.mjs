@@ -4,7 +4,7 @@
 //     the front's own wordmark and the app draws nothing when nothing is configured, so the failure is a
 //     header — or a footer column — with no name on it, on every page, and nothing anywhere going red;
 //   · «Leve. Inteligente. Sua.» used to be a LITERAL of the Forge kit, ceded as one node with the mark. From
-//     this file on the demo says it because it CONFIGURED it, and only in the two shops the owner named. A
+//     this file on the demo says it because it CONFIGURED it, and only in the two named shops. A
 //     declaration that drops it puts the shops' footers back to a mark with nothing under it — and a test
 //     that only counted placements would stay green on exactly that;
 //   · the mark is the SAME mark the funnel wears, spelled the same way. Two files, one shop: a shopper
@@ -33,7 +33,7 @@ const CHROME = JSON.parse(readFileSync(join(SEED, 'chrome.json'), 'utf8'));
  *  left on the axis of the DEPLOYABLE, not because anything about it was wrong. The vitrine is FORKABLE and a
  *  customer makes it theirs, so identity there may live in an app of that customer's own; the CHECKOUT is
  *  hosted by us and nobody forks it, so identity there has to be configurable without a fork and is the
- *  PRODUCT's. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout». */
+ *  PRODUCT's: those three blocks are the STOREFRONT's and the login box is the CHECKOUT's. */
 const MANIFEST_SLOTS = {
   header_brand: 'storefront:header.brand',
   drawer_brand: 'storefront:header.drawer_brand',
@@ -53,8 +53,8 @@ const CONFIG_KEYS = {
   footer_brand: ['logo', 'text', 'tail', 'tagline'],
 };
 
-/** The owner's instruction of 08/09, verbatim: «um bloco de conteúdo com "Leve. Inteligente. Sua." abaixo do
- *  logo do rodapé … na loja de sapatos e do outlet». */
+/** THE INSTRUCTION, verbatim: a content block saying «Leve. Inteligente. Sua.» under the footer's logo, in
+ *  the shoe shop and the outlet. */
 const TAGLINE = 'Leve. Inteligente. Sua.';
 const SIGNS = ['forge', 'outlet'];
 
@@ -80,9 +80,10 @@ test('★★★ every dressed store declares ALL THREE marks — a shop with two
   // ⛔ TWO SINCE pk35/d7, AND THE NUMBER IS THE DECISION. The café's vitrine is a FORK that draws its own
   // mark, and its account screens replace the kit's whole header and footer with `chrome/account_header` and
   // `chrome/account_footer` — measured live on the bench: ZERO `demo-setup-*` marks on either. So its three
-  // rows drew nothing anywhere, and the owner's rule of 11/09 («o fork é do cliente, 100% liberdade») says
-  // the INSTANCE removes the placement of a store whose fork draws it. `seed/demo-setup.json` carries the
-  // measurement in full. ⇒ a THIRD dressed shop here is a shop somebody dressed without saying why.
+  // rows drew nothing anywhere, and this repository's rule — a fork belongs to the customer, with 100%
+  // freedom — says the INSTANCE removes the placement of a store whose fork draws it.
+  // `seed/demo-setup.json` carries the measurement in full. ⇒ a THIRD dressed shop here is a shop somebody
+  // dressed without saying why.
   assert.equal(dressed.length, 2, 'two shops wear a mark — a different count is a shop that arrived or vanished');
   assert.equal(
     DATA.stores.cafe,
@@ -103,7 +104,7 @@ test('★★ the LOGIN BOX is not this file’s — the block moved to the produ
     undefined,
     `the \`slots\` map still names "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
       'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by an ' +
-      'app of one instance. The three blocks this file dresses belong to the storefront; the login box does not.',
+      'app of one instance: those three blocks are the STOREFRONT\u2019s and the login box the CHECKOUT\u2019s.',
   );
   for (const [handle, spec] of Object.entries(DATA.stores)) {
     if (spec === null) continue;
@@ -112,7 +113,7 @@ test('★★ the LOGIN BOX is not this file’s — the block moved to the produ
       undefined,
       `store "${handle}" declares "${GONE_TO_THE_PRODUCT}". The login box is the CHECKOUT's screen — the ` +
         'deployable we host and nobody forks — so its mark is configured by the OOTB `chrome` app, never by ' +
-        'an app of one instance. The three blocks this file dresses belong to the storefront; the login box does not.',
+        'an app of one instance: those three blocks are the STOREFRONT\u2019s and the login box the CHECKOUT\u2019s.',
     );
   }
 });
@@ -175,8 +176,8 @@ test('★★★ the two shoe shops SAY the sentence the kit used to give them fo
 });
 
 test('⛔ and ONLY those two say it — the café has a footer of its own and the counter has no shop window', () => {
-  // ⇒ SABOTAGE: give the café or the counter a tagline and this names it. The owner named two shops
-  //   («na loja de sapatos e do outlet»); a sentence in the café's footer would be this box writing copy for
+  // ⇒ SABOTAGE: give the café or the counter a tagline and this names it. The instruction named TWO shops,
+  //   the shoe shop and the outlet; a sentence in the café's footer would be this box writing copy for
   //   a store whose whole vitrine is a fork, and the counter draws neither a footer nor an account screen.
   for (const [handle, spec] of Object.entries(DATA.stores)) {
     if (SIGNS.includes(handle)) continue;
@@ -185,8 +186,8 @@ test('⛔ and ONLY those two say it — the café has a footer of its own and th
       assert.equal(
         block.config?.tagline,
         undefined,
-        `store "${handle}", block ${block.component}: a tagline. The tagline belongs to the two shoe shops ` +
-          'named in `SIGNS` and to no other store.',
+        `store "${handle}", block ${block.component}: a tagline. The instruction named the two shoe shops ` +
+          'and no other; this one did not ask for a sentence.',
       );
     }
   }
@@ -250,7 +251,7 @@ test('★★ in every mark the picture and the words are EXCLUSIVE, so each shop
 });
 
 test('★★ no configured word leans on WHITESPACE — the two halves are glued, so a space is deleted', () => {
-  // ⛔ THE MEASUREMENT BEHIND «o certo é forge.outlet». The outlet's mark used to be `text: "Forge"` +
+  // ⛔ THE MEASUREMENT BEHIND `forge.outlet` BEING THE RIGHT MARK. The outlet's mark used to be `text: "Forge"` +
   // `tail: " Outlet"` and its header read `ForgeOutlet`: every configured word is trimmed before it is drawn
   // and the two halves are concatenated with NOTHING between them. So a leading space is not fragile
   // styling — it is a character deleted every time, and the only separator that survives is a printable one.
@@ -440,7 +441,7 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
           'so no `logo_url` is stamped and the mark draws nothing.',
       );
     }
-    // …and the sentence reached exactly the two footers the owner named.
+    // …and the sentence reached exactly the two named footers.
     const tagged = placed.filter((c) => c.input.config.tagline === TAGLINE);
     assert.deepEqual(
       tagged.map((c) => `${c.input.store}/${c.input.component}`).sort(),

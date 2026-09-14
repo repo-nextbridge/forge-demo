@@ -4,9 +4,9 @@
 //
 // ── THE DEFECT, MEASURED ───────────────────────────────────────────────────────────────────────────────────
 //
-// The owner, 2026-09-08: «No totem, quero deixar essa parte mais centralizada, tem muito espaço verde
-// embaixo». `.menuHeader` is a FIXED 372px band of `--totem-header` at the top of the panel, holding three
-// things stacked: the wordmark, «Faça seu pedido» and the scroll arrow. It declared
+// THE RULE, SETTLED 2026-09-08: the counter's hero band is to be CENTRED, because it left a large run of
+// empty green below it. `.menuHeader` is a FIXED 372px band of `--totem-header` at the top of the panel,
+// holding three things stacked: the wordmark, «Faça seu pedido» and the scroll arrow. It declared
 // `justify-content: flex-start` with `padding: 16px 0 0`.
 //
 // MEASURED — headless Chromium, the panel's own 1080x1920 geometry, the counter's own self-hosted Fraunces
@@ -41,7 +41,7 @@
 // means the same thing at both ends. Both are properties of the stylesheet, both are the two declarations
 // that were wrong, and neither depends on a font.
 //
-// ⛔ AND TWO THINGS THIS GUARD MUST NEVER GROW INTO, both decisions of the owner recorded on 2026-09-08:
+// ⛔ AND TWO THINGS THIS GUARD MUST NEVER GROW INTO, both decisions recorded on 2026-09-08:
 //   · THE PANEL IS NOT RESPONSIVE AND MUST NOT BECOME SO (`Totem.module.css:7-10`). It is one physical
 //     portrait screen scaled to fit, so there is no media query to write here and none to grade.
 //   · «Estou aqui» STAYS AS IT IS. `.dialogPrimary` is 104px tall in a 1080x1920 panel — 2.4x the 44px touch
@@ -134,9 +134,8 @@ test('★★★ the band SPLITS its free space instead of parking all of it belo
     `.${BAND} declares justify-content: ${value}. The band is a fixed 372px and its three children measure ` +
       '214px together (measured in headless Chromium with the counter\'s own fonts: wordmark 79px + margins ' +
       '18, title 57px, arrow 44px, two 8px gaps), so 142px of it is empty — and this value puts all 142 in ' +
-      'one lump. The band is specified to do the opposite — the slack is SHARED between the three ' +
-      'children, so no single pool of empty green sits under the arrow. ⛔ The fix is to SHARE the slack, ' +
-      'not to shrink the band: 372px is ' +
+      'one lump. The opposite was settled on 2026-09-08: the band is CENTRED, because the slack read as a ' +
+      'run of empty green below the content. ⛔ The fix is to SHARE the slack, not to shrink the band: 372px is ' +
       'the artboard\'s (design-base/Totem forge.co.dc.html:35) and the scroller\'s spacer is cut to it.',
   );
 });
@@ -194,7 +193,7 @@ test('⛔ the panel is still NOT responsive, and the settled touch target is unt
   assert.equal(
     decl('dialogPrimary', 'height'),
     '104px',
-    '«Estou aqui» changed height. This height is settled by measurement: 104px in a ' +
+    '«Estou aqui» changed height. It was settled on 2026-09-08 after being measured: 104px in a ' +
       'fixed 1080x1920 panel is 2.4x the 44px touch floor, and the "thin" button was the browser\'s scale. ' +
       'If it is being changed on purpose, this line is the place to say so.',
   );

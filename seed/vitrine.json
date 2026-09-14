@@ -26,8 +26,8 @@
     "and every tile in this window is a deliberate placement.",
     "",
     "★★★ pk33 — `demo-gate` IS HERE, AND THE TENANT-WIDE FAN-OUT IS WHY IT IS WANTED RATHER THAN TOLERATED.",
-    "His decision (11/09): *\"sim a portaria vem instalada no nascimento da demo\"*, and the demo is",
-    "*\"sapatos, outlet, café, totem\"* — so BOTH stores of this tenant get the gate, which is exactly what",
+    "THE DECISION: the gate arrives INSTALLED at the demo's birth, and the demo is the four shops — shoes,",
+    "outlet, café, totem — so BOTH stores of this tenant get the gate, which is exactly what",
     "installing it here does: it declares ONE storefront hook (`storefront:gate`) and `seedDefaultPlacements`",
     "writes a row per store. `forge` and `outlet` are both served by the reference vitrine and the checkout we",
     "host, and both images COMPOSE this app (`composition.json` → `instanceApps`), so both can draw it.",
@@ -59,8 +59,9 @@
       "? 'brand' : 'category'` (extensions/recommendations/block.related.tsx:139), so ABSENT means category, and",
       "it renders a real titled section of siblings on every product page of all three stores.",
       "",
-      "The brief for this slice says, in bold: coffee and outlet UNTOUCHED, the Renan is testing. Two visible",
-      "new sections in two stores he is looking at is not that. So the app stays out until he says otherwise,",
+      "The brief for this slice says, in bold: coffee and outlet UNTOUCHED — those two shops are under test.",
+      "Two visible new sections in two shops somebody is looking at is not that. So the app stays out until it",
+      "is asked for,",
       "the dataset's `related_item_count: 6` goes unapplied, and the seed says so in a line rather than",
       "silently doing nothing."
     ]
@@ -71,8 +72,8 @@
     "free_shipping_text": "Frete grátis acima de {floor}",
     "_why": [
       "THE FIRST LINE OF THE SHOP IS A PROMISE, AND THE ONLY INTERESTING QUESTION ABOUT IT IS WHETHER THE",
-      "KERNEL KEEPS IT. His instruction for this band was one clause long: \"coloca uma frase: Frete grátis",
-      "para compras acima de… SÓ CONFERE SE EXISTE ALGUMA PROMO DE FRETE GRÁTIS.\"",
+      "KERNEL KEEPS IT. The instruction for this band was one clause long: put up a sentence — «Frete grátis",
+      "para compras acima de…» — and ONLY IF a free-shipping promotion actually exists.",
       "",
       "⇒ SO THE SENTENCE IS HERE AND THE NUMBER IS NOT. `{floor}` is filled from the promotion itself at seed",
       "time (`seed/vitrine.mjs`, `freeShippingFloor`), and if this store carries no promotion that actually",

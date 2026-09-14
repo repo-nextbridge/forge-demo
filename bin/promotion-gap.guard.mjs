@@ -1,10 +1,10 @@
 // ★★★ pk29/D1 — THE BIRTH SAYS WHEN THE PROMOTION IS STILL OWED, AND SAYS IT ONLY WHEN IT IS.
 //
-// ⛔ THE TROPEÇO, 2026-09-09. The box was born, every step green, and the owner opened
-// `https://<tailnet>:8443/login` and got `?error=unknown_host` — «This address is not registered on this
+// ⛔ THE TROPEÇO, 2026-09-09. The box was born, every step green, and the first browser to open
+// `https://<tailnet>:8443/login` got `?error=unknown_host` — «This address is not registered on this
 // instance». Measured on that box: `forge_control.admin_directory` held `localhost:8201` and
 // `localhost:8202` and nothing else. `bash bin/box-up.sh --promote tailnet` fixed it in seconds, hours later,
-// and only because he asked what was wrong.
+// and only because a human happened to ask what was wrong.
 //
 // ⛔⛔ AND THE REPAIR IS NOT «PROMOTE AT BIRTH». The box is born on `localhost` by decision — §0b of
 // `box-up.sh` says at length why (the addresses of a private network may not live in a versioned file), and

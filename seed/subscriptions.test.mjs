@@ -85,7 +85,7 @@ test('★ the rhythms are DIFFERENT — three contracts on one rhythm show one r
 });
 
 test('⛔ every contact detail is FICTIONAL and every tag is unique — the key is the address', () => {
-  // ⛔ THIS DATASET SHIPPED THE OWNER'S PERSONAL ADDRESS ONCE, IN FIFTEEN FILES. The addresses are minted by
+  // ⛔ THIS DATASET SHIPPED A REAL PERSONAL ADDRESS ONCE, IN FIFTEEN FILES. The addresses are minted by
   // `seed/commerce.mjs`'s `buyerEmail` as plus-tags on the one mailbox this box owns, so what is graded here
   // is the half this file decides: the tag. A duplicate tag is a duplicate address, and the address is the
   // idempotence key — two subscribers sharing one would make the second run recognise the first's order and
@@ -100,8 +100,8 @@ test('⛔ every contact detail is FICTIONAL and every tag is unique — the key 
 });
 
 test('★ the store is the CAFÉ, and the seam is the app\'s own declared line field', () => {
-  // His correction, 08/09: «é o de café que exercita assinatura, o de tênis não é pra demo vir instalado
-  // assinatura». And `sub_plan` is the app's key, not this repository's invention.
+  // THE CORRECTION: subscriptions are exercised by the COFFEE shop, and the shoe brand is not meant to come
+  // with the app installed. And `sub_plan` is the app's key, not this repository's invention.
   assert.equal(STORE_HANDLE, 'cafe');
   assert.equal(PLAN_FIELD, 'sub_plan');
   assert.equal(APP, 'subscriptions');
@@ -128,7 +128,7 @@ const coffee = (handle, id, marked) => ({
 
 test('★★ an UNMARKED coffee is never signed — the curation boundary is the whole proof of curation', () => {
   // ⛔ THE ONE THAT WOULD READ AS A FEATURE. `seed/coffee.mjs` marks five of six and leaves the Edição do
-  // Produtor out on purpose («default nasce falso e o lojista faz a curadoria manual»). A subscription
+  // Produtor out on purpose — the default is BORN FALSE and the merchant curates by hand. A subscription
   // against that coffee puts a contract in the admin for a product page that refuses to sell one — the
   // boundary demonstrating its own absence.
   const shop = [coffee('forge-alvorada', 'sku_a', true), coffee('forge-edicao-do-produtor', 'sku_z', false)];
@@ -333,7 +333,7 @@ test('★★ a second run over the state the first produced runs NO action — t
 });
 
 test('★ a tenant WITHOUT the app is a no-op with a line, never a failure — the shoe brand has no subscriptions', async () => {
-  // `seed/coffee.mjs` installs it for the coffee tenant alone, on his instruction. A run against `forgeco`
+  // `seed/coffee.mjs` installs it for the coffee tenant alone, by instruction. A run against `forgeco`
   // must not die on the app being legitimately absent.
   const { port, calls } = fakePort({ installed: false });
   await signSubscriptions(port);

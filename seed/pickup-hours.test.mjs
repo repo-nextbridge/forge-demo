@@ -1,6 +1,6 @@
 // ★★ THE PICKUP WEEK, OVER EVERY POINT THE DATASET DECLARES — and that "every" is the whole slice.
 //
-// ⛔ THE DEFECT, reported by the owner on 05/09 with a screenshot: the counter's pickup card listed the seven
+// ⛔ THE DEFECT, reported from the screen with a screenshot: the counter's pickup card listed the seven
 // days as «Fechado» and its today-line said «Fechado hoje». `seed/totem.json` → `pickup.location` had no
 // `hours` key, and an OMITTED day is closed to the kernel exactly like a `null` one — so the box was correct,
 // the render was correct, and the shop was shut forever.
@@ -57,7 +57,7 @@ test('★★ …and the collector COUNTS, so a rule proved over nothing cannot p
   );
   assert.ok(
     found.some((d) => d.point.name === TOTEM.pickup.location.name && d.store === 'balcao'),
-    "the COUNTER's point — the one that shipped shut all week — is not in the collector's list",
+    "the COUNTER's point — the one found shut all week — is not in the collector's list",
   );
 });
 
@@ -130,13 +130,13 @@ test('⛔ SABOTAGE — the two shapes the KERNEL itself refuses are refused here
   assert.match(pickupWeekProblem(aPoint({ ...aWeek(), mon: 'aberto' })), /HH:MM/);
 });
 
-test('★★ THE COUNTER — the point that shipped shut all week — is open on days a person can actually go there', () => {
+test('★★ THE COUNTER — the photographed point — is open on days a person can actually go there', () => {
   // The regression, named. A week that parses is not the fix; a week nobody can collect in is the defect.
   const counter = TOTEM.pickup.location;
   assert.equal(pickupWeekProblem(counter), null);
   assert.equal(openDayCount(counter), 7, 'a neighbourhood café that shuts for a whole day would need a reason');
-  // ⚠️ NOT ONE VALUE COPIED SEVEN TIMES. The owner's ruler for this dataset is fidelity — *"pede fidelidade,
-  // pois senão os agents fazem a função e deixa tudo feio ali"* — and a café that opens and closes at the
+  // ⚠️ NOT ONE VALUE COPIED SEVEN TIMES. The ruler for this dataset is FIDELITY — demand it, or the data
+  // comes out as whatever a function emits and the shop looks it — and a café that opens and closes at the
   // same minute all week is the shape a function writes, not a shop.
   const shapes = new Set(PICKUP_WEEKDAYS.map((d) => `${counter.hours[d]?.open}-${counter.hours[d]?.close}`));
   assert.ok(shapes.size >= 3, `the counter's week has ${shapes.size} distinct shape(s) — that is a placeholder`);

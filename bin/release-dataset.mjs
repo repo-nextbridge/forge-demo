@@ -15,7 +15,7 @@
 //   dataset    the INSTANCE's   — this box's arrangement, applied AT BIRTH (seeding), never after.
 //   Compose    the MERCHANT's   — the last word, and ⛔ nothing here or upstream rewrites it.
 //
-// The owner's decision of 2026-09-14, after withdrawing a stronger one ("the dataset wins, it overrides what
+// The decision of 2026-09-14, after a stronger one was withdrawn ("the dataset wins, it overrides what
 // was placed before"): the dataset arranges the box AS IT IS BORN and never over a gesture that came later.
 // ⛔ SO THIS FILE READS AND COMPARES; it moves nothing and it is not a migration.
 //

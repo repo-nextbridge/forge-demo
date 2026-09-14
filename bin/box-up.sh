@@ -10,13 +10,13 @@
 #   bash bin/box-up.sh --localhost         the alias kept: `--promote localhost`
 #
 # The promotion is not a step of the birth and section 0b says at length why: the box is born on `localhost`
-# by Renan's decision, and the addresses of a private network may not live in a versioned file. ★ pk24/§B5 —
+# by decision, and the addresses of a private network may not live in a versioned file. ★ pk24/§B5 —
 # but it IS a NAMED STEP of the pipeline rather than a mode of this bench: a CI that has never heard of a
 # tailnet promotes with `--promote demo.example.com`, and the tailnet is one DESTINATION among them.
 #
 # ★★ pk24/§B1 — AND THE BIRTH CAN BE ASKED NOT TO WARM. Step 14 used to run unconditionally, so a birth in a
-# pipeline burned ~1h10 of warming it did not ask for (Renan, 07/09: *"online será rodado somente de
-# madrugada no cron"*). `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
+# pipeline burned ~1h10 of warming it did not ask for, while the online run belongs on an overnight cron.
+# `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
 # proving the box is standing is not warmth (it exists because sign-in was dead on three of four shops while
 # every other step was green). The warmer stays callable on its own, exactly as it always was:
 # `FORGE_SEED_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>`.
@@ -97,7 +97,7 @@ cd "$HERE" || exit 1
 # See its own header for why the promotion is not a step of the birth — and §B5 for why it is nonetheless a
 # NAMED step of the pipeline, invocable by something that has never heard of a tailnet.
 #
-# ⚠️ EVERY ONE OF THESE DECLARES ITSELF OR REFUSES OUT LOUD. The ruler of this sprint (Renan, 08/09): a step
+# ⚠️ EVERY ONE OF THESE DECLARES ITSELF OR REFUSES OUT LOUD. THE RULER OF THIS SPRINT: a step
 # that only works because somebody knew which variable to export is not ready. So `--promote` with no
 # destination is a refusal that NAMES the destinations, not a fall-through to a default.
 USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan]
@@ -464,7 +464,7 @@ PYEOF
 # that states the topology, and a third tenant added there arrives in the dropdown with no second edit.
 #
 # ⚠️ NOT SSO, AND THAT IS THE POINT. Each admin is its own host and the session cookie is host-only, so
-# switching brands means logging in again. Renan named that as correct rather than as a limitation: it is
+# switching brands means logging in again. That is correct rather than a limitation: it is
 # what stops an operator acting on the wrong tenant while believing they are on the other.
 #
 # ⚠️ SINGLE-QUOTED FOR THE SAME REASON `FORGE_STORE_HOSTS` IS (see step 3b): `.env` is read by TWO parsers,
@@ -616,12 +616,12 @@ promoted_hosts() {
 
 # ── ★★★ pk29/D1 · THE DOORS THIS MACHINE PUBLISHES THAT THE BOX HAS NOT CLAIMED ─────────────────────────────
 #
-# ⛔ THE TROPEÇO, MEASURED AT THE BIRTH OF 2026-09-09. The box was born, every step green, and the owner
-# opened `https://<tailnet>:8443/login` and got `?error=unknown_host` — «This address is not registered on
+# ⛔ THE TROPEÇO, MEASURED AT THE BIRTH OF 2026-09-09. The box was born, every step green, and
+# `https://<tailnet>:8443/login` answered `?error=unknown_host` — «This address is not registered on
 # this instance». `forge_control.admin_directory` held `localhost:8201` and `localhost:8202` and nothing else:
 # the box is born on `localhost` BY DECISION (§0b), `tailscale serve` was already putting the tailnet in front
 # of it, and the `Host` that arrived was claimed by no tenant. `bash bin/box-up.sh --promote tailnet` fixed it
-# in seconds — hours later, and only because he asked.
+# in seconds — hours later, and only because somebody reported it.
 #
 # ⇒ THE MECHANISM WAS RIGHT AND THE BIRTH WAS SILENT. Both halves matter. ⛔ The promotion is NOT forced here
 # and must not be: §0b says at length why the box is born on `localhost` and pk24/§B5 made the promotion a
@@ -692,10 +692,10 @@ bench_bind_is_loopback() {
 
 # ── 0b · THE PROMOTION: THIS BOX ON THE TAILNET, AND WHY IT IS NOT A STEP OF THE BIRTH (A15) ────────────────
 #
-# ★★ THE BOX IS BORN ON `localhost`. Renan decided it, in those words: *"faz sentido nascer localhost sim e
-# só quando eu pedir subir pra tailscale"*. A birth that depended on somebody's private network would stop
-# proving the product and start proving the network — and the addresses of that network are HIS, so they may
-# not live in a versioned file. Both halves of that are why this is a MODE and not step 3b·2.
+# ★★ THE BOX IS BORN ON `localhost`, AND IT GOES ON A TAILNET ONLY WHEN ASKED TO. A birth that depended on
+# somebody's private network would stop proving the product and start proving the network — and the addresses
+# of that network are PRIVATE, so they may not live in a versioned file. Both halves of that are why this is
+# a MODE and not step 3b·2.
 #
 # WHAT IT REPAIRS. On 01/09 the bench was moved onto the tailnet BY HAND: four host keys added to
 # `FORGE_STORE_HOSTS`, the public origin and the gate's admin URL re-pointed, and four admin hostnames
@@ -1639,7 +1639,7 @@ fi
 # wrong while the shop looked perfect: the warmer built `/s/<id>/…` urls for a shop a visitor opens at `/`,
 # the URL inventory could not find the root store, and a 404 from `store.by_host` read as a broken box.
 #
-# ⇒ THE FIX IS DATA, and Renan decided it on 08/09: *the birth declares*. This step drives
+# ⇒ THE FIX IS DATA, and the rule is that THE BIRTH DECLARES. This step drives
 # `tenant.store.update --host` on the store the map names at the root, and `bin/store-host.mjs` carries the
 # whole argument — why the override is not retired (one store may claim ONE authority; the map carries six),
 # why a box born on `localhost` declares `localhost`, and why it waits for the projection instead of assuming.
@@ -2062,8 +2062,8 @@ done
 
 # ── 13 · ★★ WHAT ONLY EXISTS ONLINE — AND IT RUNS AFTER THE REBIRTH, WHICH IS THE COUNTER-INTUITIVE HALF ────
 #
-# Renan, 04/09: *"ele precisaria também garantir que ligue tudo que só tem online, exemplo cdn se tiver na
-# demo… ou qualquer coisa assim que morre no reset."*
+# A RESET MUST TURN BACK ON EVERYTHING THAT ONLY EXISTS ONLINE — a CDN the box leans on, and anything else of
+# that species, which the reset destroys and no local step recreates.
 #
 # ⚠️ PURGING FIRST IS THE OBVIOUS ORDER AND IT IS THE WRONG ONE. A CDN purged before the teardown spends the
 # ~17 minutes of the birth refilling itself from the origin being destroyed, and comes out of the reset
@@ -2078,12 +2078,12 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 
 # ── 14 · ★★ THE BOX IS WARMED, AND WHAT IT LEARNED IS A REPORT ──────────────────────────────────────────────
 #
-# ★ THE ARGUMENT IS COMMERCIAL (Renan, 04/09): *"ele também vai ser testado por exemplo performance e tal, se
-# ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box handed over cold makes the
-# FIRST VISITOR pay for every cache this box could have filled by itself — and on this box that visitor is
-# whoever is evaluating it. So the box is still warmed at the end of every birth.
+# ★ THE ARGUMENT IS COMMERCIAL: this box is evaluated on performance too, and failing a performance test
+# costs a sale. A box handed over cold makes the FIRST VISITOR pay for every cache this box could have filled
+# by itself — and on this box that visitor is whoever is evaluating it. So the box is still warmed at the end
+# of every birth.
 #
-# ⚠️ BUT WARMTH STOPPED DECIDING THIS SCRIPT'S EXIT CODE (Renan, 05/09: *"D1 - Pode ser só relatório"*), and
+# ⚠️ BUT WARMTH STOPPED DECIDING THIS SCRIPT'S EXIT CODE — IT REPORTS RATHER THAN GRADES — and
 # the reason is that it was ALWAYS red. The plan is ~420 pages plus ~20 400 image derivatives found in each
 # HTML's `srcset`, against the VITRINE's own 15-minute DEFAULT (`DEFAULT_MAX_DURATION_MS`, in the product's
 # `apps/storefront/src/lib/warm/warm.ts`): every run ended `15865 urls were never visited`. It also invented
@@ -2091,7 +2091,7 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # warmer is the last step of the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS RED IS A STEP
 # PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
 #
-# ★★ pk21 — AND THE FIRST OF THOSE TWO WENT (Renan, 07/09: *"deriva do plano"*). The ceiling was never
+# ★★ pk21 — AND THE FIRST OF THOSE TWO WENT, BECAUSE THE CEILING DERIVES FROM THE PLAN. It was never
 # unraisable: `/api/warm?max_duration_ms=` overrode that default, and this script's own note used to claim
 # otherwise. Step 14 re-ran a CUT run under a ceiling DERIVED from the plan it measured — planned urls ×
 # the ms-per-url that run observed.
@@ -2137,7 +2137,7 @@ COLD=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
 # ★★ pk24/§B1 — AND THIS IS THE ONE STEP THE BIRTH CAN BE ASKED TO LEAVE OUT, for the reason the header gives:
-# it costs ~1h10 and it grades nothing (Renan, 05/09: *"D1 - Pode ser só relatório"*), so a pipeline that is
+# it costs ~1h10 and it grades nothing — it reports — so a pipeline that is
 # born at 03:00 and warmed by a cron at 04:00 should not pay for it twice. ⛔ THE SKIP IS DECLARED, NOT
 # SILENT: `skip` puts it in the roteiro with its reason, and the roteiro reds on a step that simply vanishes.
 # ⛔ AND 14-bis IS NOT SKIPPED WITH IT — proving the doors open is a fact about the box, not about heat.
@@ -2299,8 +2299,8 @@ printf '\n' >&2
 # where they print: a cold tenant discovered after an unsettled one would otherwise never reach the screen.
 # Each is its own sentence — "the box is cold" and "the box is misconfigured" are different repairs.
 #
-# ⚠️ AND ONE OF THEM IS A REPORT. `COLD` and `WARM_UNKNOWN` are PRINTED and NOT counted below (Renan, 05/09:
-# *"D1 - Pode ser só relatório"*) — see step 14 for the three measurements that took warmth out of the exit
+# ⚠️ AND ONE OF THEM IS A REPORT. `COLD` and `WARM_UNKNOWN` are PRINTED and NOT counted below — warmth
+# reports, it does not grade — see step 14 for the three measurements that took warmth out of the exit
 # code. They are still loud, and they are still first: a report nobody reads is the same as a red nobody acts
 # on, which is exactly what the old always-red step had become.
 if [ -n "${COLD:-}" ]; then
@@ -2315,7 +2315,7 @@ if [ -n "${COLD:-}" ]; then
 ' "$COLD" >&2
 fi
 # ⛔ A REPORT AND NOT A GATE, DELIBERATELY, and the decision it must not overturn is §0b's: the box is born on
-# `localhost` because Renan said so and because the addresses of a private network may not live in a versioned
+# `localhost` by decision and because the addresses of a private network may not live in a versioned
 # file. A birth on this laptop is a CORRECT birth, so this may never make one red — what it may not do is stay
 # quiet while the box holds a claim nobody will type and this machine publishes one that nothing claims.
 if [ -n "${PROMOTION_OWED:-}" ]; then
@@ -2392,7 +2392,7 @@ fi
 # facility that refused, or a store this repository declares and the box does not hold still ends non-zero,
 # which is what every wrapper reads before it reads the prose.
 #
-# ⚠️ `COLD` AND `WARM_UNKNOWN` ARE NOT HERE, ON PURPOSE (Renan, 05/09: *"D1 - Pode ser só relatório"*). They
+# ⚠️ `COLD` AND `WARM_UNKNOWN` ARE NOT HERE, ON PURPOSE — WARMTH REPORTS, IT DOES NOT GRADE. They
 # are printed above and they are not an exit code. ⛔ Do not add them back without re-reading step 14: the
 # warming step was red on EVERY run of this box by construction, so it graded nothing and taught people to
 # skip a red. `MISSING_STORE` is the half of it that still grades, and it is deliberately its own variable so

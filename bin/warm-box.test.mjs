@@ -1,6 +1,6 @@
 // ★★ THE BIRTH ENDS WARM, AND WHEN IT DOES NOT IT SAYS SO — BY NAME.
 //
-// ⚠️ THE EXIT CODES MOVED ON 05/09 (*"D1 - Pode ser só relatório"*), and this file is where that is proved.
+// ⚠️ THE EXIT CODES MOVED ON 05/09, when warmth was demoted to a REPORT, and this file is where that is proved.
 // Warmth is a REPORT: `bin/box-up.sh` no longer fails a birth on it (that half is graded by
 // `bin/reset-complete.guard.mjs`, which executes the exit block). This step still answers non-zero for a human
 // who ran it by hand and asked a yes/no question — 1 for "not fully warm" — and it keeps ONE red of its own:
@@ -1030,7 +1030,7 @@ test('★★★ a declaration that describes ANOTHER box is refused, not read �
   }
 });
 
-// ── ★★★ THE DEADLINE DERIVES FROM THE PLAN (pk21/d2, Renan 07/09: *"deriva do plano"*) ────────────────────
+// ── ★★★ THE DEADLINE DERIVES FROM THE PLAN (pk21/d2) ─────────────────────────────────────────────────────
 //
 // ⛔ THE DEFECT, MEASURED ON THREE BIRTHS AND AGAIN ON 07/09. The plan of this box is ~420 pages plus the
 // ~20 400 IMAGE derivatives those pages declare in their `srcset`, against a ceiling of 900 000 ms that is

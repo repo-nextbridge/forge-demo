@@ -143,7 +143,7 @@ test('★ every product names at least one photograph, and the file is on disk',
 // ── the DISCOUNT IS WRITTEN IN THE RIGHT PHASE ─────────────────────────────────────────────────────────
 //
 // ⛔⛔ EVERYTHING ABOVE READS `outlet.json`, AND ALL OF IT WOULD STAY GREEN WITH A SHOP THAT SHOWS NO
-// DISCOUNT AT ALL. That is not hypothetical — it is the state the Renan reported ("2 of the 8"), and the
+// DISCOUNT AT ALL. That is not hypothetical — it is the state that was reported ("2 of the 8"), and the
 // cause is not in this file's data. It is the ORDER of the birth:
 //
 //     8 · seed.mjs (curated)  →  9 · seed-demo (massive)  →  10 · the past  →  11 · seed.mjs --phase window
@@ -457,8 +457,8 @@ test('s2-4 — every product says which label it wears, and the mirror is well f
 test('★ pk5 — the «Outlet Kids» art is a SHELF\'s picture, never a lone tile on a line of its own', () => {
   // ⚠️ THE REGRESSION THIS SLICE EXISTS TO CLOSE, stated as the thing that must not come back. s2-8 read the
   // gap beside the art as "no second card to put there" and left the piece in a `banners/banner` block at
-  // `width: 33` — one tile owning a whole line, 67% of it white. He looked at the shop and called it what it
-  // is: «está caindo». The picture belongs to a SHELF, where the layout gives it two of five columns and
+  // `width: 33` — one tile owning a whole line, 67% of it white. Seen in the shop, the art is FALLING, not
+  // merely cramped. The picture belongs to a SHELF, where the layout gives it two of five columns and
   // three product cards fill the rest.
   //
   // So the guard is on the DECLARATION, not on a pixel: no block of the `banners` app may carry the kids art.
@@ -482,10 +482,10 @@ test('★ pk5 — the «Outlet Kids» art is a SHELF\'s picture, never a lone ti
 
 // ── pk5 — A SHELF'S ROW ARITHMETIC, AND THE GABARITO IT IS COPIED FROM ─────────────────────────────────
 //
-// He looked at the «Outlet Kids» row and corrected the previous diagnosis: *"está caindo na verdade, será
-// que está no lugar errado? É melhor cortar um pouco do que cair. E esse tipo de shelf que tem banner na
-// verdade é banner + 3 e tem 4 produtos de kids... Mas estranho que essa shelf já existia na loja normal
-// de sapatos. O tamanho era só seguir o mesmo de lá."*
+// The «Outlet Kids» row was looked at again and the previous diagnosis corrected: the art is FALLING, and it
+// is in the wrong place. Cropping a little beats falling. A shelf of this kind is banner + 3 cards, not a
+// banner beside four — and the same shape already existed in the ordinary shoe shop, where the size to copy
+// was simply the size it already used.
 //
 // ★ THE GABARITO IS A PAGE, NOT A TASTE. «Botas que acabaram de chegar» in the `forge` store is one
 // `shelves/shelf` carrying its own `banner_asset` plus `item_count: 3` (the mounted dataset's
@@ -550,8 +550,8 @@ test('the home\'s blocks hold distinct positions in their slot — two blocks on
 // ⚠️ AND THERE IS NO `height` GUARD ANY MORE, deliberately. Until pk5 this file checked that the kids tile's
 // declared `height` matched its art's proportion at the cell it rendered in, so `cover` would not crop. The
 // picture is a shelf cell now: it declares NO height, because the cell's height is the product cards' and the
-// art covers it. Cropping is the accepted outcome and not a defect — his ruling, in his words: «é melhor
-// cortar um pouco do que cair». A guard forbidding the crop would now be a guard against the instruction.
+// art covers it. Cropping is the accepted outcome and not a defect — the ruling is that cropping a little
+// beats falling. A guard forbidding the crop would now be a guard against the instruction.
 
 /** A banner block's tiles, wrapped into lines the way `.mosaicRow` wraps them: a tile that would take the
  *  running total past 100% starts a fresh line. Absent `width` means the block's own default of 100. */
@@ -607,8 +607,8 @@ test('★ pk5 — every LINE of a banner block on this home is full: a short row
 // `fileAtPinned`, which answers from any clone that has fetched it, whatever that clone has checked out.
 //
 // ⛔ AND IT ONLY EVER READS. Deriving those eight from the store's own assortment is a change to the VITRINE,
-// which is the product's forkable reference storefront and not this box's to patch — the Renan's ruling of
-// 03/09, twice over ("tem coisa que é do produto forge, tem coisa que é só do repo da demo"). This guard says
+// which is the product's forkable reference storefront and not this box's to patch — the standing ruling,
+// twice over: some things belong to the Forge product and some only to the demo repository. This guard says
 // when the two copies part company; the fix on the day they do is to re-mirror here, or to card it there.
 
 /** One file of the RELEASE these images were baked from — `{ text, from }`, or `{ tried }` for a rule that
@@ -652,8 +652,9 @@ test('★ s2-4 — `featured_brands` still MIRRORS the vitrine\'s own list', (t)
 
 // ── pk5 — THE GABARITO, READ FROM THE SHOP THAT ALREADY DOES IT RIGHT ──────────────────────────────────
 //
-// His whole instruction for this row was "copy the one that works": *"essa shelf já existia na loja normal
-// de sapatos. O tamanho era só seguir o mesmo de lá."* The one that works is «Botas que acabaram de chegar»
+// The whole instruction for this row was "copy the one that works": this shelf already existed in the
+// ordinary shoe shop, and the size to follow was simply its size. The one that works is
+// «Botas que acabaram de chegar»
 // in the `forge` store, and it is not a taste anybody typed here — it is declared by the MOUNTED DATASET
 // (`instances/demo/dataset/storefront.json`), which is the platform's own example data, in the monorepo.
 //

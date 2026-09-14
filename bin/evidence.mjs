@@ -5,7 +5,7 @@
 // The curated seed died on `catalog.collection.pin → HTTP 502` after ~300 good calls. A 502 is the EDGE
 // saying "the upstream did not answer me"; the only place that knows WHY is the upstream, and the only copy
 // of that knowledge is the kernel container's log. The operator then did the one thing the failure itself
-// tells him to do — `bash bin/box-up.sh --tailnet` — and that promotion ends in
+// tells them to do — `bash bin/box-up.sh --tailnet` — and that promotion ends in
 // `dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem`.
 //
 //     docker inspect, after the fact: the kernel container that served the seed was created 04:01:44

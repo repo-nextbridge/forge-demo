@@ -70,8 +70,8 @@
 // ⇒ the two ways this could go quietly blind are therefore both red by construction: a probe that sent the
 // cookie on both sides fails the first rule, one that sent it on neither fails the second.
 //
-// ★ WHAT IS EXPECTED IS DERIVED FROM HIS DECISION, NOT FROM A LIST: **every store has a gate** (11/09,
-// «sapatos, outlet, café, totem»), and a store that must NOT is the EXCEPTION and declares itself in
+// ★ WHAT IS EXPECTED IS DERIVED FROM THE RULE, NOT FROM A LIST: **every store has a gate** — the shoe shop,
+// the outlet, the café and the totem alike — and a store that must NOT is the EXCEPTION and declares itself in
 // `seed/box.json` with `gate: false` + the reason. The declaration is graded against the PORT
 // (`read.extensions`, the same anonymous read the front itself makes) and against the SCREEN, so uninstalling
 // the app reddens this step by name instead of vanishing.
@@ -392,8 +392,8 @@ for (const row of rows) {
 
   // ── ★★★ pk33 · DOES THIS STORE HAVE A FRONT DOOR, AND DOES EVERYBODY AGREE? ─────────────────────────────
   //
-  // ★ THE DEFAULT IS **YES**, AND IT IS HIS DECISION RATHER THAN A CONVENIENCE (11/09): the demo is «sapatos,
-  // outlet, café, totem» and all of it is gated. So nothing here lists the gated stores — a list would go
+  // ★ THE DEFAULT IS **YES**, AND IT IS A DECISION RATHER THAN A CONVENIENCE: the demo is the shoe shop, the
+  // outlet, the café and the totem, and all of it is gated. So nothing here lists the gated stores — a list would go
   // quietly stale the day a fifth store is born. What is listed is the EXCEPTION, in `seed/box.json`, with the
   // reason beside it, exactly as `status` is.
   const declaredGate = declared.get(row.handle);

@@ -9,7 +9,7 @@
 // «Compra Segura» in one piece of art — and the reason is the app's contract, not taste: the picture
 // REPLACES the word on screen (`extensions/chrome/logic.ts:53-61` returns `{kind:'image', url, alt: text}`
 // as soon as the image resolved, and `footer-block.tsx:38-43` draws `<img alt=…>`), so a lone padlock meant
-// the shopper saw no word at all. The owner chose that shape out of three on 07/09: «b está bom».
+// the shopper saw no word at all. That lockup was chosen out of three candidate shapes.
 // `end_text` stays «Compra Segura» and is now the picture's accessible name — the ONE place the phrase is
 // still spelled out, and `seed/chrome.test.mjs`'s dictation table is what pins the spelling.
 //
@@ -323,16 +323,16 @@ test('★★ every store of the box is DECIDED here — dressed with a seal, dre
   assert.deepEqual(
     withSeal.sort(),
     ['forge', 'outlet'],
-    'the two shoe shops are the two that carry the checkout seal — the demo shows «Compra Segura» in both. ' +
-      'A shop leaving this list has lost its seal, and every ink and shape rule below would then pass by ' +
-      'iterating over one store less.',
+    'the two shoe shops are the ones that must carry the seal: it is the app\'s own «Compra Segura» and the ' +
+      'demo exists to show it. A shop leaving this list has lost its seal, and every ink and shape rule ' +
+      'below would then pass by iterating over one store less.',
   );
   assert.deepEqual(
     withoutSeal.sort(),
     ['cafe'],
-    'the café is the ONE shop deliberately left alone — it has a footer of its own, so no seal was asked ' +
-      'of it. Named here rather than absent, because a store missing from a list is indistinguishable ' +
-      'from one that failed.',
+    'the café is the ONE shop deliberately left alone — it has a footer of its own and was never meant to ' +
+      'carry the seal. Named here rather than absent, because a store missing from a list is ' +
+      'indistinguishable from one that failed.',
   );
   assert.deepEqual(noChrome, ['balcao'], 'the counter has no chrome at all — see `_balcao_why`');
 });

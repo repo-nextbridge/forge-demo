@@ -21,9 +21,9 @@
 //
 // ── ⛔ WHY THIS IS A VERDICT AND NOT A LIST OF THINGS TO RE-ENABLE ────────────────────────────────────────
 //
-// Renan asked that the reset "garanta que ligue tudo que só tem online… ou qualquer coisa assim que morre no
-// reset". The obvious answer is a checklist, and the checklist is the disease: it ages in silence, somebody
-// adjusts the live box and forgets to add the item, and the next reset erases it with nothing saying so.
+// A RESET MUST TURN BACK ON EVERYTHING THAT ONLY EXISTS ONLINE — and anything else of that species, which
+// the reset kills. The obvious answer is a checklist, and the checklist is the disease: it ages in silence,
+// somebody adjusts the live box and forgets to add the item, and the next reset erases it with nothing saying so.
 //
 // ★ SO EVERY CHECK BELOW IS DERIVED, AND THE ONE RULE IS OWNERSHIP OF AN ADDRESS:
 //
@@ -376,7 +376,7 @@ say();
 
 // ── 3b · ★★★ THE FACES THIS BOX DECLARES, AND WHETHER ANY OF THEM IS STILL ON ITS SENTINEL (pk34/d1) ─────
 //
-// He named the demo's six addresses on 12/09. `seed/box.json` declares them — one `domain` per store, one
+// THE DEMO HAS SIX ADDRESSES, fixed 12/09. `seed/box.json` declares them — one `domain` per store, one
 // `admin_domain` per tenant — and `caddy/Caddyfile` routes each from the variable the declaration names.
 //
 // ⛔ WHAT THIS SECTION IS FOR, AND IT IS NOT «are the six set». It is the LOUD HALF of a deliberate trade.

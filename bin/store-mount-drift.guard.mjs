@@ -39,7 +39,7 @@
 //
 // ⚠️ A RED HERE IS NOT AUTOMATICALLY "GO COPY THE PRODUCT". It says the reference grew a rule at the mount
 // point and this fork did not follow — and the fork's owner is allowed to answer "I do not want it", by
-// saying so in this file. What he is not allowed to do is not know.
+// saying so in this file. What the fork may NOT do is not know.
 //
 // ── WHAT IT IS NOT ──────────────────────────────────────────────────────────────────────────────────────
 //

@@ -1,6 +1,6 @@
 // ★★ THE COUNTER MAY ONLY SPEAK FOR ITS OWN CHARGES — the rule, and the reason it needed a guard.
 //
-// WHAT HAPPENED (caderno pk21 §R3, 07/09, reported by the owner in front of the box). An order in the COFFEE
+// WHAT HAPPENED (caderno pk21 §R3, 07/09, seen on the box itself). An order in the COFFEE
 // store, paid by CARD through `payment-reference`, with Entrega Expressa and a delivery address in Alphaville,
 // was answered by the confirmation with:
 //
@@ -95,7 +95,7 @@ test("★★ THE POSITIVE CONTROL: 'yes' — the counter still speaks for the co
   // ⚠️ THE RULE AGAINST THE VACUUM, and it is the first one to read. The section below expects `null`, so a
   // "fix" that made this block draw NOTHING EVER — or a decision module that threw its subject away — would
   // satisfy all of it and leave the app broken in the opposite direction. This is the test that is red for
-  // that. The sentence the owner saw is the RIGHT sentence here.
+  // that. The sentence the defect printed is the RIGHT sentence here.
   for (const [status, expected] of WHEN_ALLOWED_TO_SPEAK) {
     assert.deepEqual(afterPaymentNotice({ settledByThisApp: 'yes', status }), expected);
   }
@@ -107,7 +107,7 @@ test("★★ THE POSITIVE CONTROL: 'yes' — the counter still speaks for the co
 });
 
 test("★★ THE DEFECT: 'no' — a charge another app took draws nothing at the counter", () => {
-  // The owner's order, reproduced. An approved CARD is exactly what the old condition matched on, and it stays
+  // The reported order, reproduced. An approved CARD is exactly what the old condition matched on, and it stays
   // matched — what changed is that the method is no longer the question.
   for (const [status] of WHEN_ALLOWED_TO_SPEAK) {
     assert.equal(

@@ -21,7 +21,7 @@
 // after the screenshot.
 //
 // ── THE SECOND PAIR: the seal ───────────────────────────────────────────────────────────────────────────
-// `.sealSmall` ("OFF") must be the same size as `.sealBig` ("10%") — the owner's words, 2026-09-04. It is
+// `.sealSmall` ("OFF") must be the same size as `.sealBig` ("10%") — one rule, settled 2026-09-04. It is
 // written as `composes: sealBig`, so the two cannot drift: there is one number. This guard fails if anyone
 // restates a `font-size` inside `.sealSmall`, because that is precisely how "the same size" stops being
 // true without anybody deciding it.

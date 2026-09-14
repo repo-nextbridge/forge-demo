@@ -25,8 +25,8 @@
 // The placement exists, it is enabled, `read.extension_composition` publishes it, the admin shows the app's
 // card, AND NOTHING ANYWHERE SAYS THE BLOCK WILL NOT BE DRAWN.
 //
-// ★★ THE OBLIGATION IS THE INSTANCE'S, and that is the owner's own verdict (10/09): *"se o app é da instância
-// e o front é da instância, não é a instância que tem que declarar mesmo? não tem como o produto saber."* The
+// ★★ THE OBLIGATION IS THE INSTANCE'S: IF THE APP IS THE INSTANCE'S AND THE FRONT IS THE INSTANCE'S, THE
+// INSTANCE IS WHAT HAS TO DECLARE IT — the product has no way of knowing. The
 // product owes the SLOT, the contract and the generator; this repository owns the apps AND the forks, so it is
 // the only party holding both ends of the comparison — which is why the rule lives here and not upstream.
 //

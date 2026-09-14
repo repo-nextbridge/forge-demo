@@ -4,7 +4,7 @@
 //
 // ── WHAT THIS GRADES, AND WHY IT IS A DRIFT-CHECK RATHER THAN A COMPARISON OF NAMES ─────────────────────
 //
-// The gate's first screen is a HUB over every face this box publishes — the owner's 10/09 layout, ported in
+// The gate's first screen is a HUB over every face this box publishes — the hub layout ported in
 // pk35/d1. Its addresses are DATA (`seed/box.json`: one `domain` per store, one `admin_domain` per tenant),
 // and the screen that draws them is baked into the kernel image ALONE, without the file. `bin/gate-faces.mjs`
 // is the wire between the two; `apps/demo-gate/faces.generated.ts` is what it writes.

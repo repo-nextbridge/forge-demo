@@ -4,7 +4,8 @@
 //
 // ── WHY THIS GUARD EXISTS, AND THE MEASUREMENT THAT PUT IT HERE ─────────────────────────────────────────
 //
-// He named the demo's addresses on 2026-09-12 — «vão ser essas urls das demos» — and there are SIX:
+// THE DEMO PUBLISHES SIX ADDRESSES, one per face this box serves — settled 2026-09-12 and declared in
+// `seed/box.json`:
 //
 //     store.forgecommerce.pro          outlet.store.forgecommerce.pro     admin.store.forgecommerce.pro
 //     cafe.forgecommerce.pro           totem.cafe.forgecommerce.pro       admin.cafe.forgecommerce.pro

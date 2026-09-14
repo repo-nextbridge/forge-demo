@@ -5,7 +5,7 @@
 // `?lang=` on the URL can win over the server's Accept-Language guess, and so the two screens can trade places
 // without a navigation (`view` below). Responsive is pure CSS (@media 760px).
 //
-// ★★★ pk35/d1 — THE FIRST SCREEN IS NOW THE OWNER'S 10/09 LAYOUT: a HUB over every face this box publishes
+// ★★★ pk35/d1 — THE FIRST SCREEN IS NOW A HUB over every face this box publishes
 // (`./hub`). The destinations are not written anywhere near here — `seed/box.json` declares them and
 // `bin/gate-faces.mjs` renders that declaration into `../faces.generated.ts`. The two paths a visitor has are
 // the hub's:
@@ -30,11 +30,11 @@
 // gate again on the next face that has one.
 //
 // ⇒ MEASURED, NOT ESTIMATED (bench `forge-preseed`, 2026-09-13): of the six, the two admins have no gate by
-// decision (pk33: «não precisa de portaria no admin»), the café declared `gate: false`, and the outlet and the
+// decision (pk33: the admin needs no gate), the café declared `gate: false`, and the outlet and the
 // counter DO show one. So it was two second gates, not five. ⚠️ THAT COUNT MOVED TO **THREE** IN pk36/d1 and
 // the sentence is corrected rather than left standing: the café's exception is gone — its fork regenerates a
 // gate registry of its own now — so four of the six faces carry a gate and only the two admins do not. The
-// owner's 13/09 decision — «não tem problema o cookie valer para todas» ⇒ a `.forgecommerce.pro` cookie, and a
+// settled remedy — ONE dismissal valid for every face ⇒ a `.forgecommerce.pro` cookie, and a
 // ribbon that reopens all six — is a change to the KIT and belongs to the product; this repository names it
 // rather than remedying it from here, and the change above makes it worth one more face.
 

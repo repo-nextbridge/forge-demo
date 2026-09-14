@@ -1,7 +1,7 @@
 'use client';
 
 // ★★ THE GATE'S SECOND SCREEN — "A arquitetura da demo", faithful to the `showArch` half of
-// design-base/gate.dc.html. The owner closed this layout on 10/09 and it is the answer to a question the first
+// design-base/gate.dc.html. This layout is settled, and it is the answer to a question the first
 // screen cannot answer: that one says WHAT to open, this one says WHY it is hard. Its reader is a visitor who has
 // never heard the word multi-tenant, so it draws the box instead of describing it — the two tenants side by side,
 // each with its two shops and a single admin under both, and then the one stack they all stand on: the surfaces,

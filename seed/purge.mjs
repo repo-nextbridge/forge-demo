@@ -24,7 +24,7 @@
 //
 // ── THE TAGS ARE THE ADMIN'S OWN PAIR, NOT AN INVENTION ──────────────────────────────────────────────────
 // In the product, `apps/admin/src/lib/storefront-client.ts` posts `store:<id>` when an operator saves the
-// store and `extensions:<id>` when he saves a composition. This seed does both kinds of write, so it asks
+// store and `extensions:<id>` when they save a composition. This seed does both kinds of write, so it asks
 // for both — the same hook, the same secret, the same two words. A tag this file invented would be a tag
 // the storefront never attached to anything, i.e. a purge that purges nothing and says `ok`.
 //

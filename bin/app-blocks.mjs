@@ -9,13 +9,13 @@
 // other fixtures: the manifests are files of the Forge monorepo, and a suite that derived this list would
 // pass on one developer's disk and SKIP on another's. The `verify-seed` suite must grade on every machine.
 //
-// ⛔ AND A HAND-WRITTEN LIST APODRECE CALADA, which is why it moved out of the suite and into its own file
+// ⛔ AND A HAND-WRITTEN LIST ROTS IN SILENCE, which is why it moved out of the suite and into its own file
 // on 2026-09-12: `bin/app-blocks.guard.mjs` grades it against the manifests OF THE PINNED RELEASE, and that
 // guard is allowed to say NOT CHECKED because it is the only thing it grades. That is the whole division of
 // labour — the suite keeps a fixture that always runs, the guard keeps the fixture honest when a Forge clone
 // is within reach.
 //
-// ⛔ pk34/D3 — THE DEFECT THAT BOUGHT THE GUARD. The owner moved `my_subscriptions` from `account.top` to
+// ⛔ pk34/D3 — THE DEFECT THAT BOUGHT THE GUARD. `my_subscriptions` moved from `account.top` to
 // `account.bottom` on 2026-09-11 (the manifest, in the product). Nothing in this repository noticed: the
 // line below went on asserting the old place, GREEN, and a test that passes while describing a world that no
 // longer exists is worse than no test — it is the defect this arc is named after, a signal that does not
@@ -59,8 +59,9 @@ export const STOREFRONT = 'storefront:';
 //
 // ⛔ THE DEFECT, AND IT IS THE ONE ABOVE WEARING ANOTHER HAT. pk34/D3 derived the STORE placements against the
 // manifests of the pinned release and left this list behind, typed into `bin/verify-seed.test.mjs` under a
-// comment that called it "the seven the dataset declares, in the order he left them" — a sentence nothing
-// could check. Seven names about a screen in another repository, in a file that never opens that repository.
+// comment that described it as the seven the dataset declares, in the order they were arranged in — a
+// sentence nothing could check. Seven names about a screen in another repository, in a file that never opens
+// that repository.
 // A widget renamed, dropped or added upstream and this list goes on describing a home nobody has, GREEN.
 //
 // ⇒ IT MOVED HERE FOR EXACTLY THE REASON `APP_BLOCKS` DID: the suite needs a fixture that runs on every

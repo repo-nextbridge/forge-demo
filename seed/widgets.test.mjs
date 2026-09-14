@@ -1,7 +1,7 @@
 // ★★★ THE ADMIN HOME'S WIDGET ORDER, AND THE ONE THING THIS SUITE EXISTS TO STOP: "some tenant is right".
 //
-// ⛔ THE DEFECT, measured on the live box of 10/09 after the owner reported it from the screen. The two boards
-// came back in DIFFERENT orders, and only one of them was what he wanted:
+// ⛔ THE DEFECT, measured on the live box of 10/09 after it was reported from the screen. The two boards
+// came back in DIFFERENT orders, and only one of them was the order that was wanted:
 //
 //   forgeco  (shoes)  subs · bt-curator · revenue · recent · shipping · status · stores · promos · stock 🔴
 //   forgecafe (coffee) bt-curator · revenue · recent · shipping · status · stores · promos · stock · subs ✅
@@ -46,7 +46,7 @@ const widget = (app, component, position, extra = {}) => ({
   ...extra,
 });
 
-/** The SEVEN the mounted dataset declares, in the order the owner left them. ⛔ pk35/D6 — IMPORTED, not
+/** The SEVEN the mounted dataset declares, in the order they were left in. ⛔ pk35/D6 — IMPORTED, not
  *  re-typed: it used to be spelled out here AND in `bin/verify-seed.test.mjs`, two copies of a list about a
  *  screen declared in ANOTHER repository, and neither could notice a widget renamed, dropped or added
  *  upstream. It lives in `bin/app-blocks.mjs` now, where `bin/app-blocks.guard.mjs` grades it against the
@@ -149,7 +149,7 @@ test('★★ a declared widget the board does not carry comes back MISSING, neve
 test('★★★ BOTH boards the box really held are RED against the declaration — the café only hid it better', () => {
   // ⚠️ THIS IS WHERE THE MEASUREMENT BEAT THE BRIEF. The card said the coffee admin "está certo (por sorte)" and
   // the shoe one is wrong. Graded against what the dataset DECLARES, both are wrong: `forgeco` opens with
-  // `subscriptions/latest_subscriptions` (the one the owner SAW) and `forgecafe` opens with
+  // `subscriptions/latest_subscriptions` (the one that was SEEN on the screen) and `forgecafe` opens with
   // `recommendations/bt_curator`, while the declaration opens with `admin-dashboard/revenue`. The café was not
   // right and not even lucky — it was wrong in a place nobody was looking, which is the whole argument for
   // grading per tenant instead of asking whether some tenant looks acceptable.

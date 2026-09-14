@@ -168,7 +168,7 @@ test('⛔ a directory that declares no dataset is refused BY NAME, not read as a
 
 test('★ a lock that RECORDS NO dataset cannot be compared — and that is a note, never a refusal', () => {
   // A `forge.lock` downloaded from a promoted release legitimately says nothing about anybody's example data.
-  // Refusing there would teach an operator to delete the check; saying what is missing teaches him to re-bake.
+  // Refusing there would teach an operator to delete the check; saying what is missing teaches them to re-bake.
   const verdict = provenanceVerdict(lockSide(writeLock(undefined)), boxSide(writeDataset(MOUNTED)));
   assert.equal(verdict.verdict, 'uncomparable');
   assert.match(verdict.message, /c51b5e4b49324fa9/, 'it still names what the box mounts');

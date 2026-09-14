@@ -15,19 +15,19 @@
 //
 // ★★ pk35/d7 — AND THE CAFÉ'S HALF OF THAT IS NOW DECIDED RATHER THAN PENDING: `seed/demo-setup.json` says
 // `"cafe": null`, so the instance places nothing there at all. The fork draws its own mark and its account
-// screens draw `chrome`'s — measured, zero `demo-setup-*` marks on either — which is the owner's rule of
-// 11/09 («o fork é do cliente, 100% liberdade» ⇒ the instance removes that store's placement). What this
+// screens draw `chrome`'s — measured, zero `demo-setup-*` marks on either — which is the rule this house
+// keeps: A FORK BELONGS TO THE CUSTOMER, so the instance removes that store's placement. What this
 // file still grades is the OTHER question, and it is not about stores: the fork cannot reach this app's CODE
 // at all, so the day a café operator drops one of these blocks in Compose it would still draw nothing.
 //
 // ★ THAT IS THE DEFECT, AND IT IS THE DEFECT EVEN IF THE FORK DOES NOT WANT THE BLOCK. The café has chrome of
 // its own (`CoffeeChrome`) and draws a mark by its own hand — so nothing on screen looks wrong. The placement
 // still exists, is still enabled, is still published by the port, and the fork's owner is still entitled to
-// DECIDE. What he is not entitled to is not to know; the `DIVERGENCES` list below is where a decision goes.
+// DECIDE. What nobody is entitled to is NOT TO KNOW; the `DIVERGENCES` list below is where a decision goes.
 //
-// ★★ AND WHY THE RULE IS THIS REPOSITORY'S, not the product's — the owner's own verdict (10/09):
-// *"se o app é da instância e o front é da instância, não é a instância que tem que declarar mesmo? não tem
-// como o produto saber."* It is stronger than "cannot": the product MUST NOT know. Reaching inside a fork it
+// ★★ AND WHY THE RULE IS THIS REPOSITORY'S, not the product's: IF THE APP IS THE INSTANCE'S AND THE FRONT IS
+// THE INSTANCE'S, THE INSTANCE IS WHAT HAS TO DECLARE IT — the product has no way of knowing.
+// It is stronger than "cannot": the product MUST NOT know. Reaching inside a fork it
 // does not own is the opposite of trava 4. This box holds BOTH ends — the composition and the forks — so it is
 // the only party that can compare them, and the comparison is its obligation.
 //
@@ -80,10 +80,10 @@ const DIVERGENCES = [
   {
     fork: 'storefront-coffee',
     app: 'demo-setup',
-    // ★ pk35, o corte — ESTA ENTRADA NÃO ESPERA POR NADA DESTE REPO. A ferramenta chegou (d3) e o café
-    // deixou de receber as marcas (d7): o que resta é DECISÃO do dono do fork, que desenha a marca por
-    // conta. ⛔ Por isso ela não carrega `until`: um `until` aqui prometeria uma morte que nenhuma
-    // condição de disco pode cumprir.
+    // ★ pk35, the cut — THIS ENTRY IS NOT WAITING ON ANYTHING IN THIS REPOSITORY. The tool landed (d3) and
+    // the café stopped receiving the marks (d7): what is left is the fork owner's DECISION, since the fork
+    // draws its own mark. ⛔ That is why it carries no `until`: an `until` here would promise a death no
+    // condition on disk can deliver.
     waitsOn: null,
     why:
       'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
@@ -91,8 +91,7 @@ const DIVERGENCES = [
       'pk32/p1-parto"); that tool SHIPPED — `@forgecommerce/surface-codegen` is in the release, the fork ' +
       'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
       'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
-      'would draw a second one. The rule that decides it is that a fork is the client\'s, with full ' +
-      'freedom over what it draws: when ' +
+      'would draw a second one. The rule decides it — A FORK BELONGS TO THE CUSTOMER, so when ' +
       'a fork draws for itself what a declared block would draw, the INSTANCE removes the placement (the ' +
       'shape `seed/outlet.mjs` already uses). ⇒ the fix is a seed change, not three gestures, and it is not ' +
       'this slice\'s to make. ★ pk35/d7 MADE IT: `seed/demo-setup.json` now declares `"cafe": null`, after ' +

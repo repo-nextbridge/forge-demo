@@ -1,7 +1,7 @@
 // ★★ THE RESET ENDS WARM, MEASURED AND REPORTED — and the three steps that do it are wired in ONE order.
 //
 // ⚠️ "GRADED" USED TO BE THE WORD, AND IT WOULD NOW BE A LIE. Step 14 stopped deciding the birth's exit code
-// on 05/09 (*"D1 - Pode ser só relatório"*): it still runs, still says everything, and no longer fails the
+// on 05/09, when warmth was demoted to a REPORT: it still runs, still says everything, and no longer fails the
 // birth on warmth — because it was red on EVERY run of this box by construction. What it still fails on is a
 // store `seed/box.json` declares and the box does not hold, which is not warmth at all. The tests below are
 // the record of that decision, in both directions.
@@ -74,7 +74,7 @@ test('★★ warming is once per tenant, with that tenant\'s own token — the r
 
 test('★★★ warming stopped being a GATE and did not stop RUNNING — the three ways that could have gone wrong', () => {
   const block = SRC.slice(at("say '14 ·"), at("say '14-bis ·"));
-  // 1 · not deleted, not silenced, not `|| true`d. Renan asked for a report, not for the step to go away.
+  // 1 · not deleted, not silenced, not `|| true`d. What was asked for is a report, not the step going away.
   assert.doesNotMatch(
     block,
     /warm-box\.mjs[^\n]*\|\|\s*true/,
@@ -113,7 +113,7 @@ test('★★★ warming stopped being a GATE and did not stop RUNNING — the th
   );
   assert.ok(
     !/\bCOLD\b/.test(conjunction),
-    `COLD is back in the exit conjunction: ${conjunction}\nIt was removed on purpose — the ` +
+    `COLD is back in the exit conjunction: ${conjunction}\nIt was removed on purpose on 05/09 — the ` +
       'warming step was red on every birth of this box by construction, so it graded nothing.',
   );
   assert.ok(conjunction.includes('MISSING_STORE'), `MISSING_STORE left the exit conjunction: ${conjunction}`);
@@ -186,7 +186,7 @@ test('★★ a birth with nothing wrong exits 0 — the control, without which e
 
 // ── ★★★ WARMTH IS A REPORT, AND THE SABOTAGE IS THAT IT STAYS ONE ────────────────────────────────────────
 //
-// Renan, 05/09: *"D1 - Pode ser só relatório"*. The step used to be in the conjunction below and it was red on
+// WARMTH WAS DEMOTED TO A REPORT ON 05/09. The step used to be in the conjunction below and it was red on
 // EVERY birth of this box by construction: the warmer plans ~420 pages plus ~20 400 image derivatives found in
 // the pages' `srcset`, against the VITRINE's own 15-minute DEFAULT (`DEFAULT_MAX_DURATION_MS`, in the
 // product), so every run ended `15865 urls were never visited`. It also produced FALSE red — `failed=198`
@@ -209,7 +209,7 @@ test('★★★ a tenant that did NOT come out warm still exits 0 — warmth is 
   assert.equal(
     status,
     0,
-    `a cold tenant failed the birth. Warmth was taken out of the conjunction on purpose — a ` +
+    `a cold tenant failed the birth. Warmth was taken out of the conjunction on purpose on 05/09 — a ` +
       `step that is red on every run grades nothing:\n${out}`,
   );
 });

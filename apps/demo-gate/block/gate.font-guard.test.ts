@@ -88,7 +88,7 @@ test('the gate imports no external font (no CDN, no @import)', () => {
 /**
  * ★ THE RULE IS «THIS DECLARATION CANNOT NEED A FONT THAT IS NOT ALREADY THERE», not «the word inherit».
  *
- * ⚠️ IT USED TO BE THE WORD, and pk35/d1 met the wall the word built: the owner's hub prints each tenant's
+ * ⚠️ IT USED TO BE THE WORD, and pk35/d1 met the wall the word built: the hub prints each tenant's
  * admin HOSTNAME in monospace (`design-base/gate.dc.html` does), and `ui-monospace, SFMono-Regular, Menlo,
  * monospace` is not a bespoke face — every token in it is either a generic CSS family or a face the operating
  * system already ships. Nothing is bundled and nothing is fetched, which is what DoD #5 is actually about, and

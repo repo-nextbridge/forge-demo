@@ -255,7 +255,7 @@ test("the six coffees carry a SHORT desc_totem — they are the ones whose parag
     const line = totem.publish_also.desc_totem?.[handle];
     assert.ok(line, `${handle} has no desc_totem — its card would show the shop's paragraph again`);
     // The whole point of the field is length. A "short" line longer than the paragraph it replaces would
-    // pass every other test in this file and still be the defect Renan reported.
+    // pass every other test in this file and still be the reported defect.
     assert.ok(line.length <= 60, `desc_totem of ${handle} is ${line.length} chars — that is not a card line`);
   }
 });
@@ -411,7 +411,7 @@ test('the registry hands back COPIES — a caller cannot mutate what the run rec
 // (2026-09-03). The premise does not survive reading the brief. The approved menu
 // (`forge-materials/DEMO2-CATALOGO-CAFE.md`, agreed 01/09) heads that section
 //
-//     ## 🥤 Especiais da Casa (geladas, chantilly, cúpula e canudo — pedido do Renan)
+//     ## 🥤 Especiais da Casa (geladas, chantilly, cúpula e canudo — …)
 //
 // and then lists every drink in it as "— P · G". The parenthetical is the section's ADJECTIVES — how the
 // drinks arrive on the counter — and the axis list is the line after each name. Nothing in that document,

@@ -51,7 +51,7 @@
 //
 // The worry is real — a directory entry saying `localhost` on an instance that goes public tomorrow is a lie
 // with a routing consequence. It does not apply here, twice over: the address is TRUE (this box is on
-// localhost, by Renan's decision that it is born there), and the directory is per-box, so no other instance
+// localhost, because the box is born there by decision), and the directory is per-box, so no other instance
 // can ever read it. What makes it safe is that ONE gesture moves the box, and it moves both registers: the
 // promotion rewrites the map, `FORGE_PUBLIC_ORIGIN` and — since this step — the directory, in the same run;
 // `--localhost` writes all three back. A rebirth resets all three to `localhost` together, which is exactly

@@ -19,7 +19,7 @@ const SLOT_OF = {
 // ⛔ THE FOURTH MARK LEFT IN pk28 AND THE SLOT DID NOT. `storefront:account.brand` — the login box — is drawn
 // by the CHECKOUT, which we host and nobody forks, so a mark there must be configurable without a fork: it is
 // the PRODUCT's job now (the OOTB `chrome` app), never an instance app's. The vitrine is the opposite, which
-// is why these three stayed. The owner, 09/09: «essas 3 são do storefront e a caixa de login é do checkout».
+// is why these three stayed: these three are the STOREFRONT's, and the login box is the CHECKOUT's.
 const GONE_TO_THE_PRODUCT = 'account_brand';
 
 describe('demo-setup manifest', () => {

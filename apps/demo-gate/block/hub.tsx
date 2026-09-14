@@ -1,6 +1,6 @@
 'use client';
 
-// ★★★ THE HUB — the gate's first screen, over every face this box publishes. The owner's 10/09 layout
+// ★★★ THE HUB — the gate's first screen, over every face this box publishes. The settled layout
 // (`design-base/gate.dc.html`), ported in pk35/d1.
 //
 // ── WHERE THE DESTINATIONS COME FROM, AND IT IS NOT THIS FILE ───────────────────────────────────────────
@@ -29,8 +29,8 @@
 // ⛔ THE COOKIE IS THIS ORIGIN'S, AND THAT IS A FACT ABOUT THE PRODUCT, NOT A CHOICE MADE HERE. `dismissGate`
 // writes `forge_gate_dismissed` with no `domain` attribute (packages/storefront-kit/src/gate/actions.ts:57-64
 // and src/cookies.ts, in the Forge monorepo), so the dismissal does NOT travel between the six hostnames: a
-// visitor who came through here meets the gate again on the next one. The owner decided otherwise on 13/09
-// («não tem problema o cookie valer para todas» ⇒ a `.forgecommerce.pro` cookie), and that decision lands in
+// visitor who came through here meets the gate again on the next one. The settled remedy is the opposite —
+// ONE dismissal valid for every face ⇒ a `.forgecommerce.pro` cookie — and that decision lands in
 // the KIT, not in this repository — see the head of `./gate`.
 
 import type { GateFace, GateTenant } from '../faces.generated';
@@ -211,7 +211,7 @@ function AdminFace({
   }
   return (
     // ⛔ ALWAYS A PLAIN LINK, on purpose. The admin is another origin, this cookie would not travel with the
-    // navigation, and the admin has no gate of its own by decision (pk33: «não precisa de portaria no admin»).
+    // navigation, and the admin has no gate of its own by decision (pk33: the admin needs no gate).
     <a className={styles.admin} href={url} target="_blank" rel="noreferrer" data-face={face.key}>
       {name}
       <span className={styles.adminHost}>{hostOf(url)} →</span>
