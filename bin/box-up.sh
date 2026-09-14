@@ -35,6 +35,9 @@
 #   3. provision-ref  × TENANT   tenant + its FIRST store + FIRST operator + login driver + admin-host claim
 #   4. admin-platform-token      the ONE box credential that lets one admin container serve both tenants
 #   5. kernel + edge + fronts    now that a tenant exists for them to serve (INCLUDING the coffee fork)
+#  5b. admin-access-key × TENANT  the REDEEMABLE key each tenant's `/enter` route trades for a session, so
+#                                the gate's "abrir o admin" lands signed in. Minted here because a box that
+#                                regenerates cannot ask a human to mint one after every rebirth
 #   6. seed-box.mjs   × TENANT   the remaining stores, the settings every screen inherits, and — for a
 #                                tenant the dataset is not about — its apps, its freight, its checkout flag
 #  6b. store-host.mjs × TENANT   the ROOT store CLAIMS this box's address in the kernel's directory, so
@@ -145,9 +148,10 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 3|provision-ref, once per tenant
 3b|the host → store map (the root of the shop)
 3c|the coffee fork edge rule
-3d|the admin sibling switcher
+3d|the admin sibling switcher and the gate’s per-tenant admin links
 4|admin-platform-token (the box credential that serves every tenant)
 5|kernel + edge + fronts
+5b|the gate’s /enter key, once per tenant
 6|seed-box (stores + settings), once per tenant
 6b|the root store claims the address this box publishes itself at
 7|the totem (needs the counter store id step 6 resolved)
@@ -371,10 +375,18 @@ DATASET_TENANTS="$(jq -r '.tenants[]|select(.dataset == true)|.id' "$BOX")"
      example catalogue this box mounts. Step 9 would fill nobody and the sports shop would be born empty.
      Mark the tenant the dataset is ABOUT — see the file's own \`_readme\`."
 
-secret_name_for() { # <tenant> <kind: seed|driver>
+secret_name_for() { # <tenant> <kind: seed|driver|access>
   # T1 keeps the unsuffixed names the box was born with, so nothing that already refers to them has to move.
+  # ⚠️ `access` IS THE GATE'S `/enter` KEY and it follows the same rule on purpose: three per-tenant secrets
+  # spelled three ways is three things to learn. `bin/admin-access-key.mjs::accessKeySecretName` is the other
+  # author of this rule — it is what `env-source.sh` reads the map back through — and the two are pinned to
+  # each other by `bin/admin-access-key.test.mjs`.
   local t="$1" kind="$2" base
-  base="$([ "$kind" = seed ] && echo forge-seed-token || echo forge-admin-service-token)"
+  case "$kind" in
+    seed)   base=forge-seed-token ;;
+    access) base=forge-admin-access-key ;;
+    *)      base=forge-admin-service-token ;;
+  esac
   if [ "$t" = "$(echo "$TENANTS" | head -1)" ]; then printf '%s' "$base"; else printf '%s-%s' "$base" "$t"; fi
 }
 
@@ -485,6 +497,25 @@ admin_siblings_json() { # [host] [overrides-json]
         , url: ( $ov[.id]
                  // ("http://" + (if $host == "" then .admin_host
                                   else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]' "$BOX"
+}
+
+# THE GATE'S ADMIN LINK PER TENANT, DERIVED FROM THE SAME DECLARATION (pk38/d8).
+#
+# `{"<tenant id>": "<absolute origin>"}` — what `apps/demo-gate` opens each tenant's `/enter` on. It is the
+# sibling switcher's map with the entries flattened to origins, and it is a FUNCTION of the same two inputs
+# for the same reason: a hostname is data this box declares once, and a third tenant must arrive in both
+# without a second edit.
+#
+# $1 / $2 are the sibling function's, and mean exactly the same thing there — see its header.
+admin_gate_urls_json() { # [host] [overrides-json]
+  local host="${1:-}" overrides="${2:-}"
+  [ -n "$overrides" ] || overrides='{}'
+  jq -c --arg host "$host" --argjson ov "$overrides" '[ .tenants[]
+      | { key: .id
+        , value: ( $ov[.id]
+                   // ("http://" + (if $host == "" then .admin_host
+                                    else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]
+      | from_entries' "$BOX"
 }
 
 # ── ★★ WHAT THE TAILNET ACTUALLY PUBLISHES — READ, NEVER ASSUMED (pk6·D2) ───────────────────────────────────
@@ -966,8 +997,8 @@ PYEOF
       origin="$(probe_origin "$PROMOTE_HOST")"
       note "nothing publishes :$hport — probed instead, and the origin is $origin"
     fi
-    # ★ THE GATE'S LINK TO THE ADMIN IS THE FIRST TENANT'S DOOR, spelled the way a browser opens it.
-    gate_admin=''
+    # ★ EVERY TENANT'S ADMIN DOOR, spelled the way a browser opens it — the map the sibling switcher and the
+    # gate's admin links are both derived from. One entry per tenant, never one door standing for the box.
     sib_overrides='{}'
     while read -r t lport sch prt; do
       [ -n "${t:-}" ] || continue
@@ -975,14 +1006,12 @@ PYEOF
       [ "$prt" = '-' ] && prt=''
       door="$(origin_for "$PROMOTE_HOST" "$sch" "$prt" "$lport")"
       sib_overrides="$(printf '%s' "$sib_overrides" | jq -c --arg t "$t" --arg u "$door" '. + {($t): $u}')"
-      [ -n "$gate_admin" ] || gate_admin="$door"
     done <<EOF
 $admin_doors
 EOF
     sib_host="$PROMOTE_HOST"
   else
     origin="http://localhost:${FORGE_HTTP_PORT:-8200}"
-    gate_admin=''
     sib_host=''
     sib_overrides='{}'
   fi
@@ -1084,10 +1113,14 @@ EOF
   # before this line is a read or a claim, so the refusal a few lines up is atomic.
   put_env FORGE_STORE_HOSTS "$store_hosts_value"
   put_env FORGE_PUBLIC_ORIGIN "$origin"
-  put_env FORGE_GATE_ADMIN_URL "$gate_admin"
+  # ★ ONE ORIGIN PER TENANT, AND `$sib_overrides` ALREADY IS THAT MAP. It was built above, tenant by tenant,
+  # from the door each admin is really published at here; the sibling list is derived from the same object.
+  # Handing the gate the FIRST entry — which is what a singular variable could do — gave one brand a working
+  # link and left the other pointing at a hostname this box does not answer.
+  put_env FORGE_GATE_ADMIN_URLS "'$(admin_gate_urls_json "$sib_host" "$sib_overrides")'"
   put_env FORGE_ADMIN_SIBLINGS "'$(admin_siblings_json "$sib_host" "$sib_overrides")'"
   note "host → store map rebuilt · $store_hosts_count hostname(s)"
-  note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URL · FORGE_ADMIN_SIBLINGS rewritten'
+  note 'FORGE_PUBLIC_ORIGIN · FORGE_GATE_ADMIN_URLS · FORGE_ADMIN_SIBLINGS rewritten'
 
   # ── ★ AND THE EDGE'S HOSTNAMES, FROM THE PLAN DERIVED ABOVE ────────────────────────────────────────────
   # One line per face, `NAME<TAB>value`, and the list is EMPTY on every destination that owes none — the way
@@ -1369,6 +1402,8 @@ dc run --rm kernel node dist/migrate.js 2>&1 | grep -E '^\[migrate\]' >&2 || die
 
 # ── 3 · provision-ref, once per tenant ──────────────────────────────────────────────────────────────────────
 say '3 · provision-ref (once per tenant)'
+# Per-tenant store ids, filled one line at a time by the loop below and written into `.env` by 3b.
+ADMIN_STORE_IDS='{}'
 for t in $TENANTS; do
   handle="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.handle' "$BOX")"
   name="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.name' "$BOX")"
@@ -1396,6 +1431,11 @@ for t in $TENANTS; do
   put_secret "$(secret_name_for "$t" seed)" "$op"   && s1=filed || s1='ABSENT'
   put_secret "$(secret_name_for "$t" driver)" "$drv" && s2=filed || s2='ABSENT'
   note "$t · store $handle = ${store:-?} · $(secret_name_for "$t" seed): $s1 · $(secret_name_for "$t" driver): $s2"
+  # ★ THE STORE THAT FIXES THIS TENANT ON THE PUBLIC REDEEM FACE (pk38/d8). The admin's `/enter` route trades
+  # a redeemable key for a session against `operator.access_key.redeem`, which is ANONYMOUS and therefore
+  # takes a STORE rather than a credential — the store is what says which tenant the key is checked against.
+  # It is collected HERE because this is where the id exists at all: a fresh ULID, minted seconds ago.
+  ADMIN_STORE_IDS="$(printf '%s' "$ADMIN_STORE_IDS" | jq -c --arg t "$t" --arg s "$store" '. + {($t): $s}')"
   # The ROOT store: the first tenant's bootstrap store. See the host-map block after this loop.
   [ "$t" = "$(echo "$TENANTS" | head -1)" ] && ROOT_STORE="$store"
   # The café's store id — the coffee fork's edge rule is generated from it below (3c).
@@ -1456,6 +1496,19 @@ PYEOF
   note "root → $ROOT_STORE ($(echo "$hosts" | wc -w) hostname(s), with and without :${FORGE_HTTP_PORT:-8200})"
 else
   note '⚠️ no root store id — the shop root will answer 404'
+fi
+
+# ── ★★ AND THE SAME LOOP'S OTHER ANSWER: WHICH STORE EACH TENANT'S `/enter` REDEEMS ON (pk38/d8) ───────────
+#
+# The admin's gate door trades a key for a session on `operator.access_key.redeem` — a PUBLIC command, so it
+# carries a store instead of a credential, and the store is what fixes the tenant the key is checked against.
+# One admin container serves both brands by hostname here, so it needs one store id per tenant rather than
+# one for the box. Written beside the host map because both are ids from step 3 and both die in a rebirth.
+if [ "$ADMIN_STORE_IDS" != '{}' ]; then
+  put_env FORGE_ADMIN_STORE_IDS "'$ADMIN_STORE_IDS'"
+  note "$(printf '%s' "$ADMIN_STORE_IDS" | jq -r 'length') tenant(s) have a store for the gate's /enter door"
+else
+  note '⚠️ no store ids — the gate’s admin door will fall through to the login screen'
 fi
 
 # ── 3c · THE COFFEE FORK'S EDGE RULE, generated from the id that was just provisioned ───────────────────────
@@ -1571,12 +1624,32 @@ else
   note 'purge secret already present'
 fi
 
-say '3d · the admin sibling switcher'
+say '3d · the admin sibling switcher and the gate’s per-tenant admin links'
 if siblings="$(admin_siblings_json)" && [ -n "$siblings" ] && [ "$siblings" != '[]' ]; then
   put_env FORGE_ADMIN_SIBLINGS "'$siblings'"
   note "$(echo "$TENANTS" | wc -w) admin door(s), from seed/box.json"
 else
   note '⚠️ seed/box.json yielded no sibling list — the admin shell renders without the switcher'
+fi
+
+# ── ★★★ THE GATE'S ADMIN LINKS, ONE PER TENANT, WRITTEN AT BIRTH AND NOT ONLY AT PROMOTION (pk38/d8) ───────
+#
+# ⛔ WHAT THIS REPAIRS, AND IT IS TWO THINGS AT ONCE. The variable used to be `FORGE_GATE_ADMIN_URL`, one
+# value, written by the PROMOTION alone. So on a box born on `localhost` — which is every bench, by decision
+# (§0b) — it was empty, and the hub drew both admin rows at the hostnames `seed/box.json` DECLARES, which
+# this machine does not publish: two links to nowhere on the first screen of the demo. And on a promoted box
+# it was filled from the FIRST door the directory accepted, so one brand's row worked and the other still
+# pointed at the declaration.
+#
+# ⇒ ONE ORIGIN PER TENANT, DERIVED FROM THE SAME `admin_host` THE SIBLING SWITCHER IS DERIVED FROM. A birth
+# writes the doors this box really listens on; the promotion rewrites the map with the doors it publishes
+# THERE. Both are `{"<tenant id>": "<origin>"}`, so a third tenant declared in `seed/box.json` arrives with
+# no second edit — and the hub can stop choosing which single face gets the truth.
+if gate_admin_urls="$(admin_gate_urls_json)" && [ -n "$gate_admin_urls" ] && [ "$gate_admin_urls" != '{}' ]; then
+  put_env FORGE_GATE_ADMIN_URLS "'$gate_admin_urls'"
+  note "$(printf '%s' "$gate_admin_urls" | jq -r 'length') admin link(s) for the gate, from seed/box.json"
+else
+  note '⚠️ seed/box.json yielded no admin link — the gate draws the DECLARED hostnames'
 fi
 
 # ── 4 · the box's own platform credential ───────────────────────────────────────────────────────────────────
@@ -1602,6 +1675,57 @@ for i in $(seq 1 30); do
 done
 [ "${code:-}" = 200 ] || die "the kernel never answered /health (last: ${code:-none}). \`docker compose logs kernel\`."
 note "edge ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/health → 200"
+
+# ── ★★★ 5b · THE TWO ADMINS' FRONT DOOR — ONE REDEEMABLE KEY PER TENANT (pk38/d8) ───────────────────────────
+#
+# ⛔ WHAT WAS MISSING, MEASURED. The gate's admin row sends an operator to `<admin>/enter`, which redeems an
+# operator access key SERVER-SIDE and lands signed in with no login screen. Nothing on this box ever MINTED
+# one: `FORGE_ADMIN_ACCESS_KEY` was declared in no `.env.example`, no compose file and no step of this script,
+# so that route read an absent variable and fell through to `/login` on every box this repository has built.
+#
+# ★ AND THAT IS WHY IT IS A STEP AND NOT A NOTE IN A RUNBOOK. This demo regenerates: a door that has to be
+# minted by hand after every rebirth is a door that is closed most of the time. The key is created THROUGH
+# THE PORT, per tenant, and filed in the secret store beside that tenant's other two credentials.
+#
+# ★ THE POSITION IS FORCED FROM BOTH SIDES. AFTER 5, because `operator.access_key.create` is a command and
+# the kernel has to be answering. BEFORE the admin serves anyone, which is why the container is recreated at
+# the end of this step: every variable it reads is read once, at boot, and a key written after that is a key
+# the running admin does not have — the files right, the box wrong, and nothing saying so.
+#
+# ⚠️ NO KEY IS EVER PRINTED. The script writes the raw key to stdout and its sentence for a human to stderr;
+# this captures stdout into a temp file, files it, and shreds the file — the same handling step 3's two
+# secrets get, for the same reason.
+say '5b · the gate’s /enter key, once per tenant'
+keys_filed=0
+for t in $TENANTS; do
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+  eval "tokval=\${$tokvar:-}"
+  if [ -z "$tokval" ]; then
+    note "⚠️ $t · no \$$tokvar in the environment — no key minted; its /enter falls through to the login screen"
+    continue
+  fi
+  out="$(mktemp)"
+  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/admin-access-key.mjs" \
+       --tenant "$t" --api "${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}" > "$out"; then
+    if put_secret "$(secret_name_for "$t" access)" "$(tail -1 "$out" | tr -d '\r\n')"; then
+      keys_filed=$((keys_filed + 1))
+      note "$t · $(secret_name_for "$t" access): filed"
+    else
+      note "⚠️ $t · the key could not be filed into .secrets"
+    fi
+  else
+    note "⚠️ $t · no key minted — its /enter falls through to the login screen"
+  fi
+  shred -u "$out" 2>/dev/null || rm -f "$out"
+done
+# ⚠️ ZERO OF N IS A STATE THE SCREEN WILL SHOW, so it is said out loud rather than derived from silence: with
+# no key at all the hub's admin rows still render and every one of them lands on a login form.
+note "$keys_filed of $(echo "$TENANTS" | wc -w) tenant(s) have a gate key"
+# The admin reads FORGE_ADMIN_ACCESS_KEYS / FORGE_ADMIN_STORE_IDS at BOOT, and both were written after it
+# started. Re-source first: the map is assembled from `.secrets` by `env-source.sh`, which last ran at step 5.
+# shellcheck disable=SC1091
+set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
+dc up -d --force-recreate admin >/dev/null 2>&1 || note '⚠️ the admin did not come back — `docker compose ps`'
 
 # ── 6 · the terrain, once per tenant ────────────────────────────────────────────────────────────────────────
 say '6 · seed-box (stores + settings, plus apps and freight for a non-dataset tenant, once per tenant)'

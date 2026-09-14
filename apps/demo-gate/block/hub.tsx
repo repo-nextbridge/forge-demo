@@ -138,8 +138,9 @@ export type HubProps = {
   lang: Lang;
   /** The host the browser asked for, as the server saw it. `undefined` when nothing could be read. */
   here?: string;
-  /** `FORGE_GATE_ADMIN_URL` — the FIRST tenant's admin as this box really publishes it. See `adminHrefOf`. */
-  adminUrl?: string;
+  /** `FORGE_GATE_ADMIN_URLS` — the admin origin PER TENANT, as this box really publishes it, keyed by tenant
+   *  id. A tenant absent from the map keeps the address `seed/box.json` declares for it. See `adminHrefOf`. */
+  adminUrls?: Readonly<Record<string, string>>;
   /** Face key → how many products that shop publishes, from `../counts`. Absent or `null` ⇒ no number. */
   counts?: ShopCounts;
   /** The slot's dismissal Server Action — the way IN, on this origin. */
@@ -309,7 +310,7 @@ function TenantCard({
   );
 }
 
-export function GateHub({ lang, here, adminUrl, counts, dismiss }: HubProps) {
+export function GateHub({ lang, here, adminUrls, counts, dismiss }: HubProps) {
   const t = HUB[lang];
   const tally = hubTally();
   /** Is the visitor standing on one of the faces this box publishes? If not, the foot carries the door. */
@@ -330,7 +331,7 @@ export function GateHub({ lang, here, adminUrl, counts, dismiss }: HubProps) {
             // ⚠️ ONLY THE FIRST TENANT'S. `FORGE_GATE_ADMIN_URL` is one value and `bin/box-up.sh` fills it
             // from the FIRST admin door the directory accepted; handing it to both cards would point the
             // café's admin row at the shoe brand's.
-            adminUrl={index === 0 ? adminUrl : undefined}
+            adminUrl={adminUrls?.[tenant.id]}
             counts={counts}
             dismiss={dismiss}
           />

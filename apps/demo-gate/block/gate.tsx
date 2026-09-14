@@ -64,8 +64,9 @@ export type GateBlockProps = {
   /** The "← back" target (the marketing site). */
   siteUrl: string;
   /** The FIRST tenant's admin origin as this box really publishes it (`FORGE_GATE_ADMIN_URL`); its row opens
-   *  `${adminUrl}/enter`, the server-side redeem handoff. Every other face is the declaration's. */
-  adminUrl?: string;
+   *  `${origin}/enter`, the server-side redeem handoff — one origin PER TENANT, keyed by tenant id. Every
+   *  face whose tenant is absent from the map keeps the address the declaration gives it. */
+  adminUrls?: Readonly<Record<string, string>>;
   /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
   here?: string;
   /** How big each shop is, read off the port by `../counts` on the server. Absent ⇒ no numbers, and the copy
@@ -82,7 +83,7 @@ type View = 'gate' | 'arch';
 
 export function GateBlock({
   siteUrl,
-  adminUrl,
+  adminUrls,
   here,
   counts,
   initialLang,
@@ -155,7 +156,7 @@ export function GateBlock({
           </p>
         </div>
 
-        <GateHub lang={lang} here={here} adminUrl={adminUrl} counts={counts} dismiss={dismiss} />
+        <GateHub lang={lang} here={here} adminUrls={adminUrls} counts={counts} dismiss={dismiss} />
 
         <div className={styles.foot}>
           <p className={styles.notice}>{hub.notice}</p>

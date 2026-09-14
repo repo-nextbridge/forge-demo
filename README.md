@@ -206,6 +206,7 @@ and whether every shop can be signed in to is not.
 | 3 | **`provision-ref` × tenant** | tenant + its FIRST store + FIRST operator + login driver + the admin-host claim |
 | 4 | `admin-platform-token` | the ONE box credential that lets one admin container serve both tenants |
 | 5 | kernel + edge + fronts | now that there is a tenant for them to serve |
+| 5b | **`admin-access-key.mjs` × tenant** | the **redeemable key each tenant's `/enter` route trades for a session**, so the gate's "abrir o admin" lands **signed in** instead of on a login screen. Here because the key is a kernel command (the port has to be answering) and because a box that regenerates cannot ask a human to mint one after every rebirth. The admin is recreated at the end of the step: it reads the map at BOOT |
 | 6 | **`seed-box.mjs` × tenant** | the remaining stores, the settings every screen inherits, and — for a tenant the mounted dataset is **not** about — its apps, its freight and its checkout flag |
 | 6b | **`store-host.mjs` × tenant** | the **root store claims this box's address** in the kernel's directory (`tenant.store.update` → `host`), so `read.store.by_host` answers it. Without it the fronts route through their `FORGE_STORE_HOSTS` override and every consumer that asks the PORT — the warmer's address space first — is wrong while the shop looks perfect |
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
@@ -392,7 +393,7 @@ every face it declares must be published there** — and compares each face with
 | the address the box publishes itself at | `FORGE_PUBLIC_ORIGIN`, probed with a `Host:` header through the edge |
 | the shop, at every hostname it claims | every key of `FORGE_STORE_HOSTS` |
 | one admin door per tenant, on that hostname, **claimed in the directory** | `seed/box.json` × `FORGE_ADMIN_SIBLINGS` × `read.admin.by_host` |
-| the link the gate sends an operator to | `FORGE_GATE_ADMIN_URL` × the directory |
+| the link the gate sends an operator to, **one per tenant** | `FORGE_GATE_ADMIN_URLS` × the directory |
 | the purge secret | `FORGE_REVALIDATE_SECRET` |
 | **any address ON THIS BOX that a promotion would not move** | the `put_env` calls parsed out of `box-up.sh`'s own promotion block |
 | what only exists online | `seed/box.json` → `online_only` |
@@ -508,7 +509,7 @@ destination the doors are the box's own ports, and the run says so rather than i
 
 It rebuilds the host → store map, re-points `FORGE_PUBLIC_ORIGIN` (**not cosmetic** — the kernel mints every
 product-image URL from it, so a box reached over the tailnet with `localhost` here serves a catalogue of
-images a phone cannot fetch, and nothing logs an error) and `FORGE_GATE_ADMIN_URL`, re-derives the sibling
+images a phone cannot fetch, and nothing logs an error) and `FORGE_GATE_ADMIN_URLS`, re-derives the sibling
 list against the new hostname, claims each tenant's admin door **through the port** (`admin-host.js`, the same
 two platform commands `provision-ref` drives — never a second write path), and recreates the services that
 read all of it at boot. Idempotent and reversible; it touches no store, product or order.
@@ -1529,7 +1530,7 @@ seam is still there for an app of ACTIONS ONLY, which needs no rebuild.
 may never be promoted as a Forge release artifact — `forge.lock` says so in `offerable`, and Forge's own
 release gate refuses it. This is a property of what this box asked for, not a defect.
 
-⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URL` are now read by the FRONTS, not by the kernel.** The gate's
+⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URLS` are now read by the FRONTS, not by the kernel.** The gate's
 entry is a Server Component in the storefront and the checkout, so its wiring lives where the component runs
 (`compose.yml` sets both on those two services). They never reach the browser.
 

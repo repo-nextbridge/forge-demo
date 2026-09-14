@@ -65,12 +65,12 @@ export async function GateInterstitial({
   store: string;
   dismiss: () => Promise<void>;
 }) {
-  const { siteUrl, adminUrl } = gateWiring();
+  const { siteUrl, adminUrls } = gateWiring();
   const here = await requestHost();
   return (
     <GateBlock
       siteUrl={siteUrl}
-      adminUrl={adminUrl}
+      adminUrls={adminUrls}
       here={here}
       counts={await readShopCounts({ here, store })}
       initialLang={await initialLang()}

@@ -120,7 +120,7 @@ test('★★ A15 — the promotion is idempotent: every .env value is REWRITTEN,
       'wins for compose while `source` also takes the last, so the box would look right and drift on the ' +
       'third run. Every write goes through `put_env`, which rewrites in place.',
   );
-  for (const name of ['FORGE_STORE_HOSTS', 'FORGE_PUBLIC_ORIGIN', 'FORGE_GATE_ADMIN_URL', 'FORGE_ADMIN_SIBLINGS']) {
+  for (const name of ['FORGE_STORE_HOSTS', 'FORGE_PUBLIC_ORIGIN', 'FORGE_GATE_ADMIN_URLS', 'FORGE_ADMIN_SIBLINGS']) {
     assert.match(block[1], new RegExp(`put_env ${name}`), `the promotion never rewrites ${name} — A15 lists it as one of the values a rebirth loses.`);
   }
   // The admin doors are claimed THROUGH THE PORT. A cutover that wrote admin_directory by hand would be a
@@ -477,7 +477,13 @@ test('★★★ pk6·D2 — `--tailnet` claims the PUBLISHED door, not the inter
 
   // 5 · the three .env values a front reads at boot.
   assert.equal(env.FORGE_PUBLIC_ORIGIN, `https://${FAKE_TAILNET_HOST}`, 'the vitrine is published on 443, so the origin is the bare https host (a browser omits 443).');
-  assert.equal(env.FORGE_GATE_ADMIN_URL, `https://${FAKE_TAILNET_HOST}:8443`, "the gate's link to the admin still points at a door that cannot hold a session.");
+  // ★★★ ONE ORIGIN PER TENANT — the gate's admin rows are as many as the brands, and the map has to carry
+  //     every one of them. While this was a single value the SECOND brand's row kept the declared hostname.
+  assert.deepEqual(
+    JSON.parse(env.FORGE_GATE_ADMIN_URLS.replace(/^'|'$/g, '')),
+    { forgeco: `https://${FAKE_TAILNET_HOST}:8443`, forgecafe: `https://${FAKE_TAILNET_HOST}:8444` },
+    "the gate's links to the admins do not carry one published door per tenant.",
+  );
   const siblings = JSON.parse(env.FORGE_ADMIN_SIBLINGS.replace(/^'|'$/g, ''));
   assert.deepEqual(
     siblings.map((s) => s.url).sort(),
@@ -519,7 +525,10 @@ test('★★ pk6·D2 — with nothing published AND the doors on the network, th
   assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8201 forgeco`), `the fallback stopped claiming the direct port. Calls:\n  ${calls.join('\n  ')}`);
   assert.ok(calls.includes(`set ${FAKE_TAILNET_HOST}:8202 forgecafe`), `the fallback stopped claiming the direct port. Calls:\n  ${calls.join('\n  ')}`);
   assert.equal(env.FORGE_PUBLIC_ORIGIN, `http://${FAKE_TAILNET_HOST}:8200`, 'with no published door and no TLS on 443, the origin is the port this box listens on.');
-  assert.equal(env.FORGE_GATE_ADMIN_URL, `http://${FAKE_TAILNET_HOST}:8201`);
+  assert.deepEqual(JSON.parse(env.FORGE_GATE_ADMIN_URLS.replace(/^'|'$/g, '')), {
+    forgeco: `http://${FAKE_TAILNET_HOST}:8201`,
+    forgecafe: `http://${FAKE_TAILNET_HOST}:8202`,
+  });
 });
 
 // ── pk24/d4 · A PROMOTION TO AN ADDRESS NOTHING ANSWERS IS NOT A PROMOTION ────────────────────────────────
@@ -610,7 +619,11 @@ test('★★ pk6·D2 — `--localhost` releases BOTH spellings and puts the box 
     `the reverse touched a local claim, which is the door it is putting the box back onto:\n  ${calls.join('\n  ')}`,
   );
   assert.equal(env.FORGE_PUBLIC_ORIGIN, 'http://localhost:8200');
-  assert.equal(env.FORGE_GATE_ADMIN_URL, '');
+  assert.deepEqual(
+    JSON.parse(env.FORGE_GATE_ADMIN_URLS.replace(/^'|'$/g, '')),
+    { forgeco: 'http://localhost:8201', forgecafe: 'http://localhost:8202' },
+    'the way back left the gate pointing at the network the box no longer serves.',
+  );
   const siblings = JSON.parse(env.FORGE_ADMIN_SIBLINGS.replace(/^'|'$/g, ''));
   assert.deepEqual(siblings.map((s) => s.url).sort(), ['http://localhost:8201', 'http://localhost:8202']);
 });
@@ -685,7 +698,10 @@ test('★★★ pk24·§B5 — `--promote <hostname>` points the box at a public
   );
   // 3 · the three values a front reads at boot, pointed at the public address.
   assert.equal(env.FORGE_PUBLIC_ORIGIN, `http://${FAKE_PUBLIC_HOST}:8200`, 'the kernel would keep minting image URLs at localhost.');
-  assert.equal(env.FORGE_GATE_ADMIN_URL, `http://${FAKE_PUBLIC_HOST}:8201`);
+  assert.deepEqual(JSON.parse(env.FORGE_GATE_ADMIN_URLS.replace(/^'|'$/g, '')), {
+    forgeco: `http://${FAKE_PUBLIC_HOST}:8201`,
+    forgecafe: `http://${FAKE_PUBLIC_HOST}:8202`,
+  });
   const map = JSON.parse(env.FORGE_STORE_HOSTS.replace(/^'|'$/g, ''));
   assert.ok(map[FAKE_PUBLIC_HOST], '`store.host` is what ROUTES — a hostname the box does not hold is a 404 with nothing saying why.');
   assert.ok(map.localhost, 'localhost lost its store; the laptop is how this box is worked on.');
@@ -926,7 +942,7 @@ test('★★★ pk7·D1 — a box that was never born REFUSES the promotion inst
     `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
     'the refused promotion rewrote the host → store map.',
   );
-  assert.ok(!('FORGE_GATE_ADMIN_URL' in env), 'the refused promotion wrote FORGE_GATE_ADMIN_URL.');
+  assert.ok(!('FORGE_GATE_ADMIN_URLS' in env), 'the refused promotion wrote FORGE_GATE_ADMIN_URLS.');
   assert.ok(!('FORGE_ADMIN_SIBLINGS' in env), 'the refused promotion wrote FORGE_ADMIN_SIBLINGS.');
 });
 

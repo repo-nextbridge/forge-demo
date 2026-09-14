@@ -11,9 +11,8 @@
 //     `seed/box.json` — `localhost:8201` and `localhost:8202`;
 //   · step 3b rewrites FORGE_STORE_HOSTS and DOES include $FORGE_TAILNET_HOST, so the SHOP still answers on
 //     the network;
-//   · step 3d rewrites FORGE_ADMIN_SIBLINGS back to `localhost`;
-//   · FORGE_PUBLIC_ORIGIN and FORGE_GATE_ADMIN_URL are never written at birth (the only `put_env` calls
-//     outside the promotion block are the purge secret and the sibling list), so they stay on the tailnet.
+//   · step 3d rewrites FORGE_ADMIN_SIBLINGS and FORGE_GATE_ADMIN_URLS back to `localhost`;
+//   · FORGE_PUBLIC_ORIGIN is never written at birth, so it stays on the tailnet.
 //
 // ⇒ the shop opens over the tailnet and the admin refuses the login with `unknown_admin_host`. The birth
 // exits 0, and the only thing that ever said otherwise was one sentence at the bottom of a 400-line
@@ -30,7 +29,7 @@
 //     THIS BOX PUBLISHES ITSELF AT ONE ADDRESS, AND EVERY FACE IT DECLARES MUST BE PUBLISHED THERE TOO.
 //
 // The address is `FORGE_PUBLIC_ORIGIN`. The faces are whatever `.env` declares — the shop's host map, the
-// admin doors, the gate's link — and each is compared with what THE BOX ANSWERS, never with a copy of what
+// admin doors, the gate's links — and each is compared with what THE BOX ANSWERS, never with a copy of what
 // it should answer. The last check turns the rule on the file itself: any FORGE_* variable holding an
 // address ON THIS BOX'S OWN HOSTNAMES that the promotion does not rewrite is named, because the next reset
 // will leave it pointing at the network the box used to be on. Nobody has to have remembered it.
@@ -332,9 +331,9 @@ for (const spec of BOX.tenants) {
         spec.id,
         `its admin is published at ${resolved.url.hostname} while this box publishes itself at ` +
           `${PUBLISHED_HOST}. THE BOX IS HALF PROMOTED: the shop answers on ${PUBLISHED_HOST} and the admin ` +
-          'does not. A rebirth destroys the directory and rewrites the sibling list, and rewrites neither ' +
-          'FORGE_PUBLIC_ORIGIN nor FORGE_GATE_ADMIN_URL — so this is what a `box-down` + `box-up` on a ' +
-          'promoted box leaves behind. Run `bash bin/box-up.sh --tailnet`.',
+          'does not. A rebirth destroys the directory and rewrites the sibling list and the gate links back ' +
+          'to localhost, and never rewrites FORGE_PUBLIC_ORIGIN — so this is what a `box-down` + `box-up` ' +
+          'on a promoted box leaves behind. Run `bash bin/box-up.sh --tailnet`.',
       );
       continue;
     }
@@ -348,28 +347,67 @@ for (const spec of BOX.tenants) {
 }
 say();
 
-// ── 3 · the gate's link, which is the address an operator is SENT to ─────────────────────────────────────
+// ── 3 · the gate's links, which are the addresses an operator is SENT to ─────────────────────────────────
+//
+// ★ ONE PER TENANT SINCE pk38/d8, and the plural is the point: while this was a single value it could only
+// be right for ONE of the hub's admin rows, and the other silently kept the DECLARED hostname. So every
+// entry is graded, and a tenant the map does not name is NAMED as unlinked rather than passed over — a row
+// on that screen is about to send somebody to an address nobody wrote down.
 say('THE GATE · where the front sends an operator who clicks through to the admin');
-if (!declared.FORGE_GATE_ADMIN_URL) {
-  noted('FORGE_GATE_ADMIN_URL', 'empty — the gate shows no admin link (this is the value a localhost birth leaves)');
-} else {
-  let url;
-  try {
-    url = new URL(declared.FORGE_GATE_ADMIN_URL);
-  } catch {
-    url = null;
-    bad('FORGE_GATE_ADMIN_URL', `is not a url: "${declared.FORGE_GATE_ADMIN_URL}"`);
+{
+  let gateUrls = {};
+  let parsed = true;
+  if (declared.FORGE_GATE_ADMIN_URLS) {
+    try {
+      const doc = JSON.parse(declared.FORGE_GATE_ADMIN_URLS);
+      if (doc && typeof doc === 'object' && !Array.isArray(doc)) gateUrls = doc;
+      else parsed = false;
+    } catch {
+      parsed = false;
+    }
   }
-  if (url) {
-    const tenant = await adminDoorTenant(authorityOf(url));
-    if (typeof tenant === 'string') ok('FORGE_GATE_ADMIN_URL', `${url.origin} → ${tenant}`);
-    else if (tenant === null) {
+  if (!parsed) {
+    bad('FORGE_GATE_ADMIN_URLS', 'is not a JSON object of `{tenant: origin}` — the gate reads it as EMPTY and draws the declared hostnames.');
+  } else if (Object.keys(gateUrls).length === 0) {
+    noted('FORGE_GATE_ADMIN_URLS', 'empty — every admin row on the gate falls back to the hostname seed/box.json declares');
+  }
+  for (const tenant of (BOX.tenants ?? []).map((t) => t.id)) {
+    const origin = gateUrls[tenant];
+    if (!origin) {
+      if (parsed && Object.keys(gateUrls).length > 0) {
+        bad(
+          `FORGE_GATE_ADMIN_URLS[${tenant}]`,
+          'is missing while its siblings are declared — that tenant’s admin row falls back to the declared ' +
+            'hostname while the others point at this box. Re-run the birth (step 3d) or the promotion.',
+        );
+      }
+      continue;
+    }
+    let url;
+    try {
+      url = new URL(origin);
+    } catch {
+      bad(`FORGE_GATE_ADMIN_URLS[${tenant}]`, `is not a url: "${origin}"`);
+      continue;
+    }
+    const resolved = await adminDoorTenant(authorityOf(url));
+    if (resolved === tenant) ok(`FORGE_GATE_ADMIN_URLS[${tenant}]`, `${url.origin} → ${resolved}`);
+    else if (typeof resolved === 'string') {
+      // ⛔ THE LEAK THIS CATCHES: a row that opens the OTHER brand's admin. `/enter` signs the visitor into
+      // whichever tenant the hostname resolves to, so a crossed entry is a door into somebody else's shop.
       bad(
-        'FORGE_GATE_ADMIN_URL',
+        `FORGE_GATE_ADMIN_URLS[${tenant}]`,
+        `${url.origin} is claimed by "${resolved}" — this row would send an operator into ANOTHER tenant's admin.`,
+      );
+    } else if (resolved === null) {
+      bad(
+        `FORGE_GATE_ADMIN_URLS[${tenant}]`,
         `${url.origin} — the directory holds no claim for ${authorityOf(url)}. An operator who follows this ` +
           'link gets a login page that refuses with `unknown_admin_host`.',
       );
-    } else bad('FORGE_GATE_ADMIN_URL', `the directory could not be asked about ${authorityOf(url)}: ${JSON.stringify(tenant)}`);
+    } else {
+      bad(`FORGE_GATE_ADMIN_URLS[${tenant}]`, `the directory could not be asked about ${authorityOf(url)}: ${JSON.stringify(resolved)}`);
+    }
   }
 }
 say();
@@ -467,6 +505,65 @@ say('THE FACES THIS BOX DECLARES · one hostname per store and per tenant admin 
       } else {
         ok(`${face.label} — ${value}`, `→ ${store} in the kernel's directory`);
       }
+    }
+  }
+}
+say();
+
+// ── 3c · ★★★ THE GATE'S `/enter` DOOR, ONE PER TENANT — the half that is NOT a secret (pk38/d8) ──────────
+//
+// The admin trades a redeemable key for a signed-in session on the kernel's PUBLIC redeem face, which takes
+// no credential — so a STORE is what fixes which tenant the key is checked against, and the admin needs one
+// store id per tenant. The KEY itself is a secret and is never in this file, which is why this section
+// grades what it CAN see: ⛔ a tenant with no store id here has no gate door, whatever the secret store
+// holds, so the absence is a complete answer on its own and it is the half a `.env` carried over from
+// another box gets wrong (the ids are fresh ULIDs at every birth).
+say('THE GATE’S /enter DOOR · the store each tenant’s key is redeemed on (the key itself is a secret)');
+{
+  let storeIds = {};
+  let parsed = true;
+  if (declared.FORGE_ADMIN_STORE_IDS) {
+    try {
+      const doc = JSON.parse(declared.FORGE_ADMIN_STORE_IDS);
+      if (doc && typeof doc === 'object' && !Array.isArray(doc)) storeIds = doc;
+      else parsed = false;
+    } catch {
+      parsed = false;
+    }
+  }
+  if (!parsed) {
+    bad('FORGE_ADMIN_STORE_IDS', 'is not a JSON object of `{tenant: store id}` — no tenant has a gate door.');
+  } else if (Object.keys(storeIds).length === 0) {
+    noted('FORGE_ADMIN_STORE_IDS', 'empty — every "abrir o admin" lands on a login screen (step 3b of the birth writes it)');
+  }
+  for (const tenant of (BOX.tenants ?? []).map((t) => t.id)) {
+    const store = storeIds[tenant];
+    if (!store) {
+      if (parsed && Object.keys(storeIds).length > 0) {
+        bad(
+          `FORGE_ADMIN_STORE_IDS[${tenant}]`,
+          'is missing while its siblings are declared — that brand’s admin has no gate door and falls through ' +
+            'to its login screen. ⛔ It must never take another tenant’s entry, so re-run the birth.',
+        );
+      }
+      continue;
+    }
+    // ⛔ TWO BRANDS ON ONE STORE IS A CROSSED DOOR, and it is the one wrong ANSWER this section can see
+    // without a credential: the port publishes no anonymous read from a store id back to its tenant, so
+    // "whose store is this" cannot be asked here. A duplicate can: the store fixes the tenant on the redeem,
+    // so two tenants sharing one store id means one of them is redeeming against the other's brand — which
+    // the kernel refuses, leaving a door that is dead for a reason nothing on the screen explains.
+    const alsoClaimedBy = Object.entries(storeIds)
+      .filter(([other, id]) => other !== tenant && id === store)
+      .map(([other]) => other);
+    if (alsoClaimedBy.length > 0) {
+      bad(
+        `FORGE_ADMIN_STORE_IDS[${tenant}]`,
+        `${store} is also declared for ${alsoClaimedBy.join(', ')} — the store is what fixes the tenant on ` +
+          'the redeem, so one of these brands is redeeming against the other and the kernel refuses it.',
+      );
+    } else {
+      ok(`FORGE_ADMIN_STORE_IDS[${tenant}]`, `${store} — this tenant has a gate door`);
     }
   }
 }

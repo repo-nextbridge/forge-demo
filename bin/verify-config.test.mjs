@@ -149,7 +149,16 @@ function envFor(mode, overrides = {}) {
     FORGE_PUBLIC_ORIGIN: mode === 'tailnet' ? `https://${NET}` : 'http://localhost:8200',
     FORGE_STORE_HOSTS: `'${JSON.stringify(storeMap)}'`,
     FORGE_ADMIN_SIBLINGS: `'${JSON.stringify(doors)}'`,
-    FORGE_GATE_ADMIN_URL: doors[0].url,
+    // ★ ONE ORIGIN PER TENANT since pk38/d8 — the gate draws one admin row per brand, so a single value
+    //   could only ever be right for one of them. Built from the same `doors` the switcher is built from.
+    FORGE_GATE_ADMIN_URLS: `'${JSON.stringify(
+      Object.fromEntries(BOX.tenants.map((t, i) => [t.id, doors[i].url])),
+    )}'`,
+    // ★ pk38/d8 — one store per tenant, the non-secret half of the gate's `/enter` door. Written by step 3b
+    //   from the ids provision-ref returned, so on a real box every tenant has one and none is shared.
+    FORGE_ADMIN_STORE_IDS: `'${JSON.stringify(
+      Object.fromEntries(BOX.tenants.map((t, i) => [t.id, `sto_GATE_${i}`])),
+    )}'`,
     FORGE_REVALIDATE_SECRET: 'a-real-secret',
     FORGE_STOREFRONT_URL: 'http://storefront:3000',
     FORGE_GATE_SITE_URL: 'https://forgecommerce.pro',
@@ -282,7 +291,7 @@ test('★★★ a rebirth DE-PROMOTES the admin, and the verdict accuses it by t
   //     and `localhost:8202`, from seed/box.json;
   //   · step 3b rewrites FORGE_STORE_HOSTS and DOES include $FORGE_TAILNET_HOST, so the SHOP still answers;
   //   · step 3d rewrites FORGE_ADMIN_SIBLINGS back to localhost;
-  //   · FORGE_PUBLIC_ORIGIN and FORGE_GATE_ADMIN_URL are never written at birth, so they stay on the tailnet.
+  //   · FORGE_PUBLIC_ORIGIN is never written at birth, so it stays on the tailnet.
   // The box is therefore HALF PROMOTED: the shop opens over the tailnet and the admin refuses.
   const box = await fakeBox({
     storeHosts: ['localhost', 'localhost:8200', NET, `${NET}:8200`],
@@ -325,11 +334,58 @@ test('★★★ …and the accusation is not cosmetic: the directory really has 
 test('★★ the gate sending an operator to a door the directory does not hold is NAMED', async () => {
   const box = await fakeBox(wholeLocalhost);
   try {
-    const env = envFor('localhost', { FORGE_GATE_ADMIN_URL: 'http://localhost:8299' });
+    const first = BOX.tenants[0].id;
+    const env = envFor('localhost', {
+      FORGE_GATE_ADMIN_URLS: `'${JSON.stringify({
+        ...Object.fromEntries(BOX.tenants.map((t) => [t.id, `http://${t.admin_host}`])),
+        [first]: 'http://localhost:8299',
+      })}'`,
+    });
     const { stdout, status } = await runVerdict({ box, env });
     assert.equal(status, 1, stdout);
-    assert.match(stdout, /FORGE_GATE_ADMIN_URL/, `the verdict does not name the variable:\n${stdout}`);
+    assert.match(stdout, /FORGE_GATE_ADMIN_URLS/, `the verdict does not name the variable:\n${stdout}`);
     assert.match(stdout, /8299/, stdout);
+    // …and it says WHICH tenant's row is the dead one: with two brands on the screen, "the gate link is
+    // broken" is not an instruction anybody can act on.
+    assert.match(stdout, new RegExp(`FORGE_GATE_ADMIN_URLS\\[${first}\\]`), stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk38/d8 — a tenant MISSING from the gate map is named, never passed over in silence', async () => {
+  // ⛔ THE SHAPE THIS FORBIDS. While the variable was singular, exactly one brand's row carried the door this
+  // box answers on and the other silently kept the hostname `seed/box.json` declares — a link to nowhere,
+  // reported by nothing. A half-filled map is that same state, so it is a ✗ with the tenant named.
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const missing = BOX.tenants[1].id;
+    const env = envFor('localhost', {
+      FORGE_GATE_ADMIN_URLS: `'${JSON.stringify({ [BOX.tenants[0].id]: `http://${BOX.tenants[0].admin_host}` })}'`,
+    });
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, stdout);
+    assert.match(stdout, new RegExp(`FORGE_GATE_ADMIN_URLS\\[${missing}\\]`), stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk38/d8 — a gate link claimed by ANOTHER tenant is red: that row opens somebody else’s admin', async () => {
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const [a, b] = BOX.tenants;
+    const env = envFor('localhost', {
+      // The two entries are SWAPPED: each brand's row points at the other brand's admin door, which the
+      // directory really holds — so every "is it claimed?" check passes and the doors are still crossed.
+      FORGE_GATE_ADMIN_URLS: `'${JSON.stringify({
+        [a.id]: `http://${b.admin_host}`,
+        [b.id]: `http://${a.admin_host}`,
+      })}'`,
+    });
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, stdout);
+    assert.match(stdout, /ANOTHER tenant/, `a crossed gate link came out settled:\n${stdout}`);
   } finally {
     box.close();
   }
@@ -662,4 +718,39 @@ test('★★ a box that does not answer at all is THIS STEP failing to ask — e
   const { stdout, status } = await runVerdict({ box, env: envFor('localhost'), apiOverride: 'http://127.0.0.1:1' });
   assert.equal(status, 2, `an unreachable box was reported as a configuration defect:\n${stdout}`);
   assert.match(stdout, /⚑/, stdout);
+});
+
+test('★★★ pk38/d8 — a tenant with no store for its `/enter` door is NAMED, not passed over', async () => {
+  // ⛔ A brand with no entry has no gate door at all, whatever the secret store holds — and the screen still
+  // draws its admin row. Half a map is the state nobody chose, so it is a ✗ that names the brand.
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const missing = BOX.tenants[1].id;
+    const env = envFor('localhost', {
+      FORGE_ADMIN_STORE_IDS: `'${JSON.stringify({ [BOX.tenants[0].id]: 'sto_GATE_0' })}'`,
+    });
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, stdout);
+    assert.match(stdout, new RegExp(`FORGE_ADMIN_STORE_IDS\\[${missing}\\]`), stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ pk38/d8 — TWO brands on ONE store is a crossed door, and it is red', async () => {
+  // The store is what fixes the tenant on the PUBLIC redeem face, so a shared id means one brand redeems
+  // against the other's — refused by the kernel, with nothing on the gate saying why.
+  const box = await fakeBox(wholeLocalhost);
+  try {
+    const env = envFor('localhost', {
+      FORGE_ADMIN_STORE_IDS: `'${JSON.stringify(
+        Object.fromEntries(BOX.tenants.map((t) => [t.id, 'sto_SHARED'])),
+      )}'`,
+    });
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, stdout);
+    assert.match(stdout, /also declared for/, `a shared gate store came out settled:\n${stdout}`);
+  } finally {
+    box.close();
+  }
 });

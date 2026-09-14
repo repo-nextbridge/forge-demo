@@ -219,6 +219,40 @@ export FORGE_SEED_TOKEN="$(optional_secret forge-seed-token)"
 # Both are printed once by their own `provision-ref` run and captured into `.secrets`; neither is ever echoed.
 export FORGE_SEED_TOKEN_FORGECAFE="$(optional_secret forge-seed-token-forgecafe)"
 
+# ★★★ THE TWO ADMINS' FRONT DOOR — ONE REDEEMABLE KEY PER TENANT (pk38/d8).
+#
+# `FORGE_ADMIN_ACCESS_KEYS` is `{"<tenant id>": {"store": "<store id>", "key": "<key>"}}`, and the admin's
+# `/enter` route redeems the entry for the tenant the request's hostname resolves to (`read.admin.by_host`):
+# an operator who clicks "abrir o admin" on the gate lands SIGNED IN, with no login screen and no code in an
+# inbox. The key never reaches a browser — `/enter` redeems it server-side and sets the session cookie
+# itself. The `store` rides along because the kernel's redeem face is PUBLIC: it takes a store instead of a
+# credential, and the store is what fixes which tenant the key is checked against.
+#
+# ⛔ WHY IT IS A MAP AND NOT A KEY. One admin container serves BOTH brands here, by hostname; a single key
+# belongs to ONE tenant and is redeemed store-scoped, so handing one value to that container would sign a
+# visitor on hostname B into tenant A. That is the front-door leak the product's route refuses to guess its
+# way around, and the answer is per-tenant configuration rather than a relaxed refusal.
+#
+# ★ IT IS ASSEMBLED BY `bin/admin-access-key.mjs --declare` RATHER THAN HERE, so the rule for where a
+# tenant's key is filed (`forge-admin-access-key`, and `-<tenant>` for every tenant after the first — the
+# same shape as the seed tokens above) has ONE author. That script merges the secret half with the store ids
+# `.env` declares (`FORGE_ADMIN_STORE_IDS`, written by the birth).
+#
+# ★★★ AN ENTRY IS WHOLE OR ABSENT, NEVER BORROWED. A tenant missing a key or a store is dropped from the map
+# and its admin behaves exactly as an unconfigured instance always did — it shows its login screen. It must
+# never take the neighbour's entry: that is the front-door leak this whole shape exists to prevent.
+#
+# ⚠️ EMPTY OBJECT, NEVER EMPTY STRING, and never an error. This is sourced on machines mid-setup, on a box
+# with no `.secrets` yet, and by a shell with no node on PATH; each of those is "this box declares no door",
+# which is a state — not a reason to refuse to export the rest of the environment.
+_forge_admin_access_keys() {
+  local dir
+  dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  command -v node >/dev/null 2>&1 || { printf '{}'; return 0; }
+  node "$dir/bin/admin-access-key.mjs" --declare 2>/dev/null || printf '{}'
+}
+export FORGE_ADMIN_ACCESS_KEYS="$(_forge_admin_access_keys)"
+
 # WHICH TENANT the seed writes to. It is NOT a secret and it already lives in `.env` — but `.env` is read by
 # COMPOSE and not by your shell, so a script you run by hand would not see it. One line, so `node
 # bin/seed.mjs` works in the same shell that just sourced this file.

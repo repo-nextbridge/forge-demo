@@ -190,7 +190,7 @@ services:
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
-      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+      FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
       NODE_ENV: production
       PORT: 3000
       FORGE_READ_BASE_URL: http://kernel:3000
@@ -243,7 +243,7 @@ services:
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
-      FORGE_GATE_ADMIN_URL: ${FORGE_GATE_ADMIN_URL:-}
+      FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
       NODE_ENV: production
       PORT: 3000
       FORGE_READ_BASE_URL: http://kernel:3000
@@ -286,6 +286,25 @@ services:
       FORGE_ADMIN_TENANT: ${FORGE_ADMIN_TENANT?set FORGE_ADMIN_TENANT in .env to the tenant id this admin manages, or leave it EMPTY for a box that serves several brands by hostname}
       FORGE_ADMIN_SERVICE_TOKEN: ${FORGE_ADMIN_SERVICE_TOKEN:-}
       FORGE_ADMIN_PLATFORM_TOKEN: ${FORGE_ADMIN_PLATFORM_TOKEN:-}
+      # ★★★ THE GATE'S `/enter` DOOR, ONE ENTRY PER TENANT (pk38/d8) — what makes "abrir o admin" land SIGNED
+      # IN instead of on a login screen, and what makes a REGENERATED box need no gesture from anybody.
+      #
+      #     {"<tenant id>": {"store": "<store id>", "key": "<redeemable key>"}}
+      #
+      # The tenant id is the one `read.admin.by_host` answers for the hostname the browser asked for; the
+      # store is a store OF THAT TENANT, because the kernel's redeem face is public and takes a store instead
+      # of a credential — the store is what fixes which tenant the key is checked against. Nothing here is
+      # ever typed by a human: the ids are fresh ULIDs and the key is minted anew at every birth, assembled
+      # by `env-source.sh` out of the secret store and `.env`.
+      #
+      # ⛔ A MAP, BECAUSE ONE CONTAINER SERVES TWO BRANDS BY HOSTNAME. A key belongs to ONE tenant, so a
+      # singular variable here would sign a visitor on one brand's hostname into the OTHER brand's tenant.
+      # That is the front-door leak the route refuses to guess its way around; per-tenant configuration is
+      # what lifts the refusal, and a tenant with no entry keeps the refusal — it never borrows another's.
+      #
+      # ⚠️ SOFT (`:-`) on purpose: an instance that configures none has no gate door, and `/enter` falls
+      # through to the login screen exactly as an ungated instance always has.
+      FORGE_ADMIN_ACCESS_KEYS: ${FORGE_ADMIN_ACCESS_KEYS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
