@@ -80,6 +80,11 @@ const DIVERGENCES = [
   {
     fork: 'storefront-coffee',
     app: 'demo-setup',
+    // ★ pk35, o corte — ESTA ENTRADA NÃO ESPERA POR NADA DESTE REPO. A ferramenta chegou (d3) e o café
+    // deixou de receber as marcas (d7): o que resta é DECISÃO do dono do fork, que desenha a marca por
+    // conta. ⛔ Por isso ela não carrega `until`: um `until` aqui prometeria uma morte que nenhuma
+    // condição de disco pode cumprir.
+    waitsOn: null,
     why:
       'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
       'It used to blame a missing product artifact ("the tool is owed by the product and is being fiado by ' +
@@ -99,6 +104,12 @@ const DIVERGENCES = [
   {
     fork: 'storefront-coffee',
     app: 'demo-gate',
+    // ★ pk35, o corte — ESTA ENTRADA ESPERA POR OUTRO REPO, não por este. A d3 deu ao fork as três peças
+    // (`composition.json`, script `codegen`, dependência de verdade) e o gerador AINDA não roda: os muros
+    // são do PRODUTO e estão declarados um a um em `bin/fork-codegen.guard.mjs::UPSTREAM_WALLS`, que os
+    // RODA e fica vermelho quando um cai. ⛔ Um `until` de disco aqui duplicaria aquele instrumento e
+    // mentiria: as condições de disco JÁ estão cumpridas e o alcance continua ausente.
+    waitsOn: 'bin/fork-codegen.guard.mjs::UPSTREAM_WALLS',
     why:
       'THREE OF THE FOUR GESTURES ARE DONE; THE FOURTH IS BLOCKED UPSTREAM AND `bin/fork-codegen.guard.mjs` ' +
       'RUNS IT EVERY DAY. pk35/d3 gave this fork the dependency (`file:../apps/demo-gate`), the ' +
@@ -224,14 +235,26 @@ test('⛔ this box owns at least one front that produces a bundle', () => {
   assert.ok(BUILDING_FORKS.length > 0, 'no directory of this repo installs the kit and declares a `build` script');
 });
 
-test('⛔ every declared `until` GRADES something — a condition list that is empty is a lid', () => {
-  const withUntil = DIVERGENCES.filter((d) => d.until);
-  assert.ok(
-    withUntil.length > 0,
-    'no divergence carries an `until`. That is legal for a waiver that is a DECISION, but if every entry ' +
-      'here is waiting on work, none of them says what — and the rule below grades nothing. Either write the ' +
-      'conditions, or say in `why` that this divergence waits on nobody.',
+test('⛔ every divergence SAYS what it waits on — silence is a lid', () => {
+  // ★ pk35, o corte — A REGRA VIROU DERIVADA, e a razão é que o corte a quebrou de propósito. A pk35/d2 deu a
+  // estas entradas um `until` de condições em disco; a pk35/d3 CUMPRIU essas condições e trocou o instrumento
+  // por um guard que RODA o gerador. Manter o `until` faria a espera morrer pelo motivo errado; tirá-lo sem
+  // mais nada deixaria a lista muda. ⇒ toda entrada declara UMA das duas formas, e a ausência das duas é o
+  // defeito: `until` (as condições que a matam) ou `waitsOn` (null = é decisão; uma string = quem mede a espera).
+  const undeclared = DIVERGENCES.filter((d) => !d.until && !('waitsOn' in d));
+  assert.deepEqual(
+    undeclared.map((d) => `${d.fork} × ${d.app}`),
+    [],
+    'a divergence that declares neither `until` nor `waitsOn` says nothing about when it ends, and a waiver ' +
+      'that cannot end is a lid. Write the disk conditions in `until`, or declare `waitsOn`: null when it is a ' +
+      'DECISION, or the instrument that measures the wait when somebody else measures it.',
   );
+  // ⚠️ ANTI-VÁCUO: as duas formas têm de ser exercitadas por esta lista, senão a regra passa por não haver sujeito.
+  assert.ok(
+    DIVERGENCES.some((d) => d.until) || DIVERGENCES.some((d) => 'waitsOn' in d),
+    'no divergence declares either shape — this rule graded nothing at all',
+  );
+  const withUntil = DIVERGENCES.filter((d) => d.until);
   for (const divergence of withUntil) {
     const conditions = conditionsOf(divergence);
     assert.ok(
