@@ -12,8 +12,7 @@ const EMPTY = {
   lines: [],
   count: 0,
   subtotalLabel: 'R$ 0,00',
-  discountLabel: null,
-  discountTitle: null,
+  discounts: [],
   totalLabel: 'R$ 0,00',
   couponCode: null,
 };
@@ -65,8 +64,7 @@ const bag = {
   ],
   count: 1,
   subtotalLabel: 'R$ 7,00',
-  discountLabel: null,
-  discountTitle: null,
+  discounts: [],
   totalLabel: 'R$ 7,00',
   couponCode: null,
 };

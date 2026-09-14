@@ -23,14 +23,24 @@ export type BagLine = {
   lineTotalLabel: string;
 };
 
+/**
+ * ONE REDUCTION THE KERNEL APPLIED, named by the kernel and printed as the reduction it is.
+ *
+ * ★★ IT IS A LIST AND NOT A PAIR, AND THAT IS A MEASUREMENT. A counter order really does carry more than
+ * one: read back from a placed order of the coffee store, the totalizers were
+ * `discount:… "10% na primeira compra" -1560` AND `discount:… "Combo da manhã · R$ 3,00 OFF" -300` on the
+ * same order. Collapsing them into one row keeps the arithmetic closing and puts ONE promotion's name over
+ * TWO promotions' money — a screen saying something true about the total and false about why.
+ */
+export type BagDiscount = { title: string; amountLabel: string };
+
 export type Bag = {
   cartId: string | null;
   lines: BagLine[];
   count: number;
   subtotalLabel: string;
-  /** Present only when the kernel actually applied a discount. Never a number this screen worked out. */
-  discountLabel: string | null;
-  discountTitle: string | null;
+  /** One row per discount the kernel actually applied. Empty when it applied none — never a row of zero. */
+  discounts: BagDiscount[];
   totalLabel: string;
   couponCode: string | null;
 };
@@ -41,10 +51,22 @@ export const EMPTY_BAG: Bag = {
   lines: [],
   count: 0,
   subtotalLabel: money(0),
-  discountLabel: null,
-  discountTitle: null,
+  discounts: [],
   totalLabel: money(0),
   couponCode: null,
+};
+
+/**
+ * ★★ THE BAG OF AN ORDER THIS COUNTER COULD NOT READ BACK — money it DECLINES to state, never zero.
+ *
+ * `R$ 0,00` is not the honest answer to "the port did not describe this order": it is a PRICE, and a screen
+ * that prints one it never read is the defect this whole file exists to prevent. The dash is drawable,
+ * obviously not a total, and cannot be mistaken for a free order by the person standing at the glass.
+ */
+export const UNREADABLE_ORDER_BAG: Bag = {
+  ...EMPTY_BAG,
+  subtotalLabel: '—',
+  totalLabel: '—',
 };
 
 /**
@@ -68,8 +90,9 @@ function totals(view: Pick<CheckoutView, 'totalizers' | 'total_amount'>) {
   const discountAmount = discounts.reduce((n, t) => n + t.amount, 0);
   return {
     subtotal: items?.amount ?? view.total_amount - discountAmount,
-    discountAmount,
-    discountLabel: discounts[0]?.name ?? null,
+    // Each one keeps ITS OWN name beside ITS OWN money, printed as the reduction it is whatever sign the
+    // kernel used to say it. See `BagDiscount` for the order that made the list necessary.
+    discounts: discounts.map((t) => ({ title: t.name, amountLabel: money(-Math.abs(t.amount)) })),
     total: view.total_amount,
   };
 }
@@ -109,9 +132,7 @@ export function toBag(view: CheckoutView | null, products: ProductDoc[]): Bag {
     lines,
     count: lines.reduce((n, l) => n + l.qty, 0),
     subtotalLabel: money(t.subtotal),
-    // Printed as the reduction it is, whatever sign the kernel used to say it.
-    discountLabel: t.discountAmount === 0 ? null : money(-Math.abs(t.discountAmount)),
-    discountTitle: t.discountAmount === 0 ? null : t.discountLabel,
+    discounts: t.discounts,
     totalLabel: money(t.total),
     couponCode: coupon?.code ?? null,
   };
@@ -121,9 +142,14 @@ export function toBag(view: CheckoutView | null, products: ProductDoc[]): Bag {
  * ★★ THE BAG OF AN ORDER THAT ALREADY EXISTS — for the screen that comes back to a payment (C5, 05/09).
  *
  * A reload lands on a till whose CART is spent: `place_order` consumes the lines and the vessel comes back
- * empty (see `payWith` in app/actions.ts, which captures the bag BEFORE placing for that very reason). So a
- * recovered pix screen fed from `read.checkout` would print **Total a pagar R$ 0,00** over a live QR — a lie
+ * empty. So a pix screen fed from `read.checkout` prints **Total a pagar R$ 0,00** over a live QR — a lie
  * about money, on the one screen where money is the whole point.
+ *
+ * ★★ AND IT IS NOT ONLY THE RECOVERY THAT NEEDS THIS. `payWith` reads the order through this function too,
+ * for the same reason one step earlier: a customer who taps "Trocar forma de pagamento" and pays again
+ * reaches the pay path a second time on that same spent cart, and the empty basket it answers with is what
+ * put `R$ 0,00` on a live QR and an empty summary on a real receipt. One source, however many times anybody
+ * pays.
  *
  * The order is its own answer: `read.order_confirmation` publishes the lines, the totalizers and
  * `total_amount` of what was actually placed. Same rule as `toBag` and the same reason: every number here is
@@ -152,8 +178,7 @@ export function bagOfOrder(order: OrderConfirmationView): Bag {
     lines,
     count: lines.reduce((n, l) => n + l.qty, 0),
     subtotalLabel: money(t.subtotal),
-    discountLabel: t.discountAmount === 0 ? null : money(-Math.abs(t.discountAmount)),
-    discountTitle: t.discountAmount === 0 ? null : t.discountLabel,
+    discounts: t.discounts,
     totalLabel: money(t.total),
     // A coupon is a fact about a cart; the order carries its EFFECT (the discount totalizer above) and not
     // the code. Claiming one here would be inventing it.

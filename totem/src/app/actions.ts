@@ -30,7 +30,7 @@ import {
   simulateScan,
 } from '@/lib/pos';
 import { resolveTotemStore } from '@/lib/store';
-import { type Bag, bagOfOrder, EMPTY_BAG, toBag } from '@/lib/view';
+import { type Bag, bagOfOrder, EMPTY_BAG, toBag, UNREADABLE_ORDER_BAG } from '@/lib/view';
 
 /** Re-read the bag from the kernel, joining the product docs the lines need for a name and a photograph. */
 async function currentBag(): Promise<Bag> {
@@ -181,16 +181,45 @@ export async function removeCoupon(code: string): Promise<BagResult> {
 }
 
 export type PayResult =
-  | { ok: true; outcome: PosOutcome; orderNumber: number; buyerName: string; bag: Bag }
+  | {
+      ok: true;
+      outcome: PosOutcome;
+      /**
+       * ★ THE ORDER'S ID TRAVELS TO THE SCREEN, and it is not a secret: `read.order_confirmation` and
+       * `read.payment` are public, PII-limited reads keyed on exactly this, and the browser holding it is the
+       * one that placed the order. It is what lets the glass hand the order back — see the counter's idle
+       * clock, which parks a live payment instead of forgetting it.
+       */
+      orderId: string;
+      orderNumber: number;
+      buyerName: string;
+      bag: Bag;
+    }
   | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number }
   | { ok: false; kind: 'refused'; message: string };
 
 /**
  * NAME → ADDRESS → METHOD → ORDER → CHARGE, in the order the kernel measured as required.
  *
- * The bag is captured BEFORE `place_order` on purpose: placing an order consumes the cart's lines (the vessel
- * survives, empty), so the confirmation screen's summary has to be read while there is still something to
- * read. That is the same reason the kernel publishes `last_order_id` — see the kit's CheckoutView.
+ * ★★★ AND WHAT COMES BACK IS THE **ORDER'S** MONEY, NEVER THE CART'S — the fix for a counter that closed a
+ * real order for R$ 0,00 with a receipt listing nothing.
+ *
+ * ── THE DEFECT, MEASURED ON THE BENCH (order 212 of the counter store) ──────────────────────────────────
+ * This used to capture `currentBag()` just before `place_order`, because placing consumes the cart's lines
+ * and the vessel survives EMPTY. That reading is correct exactly once. A customer who taps "Trocar forma de
+ * pagamento" on the QR screen and pays again arrives here a SECOND time on the same, now spent, cart — so
+ * `currentBag()` answers an empty basket and the glass prints `TOTAL A PAGAR R$ 0,00` over a live QR and a
+ * receipt with no items at all.
+ *
+ * ── AND THE KERNEL NEVER SAID ZERO. Read back from the bench's own database, that same order:
+ *
+ *     sales_order   number 212   total_amount 540   status paid
+ *     payment_intent  amount 540   status approved   (ONE intent, ONE attempt)
+ *
+ * `payment.initiate` takes no amount — it charges the ORDER — so the second charge was right and only the
+ * SCREEN was wrong. The rule the fix restates: a till may not say about the ORDER what it only knows about
+ * ITSELF. `read.order_confirmation` publishes the lines, the totalizers and `total_amount` of what was
+ * actually placed, which is the one source that stays true however many times this runs.
  */
 export async function payWith(name: string, method: CounterMethod): Promise<PayResult> {
   const store = resolveTotemStore();
@@ -213,19 +242,27 @@ export async function payWith(name: string, method: CounterMethod): Promise<PayR
       };
 
     await chooseCounterMethod(cartId, method);
-    const bag = await currentBag();
     const { order_id } = await totemCommand().placeOrder(store.id, cartId, cartId);
     const outcome = await initiateCounterPayment(order_id, method);
 
     const confirmation = await totemRead().orderConfirmation(store.id, order_id);
+    // ⚠️ A CONFIRMATION THE PORT WOULD NOT GIVE BACK IS LOUD, AND STILL NOT A REFUSAL. The order exists and
+    // the charge is open by this line, so throwing here would strand a customer over a read; but the screen
+    // must not invent the money either. It says so instead — see `UNREADABLE_ORDER_BAG`.
+    if (!confirmation)
+      console.error(
+        `[totem] order ${order_id} was placed and charged, and read.order_confirmation did not answer — ` +
+          'the screen will show no total rather than a made-up one',
+      );
     return {
       ok: true,
       outcome,
+      orderId: order_id,
       // ★ THE NUMBER ON THE GIANT CARD IS THE KERNEL'S PER-STORE SEQUENCE (`order.number`), not an id and not
       // anything this screen invented. It is what the barista will call out.
       orderNumber: confirmation?.number ?? 0,
       buyerName: name.trim(),
-      bag,
+      bag: confirmation ? bagOfOrder(confirmation) : UNREADABLE_ORDER_BAG,
     };
   } catch (error) {
     // The same voice as `withBag`, for the same reason: this is the LAST tap of an order, and a silent
@@ -258,7 +295,7 @@ export async function payWith(name: string, method: CounterMethod): Promise<PayR
  * on the glass.
  */
 export type ResumeResult =
-  | { ok: true; outcome: PosOutcome; orderNumber: number; buyerName: string; bag: Bag }
+  | { ok: true; outcome: PosOutcome; orderId: string; orderNumber: number; buyerName: string; bag: Bag }
   | { ok: false; kind: 'rate_limited'; retryAfterSeconds: number }
   | { ok: false; kind: 'gone' }
   | { ok: false; kind: 'refused'; message: string };
@@ -276,6 +313,7 @@ export async function resumePreviousOrder(orderId: string): Promise<ResumeResult
     return {
       ok: true,
       outcome,
+      orderId,
       orderNumber: confirmation.number,
       // ⚠️ THE CONFIRMATION IS PII-LIMITED AND CARRIES NO NAME, which is correct: the buyer's name is not a
       // public fact about an order id anybody could type. The card on the "pronto" screen prints the number,

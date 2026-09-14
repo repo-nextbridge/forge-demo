@@ -81,7 +81,7 @@ const COUPON_MAX = 16;
 
 type Screen = 'menu' | 'cart' | 'identify' | 'terminal' | 'pix' | 'done';
 
-type Paid = { outcome: PosOutcome; orderNumber: number; buyerName: string; bag: Bag };
+type Paid = { outcome: PosOutcome; orderId: string; orderNumber: number; buyerName: string; bag: Bag };
 
 /**
  * ★★ THE ORDER THIS BROWSER LEFT BEHIND — pk9/d1 (04/09), and the whole of it is one sentence on the glass.
@@ -107,7 +107,7 @@ export function Totem({
   initialMenu,
   initialBag,
   idleSeconds,
-  previousOrder = null,
+  previousOrder: renderedPreviousOrder = null,
 }: {
   initialMenu: Menu;
   initialBag: Bag;
@@ -134,6 +134,18 @@ export function Totem({
   const [method, setMethod] = useState<CounterMethod | null>(null);
   const [busy, setBusy] = useState(false);
   const [paid, setPaid] = useState<Paid | null>(null);
+  /**
+   * ★★★ THE ORDER THIS TILL PARKED WHEN NOBODY ANSWERED — the other half of giving the QR screen a clock.
+   *
+   * `renderedPreviousOrder` is the SERVER's answer and it is computed once, while the page renders. A payment
+   * abandoned in this session happens long after that, so without a place to put it the till would go home
+   * having thrown away the one thing that can bring the order back. This is that place, and it holds exactly
+   * what the recovery needs: an id to name and a number to say out loud.
+   */
+  const [parked, setParked] = useState<PreviousOrder | null>(null);
+
+  /** What the attract panel answers with: an order parked in this session first, the render's otherwise. */
+  const previousOrder = parked ?? renderedPreviousOrder;
 
   const scroller = useRef<HTMLDivElement | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -229,33 +241,33 @@ export function Totem({
    *   1. THE ORDER IS ALREADY IN THE KERNEL, and nothing this screen does removes it — `resetCounter` deletes
    *      a cart POINTER (see lib/cart.ts), and by this moment the cart is spent. So the reset never "cancels"
    *      anything; it only stops the totem from being able to finish.
-   *   2. THE SCREEN HOLDS THE ONLY COPY OF THE CAPABILITY TO SETTLE IT. `providerRef` and `copy_paste` live in
-   *      this component's state and nowhere else — never a URL, never a cookie (lib/pos.ts). The reset throws
-   *      them away, and with them the "toque no QR" path.
+   *   2. THE SCREEN HELD THE ONLY COPY OF THE CAPABILITY TO SETTLE IT — and this is the one of the three that
+   *      has since STOPPED being true, which is what later allowed the clock back. `providerRef` and
+   *      `copy_paste` lived in this component's state and nowhere else, so the reset threw them away with the
+   *      "toque no QR" path; C5 made the recovery a READ of `read.payment` instead (lib/pos.ts).
    *   3. THE CUSTOMER LOSES THE ONE THING THEY CAME FOR. `orderNumber` is on this screen and on no other; a
-   *      pix paid at second 91 is a paid order whose number its buyer never saw.
+   *      pix paid at second 91 is a paid order whose number its buyer never saw — which is why leaving now
+   *      hands the order to the attract panel, where its number is said out loud again.
    *
-   * ── SO THE INACTIVITY CLOCK STOPS, AND THE PAYMENT'S OWN CLOCK RUNS INSTEAD. `expires_in` is published by
-   * `payment-pos` and was already read and thrown away (`PosOutcome.expiresInSeconds`, grepped: no reader
-   * before this line). It is the honest clock for this screen because it measures the PAYMENT, not the
-   * customer's attention: once the pix has expired the QR is worthless, so going home discards nothing that
-   * still worked, and the till is not parked forever waiting on somebody who left.
+   * ── SO THE PAYMENT'S OWN CLOCK RUNS BESIDE THE INACTIVITY ONE. `expires_in` is published by `payment-pos`
+   * and was already read and thrown away (`PosOutcome.expiresInSeconds`, grepped: no reader before this
+   * line). It measures the PAYMENT rather than the customer's attention: once the pix has expired the QR is
+   * worthless, so leaving then discards nothing that still worked.
    *
    * ★ AND IT IS THE KERNEL'S OWN WINDOW, NOT A NUMBER THE APP INVENTED FOR THE SCREEN. `payment-pos` sends
    * `PIX_EXPIRES_IN_SECONDS = 900` (apps/payment-pos/provider.ts) and declares the SAME 900 as its
    * `reservationWindowSeconds.pix` (apps/payment-pos/manifest.ts) — the time the kernel holds stock for an
-   * unsettled intent. So the moment this timer fires is the moment the reservation behind the QR is gone. The
-   * till frees itself exactly when, and never before, there is nothing left to free.
+   * unsettled intent. So when this number is the shorter of the two, the moment it runs out is the moment the
+   * reservation behind the QR is gone.
    *
    * ⚠️ MEASURED END TO END on the live counter, 03/09: order #6 placed, QR up, 110 SECONDS of absolute
-   * stillness — the QR never left the glass, no question was asked, and the payment still completed from that
-   * same screen. The positive control matters as much: the identical page, the identical observation, with
-   * NOTHING placed, still asked at 70s and still went home at 90s.
+   * stillness — the QR never left the glass and the payment still completed from that same screen. That
+   * measurement is what this number is FOR, and it is also why the inactivity clock that now runs here again
+   * cannot simply forget: see the effect below, where the ending is a PARK and not a reset.
    *
    * ⚠️ A WINDOW THAT IS NOT A POSITIVE NUMBER ARMS NOTHING AT ALL. `readOutcome` defaults to 900 only when
    * `expires_in` is absent; a literal `0` would arrive as a number and become an instant wipe of a QR that was
-   * just drawn. A parked till is recoverable by a finger ("Trocar forma de pagamento"); a payment taken off
-   * the glass is not.
+   * just drawn.
    */
   const pixWindowSeconds =
     screen === 'pix' && paid?.outcome.kind === 'pix_pending' ? paid.outcome.expiresInSeconds : null;
@@ -270,7 +282,9 @@ export function Totem({
    * ⚠️ THE ATTRACT SCREEN ITSELF DOES NOT ARM THE TIMER. A totem nobody is using would otherwise reset
    * itself every 90 seconds forever, posting a write to the kernel each time.
    *
-   * ⚠️ AND NEITHER DOES A PIX WAITING TO BE PAID — see `pixWindowSeconds` for the measurement.
+   * ⚠️ A PIX WAITING TO BE PAID ARMS IT TOO, and ends it differently: the order is PARKED for the attract
+   * panel to offer back, never dropped. See the block inside the effect for the two measurements that force
+   * that shape.
    */
   useEffect(() => {
     if (attract) return;
@@ -290,25 +304,56 @@ export function Totem({
       setPaid(null);
       setAttract(true);
     };
-    // ★★★ PAYMENT IN FLIGHT: the inactivity clock is not armed at all, and neither is its question. What runs
-    // in its place is the pix's own window — see `pixWindowSeconds` above for why one replaces the other.
-    if (pixWindowSeconds !== null) {
-      setIdleWarning(false);
-      if (pixWindowSeconds <= 0) return;
-      const expired = setTimeout(goHome, pixWindowSeconds * 1000);
-      return () => clearTimeout(expired);
-    }
+    /**
+     * ★★★ PAYMENT IN FLIGHT: THE CLOCK RUNS, AND WHAT IT DOES AT THE END IS **PARK**, NOT FORGET.
+     *
+     * ── WHAT WAS MEASURED ON THIS SCREEN, TWICE, POINTING OPPOSITE WAYS ────────────────────────────────
+     * The QR used to be exempt from the clock entirely (see `pixWindowSeconds`), because stillness there is
+     * what PAYING looks like and a reset mid-payment writes a debt into the kernel. Then the counter was
+     * watched from the queue's side: a QR ABANDONED at the glass sat there for five measured minutes with no
+     * warning and no reset, and the next person to walk up inherits a stranger's live payment — a code they
+     * can tap, on an order that is not theirs. Both measurements are real, and neither excuses the other.
+     *
+     * ── WHAT MAKES BOTH ANSWERABLE NOW, AND IT IS A FACT THAT CHANGED. The old exemption rested on the
+     * screen holding the ONLY copy of the capability to settle: `providerRef` was component state and going
+     * home destroyed it. That stopped being true when the recovery became a READ — `read.payment` publishes
+     * the attempt's envelope verbatim, so any surface that can NAME the order can put the QR back
+     * (`lib/pos.ts#recoverCounterPayment`). Going home therefore no longer has to mean forgetting.
+     *
+     * ── SO THE REGIME IS THE SAME AS EVERY OTHER SCREEN'S — same window, same question — and only the ENDING
+     * differs: the order is handed to the attract panel, which names its number and offers to resume it,
+     * instead of being dropped. The customer who is genuinely paying is ASKED first and any touch buys the
+     * whole window back; the customer who left costs the queue one window instead of fifteen minutes.
+     *
+     * ⚠️ THE PAYMENT'S OWN WINDOW IS STILL THE OUTER BOUND. `expires_in` is `payment-pos`'s number and equals
+     * the kernel's reservation window for an unsettled intent, so there is nothing left to hold on to after
+     * it: whichever of the two is shorter is the one that runs.
+     */
+    const live = screen === 'pix' && paid?.outcome.kind === 'pix_pending' ? paid : null;
+    const park = async () => {
+      // ⚠️ READ BEFORE `goHome`, which clears `paid`. The pair is all the recovery needs: the id to ask the
+      // port about, and the number the barista would call.
+      if (live) setParked({ orderId: live.orderId, number: live.orderNumber, awaitingPayment: true });
+      await goHome();
+    };
+
+    // ⚠️ A WINDOW THAT IS NOT A POSITIVE NUMBER ARMS NOTHING AT ALL — a literal `expires_in: 0` would arrive
+    // as a number and become an instant wipe of a QR that was just drawn.
+    if (pixWindowSeconds !== null && pixWindowSeconds <= 0) return;
+    const windowSeconds =
+      pixWindowSeconds === null ? idleSeconds : Math.min(idleSeconds, pixWindowSeconds);
+    const expire = live ? park : goHome;
 
     const arm = () => {
       clearTimeout(warn);
       clearTimeout(timer);
       setIdleWarning(false);
-      // ★ THE WARNING IS A SLICE OF THE SAME WINDOW, NOT AN EXTENSION OF IT. The reset still happens at
-      // `idleSeconds`; what changes is that the last `IDLE_WARNING_SECONDS` of it are spent asking. A window
+      // ★ THE WARNING IS A SLICE OF THE SAME WINDOW, NOT AN EXTENSION OF IT. The end still happens at
+      // `windowSeconds`; what changes is that the last `IDLE_WARNING_SECONDS` of it are spent asking. A window
       // shorter than the warning gets no warning rather than one that fires at zero.
-      const warnAfter = (idleSeconds - IDLE_WARNING_SECONDS) * 1000;
+      const warnAfter = (windowSeconds - IDLE_WARNING_SECONDS) * 1000;
       if (warnAfter > 0) warn = setTimeout(() => setIdleWarning(true), warnAfter);
-      timer = setTimeout(goHome, idleSeconds * 1000);
+      timer = setTimeout(expire, windowSeconds * 1000);
     };
     arm();
     rearmIdle.current = arm;
@@ -323,7 +368,9 @@ export function Totem({
       rearmIdle.current = () => {};
       for (const e of events) window.removeEventListener(e, arm, true);
     };
-  }, [attract, idleSeconds, pixWindowSeconds]);
+    // ⚠️ `paid` AND `screen` BELONG HERE. What the clock does at the end depends on whether a live payment is
+    // on the glass and which order it is; an effect that could not see those would park the wrong one.
+  }, [attract, idleSeconds, pixWindowSeconds, paid, screen]);
 
   /**
    * ★★ THE BACK GESTURE STAYS INSIDE THE KIOSK (s5-6, 03/09).
@@ -513,6 +560,7 @@ export function Totem({
       setPaid(r);
       // ★ `settled` IS THE WHOLE SIGNAL for the machine: by the time this returns, the order is already paid.
       // There is no polling and no `data.status` — see lib/pos.ts.
+      if (r.outcome.kind === 'settled') setParked(null);
       setScreen(r.outcome.kind === 'settled' ? 'done' : 'pix');
     });
   }
@@ -544,6 +592,7 @@ export function Totem({
       setPaid(r);
       setAttract(false);
       // The same reading as `pay`: `settled` means it is already paid by the time this returns.
+      if (r.outcome.kind === 'settled') setParked(null);
       setScreen(r.outcome.kind === 'settled' ? 'done' : 'pix');
     });
   }
@@ -553,8 +602,13 @@ export function Totem({
     const ref = paid.outcome.providerRef;
     await exclusive(async () => {
       const r = await simulatePixPayment(ref);
-      if (r.paid) setScreen('done');
-      else say('O pagamento ainda não foi confirmado.', true);
+      // ★ A PAID ORDER IS NOT A PARKED ONE. The attract panel must stop offering to resume a payment that
+      // has happened — the recovery would only answer that the order is no longer awaiting one, which is a
+      // true sentence and a pointless errand for the person who just paid.
+      if (r.paid) {
+        setParked(null);
+        setScreen('done');
+      } else say('O pagamento ainda não foi confirmado.', true);
     });
   }
 
@@ -874,7 +928,7 @@ export function Totem({
                   </div>
                   <div className={styles.couponSub}>
                     {bag.couponCode
-                      ? `${bag.discountTitle ?? 'Desconto'} no seu pedido · toque para remover`
+                      ? `${bag.discounts[0]?.title ?? 'Desconto'} no seu pedido · toque para remover`
                       : 'Toque para digitar o código do seu cupom'}
                   </div>
                 </div>
@@ -888,12 +942,12 @@ export function Totem({
                   <span>Subtotal</span>
                   <span>{bag.subtotalLabel}</span>
                 </div>
-                {bag.discountLabel ? (
-                  <div className={`${styles.totalRow} ${styles.discountRow}`}>
-                    <span>{bag.discountTitle}</span>
-                    <span>{bag.discountLabel}</span>
+                {bag.discounts.map((d) => (
+                  <div key={d.title} className={`${styles.totalRow} ${styles.discountRow}`}>
+                    <span>{d.title}</span>
+                    <span>{d.amountLabel}</span>
                   </div>
-                ) : null}
+                ))}
                 <div className={styles.grandRow}>
                   <span className={styles.grandLabel}>Total</span>
                   <span className={styles.grandValue}>{bag.totalLabel}</span>
@@ -1186,6 +1240,28 @@ export function Totem({
                     <div className={styles.summaryTotal}>{l.lineTotalLabel}</div>
                   </div>
                 ))}
+                {/*
+                  ★★ THE RECEIPT HAS TO CLOSE. It used to print the lines at full price and then a smaller
+                  total with nothing between them: on one measured order, 156,00 of items above
+                  "Total pago R$ 137,40", and no sign anywhere of the 18,60 that separates the two. A receipt
+                  that does not add up is the counter asking to be trusted about money it will not show.
+
+                  ⚠️ AND THESE ROWS ARE DERIVED FROM THE ORDER, never copied off the review screen. They are
+                  `bagOfOrder`'s reading of `read.order_confirmation`'s own totalizers — the same rule as
+                  everywhere else on this glass: the kernel's numbers, formatted. A confirmation that re-drew
+                  the basket's numbers would be right only until the two disagreed, which is exactly the
+                  moment a customer needs it to be right.
+                */}
+                <div className={styles.totalRow}>
+                  <span>Subtotal</span>
+                  <span>{paid.bag.subtotalLabel}</span>
+                </div>
+                {paid.bag.discounts.map((d) => (
+                  <div key={d.title} className={`${styles.totalRow} ${styles.discountRow}`}>
+                    <span>{d.title}</span>
+                    <span>{d.amountLabel}</span>
+                  </div>
+                ))}
                 <div className={styles.summaryGrand}>
                   <span className={styles.summaryGrandLabel}>
                     Total pago · {paid.outcome.kind === 'settled' ? 'Cartão na maquininha' : 'Pix'}
@@ -1209,8 +1285,16 @@ export function Totem({
             <div className={styles.scrim} />
             <div className={styles.idleDialog} role="alertdialog" aria-live="assertive">
               <div className={styles.dialogTitle}>Você ainda está aí?</div>
+              {/*
+                ⚠️ TWO SCREENS, TWO TRUTHS. "o seu pedido é apagado" is correct while the basket is still a
+                basket and FALSE once the order is in the kernel: there it is not erased, it is handed back to
+                the attract panel, which names it and offers to resume the payment. A dialog that threatened
+                to delete a placed order would be frightening somebody out of a payment that is already safe.
+              */}
               <div className={styles.dialogNote}>
-                Em instantes o balcão volta para a tela inicial e o seu pedido é apagado. Toque para continuar.
+                {screen === 'pix' && paid
+                  ? `Em instantes o QR Code sai da tela. O pedido ${paid.orderNumber} continua registrado — dá para retomar o pagamento na tela inicial.`
+                  : 'Em instantes o balcão volta para a tela inicial e o seu pedido é apagado. Toque para continuar.'}
               </div>
               <button
                 type="button"
