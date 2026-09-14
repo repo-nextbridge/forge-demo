@@ -25,15 +25,42 @@
 // element to the right. So a shop that places a mark here LOSES the sentence unless it says one of its own.
 // `tagline` is that field, and it is only on this block for exactly that reason.
 
+import { mediaRenderSrc } from '@forgecommerce/storefront-kit/media/src';
 import type { ReactNode } from 'react';
 import styles from './marks.module.css';
 
-/** One `type:'id'` field as it arrives after the kernel's read: the ref the operator picked, plus the `_url`
- * the kernel stamped beside it. A ref with no url is an asset that has gone away — draw nothing rather than a
- * broken image. The block never resolves a URL, never learns a host and never reads an env. */
-function assetUrl(config: Record<string, unknown> | undefined, name: string): string | null {
+/**
+ * One `type:'id'` field as it arrives after the kernel's read, resolved to the address an `<img>` may carry.
+ *
+ * ★★ THE KERNEL STAMPS THREE SIDECARS, NOT ONE, and this read the first and ignored the third for as long as
+ * it existed. `packages/core/src/read/media.ts` writes `<field>_url` (the MASTER's public address, minted
+ * from the origin the KERNEL was configured with), `<field>_kind`, and `<field>_provider_key` — the opaque
+ * catalog key, stamped, in that file's own words, "so a consumer can route the MASTER through its own
+ * `/api/media/<key>` door for next/image derivatives + a 1-year cache, instead of pointing an `<img>` at the
+ * raw bucket url". The key is the kernel saying, per field, «there is a door for this one».
+ *
+ * ⛔ AND IT IS A SPECIES, NOT A CASE. The same cause has been repaired four times, one block at a time —
+ * `banners` (D2-F3), the theme's own images (K3-M2), the shelf banner (pk34/p5) and the whole `chrome` app
+ * (pk35/p2) — and nothing went red in between. What the master costs, measured on the demo bench 2026-09-13:
+ * it answers with NO `Cache-Control` at all while the same object through the door answers
+ * `public, max-age=31536000, immutable`, and `/v1/media/` is on no door the warmer knows, so such an image
+ * stays COLD for the first shopper of every page, forever. A raw absolute url is also the mixed-content
+ * hazard K3-M2 photographed on this bench: a path has no origin to be wrong about, an absolute url minted by
+ * another process does. `bin/config-media-door.guard.mjs` is what goes red when a NEW block is born this way.
+ *
+ * ⛔ `mediaRenderSrc` IS THE ONE PLACE THAT DECISION LIVES — never a private copy of `/api/media/<key>` here.
+ * A mirrored path is exactly how `banners` drifted away from the door before D2-F3. This import reads no env:
+ * the question is «did the kernel hand me a key», not «what is this box configured with».
+ *
+ * A ref with no url is an asset that has gone away — draw nothing rather than a broken image.
+ */
+function assetSrc(config: Record<string, unknown> | undefined, name: string): string | null {
   const url = config?.[`${name}_url`];
-  return typeof url === 'string' && url.length > 0 ? url : null;
+  const key = config?.[`${name}_provider_key`];
+  if (typeof url !== 'string' || url.length === 0) return null;
+  return (
+    mediaRenderSrc(typeof key === 'string' && key.length > 0 ? { url, providerKey: key } : { url }) ?? null
+  );
 }
 
 /** A configured word, or `undefined` when the store wrote nothing. Blank and whitespace are ABSENCE, not an
@@ -78,7 +105,7 @@ function Mark({
   place,
   children,
 }: MarkProps & { place: string; children?: ReactNode }): ReactNode {
-  const logo = assetUrl(config, 'logo');
+  const logo = assetSrc(config, 'logo');
   const text = word(config, 'text');
   const tail = word(config, 'tail');
   if (!logo && !text && !tail) return null;
@@ -90,7 +117,7 @@ function Mark({
         {logo ? (
           // The `alt` is the store's own word when it wrote one: a logo IS the store's name to a screen
           // reader, and an empty alt on the only mark in a header leaves the anchor unnamed.
-          // biome-ignore lint/performance/noImgElement: the kernel stamped this url; an app knows no next/image config.
+          // biome-ignore lint/performance/noImgElement: the kit resolved this address; an app knows no next/image config.
           <img className={styles.logo} src={logo} alt={text ?? ''} />
         ) : (
           <>

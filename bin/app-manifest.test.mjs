@@ -104,8 +104,23 @@ test('⛔ a manifest this reader did not understand THROWS — it never answers 
     () => parseBlocks('const manifest = { blocks: [] };', 'empty.ts'),
     /parsed to no blocks at all/,
   );
+  // ⚠️ pk35/d7 — AND THE ONE THAT IS NOT A FAILURE. `config_schema` is `.optional()` in the contract
+  // (packages/contracts/src/extensions.ts:215) and `apps/payment-pos` really ships two blocks with none — a
+  // block an operator drops and does not fill in. This reader used to refuse that read as a broken parse,
+  // which stayed invisible for as long as nobody called `blocksOf('payment-pos')`; the first caller
+  // (bin/config-media-door.guard.mjs) crashed on it. Absence is now DATA, normalised to `[]` so no consumer
+  // needs a branch — and what still throws is a schema this reader HALF understood.
+  assert.deepEqual(
+    parseBlocks("const manifest = { blocks: [{ component: 'a' }] };", 'schemaless.ts')[0].config_schema,
+    [],
+    'a block that declares no config_schema is a block with no config, not a manifest this reader failed to read',
+  );
   assert.throws(
-    () => parseBlocks("const manifest = { blocks: [{ component: 'a' }] };", 'schemaless.ts'),
+    () => parseBlocks("const manifest = { blocks: [{ component: 'a', config_schema: 7 }] };", 'notalist.ts'),
+    /has no readable `config_schema`/,
+  );
+  assert.throws(
+    () => parseBlocks("const manifest = { blocks: [{ component: 'a', config_schema: [{ type: 'id' }] }] };", 'unnamed.ts'),
     /has no readable `config_schema`/,
   );
   assert.throws(
