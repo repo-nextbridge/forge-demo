@@ -32,6 +32,7 @@ import {
   widgetPrefixProblem,
   widgetsOnBoard,
 } from './widgets.mjs';
+import { ADMIN_WIDGETS } from '../bin/app-blocks.mjs';
 import { DATASET_DIR_ENV } from './forge.mjs';
 
 /** One widget instance as `read.internal.extension_composition` answers it — `target`, never `slot`. */
@@ -45,18 +46,12 @@ const widget = (app, component, position, extra = {}) => ({
   ...extra,
 });
 
-/** The SEVEN the mounted dataset declares, in the order the owner left them. Spelled here because this is the
- *  SHAPE under test and the real file is a monorepo file a machine running this suite may not have — the same
- *  posture `bin/verify-seed.test.mjs` takes with `storefront.json`. */
-const DECLARED = [
-  'admin-dashboard/revenue',
-  'admin-dashboard/recent_orders',
-  'admin-dashboard/shipping',
-  'admin-dashboard/order_status',
-  'admin-dashboard/stores_sales',
-  'admin-dashboard/promos',
-  'admin-dashboard/stock',
-];
+/** The SEVEN the mounted dataset declares, in the order the owner left them. ⛔ pk35/D6 — IMPORTED, not
+ *  re-typed: it used to be spelled out here AND in `bin/verify-seed.test.mjs`, two copies of a list about a
+ *  screen declared in ANOTHER repository, and neither could notice a widget renamed, dropped or added
+ *  upstream. It lives in `bin/app-blocks.mjs` now, where `bin/app-blocks.guard.mjs` grades it against the
+ *  manifest of the pinned release. */
+const DECLARED = ADMIN_WIDGETS;
 
 /** `forgeco`'s board as it was MEASURED on 10/09 — `subscriptions` first, because its app was installed first. */
 const FORGECO_BOARD = [
