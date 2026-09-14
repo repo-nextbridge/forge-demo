@@ -58,8 +58,7 @@ const emptyBag = {
   lines: [],
   count: 0,
   subtotalLabel: 'R$ 0,00',
-  discountLabel: null,
-  discountTitle: null,
+  discounts: [],
   totalLabel: 'R$ 0,00',
   couponCode: null,
 };

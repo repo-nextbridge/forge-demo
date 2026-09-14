@@ -160,6 +160,50 @@ O botão só aparece para um pedido que o kernel diz estar **aguardando**: pedid
 encerrada não voltam a desenhar QR nenhum. E ele é um botão **ao lado** do painel, nunca dentro — o próximo
 cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
 
+## ★ E um QR ABANDONADO não fica mais na tela: o balcão estaciona o pedido e se libera
+
+Capacidade nova. A tela do QR era a única do totem sem relógio de inatividade — medido na bancada: **cinco
+minutos** parados, sem aviso e sem reset. Isso era deliberado e tinha uma razão medida (uma tela que se reseta
+enquanto alguém paga escreve uma dívida no kernel), mas a conta era paga pela **fila**: o próximo cliente
+chegava num totem ocupado com o pagamento vivo de um estranho na tela.
+
+**Agora a tela do QR tem o MESMO regime das outras** — a mesma janela, a mesma pergunta "Você ainda está aí?"
+— e só o **fim** é diferente: em vez de esquecer, o balcão **estaciona** o pedido e o entrega ao painel de
+espera, que volta a oferecer "Retomar o pagamento do pedido N" (a mesma saída da seção acima). Qualquer toque
+devolve a janela inteira, então quem está pagando no app do banco é **perguntado** antes, nunca despejado.
+
+⚠️ **A pergunta diz a verdade DESTA tela.** Nas outras ela avisa que o pedido é apagado; aqui isso seria
+falso — o pedido já está no kernel e não é apagado por nada que a tela faça. A frase nomeia o número e diz que
+ele continua registrado.
+
+★ **O que tornou isso possível foi uma mudança de fato, não de opinião.** A isenção antiga se apoiava em a
+tela guardar a ÚNICA cópia da capacidade de liquidar. Desde que a recuperação virou uma **leitura** (seção
+acima), qualquer superfície que consiga **nomear** o pedido põe o QR de volta — então sair da tela deixou de
+significar esquecer. A janela do próprio PIX (`expires_in`) continua como limite externo: vale a menor das
+duas.
+
+⚠️ **Pergunta de produto que fica aberta:** um pedido criado e nunca pago **expira no kernel?** Medido nesta
+caixa: um pedido abandonado no QR continuava `pending_payment` horas depois. Enquanto não houver resposta, o
+que o balcão faz é liberar a si mesmo — nunca cancelar coisa nenhuma.
+
+## ★ E o recibo do balcão FECHA: o que foi cobrado aparece linha a linha
+
+Capacidade nova. A tela "Pagamento confirmado" listava os itens a preço cheio e, logo abaixo, um total menor,
+**sem nenhuma linha de desconto** — medido num pedido de 11 itens: R$ 156,00 de linhas sobre "Total pago ·
+Pix R$ 137,40", e nada explicando os R$ 18,60 de diferença. A tela de revisão do mesmo totem já sabia
+desenhar a linha do combo; a confirmação não desenhava nenhuma.
+
+**Agora a confirmação imprime subtotal, uma linha POR promoção e o total pago** — e cada número vem do
+**pedido** (`read.order_confirmation`), nunca copiado da tela de revisão. Uma promoção por linha é medida, não
+estética: um pedido do balcão carregava duas ao mesmo tempo, e colapsá-las numa linha só põe o nome de uma
+sobre o dinheiro das duas.
+
+★ **E foi a mesma correção que fechou o pior achado do balcão:** pagar de novo depois de "Trocar forma de
+pagamento" mostrava **R$ 0,00** no segundo QR e um resumo vazio no recibo, porque a tela lia o CARRINHO —
+gasto pelo primeiro `place_order` — em vez do pedido. O kernel nunca cobrou zero (medido na bancada: um único
+`payment_intent` de R$ 5,40, aprovado); a mentira era só da tela. A régua que ficou escrita: **uma tela não
+afirma sobre o PEDIDO o que só sabe sobre SI.**
+
 ## Onde isto é provado
 
 * `apps/payment-pos/provider.test.ts` — `card` liquida no `initiate`; `pix` não liquida e devolve o ref; a
@@ -183,5 +227,11 @@ cliente continua conseguindo começar o pedido dele com o mesmo toque de sempre.
   desligado, e um pedido já pago não volta a oferecer QR.
 * `totem/src/components/Totem.reload.test.tsx` — o painel oferece a saída, o toque nomeia o pedido pelo id, e
   **nenhum render** alcança a porta de pagamento.
+* `totem/src/app/actions.receipt.test.ts` — um segundo "Pagar" no carrinho já gasto diz o total do PEDIDO e
+  lista os itens dele; um pedido que a porta não descreve mostra "—" e nunca R$ 0,00.
+* `totem/src/components/Totem.receipt.test.tsx` — a confirmação desenha subtotal, uma linha por promoção e o
+  total pago; sem desconto não inventa linha nenhuma.
+* `totem/src/components/Totem.idle.test.tsx` — a tela do QR pergunta, um toque devolve a janela inteira, e o
+  silêncio ESTACIONA o pedido: o painel volta a nomeá-lo e a recuperação chama a porta por aquele id.
 * `RELATORIO-T-B.md` (nos briefs da onda) — as sabotagens medidas e o pedido de verdade pago pelos dois
   métodos.

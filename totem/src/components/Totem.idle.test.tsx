@@ -12,9 +12,10 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const resetCounter = vi.fn().mockResolvedValue({ bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discountLabel: null, discountTitle: null, totalLabel: 'R$ 0,00', couponCode: null } });
+const resetCounter = vi.fn().mockResolvedValue({ bag: { cartId: null, lines: [], count: 0, subtotalLabel: 'R$ 0,00', discounts: [], totalLabel: 'R$ 0,00', couponCode: null } });
 const payWith = vi.fn();
 const simulatePixPayment = vi.fn();
+const resumePreviousOrder = vi.fn();
 
 vi.mock('@/app/actions', () => ({
   resetCounter,
@@ -25,6 +26,7 @@ vi.mock('@/app/actions', () => ({
   payWith: (...a: unknown[]) => payWith(...a),
   removeCoupon: vi.fn(),
   removeItem: vi.fn(),
+  resumePreviousOrder: (...a: unknown[]) => resumePreviousOrder(...a),
   simulatePixPayment: (...a: unknown[]) => simulatePixPayment(...a),
 }));
 
@@ -59,8 +61,7 @@ const bagWithSomething = {
   ],
   count: 1,
   subtotalLabel: 'R$ 17,00',
-  discountLabel: null,
-  discountTitle: null,
+  discounts: [],
   totalLabel: 'R$ 17,00',
   couponCode: null,
 };
@@ -77,6 +78,7 @@ beforeEach(() => {
   resetCounter.mockClear();
   payWith.mockReset();
   simulatePixPayment.mockReset();
+  resumePreviousOrder.mockReset();
 });
 afterEach(() => vi.useRealTimers());
 
@@ -229,21 +231,25 @@ describe('the counter asks before it resets', () => {
   });
 });
 
-// ── p5-1 ────────────────────────────────────────────────────────────────────────────────────────────────
+// ── p5-1, AND THE MEASUREMENT FROM THE QUEUE'S SIDE THAT RE-OPENED IT ───────────────────────────────────
 //
-// ⛔ THE CLOCK USED TO TAKE THE QR CODE OFF THE GLASS WHILE THE CUSTOMER WAS PAYING IT. Measured on the bench
-// of 03/09 (sonda p5, achado p5-1): pix chosen, "Pagar" tapped, ORDER #5 CREATED IN THE KERNEL, QR on screen —
-// and at 90 seconds of stillness the till went home. The order stayed behind, "Aguardando", with nobody able
-// to close it. The rodada-1 warning ("Você ainda está aí?") did not touch this: it made the reset polite, and
-// a polite reset is still a reset.
+// ⛔ THE FIRST DEFECT. The clock used to take the QR off the glass while the customer was paying it. Measured
+// on the bench of 03/09 (sonda p5, achado p5-1): pix chosen, "Pagar" tapped, ORDER #5 CREATED IN THE KERNEL,
+// QR on screen — and at 90 seconds of stillness the till went home. The order stayed behind, "Aguardando",
+// with nobody able to close it. The answer then was to exempt this one screen from the clock entirely.
 //
-// ★ THE ASYMMETRY THAT IS THE WHOLE RULE. Before the order, forgetting is free — the bag belongs to somebody
-// who walked away. After it, the bag is an ORDER, and the screen is holding the only copy of the reference
-// that can settle it (`providerRef` is screen memory; see lib/pos.ts). Forgetting then does not free the till,
-// it writes a debt into the kernel.
+// ⛔ THE SECOND DEFECT, AND IT IS THE PRICE OF THAT ANSWER. Watched from the counter QUEUE instead of from the
+// paying customer: a QR ABANDONED at the glass sat there for five measured minutes, no warning and no reset,
+// the till unusable and a stranger's live payment on screen for the next person to tap.
 //
-// ⚠️ SO THESE CASES ASSERT ON THE RESULT, NOT ON A DIALOG. `resetCounter` is the server action that destroys
-// the pointer; a fix that only hid the question, or only delayed it, leaves these red.
+// ★★★ WHAT MAKES BOTH ANSWERABLE IS A FACT THAT CHANGED BETWEEN THE TWO. p5-1's exemption rested on the
+// screen holding the ONLY copy of the capability to settle — `providerRef` was component state, and going
+// home destroyed it. C5 made the recovery a READ (`read.payment` publishes the attempt's envelope verbatim),
+// so any surface that can NAME the order can put the QR back. Going home stopped having to mean forgetting.
+//
+// ⇒ SO THE REGIME IS NOW THE SAME AS EVERY OTHER SCREEN'S — same window, same question — and only the ENDING
+// differs: the order is PARKED, handed to the attract panel by number, instead of dropped. These cases assert
+// the ending and not the dialog: a fix that only asked, or only delayed, leaves them red.
 const pixPending = (expiresInSeconds: number) => ({
   ok: true as const,
   outcome: {
@@ -252,6 +258,7 @@ const pixPending = (expiresInSeconds: number) => ({
     providerRef: 'pospix_abc',
     expiresInSeconds,
   },
+  orderId: 'ord_01LIVE',
   orderNumber: 5,
   buyerName: 'R',
   bag: bagWithSomething,
@@ -282,26 +289,97 @@ async function walkToTheQr(idleSeconds = 90) {
   expect(screen.getByText('5')).toBeTruthy();
 }
 
-describe('an order that already exists in the kernel is not thrown away by the idle clock', () => {
-  it('⛔ five idle windows of stillness and the QR is still there — the till never went home', async () => {
+describe('the QR screen keeps the counter’s clock, and hands the order back instead of dropping it', () => {
+  it('⛔ says nothing for most of the window — a question over a live QR every minute is its own defect', async () => {
     payWith.mockResolvedValue(pixPending(900));
     await walkToTheQr();
     await act(async () => {
-      vi.advanceTimersByTime(5 * 90_000);
+      vi.advanceTimersByTime(69_000);
+    });
+    expect(screen.queryByText('Você ainda está aí?')).toBeNull();
+    expect(screen.getByText('Escaneie o QR Code para pagar')).toBeTruthy();
+  });
+
+  it('★ asks before the end, and the QR is still on the glass behind the question', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(70_500);
+    });
+    expect(screen.getByText('Você ainda está aí?')).toBeTruthy();
+    expect(resetCounter).not.toHaveBeenCalled();
+    expect(screen.getByText('Escaneie o QR Code para pagar')).toBeTruthy();
+  });
+
+  it('★★ and the question tells the truth of THIS screen — a placed order is not erased', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(70_500);
+    });
+    const said = screen.getByText('Você ainda está aí?').parentElement?.textContent ?? '';
+    // ⚠️ The basket's sentence would be a lie here: by this moment the order is in the kernel and going home
+    // hands it back rather than deleting it.
+    expect(said).not.toContain('apagado');
+    expect(said).toContain('5');
+    expect(said).toContain('continua registrado');
+  });
+
+  it('★ a touch buys the whole window back — somebody paying in their bank app is not thrown out', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(80_000);
+    });
+    act(() => {
+      window.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(80_000);
     });
     expect(resetCounter).not.toHaveBeenCalled();
     expect(screen.getByText('Escaneie o QR Code para pagar')).toBeTruthy();
-    expect(screen.getByText('5')).toBeTruthy();
-    expect(screen.queryByText('Toque para começar')).toBeNull();
   });
 
-  it('⚠️ and nothing is ASKED either — a dialog over the QR is the same defect wearing a question mark', async () => {
+  it('★★★ unanswered, the till goes home AND HANDS THE ORDER BACK by number — the whole point of parking', async () => {
     payWith.mockResolvedValue(pixPending(900));
     await walkToTheQr();
     await act(async () => {
-      vi.advanceTimersByTime(89_000);
+      vi.advanceTimersByTime(90_001);
     });
-    expect(screen.queryByText('Você ainda está aí?')).toBeNull();
+    // The glass is free for the next customer…
+    expect(resetCounter).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Toque para começar')).toBeTruthy();
+    expect(screen.queryByText('Escaneie o QR Code para pagar')).toBeNull();
+    // …and the order that was on it is offered back, by the number the barista would call.
+    const said = screen.getByTestId('previous-order').textContent ?? '';
+    expect(said).toContain('5');
+    expect(said).toContain('ainda não foi pago');
+    expect(screen.getByTestId('resume-order').textContent).toContain('5');
+  });
+
+  it('★★ and the recovery names THAT order — the till does not remember a payment, it re-reads one', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    resumePreviousOrder.mockResolvedValue({ ok: false, kind: 'gone' });
+    await walkToTheQr();
+    await act(async () => {
+      vi.advanceTimersByTime(90_001);
+    });
+    await act(async () => {
+      screen.getByTestId('resume-order').click();
+    });
+    expect(resumePreviousOrder).toHaveBeenCalledWith('ord_01LIVE');
+  });
+
+  it('⛔ a basket that never became an order is still FORGOTTEN — parking is for orders, not for shopping', async () => {
+    render(<Totem initialMenu={menu} initialBag={bagWithSomething} idleSeconds={90} />);
+    startOrder();
+    await act(async () => {
+      vi.advanceTimersByTime(90_001);
+    });
+    expect(resetCounter).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('previous-order')).toBeNull();
+    expect(screen.queryByTestId('resume-order')).toBeNull();
   });
 
   it('★ the ordinary clock is back the moment the pix is paid — the receipt still goes home by itself', async () => {
@@ -319,9 +397,10 @@ describe('an order that already exists in the kernel is not thrown away by the i
     expect(screen.getByText('Toque para começar')).toBeTruthy();
   });
 
-  it('⚠️ a pix that outlived its OWN window does free the till — the counter is not parked forever', async () => {
+  it('⚠️ the PAYMENT’s own window is the outer bound when it is the shorter of the two', async () => {
+    // A box configured to wait five minutes still may not hold a pix past the reservation behind it.
     payWith.mockResolvedValue(pixPending(200));
-    await walkToTheQr();
+    await walkToTheQr(300);
     await act(async () => {
       vi.advanceTimersByTime(199_000);
     });
@@ -333,9 +412,9 @@ describe('an order that already exists in the kernel is not thrown away by the i
     expect(screen.getByText('Toque para começar')).toBeTruthy();
   });
 
-  it('and the window it honours is the PAYMENT’s number, not the idle one and not a constant', async () => {
-    payWith.mockResolvedValue(pixPending(30));
-    await walkToTheQr(90);
+  it('and neither window is a constant baked into the component', async () => {
+    payWith.mockResolvedValue(pixPending(900));
+    await walkToTheQr(30);
     await act(async () => {
       vi.advanceTimersByTime(29_000);
     });

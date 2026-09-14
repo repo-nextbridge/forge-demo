@@ -89,15 +89,36 @@ describe('the bag repeats the kernel', () => {
       }),
       [doc],
     );
-    expect(bag.discountLabel).toBe('−R$ 2,60');
-    expect(bag.discountTitle).toBe('PRIMEIROCAFE · 10% OFF');
+    expect(bag.discounts).toEqual([{ title: 'PRIMEIROCAFE · 10% OFF', amountLabel: '−R$ 2,60' }]);
     expect(bag.totalLabel).toBe('R$ 23,40');
+  });
+
+  it('★★ keeps EVERY promotion as its own row — one name over two promotions’ money is a lie that adds up', () => {
+    // ⚠️ MEASURED, and that is why this case exists: a counter order of the coffee store carried BOTH of
+    // these totalizers at once. Collapsed into a single row the arithmetic still closed (156,00 − 18,60 =
+    // 137,40) while the screen credited the whole reduction to one of the two promotions.
+    const bag = toBag(
+      view({
+        totalizers: [
+          { id: 'subtotal', name: 'Subtotal', amount: 15600 },
+          { id: 'discount:promo_A', name: '10% na primeira compra', amount: -1560 },
+          { id: 'discount:promo_B', name: 'Combo da manhã · R$ 3,00 OFF', amount: -300 },
+        ],
+        total_amount: 13740,
+      }),
+      [doc],
+    );
+    expect(bag.discounts).toEqual([
+      { title: '10% na primeira compra', amountLabel: '−R$ 15,60' },
+      { title: 'Combo da manhã · R$ 3,00 OFF', amountLabel: '−R$ 3,00' },
+    ]);
+    expect(bag.subtotalLabel).toBe('R$ 156,00');
+    expect(bag.totalLabel).toBe('R$ 137,40');
   });
 
   it('shows no discount row at all when the kernel applied none', () => {
     const bag = toBag(view(), [doc]);
-    expect(bag.discountLabel).toBeNull();
-    expect(bag.discountTitle).toBeNull();
+    expect(bag.discounts).toEqual([]);
   });
 
   it('takes each line’s money from `line_total`, never from qty × unit', () => {
