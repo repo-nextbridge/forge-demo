@@ -374,19 +374,43 @@ só relatório"*. Ele **não** faz mais o `box-up` sair 1, e a razão é que ele
 nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
 do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
 HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que cortava é o **default** da
-**vitrine**, `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts:51`, no produto).
-⚠️ Não confunda com o `--deadline-ms` **desta caixa**: esse é o prazo de **espera pela resposta**, outro
-número.
+**vitrine**, `DEFAULT_MAX_DURATION_MS = 15 * 60_000` (`apps/storefront/src/lib/warm/warm.ts`, no produto —
+**removido na pk35/p1**). ⚠️ Não confunda com o `--deadline-ms` **desta caixa**: esse é o prazo de **espera
+pela resposta**, outro número.
 
-**★★ E desde a pk21 esse teto DERIVA DO PLANO — decisão do Renan em 07/09:** *"deriva do plano"*. A prosa
-acima dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a rota para ver:
-`/api/warm?max_duration_ms=` sobrescreve o default (`apps/storefront/src/app/api/warm/route.ts:183`). O que
+**⛔⛔ E NA pk35 O TETO DERIVADO VIROU O DEFEITO.** No nascimento de 13/09 o número derivado saiu
+`4 034 947 ms` e cortou o `outlet` em **879/1 224** imagens com `failed=0` e `busy=0` — caixa **saudável**,
+enchendo o cache de derivadas a ~330 imagens/min. **Um teto que cresce com o plano continua sendo um teto com
+número de TAMANHO dentro**, a forma proibida nesta casa desde 11/09: *limite por PROGRESSO; o relógio é rede,
+nunca juiz.* A `pk35/p1` moveu o juiz para o **produto** — janela de **não-progresso**
+(`apps/storefront/src/lib/warm/limit.ts`), `max_duration_ms` virou **rede opcional**, e a corrida passou a
+publicar `report.stoppedBecause` (`finished` · `no-progress` · `safety-net`). ⇒ **o passo 14 parou de mandar
+teto.**
+⚠️ **Com UMA exceção MEDIDA:** esta caixa pina as frentes **por digest**, e a vitrine pinada hoje compila
+`max_duration_ms")??9e5` na rota e **não** carrega `stoppedBecause` (medido na bancada, 13/09). Imagem que não
+sabe dizer como parou é imagem que **não consegue se limitar por progresso** — está num relógio de qualquer
+jeito, e um teto derivado é maior que os 900 000 ms dela. Então a derivação **sobrevive exatamente ali**, e o
+relatório diz que é isso que está fazendo. ⛔ Quem decide é o **campo**, nunca o `skipped`.
+⚠️ **E onde ela sobrevive, sobrevive como REDE.** A versão do tamanho-do-juiz desse número é justamente o que
+cortou o outlet: `4 034 947 ms` contra um plano final de `planned=22047` que, ao custo de 180–200 ms/url que a
+própria corrida mediu, precisava de **4 043 880–4 493 200 ms** — curto em 0,2–11%. Não podia ser diferente: o
+plano observado é um **piso** (corrida cortada dentro da passada de PÁGINAS nunca vê as imagens que aquelas
+páginas declarariam). Então o teto que sobrevive **folga uma ordem de grandeza** sobre o trabalho medido
+(`NET_HEADROOM`) e é **nomeado** rede — múltiplo de uma medição, nunca número de tamanho.
+★ E `stoppedBecause` tem **quatro** leituras, não três: **ausente** é *"esta corrida não pode dizer"* — nunca
+`finished`. É a mesma régua que a coluna `busy` já obedece.
+
+**★★ A derivação da pk21 (história, e ainda viva na exceção acima) — decisão do Renan em 07/09:** *"deriva do
+plano"*. A prosa antiga dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e bastou abrir a
+rota para ver: `/api/warm?max_duration_ms=` sobrescrevia o default (`apps/storefront/src/app/api/warm/route.ts`,
+no bloco `parse`). O que
 faltava era um **número para mandar**, e o único honesto é derivado:
 `teto = (urls PLANEJADAS + as que o passo de verify revisita) × (ms por url que a corrida MEDIU)`.
 Os dois fatores saem da corrida que foi cortada — o plano que ela enumerou pela porta, e o relógio dela
 dividido pelas urls que aqueceu. Como **o plano não é conhecível antes da corrida** (as páginas vêm da porta e
-as imagens vêm dos **bytes** que essas páginas servem), a **primeira** corrida é a *observação* — roda no
-default do produto, que passa a ser uma sondagem e não uma promessa — e a **segunda** roda no teto derivado.
+as imagens vêm dos **bytes** que essas páginas servem), a **primeira** corrida é a *observação* — roda **sem
+teto nenhum**, no limite com que o próprio produto se segura — e a **segunda**, só numa imagem pré-p1, roda no
+teto derivado.
 Numa caixa cujo plano já cabe, a primeira não é cortada e **não existe segunda**. Deriva **uma vez** e
 relata; não fica perseguindo.
 📌 **O que isso NÃO conserta:** o vermelho **falso** do parágrafo seguinte. O único efeito é incidental e não

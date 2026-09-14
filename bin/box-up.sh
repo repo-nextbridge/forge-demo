@@ -1986,18 +1986,28 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 #
 # ⚠️ BUT WARMTH STOPPED DECIDING THIS SCRIPT'S EXIT CODE (Renan, 05/09: *"D1 - Pode ser só relatório"*), and
 # the reason is that it was ALWAYS red. The plan is ~420 pages plus ~20 400 image derivatives found in each
-# HTML's `srcset`, against the VITRINE's own 15-minute DEFAULT (`apps/storefront/src/lib/warm/warm.ts:51`, in
-# the product): every run ended `15865 urls were never visited`. It also invented red — `failed=198` on a
-# birth, `failed=0` for the same URLs on the idle box minutes later, because the warmer is the last step of
-# the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS RED IS A STEP PEOPLE LEARN TO SKIP, and
-# then it is worth nothing on the day it is right.
+# HTML's `srcset`, against the VITRINE's own 15-minute DEFAULT (`DEFAULT_MAX_DURATION_MS`, in the product's
+# `apps/storefront/src/lib/warm/warm.ts`): every run ended `15865 urls were never visited`. It also invented
+# red — `failed=198` on a birth, `failed=0` for the same URLs on the idle box minutes later, because the
+# warmer is the last step of the birth and races the tail of the seed. ★ A STEP THAT IS ALWAYS RED IS A STEP
+# PEOPLE LEARN TO SKIP, and then it is worth nothing on the day it is right.
 #
-# ★★ pk21 — AND THE FIRST OF THOSE TWO IS NOW GONE (Renan, 07/09: *"deriva do plano"*). The ceiling was never
-# unraisable: `/api/warm?max_duration_ms=` overrides that default (`.../api/warm/route.ts:183`), and this
-# script's own note used to claim otherwise. Step 14 now re-runs a CUT run under a ceiling DERIVED from the
-# plan it measured — planned urls × the ms-per-url that run observed — so the step is no longer red by
-# construction, and this box's warm step takes as long as ITS plan needs rather than as long as a constant
-# allows. Warmth stays a REPORT: the false red of `failed=198` is untouched, and so is the reasoning above.
+# ★★ pk21 — AND THE FIRST OF THOSE TWO WENT (Renan, 07/09: *"deriva do plano"*). The ceiling was never
+# unraisable: `/api/warm?max_duration_ms=` overrode that default, and this script's own note used to claim
+# otherwise. Step 14 re-ran a CUT run under a ceiling DERIVED from the plan it measured — planned urls ×
+# the ms-per-url that run observed.
+#
+# ⛔⛔ pk35/d5 — AND THAT DERIVED CEILING IS WHAT CUT THE BIRTH OF 2026-09-13. `forge` came out
+# 19 985/19 985 images and `outlet` 879/1 224, with `failed=0` and `busy=0`: nothing broken, nothing refused,
+# a box filling its derivative cache at ~330 images/min and a clock of `4 034 947 ms` on top of it. A ceiling
+# that grows with the plan is still a ceiling carrying a number of SIZE — the shape forbidden here since
+# 2026-09-11. `pk35/p1` made PROGRESS the product's judge (a window of NON-progress) and demoted
+# `max_duration_ms` to an optional net; ⇒ STEP 14 NO LONGER SENDS ONE. ⚠️ WITH ONE MEASURED EXCEPTION: a
+# front whose image predates p1 publishes no `report.stoppedBecause` and cannot bound itself by progress, so
+# there the derived ceiling survives — as a NET this time (`NET_HEADROOM`× the work it measured, because the
+# judge-sized version of that number is what cut the outlet), and `bin/warm-box.mjs` says out loud when that
+# is what it did. The storefront pinned in `forge.lock` today is exactly such an image. Warmth stays a REPORT either way: the
+# false red of `failed=198` is untouched, and so is the reasoning above.
 #
 # ⛔ IT WAS NOT DELETED, SILENCED OR `|| true`d. It runs, and it now says MORE than it did: which URLs did not
 # answer BY NAME, and which were never VISITED — a different thing, and a different repair.

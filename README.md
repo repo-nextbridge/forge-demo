@@ -246,9 +246,10 @@ Renan, 05/09: *"D1 - Pode ser só relatório"*. Three measurements, all from rea
 
 1. **Red by construction** — ★ **and this one was repaired in pk21**, see below. The plan is not made of
    pages: ~420 pages plus ~20 400 **image derivatives** discovered in each HTML's `srcset` —
-   `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cut it is the **vitrine's** own
-   *default* (`DEFAULT_MAX_DURATION_MS = 15 * 60_000`, in the product). ⚠️ Not the same number as this box's
-   `--deadline-ms`, which is only how long it waits for an answer. **Every** run ended this way.
+   `planned=20822`, `warmed=4964`, `15865 urls were never visited`. What cut it was the **vitrine's** own
+   *default* (`DEFAULT_MAX_DURATION_MS = 15 * 60_000`, in the product — **removed in pk35/p1**). ⚠️ Not the
+   same number as this box's `--deadline-ms`, which is only how long it waits for an answer. **Every** run
+   ended this way.
 2. **And it invented red.** `failed=198` and `failed=189` on two births — and the same brands and collections
    answered **200** on the idle box, with this same step reporting **`failed=0`**. Those are the load the
    warmer imposes on a box that is still settling: it is the last step of the birth and it races the tail of
@@ -264,13 +265,45 @@ fact and a different repair. The old report said `198 of 419 pages did not answe
 so nobody reading a birth could check whether the pages were broken or the warmer had overloaded a settling
 box. They were the second.
 
-### ★★★ The run's ceiling DERIVES FROM THE PLAN (pk21)
+### ⛔ …and the DERIVED ceiling is what cut the birth of 13/09 (pk35)
+
+The section below is **history**, and it is kept because one image still runs it. On 2026-09-13 the derived
+number came out **`4 034 947 ms`** and cut the `outlet` at **879/1 224** images, with `failed=0` and
+`busy=0` — a box that was **working**, filling its derivative cache at ~330 images/min. A ceiling that grows
+with the plan is still a ceiling **carrying a number of SIZE**, which this house forbade on 2026-09-11:
+*limit by PROGRESS; the clock is a net, never a judge.*
+
+`pk35/p1` moved the judge into the **product** — a window of **non-progress**
+(`apps/storefront/src/lib/warm/limit.ts`), with `max_duration_ms` demoted to an **optional** safety net and a
+new `report.stoppedBecause` (`finished` · `no-progress` · `safety-net`) saying which limit fired. ⇒ **Step 14
+stopped sending a ceiling.**
+
+⚠️ **With one MEASURED exception, and it is not a hedge.** This box pins its fronts by digest: the storefront
+`forge.lock` pins today compiles `max_duration_ms")??9e5` into its warm route and carries the string
+`stoppedBecause` **nowhere** (measured on the bench, 2026-09-13). An image that cannot say how it stopped is
+an image that **cannot bound itself by progress** — it is on a clock either way, and a derived clock beats its
+own 900 000 ms. So the derivation survives **exactly there**, and the report says so out loud. ⛔ The
+discriminator is the **field**, never `skipped`: the same plan and the same cut, on a run that publishes
+`no-progress`, gets **no ceiling at all**.
+
+⚠️ **And where it survives, it survives as a NET.** The judge-sized version of that number is exactly what
+cut the outlet: `4 034 947 ms`, against a final plan of `planned=22047` which, at the 180–200 ms/url that run
+really cost, needed **4 043 880–4 493 200 ms** — short by 0.2–11%. It could not have been otherwise: the
+observed plan is a **floor** (a run cut inside the pages pass never sees the images those pages would have
+declared), and a number sized to a floor is a number that **decides**. So the surviving ceiling clears the
+measured work by an order of magnitude (`NET_HEADROOM`) and is **named** a net — a multiple of a measurement,
+never a number of size: a plan ten times bigger gets a net ten times bigger with no edit.
+
+★ And `stoppedBecause` has **four** readings, not three: **absent** is *"this run cannot say"* — never
+`finished`. It is the same rule the `busy` column already obeys.
+
+### ★★★ The run's ceiling DERIVES FROM THE PLAN (pk21 — see above: superseded except on a pre-p1 image)
 
 Renan, 07/09: *"deriva do plano"*. Measurement 1 above was not a fact about the box, it was a fact about a
 **constant**: 20 800 planned URLs against 900 000 ms. ⚠️ And the note that this box "cannot raise" that
-ceiling was simply **false** — `/api/warm?max_duration_ms=` overrides the vitrine's default
-(`apps/storefront/src/app/api/warm/route.ts:183`); the product had always exposed it. What was missing was a
-number to send, and the only honest one is derived:
+ceiling was simply **false** — `/api/warm?max_duration_ms=` overrode the vitrine's default
+(`apps/storefront/src/app/api/warm/route.ts`, its `parse` block); the product had always exposed it. What was
+missing was a number to send, and the only honest one is derived:
 
 ```
 ceiling = (urls the run PLANNED + the urls its verify pass revisits) × (ms per url it MEASURED)

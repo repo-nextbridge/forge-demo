@@ -112,9 +112,49 @@ const withoutBusyColumn = (value) => {
  * startedAt` over the urls the run WARMED. A fixture that answered instantly would hand the step a cost of
  * zero and the derivation would look right while deriving nothing.
  */
-const VITRINE_DEFAULT_MAX_DURATION_MS = 15 * 60_000; // apps/storefront/src/lib/warm/warm.ts:51 (the product's)
+// ⚠️ THE PRE-p1 PRODUCT'S DEFAULT, and it is a FIXTURE OF AN OLD IMAGE rather than of the product: pk35/p1
+// deleted this constant from `apps/storefront/src/lib/warm/warm.ts`. It stays because this box pins its
+// fronts by digest and the one pinned today still compiles `max_duration_ms")??9e5` into its warm route.
+const VITRINE_DEFAULT_MAX_DURATION_MS = 15 * 60_000;
 
-function planReport({ pages, images, msPerUrl, ceilingMs, p95 }) {
+/**
+ * ★★★ pk35/d5 — THE PRODUCT'S OWN `reasons` SENTENCE FOR A CUT RUN, copied rather than invented.
+ *
+ * `pk35/p1` writes three of them (`apps/storefront/src/lib/warm/warm.ts`, the `skipped > 0` block) and they
+ * are OPPOSITE instructions: the box went quiet, or a clock somebody handed the run fired while the box was
+ * still working. `undefined` is the fourth case and the one this bench actually runs — an image built before
+ * p1, whose only ceiling is the 900 000 ms default and which says nothing about how it stopped.
+ */
+const cutReason = (store, skipped, stop, ceilingMs) => {
+  if (stop === 'no-progress') {
+    return `${store}: ${skipped} urls were never visited: the run STOPPED MAKING PROGRESS. Nothing answered for 300000ms, after 12 answer(s) from the box. A box that is still answering is never cut here, however big its plan`;
+  }
+  if (stop === 'safety-net') {
+    return `${store}: ${skipped} urls were never visited: the run hit the SAFETY NET of ${ceilingMs}ms WHILE IT WAS STILL MAKING PROGRESS. This box was working, so raise --max-duration-ms or drop it; the store is not smaller than its plan`;
+  }
+  return `${store}: ${skipped} urls were never visited: the run hit its ceiling of ${ceilingMs}ms`;
+};
+
+/**
+ * ★★★ THE REPORT AS AN IMAGE THAT PREDATES pk35/p1 SENDS IT — the word simply is not there.
+ *
+ * ⛔ NOT `stoppedBecause: 'finished'`. Sister of `withoutBusyColumn` above and for the same measured reason:
+ * this box pins its fronts BY DIGEST, so the image that answers can be older than the field, and "this run
+ * cannot say how it stopped" is a different sentence from "it finished".
+ */
+const withoutStopWord = (value) => {
+  if (Array.isArray(value)) return value.map(withoutStopWord);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([k]) => k !== 'stoppedBecause')
+        .map(([k, v]) => [k, withoutStopWord(v)]),
+    );
+  }
+  return value;
+};
+
+function planReport({ pages, images, msPerUrl, ceilingMs, p95, stop }) {
   let budget = Math.floor(ceilingMs / msPerUrl);
   const take = (n) => {
     const done = Math.max(0, Math.min(n, budget));
@@ -143,9 +183,7 @@ function planReport({ pages, images, msPerUrl, ceilingMs, p95 }) {
     verify: pass({ planned: pages, done: v.done, skipped: v.skipped, p95 }),
   };
   const skipped = p.skipped + i.skipped + v.skipped;
-  const reasons = skipped
-    ? [`sto_CAFE: ${skipped} urls were never visited: the run hit its ceiling of ${ceilingMs}ms`]
-    : [];
+  const reasons = skipped ? [cutReason('sto_CAFE', skipped, stop, ceilingMs)] : [];
   return {
     elapsedMs: (p.done + i.done + v.done) * msPerUrl,
     report: {
@@ -156,6 +194,11 @@ function planReport({ pages, images, msPerUrl, ceilingMs, p95 }) {
       p95Pass: 'verify',
       thresholdMs: null,
       stores: [store],
+      // ★★★ pk35/d5 — `undefined` is the PINNED image, and it is the default here for that reason: the
+      // storefront running on the bench today (`forge-demo-storefront`, built from v03/integra@e8fc602d4)
+      // carries `max_duration_ms")??9e5` in its compiled route and the string `stoppedBecause` nowhere at
+      // all. `withoutStopWord` below is what strips it, so the fixture cannot publish a field by accident.
+      ...(stop === undefined ? {} : { stoppedBecause: stop }),
       reasons,
       ok: reasons.length === 0,
     },
@@ -205,6 +248,15 @@ async function fakeBox({
   busyNamedNoTime = 0,
   /** `false` ⇒ the report is sent the way an image built BEFORE pk34/p5 sends it: with no `busy` at all. */
   publishesBusy = true,
+  /**
+   * ★★★ pk35/d5 — `report.stoppedBecause`, the word the product publishes for HOW the run stopped.
+   *
+   * `undefined` (the default) is an image that predates pk35/p1 and publishes no such field — which is the
+   * image pinned in `forge.lock` today, measured on the bench of 2026-09-13. Anything else is published
+   * verbatim, INCLUDING a word this step does not know: a fixture that could only send the three legal
+   * values could never prove the step refuses to guess at a fourth.
+   */
+  stop,
 } = {}) {
   const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
@@ -281,6 +333,7 @@ async function fakeBox({
                       p95,
                       p95Pass: 'warm',
                       thresholdMs: null,
+                      stoppedBecause: stop,
                       stores: [
                         {
                           store: 'sto_CAFE',
@@ -313,6 +366,7 @@ async function fakeBox({
                         p95,
                         p95Pass: 'warm',
                         thresholdMs: null,
+                        stoppedBecause: stop,
                         stores: [
                           {
                             store: 'sto_CAFE',
@@ -347,6 +401,7 @@ async function fakeBox({
                           p95: 0,
                           p95Pass: 'verify',
                           thresholdMs: null,
+                          stoppedBecause: stop,
                           stores: [
                             {
                               store: 'sto_CAFE',
@@ -364,13 +419,13 @@ async function fakeBox({
                               verify: undefined,
                             },
                           ],
-                          reasons: [`sto_CAFE: ${planned - 1} urls were never visited: the run hit its ceiling of 900000ms`],
+                          reasons: [cutReason('sto_CAFE', planned - 1, stop, 900_000)],
                           ok: false,
                         },
                       }
                     : warm === 'plan'
                       ? (() => {
-                          const { report, elapsedMs } = planReport({ ...plan, ceilingMs, p95 });
+                          const { report, elapsedMs } = planReport({ ...plan, ceilingMs, p95, stop });
                           return {
                             state: report.ok ? 'ok' : 'incomplete',
                             report,
@@ -391,6 +446,7 @@ async function fakeBox({
                               p95: 0,
                               p95Pass: 'warm',
                               thresholdMs: null,
+                              stoppedBecause: stop,
                               stores: [],
                               reasons: [],
                               ok: true,
@@ -400,6 +456,10 @@ async function fakeBox({
           };
         }
         if (!publishesBusy && run.settleTo) run = { ...run, settleTo: withoutBusyColumn(run.settleTo) };
+        // ⚠️ `stoppedBecause: undefined` survives `JSON.stringify` as an ABSENT KEY already — but only
+        //    because every shape above spells the property. Stripped explicitly so a shape added later
+        //    cannot start publishing the field by inheriting somebody's `?? 'finished'`.
+        if (stop === undefined && run.settleTo) run = { ...run, settleTo: withoutStopWord(run.settleTo) };
         return json(202, { ok: true, started: true, run: { ...run, settleTo: undefined } });
       }
       asked.gets += 1;
@@ -930,15 +990,19 @@ test('★★★ a declaration that describes ANOTHER box is refused, not read �
 //
 // ⛔ THE DEFECT, MEASURED ON THREE BIRTHS AND AGAIN ON 07/09. The plan of this box is ~420 pages plus the
 // ~20 400 IMAGE derivatives those pages declare in their `srcset`, against a ceiling of 900 000 ms that is
-// not the box's — it is `DEFAULT_MAX_DURATION_MS` in the product (`apps/storefront/src/lib/warm/warm.ts:51`).
+// not the box's — it was `DEFAULT_MAX_DURATION_MS` in the product (`apps/storefront/src/lib/warm/warm.ts`).
 // `planned=20822 warmed=4964`, `15865 never visited`, EVERY run, by construction.
 //
-// ★ AND THE PRODUCT ALREADY EXPOSES THE FIX: `/api/warm?max_duration_ms=` overrides that default
-// (`apps/storefront/src/app/api/warm/route.ts:183`). It was never true that this box "cannot raise" the
-// ceiling — the file said so, and the file was wrong. What was missing is a NUMBER TO RAISE IT TO, and the
-// only honest one is derived: how many urls the plan holds × what a url cost on this box, both MEASURED by
-// the run that was cut. A bigger fixed number would be the same trap one house further along, which is why
-// nothing below asserts a constant.
+// ★ AND THE PRODUCT ALREADY EXPOSED THE FIX: `/api/warm?max_duration_ms=` overrode that default
+// (`apps/storefront/src/app/api/warm/route.ts`, its `parse` block). It was never true that this box "cannot
+// raise" the ceiling — the file said so, and the file was wrong. What was missing is a NUMBER TO RAISE IT
+// TO, and the only honest one is derived: how many urls the plan holds × what a url cost on this box, both
+// MEASURED by the run that was cut. A bigger fixed number would be the same trap one house further along,
+// which is why nothing below asserts a constant.
+//
+// ⛔⛔ AND THE DERIVED NUMBER BECAME THE DEFECT ONE LEVA LATER — `4 034 947 ms` cut a healthy `outlet` on
+// 2026-09-13. The section further down (pk35/d5) is where that is repaired; everything here now runs ONLY
+// against an image that publishes no `report.stoppedBecause`, which is what these fixtures default to.
 
 /** The `max_duration_ms` of each POST, in order. `null` for a call that sent none. */
 const ceilings = (box) => box.asked.calls.map((p) => (p.has('max_duration_ms') ? Number(p.get('max_duration_ms')) : null));
@@ -1034,6 +1098,191 @@ test('★★ a cut run that warmed NOTHING has no cost to derive from, and says 
     assert.match(stdout, /warmed no url|no observed cost/i, `the step does not say why it did not derive:\n${stdout}`);
   } finally {
     box.close();
+  }
+});
+
+// ── ★★★ pk35/d5 · HOW THE RUN STOPPED IS THE RUN'S WORD, AND THE DEMO STOPPED BUYING THE CLOCK ───────────
+//
+// ⛔ THE DEFECT, MEASURED AT THE BIRTH OF 2026-09-13: `forge` came out 19 985/19 985 images and `outlet`
+// 879/1 224, with `failed=0` and `busy=0`. Nothing was broken and nothing was refused — the box was filling
+// its derivative cache at ~330 images/min and a CLOCK of 4 034 947 ms cut it. ★ THAT CLOCK WAS THIS
+// REPOSITORY'S: the product exposed `max_duration_ms` and this step derived a number and SENT it.
+//
+// `pk35/p1` made PROGRESS the judge in the product and left `max_duration_ms` as an optional net nobody buys
+// by default. So this step stops buying one — ⚠️ EXCEPT on an image that cannot bound itself by progress,
+// and that exception is MEASURED rather than assumed: the storefront pinned in `forge.lock` today
+// (`v0.3.0-pre.e8fc602d4`) compiles `max_duration_ms")??9e5` into its warm route and carries the string
+// `stoppedBecause` nowhere. On THAT image the clock is the judge whether this step likes it or not, and the
+// derived ceiling is the only thing standing between the birth and `15865 urls were never visited`.
+//
+// ⇒ `report.stoppedBecause` is what tells the two images apart, and it has FOUR readings, not three:
+// `finished`, `no-progress`, `safety-net`, and ABSENT — which is «this run cannot say», never «finished».
+
+/** Whether any POST of this run carried a ceiling at all. The whole point of the slice, as one boolean. */
+const boughtAClock = (box) => ceilings(box).some((c) => c !== null);
+
+test('★★★ a modern image bounds itself by PROGRESS, so this step sends NO ceiling and does not re-run', async () => {
+  // The run was CUT (`skipped > 0`) — the pre-p1 shape that used to trigger the derivation — and it SAYS the
+  // box went quiet. ⛔ A bigger clock buys nothing from a box that is not answering, so nothing is re-run.
+  const box = await fakeBox({ warm: 'cut', stop: 'no-progress' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(ceilings(box).length, 1, `the step re-ran a box that had gone QUIET:\n${stdout}`);
+    assert.equal(boughtAClock(box), false, `the step bought the clock back: ${JSON.stringify(ceilings(box))}\n${stdout}`);
+    assert.equal(status, 1, `a cut run was not reported:\n${stdout}`);
+    // Its OWN sentence, not the product's relayed `reasons` — a test that matched the relay would pass with
+    // this file's logic deleted.
+    assert.match(stdout, /nothing was re-run/i, `the step does not say why it did not derive:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ THE SABOTAGE, AND ITS MIRROR: a NO-PROGRESS cut may not print the clock\'s sentence', async () => {
+  const box = await fakeBox({ warm: 'cut', stop: 'no-progress' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.match(stdout, /went QUIET|stopped answering/i, `the box going quiet is not named:\n${stdout}`);
+    // ⛔ THE HALF THAT MATTERS. These are OPPOSITE instructions to an operator: one says "your shop stopped
+    //    answering", the other says "the number I was handed was too small". Printing the clock's words over
+    //    a quiet box is the defect this house calls «a signal that does not know it does not know».
+    assert.doesNotMatch(stdout, /SAFETY NET/i, `the clock's sentence was printed over a quiet box:\n${stdout}`);
+    assert.doesNotMatch(stdout, /DEFAULT_MAX_DURATION_MS/, `the pre-p1 ceiling was blamed for a quiet box:\n${stdout}`);
+    assert.doesNotMatch(stdout, /ceiling arrived first/i, `the clock was blamed for a quiet box:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and VICE-VERSA: a SAFETY-NET cut says a clock cut a box that was WORKING, and never "quiet"', async () => {
+  // Reachable even though this step sends no clock: single-flight hands it a run it did not start, under a
+  // ceiling it did not choose (`started: false`), and a human may pass `--max-duration-ms` to the vitrine.
+  const box = await fakeBox({ warm: 'cut', stop: 'safety-net' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.match(stdout, /still (?:working|making progress)/i, `the box being alive is not said:\n${stdout}`);
+    assert.match(stdout, /sends no ceiling of its own/i, `the step does not say the clock was not its:\n${stdout}`);
+    assert.doesNotMatch(stdout, /went QUIET/i, `a working box was reported as quiet:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ ANTI-VACUUM: an image that does not publish the word says it CANNOT SAY — and stays WARM', async () => {
+  // ⛔ ABSENT IS NOT `finished`, and it is not a shortfall either. The same rule the `busy` half of this file
+  //    already obeys: there are three answers and «I cannot say» is one of them.
+  const box = await fakeBox({ warm: 'ok' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 0, `a run that could not say how it stopped was graded for it:\n${stdout}`);
+    assert.match(stdout, /VERDICT: warm/, stdout);
+    assert.match(stdout, /cannot say how it stopped/i, `the missing word is not named at all:\n${stdout}`);
+    assert.doesNotMatch(stdout, /stopped=finished/, `absence was rendered as "finished":\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and on THAT image the derivation SURVIVES, because there the clock really is the judge', async () => {
+  // The measured exception, and the reason this slice did not simply delete the derivation: the storefront
+  // pinned today obeys `max_duration_ms` and publishes no `stoppedBecause`. Deleting it would hand the next
+  // birth `15865 urls were never visited` again.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(ceilings(box).length, 2, `the pre-p1 image was left cut:\n${stdout}`);
+    assert.equal(ceilings(box)[0], null, 'the observation run must send no ceiling at all');
+    assert.ok(ceilings(box)[1] >= 20_800 * 100, `the derived ceiling does not fit the plan:\n${stdout}`);
+    assert.equal(status, 0, `the box did not come out warm:\n${stdout}`);
+    // ⛔ AND IT SAYS WHY IT IS STILL DOING THIS, so nobody reads a derived clock as this step's opinion of
+    //    how long a healthy box should take.
+    assert.match(stdout, /cannot bound itself by progress|predates/i, `the derivation is not justified:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ the surviving ceiling is a NET and not a JUDGE — it CLEARS the work it measured', async () => {
+  // ⛔ THE MEASUREMENT THIS ASSERTION EXISTS FOR. On 2026-09-13 the derived number was `4 034 947 ms`,
+  //    sized to exactly the work the cut run's plan implied — and the derived run WAS CUT TOO, because the
+  //    final plan was `planned=22047` and at the 180–200 ms/url it really cost, that plan plus its verify
+  //    pass needed 4 043 880–4 493 200 ms. Short by 0.2–11%. A number sized to a FLOOR is a number that
+  //    decides, whatever it is called.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 } });
+  try {
+    const { stdout } = await runStep({ box });
+    const [, net] = ceilings(box);
+    const work = 20_800 * 100; // (400 pages + 20 000 images + 400 verify) × the cost the run measured
+    assert.ok(net, `nothing was sent at all:\n${stdout}`);
+    assert.ok(
+      net >= work * 5,
+      `the ceiling sent was ${net}ms against ${work}ms of measured work — that is a judge, not a net:\n${stdout}`,
+    );
+    // ⛔ AND IT SAYS WHICH IT IS. A net that reads like a deadline gets raised by hand next time it fires.
+    assert.match(stdout, /SAFETY NET/i, `the number is not named as a net:\n${stdout}`);
+    assert.match(stdout, /FLOOR/i, `the reason the net needs headroom is not given:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★★ …and the SAME plan on an image that CAN say gets no clock at all — the field is what decides', async () => {
+  // ⛔ THE CONTROL. Same box, same plan, same cut: only the word changes. If the ceiling still went out, the
+  //    step is deriving from `skipped` and the field is decoration.
+  const box = await fakeBox({ warm: 'plan', plan: { pages: 400, images: 20_000, msPerUrl: 100 }, stop: 'no-progress' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.equal(boughtAClock(box), false, `the clock went out anyway: ${JSON.stringify(ceilings(box))}\n${stdout}`);
+    assert.equal(ceilings(box).length, 1, `the step re-ran a quiet box:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ a run that says `finished` and still reports unvisited urls is a CONTRADICTION, and is named', async () => {
+  // Unreachable by the product's construction — which is exactly why it is asserted. A step that folded it
+  // into "finished" would print a green word over a store that was cut.
+  const box = await fakeBox({ warm: 'cut', stop: 'finished' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 1, `a cut run reported as finished was called warm:\n${stdout}`);
+    assert.match(stdout, /contradict/i, `the impossible pair is not named:\n${stdout}`);
+    assert.equal(boughtAClock(box), false, `a contradiction was answered with a clock:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ a word this step does not know is printed AS ITSELF, never rounded to one it does', async () => {
+  const box = await fakeBox({ warm: 'cut', stop: 'teleported' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.match(stdout, /teleported/, `the unknown word is not printed:\n${stdout}`);
+    assert.doesNotMatch(stdout, /went QUIET/i, `an unknown word was read as "no-progress":\n${stdout}`);
+    assert.doesNotMatch(stdout, /SAFETY NET/i, `an unknown word was read as "safety-net":\n${stdout}`);
+    assert.equal(boughtAClock(box), false, `an unknown word was answered with a derived clock:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ the per-pass "never visited" line stops blaming the clock when the run says otherwise', async () => {
+  const quiet = await fakeBox({ warm: 'cut', stop: 'no-progress' });
+  const old = await fakeBox({ warm: 'cut' });
+  try {
+    const a = await runStep({ box: quiet });
+    const b = await runStep({ box: old });
+    // ⚠️ THE PASS LINE, not the run's relayed `reasons` — that sentence contains the same words and would
+    //    make this test pass without the pass line changing at all.
+    const lineOf = (stdout) => stdout.split('\n').find((l) => l.trim().startsWith('never visited:')) ?? '';
+    assert.match(lineOf(a.stdout), /answer/i, `the quiet box's pass line does not say the box stopped answering: ${lineOf(a.stdout)}`);
+    assert.doesNotMatch(lineOf(a.stdout), /DEFAULT_MAX_DURATION_MS/, `the pass line still blames a clock: ${lineOf(a.stdout)}`);
+    // ⚠️ ANTI-VACUUM: the old image's line must still name the clock, or the assertion above passes because
+    //    the sentence was deleted rather than because it became conditional.
+    assert.match(lineOf(b.stdout), /DEFAULT_MAX_DURATION_MS/, `the pre-p1 line lost its explanation: ${lineOf(b.stdout)}`);
+  } finally {
+    quiet.close();
+    old.close();
   }
 });
 
