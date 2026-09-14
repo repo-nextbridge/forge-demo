@@ -12,8 +12,8 @@
 //     one the shopper was browsing.
 //   · the session — `my-prices`, `account`. Scoped by the token's tenant, blind to the path.
 // On a deployment where one Host serves N tenants (a shared bench, Staging, any `/s/`-addressed store without
-// DNS of its own), the second mechanism is the leak: `/api/categories` served the HOST's tenant categories to
-// a shopper standing inside another tenant's storefront.
+// DNS of its own), the second mechanism is the leak: the category row the 404 then carried was served from the
+// HOST's tenant to a shopper standing inside another tenant's storefront.
 //
 // The fix is one line of shape, and it already existed in exactly one place — `/api/suggest` read `?store=`
 // before falling back to the Host, and it was the only one of its class that isolated. This module is that

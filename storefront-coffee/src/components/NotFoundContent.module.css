@@ -1,7 +1,10 @@
 /* The theme's 404 body — matches design-base/404.dc.html: giant "4·0·4" (accent RATIONED to the single "0"),
- * a grouped title+subcopy, two icon CTAs, and category chips. Colors are semantic tokens; the display metrics
- * with no scale entry (the 96px hero, the 44px button, the 18/10/6px gaps, the 12.5px chip) are literals pulled
- * straight from the prototype. Square corners via --radius-control. */
+ * a grouped title+subcopy and two icon CTAs. Colors are semantic tokens; the display metrics with no scale
+ * entry (the 96px hero, the 44px button, the 18/10/6px gaps) are literals pulled straight from the prototype.
+ * Square corners via --radius-control.
+ *
+ * ⚠️ The prototype also draws a row of category chips under the CTAs. It is deliberately not built: this shop
+ * wants no browsable category links, so the rules that styled the row went with the markup. */
 
 .root {
   max-width: var(--size-container);
@@ -118,29 +121,3 @@
   border-color: var(--color-accent);
 }
 
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.chip {
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--color-hairline);
-  border-radius: var(--radius-control);
-  font-family: var(--type-caption-family);
-  font-size: 12.5px;
-  color: var(--color-muted);
-  text-decoration: none;
-  transition:
-    border-color var(--dur-hover) ease,
-    color var(--dur-hover) ease;
-}
-
-/* Proto hover: text goes accent, the border only nudges to the weak line. */
-.chip:hover {
-  color: var(--color-accent);
-  border-color: var(--gray-300);
-}

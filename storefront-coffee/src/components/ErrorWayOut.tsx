@@ -8,11 +8,7 @@
 //
 // ⛔ AND THE CORRECTION COMES FROM THE PORT, NEVER FROM THE ADDRESS BAR ALONE — `/s/<anything>/x` reaches this
 // boundary, so a base built from `window.location.pathname` would point "Voltar à loja" at a store that does
-// not exist. `/api/categories` answers with the store it RESOLVED; only a confirmed store moves a link.
-//
-// ⚠️ NO CHIPS, UNLIKE THE 404'S FRAGMENT, and that is a decision rather than an omission: a chip row is a
-// suggestion of where to go instead, which is right when the page does not exist and wrong when the shop is
-// busy — every one of those links reads the same refused port. The retry is the way out here.
+// not exist. `/api/store` answers with the store it RESOLVED; only a confirmed store moves a link.
 //
 // DEGRADES TO EXACTLY WHAT IT REPLACES: no JS, a failed fetch, or an unknown store → the server-rendered
 // actions stand as they are.
@@ -37,7 +33,7 @@ export function ErrorWayOut({
   useEffect(() => {
     let alive = true;
     const standing = currentStore();
-    fetch(withStoreParam('/api/categories', standing))
+    fetch(withStoreParam('/api/store', standing))
       .then((res) => (res.ok ? res.json() : { store: null }))
       .then((body: { store: string | null }) => {
         if (!alive) return;

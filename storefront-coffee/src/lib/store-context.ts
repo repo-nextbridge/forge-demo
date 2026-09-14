@@ -41,7 +41,7 @@
 // `customerClient().myPrices(store, token, skus)` — and this fork learned it in the oven. It calls
 // `resolveRequestStore` like any other store-scoped sibling (`app/api/my-prices/route.ts:70`) and answers
 // 204 when nothing claims the request. Every caller of this function is now store-scoped:
-// `my-prices`, `suggest`, `categories`, `availability`.
+// `my-prices`, `suggest`, `store`, `availability`.
 
 import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
 import { STORE_PARAM } from '@/lib/store-param';

@@ -1,8 +1,8 @@
 // The store-LESS root 404 (S7-SF-CLOSE, HANDOVER §9) — served when there is NO store to give it chrome:
 // unknown host (middleware rewrites to /404), a truly unmatched path, and the 301 hook's fallback. Because it
-// has no store, it renders the theme's 404 body WITH the `forge.` logo and NO category chips (category data
-// belongs to a store — a store-less 404 must not fabricate it). A store-scoped miss (unknown handle) uses the
-// richer `s/[store]/(storefront)/not-found.tsx`, which inherits the header/footer and shows real chips.
+// has no store, it renders the theme's 404 body WITH the `forge.` logo and with links that are the platform's
+// own. A store-scoped miss (unknown handle) uses `s/[store]/(storefront)/not-found.tsx`, which inherits the
+// header/footer and points its CTAs at the store the port confirmed.
 
 import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';

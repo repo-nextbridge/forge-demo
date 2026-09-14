@@ -166,8 +166,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   const rewritten = new URL(`/s/${store}${url.pathname}`, req.url);
   rewritten.search = url.search;
-  // Carry the resolved store on a request header so a store-scoped `not-found.tsx` (which App Router does NOT
-  // hand route params) can still fetch its category chips (S7-SF-CLOSE 404). Additive — the pages read params.
+  // Carry the resolved store on a request header, the signal the kit reads to tell a HOST-rewritten request
+  // from one that asked for `/s/<store>/…` itself (`storefront-kit/store-route.server`, and the command and
+  // customer clients behind the app routes). Additive — the pages read params.
   const headers = new Headers(req.headers);
   headers.set('x-forge-store', store);
   return NextResponse.rewrite(rewritten, { request: { headers } });

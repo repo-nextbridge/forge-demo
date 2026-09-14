@@ -60,7 +60,7 @@ const refused = (retryAfter: string | null): Error & { digest?: string } =>
 const broken = (): Error & { digest?: string } =>
   Object.assign(new Error('read products failed: 503'), { digest: '1928374655' });
 
-// The store-scoped boundaries mount `ErrorWayOut`, which asks `/api/categories` which store this request is
+// The store-scoped boundaries mount `ErrorWayOut`, which asks `/api/store` which store this request is
 // about. That is the NETWORK and nothing else is stubbed: every branch, marker and word below is the real one.
 // ⚠️ It must resolve rather than reject, because a rejected fetch inside an effect is a red about this harness.
 beforeEach(() => {

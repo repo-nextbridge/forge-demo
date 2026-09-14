@@ -10,7 +10,7 @@
 //
 // ⚠️ `HOST_BASE` + `ErrorWayOut` FOR THE SAME REASON THE 404 USES `NotFoundWayOut` (p3-7): App Router hands a
 // boundary no route params and `headers()` here would de-opt the whole group, so the prefix arrives after
-// hydration from the store `/api/categories` confirms. Without it, on a box whose single Host serves two
+// hydration from the store `/api/store` confirms. Without it, on a box whose single Host serves two
 // TENANTS, every way out of the coffee shop's error page lands in the shoe shop.
 
 'use client';
