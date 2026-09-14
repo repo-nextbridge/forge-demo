@@ -56,7 +56,7 @@ printf '  %s\n' "${files[@]}" >&2
 #
 # ★★ AND IT IS ONE MECHANISM ON PURPOSE, because there are TWO ways to skip and a fix per call site would
 # have missed one: `t.skip(...)` (used by fork-suite, fork-typecheck, vendor-drift, instance-app, …) and the
-# `{ skip }` OPTION of `node:test` (bin/composition.guard.mjs, seven tests). Both surface in the run's own
+# `{ skip }` OPTION of `node:test` (bin/composition.guard.mjs, eight tests). Both surface in the run's own
 # summary, so grading THE SUMMARY covers both — and covers the twentieth, written next month, for free.
 strict=0
 case "${FORGE_STRICT_CHECKS:-}" in 1|true|yes) strict=1 ;; esac
