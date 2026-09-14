@@ -149,7 +149,13 @@ what rotted through four repairs.
 
 `seed/demo-setup.json` says `"cafe": null`. The rule is the owner's, 11/09: *"o fork é do cliente, 100%
 liberdade"* ⇒ **when a fork draws by itself what a declared block would draw, the instance removes that
-store's placement.** The same pattern `seed/coffee.mjs::dropGateOnTheCafe` already uses for the gate.
+store's placement.** `seed/outlet.mjs` uses the same pattern for the PLP shelf.
+
+⚠️ **This line used to cite `seed/coffee.mjs::dropGateOnTheCafe` as the other example and that function no
+longer exists (pk36/d1).** The café's gate was removed for a different reason — the fork could not DRAW the
+structural slot — and once it learned to regenerate its own registry the removal and the `gate: false` that
+declared it went together. ⇒ ★ **The two cases were never the same rule**: this one is a fork that draws the
+thing ITSELF, that one was a fork that could draw NOTHING. Only this one is the owner's *"100% liberdade"*.
 
 ⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
 placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,

@@ -72,10 +72,18 @@
 //
 // ★ WHAT IS EXPECTED IS DERIVED FROM HIS DECISION, NOT FROM A LIST: **every store has a gate** (11/09,
 // «sapatos, outlet, café, totem»), and a store that must NOT is the EXCEPTION and declares itself in
-// `seed/box.json` with `gate: false` + the reason. Today there is exactly one — `cafe`, whose forked vitrine
-// owns no gate registry and therefore cannot draw one (see that file, and `seed/coffee.mjs`). The declaration
-// is graded against the PORT (`read.extensions`, the same anonymous read the front itself makes) and against
-// the SCREEN, so uninstalling the app reddens this step by name instead of vanishing.
+// `seed/box.json` with `gate: false` + the reason. The declaration is graded against the PORT
+// (`read.extensions`, the same anonymous read the front itself makes) and against the SCREEN, so uninstalling
+// the app reddens this step by name instead of vanishing.
+//
+// ★★★ pk36/d1 — AND TODAY NO STORE DECLARES THE EXCEPTION. `cafe` was the only one and it was the fork's
+// doing: its vitrine resolved the gate through the kit's registry, which is `{}` by design, so a STRUCTURAL
+// slot it could not draw REFUSED the page. pk35/d2 gave that fork its own `composition.json` and `codegen`
+// script, `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` exists, and the café draws the
+// gate like every other shop — so `seed/coffee.mjs` stopped removing the placement and the key went with it.
+// ⚠️ THE RULE SURVIVES ITS LAST SUBJECT ON PURPOSE: any store may declare itself gateless tomorrow, and
+// `bin/prove-doors.test.mjs` keeps the branch graded against a FIXTURE box of its own rather than letting it
+// go quiet — a rule nothing exercises is a rule nobody will notice breaking.
 //
 // ⚠️ THE VITRINE PAGE OF A STORE THAT IS OFF THE STREET IS EXEMPT, and it is measured rather than assumed:
 // both the reference vitrine and the café's fork mount `requirePublicStorefront` in the store layout ABOVE the
@@ -416,9 +424,9 @@ for (const row of rows) {
       row.handle,
       `seed/box.json declares \`gate: false\` on this store — ${declaredGate?._gate_why ?? 'no reason written'} — ` +
         `and the port answers that "${filler}" fills \`${GATE_TARGET}\` here. The declaration and the box ` +
-        'disagree: either the placement was never removed (`seed/coffee.mjs::dropGateOnTheCafe`) or something ' +
-        'put it back. A front that cannot draw a structural slot REFUSES the page, so this is a shop nobody ' +
-        'can open.',
+        'disagree: either the seed module that owns this store never removed the placement, or something put ' +
+        'it back. A front that cannot draw a structural slot REFUSES the page, so this is a shop nobody can ' +
+        'open.',
     );
   } else if (filler === null) {
     noted(
@@ -581,19 +589,25 @@ for (const row of rows) {
       // is every gate this TENANT really carries, learned from the port a few lines up. So the control is a
       // fact about this box rather than a string somebody typed, and it goes red if the removal ever stops
       // removing.
+      //
+      // ⚠️ pk36/d1 — AND IT SAYS ONLY WHAT IT KNOWS. This branch is reached whenever the port names NO filler,
+      // and that is TWO different boxes: the store that declares itself gateless (the ⓘ above) and the store
+      // that wants a gate and has none (the ✗ above). The sentence used to assert the DECLARATION in both, so
+      // a shop whose gate had simply gone missing was accused of being «declared gateless» — an instrument
+      // stating about the world what it only knows about itself, which is the defect this house keeps finding.
+      const knownAs = wantsGate
+        ? 'the port names no app filling the gate slot on this store (the ✗ above says so)'
+        : 'this store is declared gateless';
       const intruder = [...gatesSeen].map(mark).find((m) => atTheDoor.body.includes(m) || through.body.includes(m));
       if (intruder) {
-        bad(
-          label,
-          `this store is declared gateless and a gate screen (\`${intruder}\`) reached this door anyway.`,
-        );
+        bad(label, `${knownAs} and a gate screen (\`${intruder}\`) reached this door anyway.`);
         continue;
       }
       if (atTheDoor.body.includes(GAP_MARK) || through.body.includes(GAP_MARK)) {
         bad(
           label,
-          'this store is declared gateless and the front REFUSED the page with the structural-gap notice — it ' +
-            'still believes a slot is filled that the port says nobody fills.',
+          `${knownAs}, and the front REFUSED the page with the structural-gap notice — it still believes a ` +
+            'slot is filled that the port says nobody fills.',
         );
         continue;
       }

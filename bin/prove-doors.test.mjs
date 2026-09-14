@@ -11,8 +11,9 @@
 //   node --test bin/prove-doors.test.mjs      (or: bash bin/test.sh)
 
 import { execFile } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -67,9 +68,15 @@ const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: t
 /**
  * ── ★★★ pk33 · THE GATE, AS THIS BOX WOULD ANSWER IT ────────────────────────────────────────────────────
  *
- * `seed/box.json` declares every store gated unless it says `gate: false`, and exactly one does: `cafe`,
- * whose forked vitrine owns no gate registry (the reason is written out in that file and in
- * `seed/coffee.mjs`). So a healthy box answers `demo-gate` on `read.extensions` for every store but that one.
+ * `seed/box.json` declares every store gated unless it says `gate: false`, and a healthy box therefore
+ * answers `demo-gate` on `read.extensions` for EVERY store of every tenant.
+ *
+ * ★★★ pk36/d1 — AND «EVERY» IS NEW. Until today `cafe` was the one exception, because its forked vitrine
+ * resolved `storefront:gate` through the kit's registry and that map is `{}` by design. pk35/d2 gave the fork
+ * its own `composition.json` and `codegen` script, so `storefront-coffee/src/lib/extensions/generated/
+ * gate-registry.tsx` exists and resolves `demo-gate` to both of its faces — the café DRAWS the gate, the
+ * removal gesture in `seed/coffee.mjs` is gone and so is the key. ⇒ this function stopped carrying a store
+ * name, which is the shape it should always have had.
  *
  * ★ THE MARKS ARE THE REAL ONES. `data-testid="demo-gate"` is what `apps/demo-gate/block/gate.tsx` renders and
  * `apps/demo-gate/block/marks.test.tsx` pins to the manifest id; `data-testid="composition-gap"` is the
@@ -78,7 +85,34 @@ const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: t
  */
 const GATE_APP = 'demo-gate';
 const GATE_TARGET = 'storefront:gate';
-const DEFAULT_GATES = (handle) => (handle === 'cafe' ? null : GATE_APP);
+const DEFAULT_GATES = () => GATE_APP;
+
+/**
+ * ── ⛔⛔ pk36/d1 · THE GATELESS RULE OUTLIVED ITS LAST SUBJECT, AND THIS IS WHAT KEEPS IT GRADED ──────────
+ *
+ * `gate: false` is how ANY store of ANY future box says it has no front door, and `bin/prove-doors.mjs` owns
+ * four behaviours for it: the announced ⓘ green, the red when the port gates a store the file says is
+ * gateless, the permanent negative control (a gate SCREEN reaching such a store), and the structural-gap
+ * refusal reaching it. Today no real store declares it.
+ *
+ * ⛔ THE TEMPTING MOVE WAS TO DELETE THOSE TESTS, and it is the wrong one: the rule survives its subject, and
+ * the day somebody declares a store gateless is exactly the day nobody is looking. ⇒ THE TESTS GET A BOX OF
+ * THEIR OWN — a store that exists nowhere but here, in a `seed/box.json` written to a temp root next to THIS
+ * REPOSITORY'S OWN STEP. The declaration is a fixture; the code being graded is the shipped file.
+ *
+ * ⚠️ AND IT IS NOT A HAND-WRITTEN BOX: the fixture is the real `seed/box.json`, parsed, with ONE store added.
+ * A box typed out here would stop resembling this repository's the first time the shape changed.
+ */
+const GATELESS = {
+  tenant: CAFE_TENANT,
+  handle: 'fixture-gateless',
+  id: 'sto_FIXTURE_GATELESS',
+};
+/** ⚠️ ASSERTED END TO END — the step must print THIS string, so the reason really travels file → screen. */
+const GATELESS_WHY =
+  'A STORE THAT EXISTS ONLY IN bin/prove-doors.test.mjs. It declares `gate: false` so the four gateless ' +
+  'behaviours of this step stay graded after pk36/d1 took the last real declaration out of seed/box.json. ' +
+  'It is never seeded: no birth ever reads the box this fixture writes.';
 
 const gateBody = (app) =>
   `<html><body><div data-testid="${app}"><h1>Loja demo.</h1></div></body></html>`;
@@ -280,13 +314,72 @@ function fakeBox({
   });
 }
 
-const step = (api, tenant = TENANT) =>
-  run('node', [STEP, '--tenant', tenant, '--api', api], {
+const step = (api, tenant = TENANT, script = STEP) =>
+  run('node', [script, '--tenant', tenant, '--api', api], {
     env: { ...process.env, FORGE_SEED_TOKEN: TOKEN },
   }).then(
     (r) => ({ code: 0, out: r.stdout }),
     (e) => ({ code: e.code ?? 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` }),
   );
+
+/**
+ * ── ★★★ pk36/d1 · A ROOT OF ONE'S OWN: THIS REPOSITORY'S STEP, OVER A DECLARATION OF THE CASE'S CHOOSING ──
+ *
+ * `bin/prove-doors.mjs` reads `seed/box.json` RELATIVE TO ITSELF (`dirname(dirname(import.meta.url))`), which
+ * is the right design — a probe that took the declaration as an argument could be pointed at a box it is not
+ * grading. So a case that needs a different declaration needs a different ROOT, and this builds one: the real
+ * step and every module it imports, copied beside a `seed/box.json` this suite wrote. It is the shape
+ * `bin/box-config.guard.mjs` and `bin/promotion-faces.guard.mjs` already use, for the same reason they give:
+ * ⛔ the SCRIPTS are the shipped ones, never stubs, or the green would be about a step this box does not ship.
+ *
+ * ⚠️ THE IMPORT LIST IS DERIVED FROM THE SOURCE, never typed. A hand-written list of `bin/` neighbours would
+ * rot the day the step grew a fourth import — and it would rot LOUDLY here (a missing module is a crash), but
+ * loudly in a way that reads as "the fixture is broken" rather than "the list was a copy".
+ */
+function fixtureRoot(mutate) {
+  const dir = mkdtempSync(join(tmpdir(), 'forge-doors-box-'));
+  mkdirSync(join(dir, 'bin'), { recursive: true });
+  mkdirSync(join(dir, 'seed'), { recursive: true });
+  const copied = new Set();
+  const copy = (rel) => {
+    if (copied.has(rel)) return;
+    copied.add(rel);
+    const src = readFileSync(join(ROOT, rel), 'utf8');
+    writeFileSync(join(dir, rel), src);
+    for (const m of src.matchAll(/from '\.\/([^']+)'/g)) copy(join('bin', m[1]));
+  };
+  copy('bin/prove-doors.mjs');
+  assert.ok(
+    copied.size >= 2,
+    `the fixture root copied ${copied.size} file(s): bin/prove-doors.mjs imports neighbours of its own and ` +
+      'this derivation found none, so it is about to run a step with modules missing.',
+  );
+  const box = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
+  mutate(box);
+  writeFileSync(join(dir, 'seed/box.json'), JSON.stringify(box, null, 2));
+  return join(dir, 'bin/prove-doors.mjs');
+}
+
+/** The real box plus one store nobody seeds, declaring itself without a front door. */
+const withGatelessStore = (extra = {}) =>
+  fixtureRoot((box) => {
+    const tenant = box.tenants.find((t) => t.id === GATELESS.tenant);
+    assert.ok(tenant, `seed/box.json declares no tenant "${GATELESS.tenant}" to hang the fixture store on.`);
+    tenant.stores.push({
+      handle: GATELESS.handle,
+      name: 'Fixture · gateless',
+      gate: false,
+      _gate_why: GATELESS_WHY,
+      ...extra,
+    });
+  });
+
+/** The port's answer for that box: the tenant's real stores, plus the fixture one, gated by everything but it. */
+const GATELESS_STORES = [
+  ...CAFE_STORES,
+  { id: GATELESS.id, handle: GATELESS.handle, name: 'Fixture · gateless', storefront_enabled: true },
+];
+const GATELESS_GATES = (handle) => (handle === GATELESS.handle ? null : GATE_APP);
 
 test('every door open ⇒ green, and it says which front answered', async () => {
   const box = await fakeBox();
@@ -680,65 +773,134 @@ test('★★ SABOTAGE — the front CANNOT DRAW the declared gate ⇒ its own re
   assert.match(out, /✓ outlet\/ .* gate ✓/, out);
 });
 
-test('★★★ the café is gateless BY DECLARATION — a green, announced, with the reason from the file', async () => {
-  // His decision is that the whole demo is gated; this store is the ONE exception, and the exception is in
-  // `seed/box.json` where a reader meets it, not buried in a seed. A green that says nothing about it would
-  // be indistinguishable from a gate that went missing.
+test('★★★ pk36/d1 — THE CAFÉ IS GATED, like every other store: the exception is over, in the file and on the screen', async () => {
+  // ★ HIS DECISION, 13/09 («o café ganha portaria? Sim ganha portaria»), confirmed 14/09. What made it
+  // possible is pk35/d2: the fork regenerates its own surfaces, so it owns a gate registry and DRAWS the slot.
+  // A test that only read the probe's output would stay green if the key came back and the whole shop went
+  // quietly back to having no front door — so the FILE is asserted here too, and it is asserted as an ABSENCE.
   const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });
   const { code, out } = await step(box.api, CAFE_TENANT);
   await box.close();
   assert.equal(code, 0, out);
-  const line = out.split('\n').find((l) => l.includes('ⓘ cafe ') && l.includes('no gate'));
-  assert.ok(line, `the gateless store is not announced:\n${out}`);
-  assert.match(line, /BY DECLARATION/, line);
-  assert.match(line, /storefront-coffee/, `the announcement does not carry the file's own reason: ${line}`);
+  assert.match(out, /✓ cafe\/ .* gate ✓ \(demo-gate without the cookie, the shop with it\)/, out);
+  assert.match(out, /✓ cafe\/checkout .* gate ✓ \(demo-gate/, out);
+  assert.match(out, /✓ cafe\/account\/login .* gate ✓ \(demo-gate/, out);
+  // ⛔ AND NOT A WORD OF THE OLD EXCEPTION ABOUT THIS STORE.
+  assert.ok(
+    !out.split('\n').some((l) => l.includes('ⓘ cafe ') && l.includes('no gate')),
+    `the café is still announced as gateless:\n${out}`,
+  );
   // …and the COUNTER, whose front is the totem, keeps its gate on the three doors it still serves.
   assert.match(out, /✓ balcao\/account\/login .* gate ✓ \(demo-gate/, out);
   // ⚠️ AND ITS VITRINE PAGE IS EXEMPT, NOT GATED: `requirePublicStorefront` refuses above the slot.
   assert.match(out, /⊘ balcao\/ .* gate n\/a \(refused above the slot\)/, out);
 
-  // ★ THE DECLARATION IS REALLY IN THE FILE — a test that only read the probe's output would stay green if
-  // the key were dropped and the default (gated) silently took over.
   const declared = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'))
     .tenants.find((t) => t.id === CAFE_TENANT)
     .stores.find((s) => s.handle === 'cafe');
-  assert.equal(declared.gate, false, 'seed/box.json no longer declares the café gateless.');
-  assert.match(declared._gate_why ?? '', /storefront-coffee/, 'the exception carries no written reason.');
+  assert.ok(
+    !('gate' in declared),
+    'seed/box.json declares a `gate` key on the café again. The store is gated by the DEFAULT now; a key ' +
+      'here is a second author for a decision the absence already states.',
+  );
+  // ★ THE REASON STAYS, AND THAT IS DELIBERATE: an exception that ended leaves a reader nothing to read, and
+  // "no line at all" is indistinguishable from "nobody ever thought about it".
+  assert.match(declared._gate_why ?? '', /gate-registry/, 'the café carries no note of why the exception ended.');
 });
 
-test('★★ SABOTAGE — the café is declared gateless and the PORT gates it anyway ⇒ red', async () => {
-  // The removal never ran, or a reinstall put the placement back. The screen would be the structural-gap
-  // refusal on every page of the coffee shop, and the declaration is the only thing that knows better.
+// ── ⛔⛔ THE GATELESS RULE, ON A BOX OF ITS OWN ──────────────────────────────────────────────────────────
+//
+// Everything below grades the same shipped step against a `seed/box.json` this suite writes, holding one
+// store that declares `gate: false`. See `fixtureRoot` for why the declaration — and only the declaration —
+// is a fixture.
+
+test('★★★ a store DECLARED gateless is a green, announced, with the reason from the FILE', async () => {
+  // A green that said nothing about it would be indistinguishable from a gate that went missing. And the
+  // reason is not paraphrased by the step: it is printed, so the sentence a reader meets is the one the
+  // person who made the exception wrote.
+  const script = withGatelessStore();
   const box = await fakeBox({
     credentialTenant: CAFE_TENANT,
-    stores: CAFE_STORES,
+    stores: GATELESS_STORES,
+    gates: GATELESS_GATES,
+  });
+  const { code, out } = await step(box.api, CAFE_TENANT, script);
+  await box.close();
+  assert.equal(code, 0, out);
+  const line = out.split('\n').find((l) => l.includes(`ⓘ ${GATELESS.handle} `) && l.includes('no gate'));
+  assert.ok(line, `the gateless store is not announced:\n${out}`);
+  assert.match(line, /BY DECLARATION/, line);
+  assert.ok(line.includes(GATELESS_WHY), `the announcement does not carry the file's own reason: ${line}`);
+  // …and the stores that DO want one are graded exactly as they are on the real box.
+  assert.match(out, /✓ cafe\/ .* gate ✓ \(demo-gate/, out);
+});
+
+test('★★ SABOTAGE — a store is declared gateless and the PORT gates it anyway ⇒ red', async () => {
+  // The seed module that owns the store never removed the placement, or a reinstall put it back. If the front
+  // cannot draw the slot the screen is the structural-gap refusal on every page, and the declaration is the
+  // only thing on this box that knows better.
+  const script = withGatelessStore();
+  const box = await fakeBox({
+    credentialTenant: CAFE_TENANT,
+    stores: GATELESS_STORES,
     gates: () => GATE_APP,
   });
-  const { code, out } = await step(box.api, CAFE_TENANT);
+  const { code, out } = await step(box.api, CAFE_TENANT, script);
   await box.close();
   assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ cafe ') && l.includes('gate: false'));
+  const line = out.split('\n').find((l) => l.includes(`✗ ${GATELESS.handle} `) && l.includes('gate: false'));
   assert.ok(line, `the disagreement between the file and the port is not named:\n${out}`);
-  assert.match(line, /dropGateOnTheCafe/, `the red does not name who was supposed to remove it: ${line}`);
+  assert.ok(line.includes(GATELESS_WHY), `the red does not carry the declaration it is contradicting: ${line}`);
+  assert.match(line, new RegExp(`"${GATE_APP}" fills`), `the red does not name what the port answered: ${line}`);
 });
 
 test('★★ SABOTAGE — a gate SCREEN reaches a store the port says nobody gates ⇒ red (the negative control)', async () => {
   // ⚠️ THE CONTROL IS DERIVED, not typed: the mark it looks for is every gate this TENANT really carries,
-  // learned from the port in the same run (here, the counter's). Nothing in the declaration can see this —
-  // the port says "no gate on the café" and the café serves one anyway, which is a front pinned to an image
-  // that still welds the entry.
+  // learned from the port in the same run (here, the café's and the counter's). Nothing in the declaration can
+  // see this — the port says "no gate on this store" and the store serves one anyway, which is a front pinned
+  // to an image that still welds the entry.
+  const script = withGatelessStore();
   const box = await fakeBox({
     credentialTenant: CAFE_TENANT,
-    stores: CAFE_STORES,
-    leaksGate: ['cafe'],
+    stores: GATELESS_STORES,
+    gates: GATELESS_GATES,
+    leaksGate: [GATELESS.handle],
   });
-  const { code, out } = await step(box.api, CAFE_TENANT);
+  const { code, out } = await step(box.api, CAFE_TENANT, script);
   await box.close();
   assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ cafe/ '));
+  const line = out.split('\n').find((l) => l.includes(`✗ ${GATELESS.handle}/ `));
   assert.ok(line, `the gate that leaked onto a gateless store is not named:\n${out}`);
   assert.match(line, /declared gateless and a gate screen/, line);
   assert.match(line, /demo-gate/, `the red does not name the screen it found: ${line}`);
+});
+
+test('⛔ ANTI-VACUUM — the fixture really DECLARES the thing it is grading, and the real box really does not', () => {
+  // ★ THE TWO WAYS THIS WHOLE SECTION GOES QUIET, and neither of them is loud on its own:
+  //   · the fixture store loses its `gate: false` ⇒ the three tests above grade an ordinary store and the
+  //     gateless branch of `bin/prove-doors.mjs` is never entered by anything, anywhere;
+  //   · a real store declares `gate: false` again ⇒ the fixture is redundant and, worse, the café's own
+  //     exception may have come back through some other door.
+  // Both are derived here, from the same field of the same files the step reads.
+  const declaring = (box) =>
+    (box.tenants ?? []).flatMap((t) => (t.stores ?? []).filter((s) => s.gate === false).map((s) => `${t.id}/${s.handle}`));
+
+  const real = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
+  assert.deepEqual(
+    declaring(real),
+    [],
+    'seed/box.json declares a store gateless again. That is allowed — it is what the key is for — but the ' +
+      'section above then grades a FIXTURE where a real subject exists: point those tests at the real store, ' +
+      'or say here why the fixture is still the honest subject.',
+  );
+
+  const fixture = JSON.parse(readFileSync(join(dirname(withGatelessStore()), '../seed/box.json'), 'utf8'));
+  assert.deepEqual(
+    declaring(fixture),
+    [`${GATELESS.tenant}/${GATELESS.handle}`],
+    'the fixture box does not declare exactly one gateless store, so the four gateless behaviours of ' +
+      '`bin/prove-doors.mjs` are exercised by NOTHING — neither a real store nor a fake one.',
+  );
 });
 
 test('★★ the port refusing `read.extensions` is a RED that names the store, never a silent abstention', async () => {

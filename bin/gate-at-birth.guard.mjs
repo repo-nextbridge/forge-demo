@@ -21,8 +21,11 @@
 //   WHICH APP IS THE GATE   the app on `composition.json`'s `instanceApps` whose own manifest declares a hook
 //                           on `storefront:gate`. Nothing here spells `demo-gate`.
 //   WHICH STORES WANT ONE   `seed/box.json`: every store, unless it declares `gate: false` (the exception
-//                           carries its reason; `cafe` is today's only one). Same default `bin/prove-doors.mjs`
-//                           grades against — they read the same field of the same file.
+//                           carries its reason). Same default `bin/prove-doors.mjs` grades against — they read
+//                           the same field of the same file. ★★★ pk36/d1 — AND TODAY NO STORE DECLARES THE
+//                           EXCEPTION: `cafe` was the last one, and it lost it when its fork learned to
+//                           regenerate its own gate registry. The rule survives its subject, and the reason
+//                           test below is graded against a FIXTURE so that it cannot go quietly blind.
 //   WHO INSTALLS IT         the four lists this repository drives `extension.install` from, each tied to the
 //                           store whose seed module owns it (`bin/seed.mjs` runs each `here('<handle>')`).
 //
@@ -141,20 +144,46 @@ test('★★★ every tenant whose stores want a gate has a seed that INSTALLS i
   }
 });
 
+/**
+ * The rule, as a function of a box rather than of THE box: every store that takes itself out of the gate rule
+ * with `gate: false` must write a `_gate_why` worth reading. An exception with no reason is how "temporarily,
+ * until the fork catches up" becomes permanent in silence. Returns the offenders, named.
+ */
+const gatelessWithoutReason = (box) =>
+  (box.tenants ?? []).flatMap((tenant) =>
+    (tenant.stores ?? [])
+      .filter((store) => store.gate === false)
+      .filter((store) => !(typeof store._gate_why === 'string' && store._gate_why.length > 80))
+      .map((store) => `${tenant.id}/${store.handle}`),
+  );
+
 test('★★ a store DECLARED gateless is declared with a REASON — a bare `false` is a decision nobody can read', () => {
-  // The `gate` key is what takes a store out of every rule above and out of `bin/prove-doors.mjs`'s default.
-  // An exception with no reason is how "temporarily, until the fork catches up" becomes permanent in silence.
-  for (const tenant of json('seed/box.json').tenants) {
-    for (const store of tenant.stores ?? []) {
-      if (store.gate !== false) continue;
-      assert.ok(
-        typeof store._gate_why === 'string' && store._gate_why.length > 80,
-        `seed/box.json takes "${tenant.id}/${store.handle}" out of the gate rule with \`gate: false\` and ` +
-          'writes no `_gate_why` worth reading. Every other exception in this file carries its measurement; ' +
-          'this one decides what a visitor meets at the front door.',
-      );
-    }
-  }
+  assert.deepEqual(
+    gatelessWithoutReason(json('seed/box.json')),
+    [],
+    'a store above is taken out of the gate rule with `gate: false` and writes no `_gate_why` worth reading. ' +
+      'Every other exception in this file carries its measurement; this one decides what a visitor meets at ' +
+      'the front door.',
+  );
+});
+
+test('⛔ ANTI-VACUUM — that rule SEES: today no real store declares the exception, so it is shown one', () => {
+  // ★★★ pk36/d1 — THE TEST ABOVE WENT GREEN OVER AN EMPTY LOOP the moment the café stopped declaring itself
+  // gateless, and a guard that passes because it found nothing is worse than no guard: it reports on a rule
+  // it never applied. So the rule is a function now, and here it is handed a box that breaks it.
+  const box = json('seed/box.json');
+  const tenant = box.tenants[0];
+  assert.ok(tenant, 'seed/box.json declares no tenant at all — there is nowhere to put the fixture store.');
+  tenant.stores = [...(tenant.stores ?? []), { handle: 'fixture-bare-false', gate: false }];
+  assert.deepEqual(
+    gatelessWithoutReason(box),
+    [`${tenant.id}/fixture-bare-false`],
+    'a store declaring a bare `gate: false` with no reason was NOT caught. The rule above is looking at ' +
+      'something else — or at nothing.',
+  );
+  // …and the same box with a reason written is clean again, so what it catches is the SILENCE and not the key.
+  tenant.stores.at(-1)._gate_why = `x${'y'.repeat(80)}`;
+  assert.deepEqual(gatelessWithoutReason(box), [], 'the rule reddens a declared exception that DOES carry its reason.');
 });
 
 test('★ the gate app is ADOPTED, never composed — an instance app, which is why the install is ours to make', () => {

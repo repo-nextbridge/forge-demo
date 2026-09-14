@@ -26,22 +26,19 @@
 // that branch today. A shop nobody can open is a better answer than a front door nobody put up — and it is
 // still not a gate.
 //
-// ★★★ SO pk33 SPENT THE DIFFERENCE THE WAY HE ASKED (11/09: *"o fork é do cliente, 100% liberdade"*): the app
-// is installed for BOTH tenants at birth, and `seed/coffee.mjs::dropGateOnTheCafe` REMOVES the placement from
-// the café alone. The counter — this file — keeps its gate and draws it. ⇒ the café is now gateless BY
-// DECLARATION rather than by accident: the port, the admin and the screen agree, and nobody meets a refusal
-// screen where a coffee shop should be. The reason lives where a reader will trip over it: the declared
-// divergence `{ fork: 'storefront-coffee', app: 'demo-gate' }` at the top of `bin/front-app-reach.guard.mjs`,
-// printed on every run, RED the day it stops matching a finding.
-// ⇒ The real repair is still owed — and as of 13/09 it is NO LONGER SOMEBODY ELSE'S, which is the third
-// sentence of this paragraph to be outlived. `@forgecommerce/surface-codegen`, the tool a `pack:surface` fork
-// runs to rewrite its own generated wiring, is in the pinned release and on its publishable list, so its
-// tarball is already vendored into the café's fork on every build. What that fork lacks is a composition list
-// of its own, a `codegen` script and a dependency on the tool — all three in THIS repository. The declared
-// divergence now carries them as `until` and goes RED the day all three exist and the waiver has not moved.
-// ⚠️ AND HE REVERSED THE EXCEPTION on 13/09 («Sim ganha portaria»): the café is owed a gate, pk35/d2 measured
-// that it still cannot draw one, and refused to ship the decision as a shop full of refusal screens. So the
-// sentence above about the café being gateless is TRUE TODAY and is not meant to stay that way.
+// ★★★ pk33 SPENT THE DIFFERENCE THE WAY HE ASKED (11/09: *"o fork é do cliente, 100% liberdade"*): the app was
+// installed for BOTH tenants at birth and `seed/coffee.mjs` REMOVED the placement from the café alone, which
+// declared itself `gate: false` in `seed/box.json`. ⛔ THAT ARRANGEMENT IS OVER AND EVERY SENTENCE ABOUT IT IS
+// GONE WITH IT (pk36/d1) — leaving the reasoning behind while changing the decision is how the next false
+// paragraph gets written. He reversed the exception on 13/09 («Sim ganha portaria»); pk35/d2 gave the café's
+// fork its own `composition.json`, a `codegen` script and a real dependency on `@forgecommerce/surface-codegen`,
+// so `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` exists and resolves `demo-gate` to both
+// faces. ⇒ ALL FOUR STORES ARE GATED NOW, and this file is no longer the only front that draws one.
+//
+// ★ WHICH IS WHY THIS FILE STILL EXISTS AND IS STILL HAND-WRITTEN: the counter is the totem, an app of this
+// repository rather than a fork of the reference storefront, and it resolves no composed registry. The café's
+// map is GENERATED from its composition; this one is mirrored against the app's own `forge.wiring.gate`
+// declaration by `totem/src/lib/gate/registry.test.ts`, which is what keeps the two ends from drifting.
 //
 // ⚠️ THE ENTRY IS NOT INVENTED — IT IS COPIED FROM THE APP'S OWN DECLARATION. `apps/demo-gate/package.json`
 // carries `forge.wiring.gate.interstitial` = `./block/entry` × `GateInterstitial` and `…ribbon` = the same
