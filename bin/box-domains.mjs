@@ -23,6 +23,12 @@
 // two ends unable to drift. A hostname declared with no site block is a store that answers somebody else's
 // 404; a site block for a variable nothing declares is a certificate asked for on behalf of nobody.
 //
+// ★★ AND WHO WRITES THE VALUE IS THE PROMOTION (pk35/d4). Until that slice NOBODY did: `bin/box-up.sh
+// --promote` rewrote four variables and none of these, so a deployment typed its hostnames into a `.env`
+// beside the file that already declared them. `bin/promotion-faces.mjs` derives them from here instead —
+// and the coverage rule below is shared with it, so the promotion refuses a plan that would leave one face
+// on its sentinel.
+//
 // ⛔⛔ AND THE THIRD END IS COMPOSE, WHICH IS WHERE THIS WAS ALREADY BROKEN. Measured 2026-09-12 on the live
 // bench: `docker inspect forge-preseed-caddy-1` shows the edge container holding exactly three FORGE_*
 // variables — `FORGE_DOMAIN`, `FORGE_ADMIN_DOMAIN`, `FORGE_CONTROL_ALLOW_CIDR`. `FORGE_TOTEM_DOMAIN` is NOT
@@ -287,4 +293,44 @@ export function doorsIn(lines) {
     if (up && current) current.upstreams.push(up[1].split(':')[0]);
   }
   return out;
+}
+
+/**
+ * ── ★★ THE WIRE, AS A FUNCTION, BECAUSE IT NOW HAS TWO CALLERS ──────────────────────────────────────────
+ *
+ * Every site address of a Caddyfile that comes from a variable, flattened one entry per address. It is the
+ * EDGE's half of a face: `{ env, fallback, address, site }`, where `fallback` is the sentinel a box that
+ * never set the variable would publish on.
+ */
+export function envSitesOf(text) {
+  return siteBlocks(text).flatMap((site) =>
+    site.addresses.flatMap((address) => {
+      const parsed = envAddress(address);
+      return parsed ? [{ ...parsed, address, site, line: site.line }] : [];
+    }),
+  );
+}
+
+/**
+ * The two ends compared, in both directions, with ONE author.
+ *
+ *   `unrouted`   a face `seed/box.json` declares that no site block serves — DNS points at this box, Caddy
+ *                asks for no certificate on that name, and every request for it falls through to another
+ *                site's 404.
+ *   `undeclared` a site block whose variable no face declares — a certificate provisioned on behalf of
+ *                nobody, and, for anything that WRITES these variables, a face that would be left on its
+ *                `.unset.localhost` sentinel while its siblings got real hostnames.
+ *
+ * ★ IT IS A FUNCTION AND NOT TWO LISTS IN A TEST because `bin/box-domains.guard.mjs` grades the REPOSITORY
+ * at test time and `bin/promotion-faces.mjs` grades THE BOX THE PROMOTION IS STANDING ON at run time — a
+ * deployment that added a store to its own `seed/box.json` never runs the suite. One rule, two callers: a
+ * second copy of it would be the list that rots in silence, one file over.
+ */
+export function faceCoverage(faces, envSites) {
+  const routed = new Set(envSites.map((s) => s.env));
+  const declared = new Set(faces.map((f) => f.env));
+  return {
+    unrouted: faces.filter((f) => !routed.has(f.env)),
+    undeclared: envSites.filter((s) => !declared.has(s.env)),
+  };
 }

@@ -63,7 +63,8 @@ import {
   ROOT,
   SENTINEL_SUFFIX,
   declaredFaces,
-  envAddress,
+  envSitesOf,
+  faceCoverage,
   doorsIn,
   handlesOf,
   readBox,
@@ -84,12 +85,7 @@ const BENCH_SITES = siteBlocks(read(BENCH_EDGE_FILE));
 const ENV_EXAMPLE = read('.env.example');
 
 /** Every site block whose address comes from the environment, flattened one entry per address. */
-const ENV_SITES = SITES.flatMap((site) =>
-  site.addresses.flatMap((address) => {
-    const parsed = envAddress(address);
-    return parsed ? [{ ...parsed, address, site }] : [];
-  }),
-);
+const ENV_SITES = envSitesOf(read(EDGE_FILE));
 
 /**
  * Which variables compose DELIVERS to the edge container, read out of the compose files rather than listed.
@@ -193,8 +189,11 @@ test('★ every declared face is complete and unique — a face with no variable
 // ── 1 · DECLARED ↔ ROUTED ───────────────────────────────────────────────────────────────────────────────
 
 test('★★★ every hostname this box DECLARES has a block at the edge — the other half of a 404', () => {
-  const routed = new Set(ENV_SITES.map((s) => s.env));
-  const orphans = FACES.filter((f) => !routed.has(f.env)).map((f) => `${f.label} — ${f.host} ({$${f.env}}), and ${EDGE_FILE} has no site block for it`);
+  // ★ THE RULE LIVES IN `box-domains.mjs` BECAUSE IT HAS TWO CALLERS (pk35/d4): this guard grades the
+  // REPOSITORY at test time, and `bin/promotion-faces.mjs` grades the box a promotion is standing on — a
+  // deployment that added a store to its own `seed/box.json` never runs this suite. A second copy of the
+  // comparison here would be the list that rots in silence, one file over.
+  const orphans = faceCoverage(FACES, ENV_SITES).unrouted.map((f) => `${f.label} — ${f.host} ({$${f.env}}), and ${EDGE_FILE} has no site block for it`);
   assert.deepEqual(
     orphans,
     [],
@@ -205,10 +204,9 @@ test('★★★ every hostname this box DECLARES has a block at the edge — the
 });
 
 test('★★★ every block at the edge belongs to a hostname this box DECLARES — a certificate for nobody', () => {
-  const declared = new Set(FACES.map((f) => f.env));
-  const orphans = ENV_SITES
-    .filter((s) => !declared.has(s.env))
-    .map((s) => `${EDGE_FILE}:${s.site.line} routes {$${s.env}} and seed/box.json declares no face using that variable`);
+  const orphans = faceCoverage(FACES, ENV_SITES).undeclared.map(
+    (s) => `${EDGE_FILE}:${s.site.line} routes {$${s.env}} and seed/box.json declares no face using that variable`,
+  );
   assert.deepEqual(
     orphans,
     [],

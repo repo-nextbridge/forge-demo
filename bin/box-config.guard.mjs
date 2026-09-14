@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { declaredFaces, readBox } from './box-domains.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const BOX_UP = read('bin/box-up.sh');
@@ -306,6 +308,10 @@ function runPromotion({
   withTailnetHost = true,
   storeHosts = `'{"localhost":"sto_01TEST","localhost:8200":"sto_01TEST"}'`,
   setFails = [],
+  // ★ pk35/d4 — THE DECLARATION THE BOX IS STANDING ON. The default is this repository's own file, which is
+  // the point (see the copy below); an override is how the sabotage — a store that lost its `domain` — is a
+  // permanent case instead of a gesture somebody has to remember to repeat.
+  box = null,
   benchBind = null,
   expectStatus = 0,
 }) {
@@ -317,7 +323,7 @@ function runPromotion({
   mkdirSync(stub, { recursive: true });
 
   writeFileSync(join(dir, 'bin/box-up.sh'), BOX_UP);
-  writeFileSync(join(dir, 'seed/box.json'), read('seed/box.json'));
+  writeFileSync(join(dir, 'seed/box.json'), box ?? read('seed/box.json'));
   // Sourced by box-up before anything else; on the real box it reaches a secret store.
   writeFileSync(join(dir, 'env-source.sh'), 'export DATABASE_URL=postgres://stub/stub\n');
   writeFileSync(join(dir, 'bin/images-from-lock.sh'), ':\n');
@@ -329,6 +335,15 @@ function runPromotion({
   // there (pk30/§2), so a fixture that stubbed it would grade a box-up whose status means nothing. Every
   // `expectStatus` below is this module's answer, over the facts the run really measured.
   writeFileSync(join(dir, 'bin/promotion-verdict.mjs'), read('bin/promotion-verdict.mjs'));
+  // ★★ AND THE FACES, REAL FOR THE SAME REASON (pk35/d4). The promotion derives the edge's hostnames from
+  // `seed/box.json` through `bin/promotion-faces.mjs`, and it REFUSES when the derivation cannot be complete
+  // — so a fixture that stubbed it would grade a promotion whose refusal cannot fire. The declaration and
+  // the edge are this repository's own files, which is what makes "it wrote store.forgecommerce.pro" an
+  // assertion about the file rather than about a string typed in this test.
+  writeFileSync(join(dir, 'bin/promotion-faces.mjs'), read('bin/promotion-faces.mjs'));
+  writeFileSync(join(dir, 'bin/box-domains.mjs'), read('bin/box-domains.mjs'));
+  mkdirSync(join(dir, 'caddy'), { recursive: true });
+  writeFileSync(join(dir, 'caddy/Caddyfile'), read('caddy/Caddyfile'));
   // ⚠️ AND THE PIN IT READS, because the floor is not typed anywhere any more: `require-node.sh` takes it
   // from `forge.lock` (pk8/d2). A fixture without one would exercise the "this pin states no floor" branch
   // — a real branch, but not the one a born box is on, and its notice would land in the output measured here.
@@ -680,6 +695,129 @@ test('★★★ pk24·§B5 — `--promote <hostname>` points the box at a public
     `the promotion touched a local claim:\n  ${calls.join('\n  ')}`,
   );
   assert.match(stdout, new RegExp(`admin\\s+http://${FAKE_PUBLIC_HOST}:8201`), `the promotion never printed the admin's address:\n${stdout}`);
+});
+
+// ── pk35/d4 · THE EDGE'S SIX HOSTNAMES, WRITTEN BY THE PROMOTION AND NOT BY HAND ─────────────────────────
+//
+// ⛔ THE GAP. Since pk34/d1 every face of this box is DECLARED — one `domain` per store, one `admin_domain`
+// per tenant, each naming the variable `caddy/Caddyfile` reads it from — and `bin/box-domains.guard.mjs`
+// grades all three ends of that wire. Nothing ever WROTE the value: the promotion rewrote four variables and
+// none of the six, so a deployment of this instance typed its own hostnames into a `.env` beside a file that
+// already declared them. The failure of a half-filled edge is not a crash — every address carries a
+// `.unset.localhost` sentinel — it is one shop answering on a name nothing resolves, and no log.
+//
+// ★ THESE RUN THE PROMOTION FOR REAL, against this repository's own `seed/box.json` and `caddy/Caddyfile`.
+// Nothing below types a hostname: the expectation IS the declaration, so a store renamed in that file moves
+// this test with it and a store that loses its declaration turns it red.
+
+const FACES = declaredFaces(readBox(ROOT));
+
+test("★★★ pk35/d4 — promoted to a hostname it DECLARES, the box writes every face of the edge from seed/box.json", () => {
+  // ANTI-VACUUM FIRST: an assertion loop over an empty declaration would pass having graded nothing, and the
+  // whole point of this slice is that the declaration is where the hostnames live.
+  assert.ok(FACES.length >= 2, `seed/box.json declares ${FACES.length} face(s) — there is nothing to write.`);
+  const arrival = FACES.find((f) => f.kind === 'store');
+  assert.ok(arrival, 'no store face is declared, so no destination here is one of this box\'s own addresses.');
+
+  const { env, stdout } = runPromotion({
+    args: ['--promote', arrival.host],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+  });
+
+  const wrong = FACES.filter((f) => env[f.env] !== f.host).map(
+    (f) => `${f.env}=${env[f.env] ?? '(absent)'} and seed/box.json declares ${f.host} for ${f.label}`,
+  );
+  assert.deepEqual(
+    wrong,
+    [],
+    'the promotion did not write this face into .env, so the edge falls back to its `.unset.localhost` ' +
+      'sentinel: Caddy loads, the other faces serve, and that hostname answers on a name nothing resolves ' +
+      `with nothing in any log.\n${stdout}`,
+  );
+  assert.match(stdout, /face\(s\) written from seed\/box\.json/, `the run never said it wrote them:\n${stdout}`);
+});
+
+test('★★ pk35/d4 — promoted SOMEWHERE ELSE, it writes none of them, and says so instead of going quiet', () => {
+  // ⚠️ THE BENCH, MEASURED 2026-09-13: `.env` holds a tailnet origin with `FORGE_DOMAIN=localhost`. The
+  // declared hostnames are not addresses that box answers at, so writing them would publish names nothing
+  // routes to and hand `bin/verify-config.mjs` six "published" faces to fail. A promotion elsewhere leaves
+  // the edge alone — and the negative has to be a line on the screen, because a face silently not written is
+  // exactly the state this slice exists to end.
+  const { env, stdout } = runPromotion({
+    args: ['--promote', FAKE_PUBLIC_HOST],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+  });
+  assert.ok(
+    !FACES.some((f) => f.host === FAKE_PUBLIC_HOST),
+    `the fixture hostname is one of this box's declared faces, so this test grades the other branch.`,
+  );
+  assert.deepEqual(
+    FACES.filter((f) => env[f.env] !== undefined).map((f) => `${f.env}=${env[f.env]}`),
+    [],
+    `a destination this box does not declare had its edge hostnames rewritten anyway:\n${stdout}`,
+  );
+  assert.match(
+    stdout,
+    new RegExp(`is not one of the ${FACES.length} face`),
+    `the run wrote nothing and did not say why:\n${stdout}`,
+  );
+});
+
+test('★★★ pk35/d4 — a face the edge READS and the declaration LOST is a refusal, named, with nothing written', () => {
+  // THE SABOTAGE, AS A CASE. A store that loses its `domain` leaves `caddy/Caddyfile` with a site block for a
+  // variable nothing declares — and the tempting behaviour is to write the other five and let that one fall
+  // back to `outlet.unset.localhost`. That is the silent half-published edge with a nicer coat on, so the
+  // promotion refuses and names it, BEFORE the first `.env` write.
+  const box = JSON.parse(read('seed/box.json'));
+  const victim = box.tenants.flatMap((t) => t.stores ?? []).find((st) => st.domain);
+  assert.ok(victim, 'no store in seed/box.json declares a `domain` — this case cannot be built.');
+  const lost = victim.domain;
+  delete victim.domain;
+
+  const arrival = FACES.find((f) => f.kind === 'store' && f.env !== lost.env);
+  assert.ok(arrival, 'the declaration has only one store face, so there is no destination left to arrive at.');
+
+  const { env, stdout, calls } = runPromotion({
+    args: ['--promote', arrival.host],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+    box: JSON.stringify(box, null, 2),
+    expectStatus: 1,
+  });
+
+  assert.match(stdout, new RegExp(`\\{\\$${lost.env}\\}`), `the refusal never named the variable:\n${stdout}`);
+  assert.match(stdout, /unset\.localhost/, `the refusal never named the sentinel the operator would have got:\n${stdout}`);
+  assert.match(stdout, /caddy\/Caddyfile:\d+/, `the refusal never named the line that reads it:\n${stdout}`);
+  // ⛔ AND IT IS ATOMIC. The refusal happens among the reads, so the box is byte-for-byte the box that ran
+  // the command: no face written, no other value rewritten, no door claimed.
+  assert.equal(env.FORGE_PUBLIC_ORIGIN, 'http://localhost:8200', `the refusal wrote FORGE_PUBLIC_ORIGIN anyway:\n${stdout}`);
+  assert.deepEqual(
+    FACES.filter((f) => env[f.env] !== undefined).map((f) => `${f.env}=${env[f.env]}`),
+    [],
+    `a refused promotion wrote a face anyway:\n${stdout}`,
+  );
+  assert.deepEqual(calls, [], `a refused promotion touched the admin directory:\n${stdout}`);
+});
+
+test('★★ pk35/d4 — a box that declares NO face at all is still promoted, as a bench, out loud', () => {
+  // THE ANTI-VACUUM OF THE RULE ABOVE. "Every declared face is written" is also true of a box that declares
+  // none, and that box must not be refused: the host → store map, the origin and the admin doors ARE the
+  // promotion; the faces are the edge. A deployment that has not chosen its hostnames yet is this box.
+  const box = JSON.parse(read('seed/box.json'));
+  for (const tenant of box.tenants) {
+    delete tenant.admin_domain;
+    for (const store of tenant.stores ?? []) delete store.domain;
+  }
+  const { env, stdout } = runPromotion({
+    args: ['--promote', FAKE_PUBLIC_HOST],
+    serve: SERVE_NOTHING,
+    withTailnetHost: false,
+    box: JSON.stringify(box, null, 2),
+  });
+  assert.equal(env.FORGE_PUBLIC_ORIGIN, `http://${FAKE_PUBLIC_HOST}:8200`, `the promotion itself did not happen:\n${stdout}`);
+  assert.match(stdout, /declares no face at all/, `a box with no declared face was promoted in silence:\n${stdout}`);
 });
 
 test('★★★ pk24·§B5 — the way BACK reads the addresses off the BOX, not out of FORGE_TAILNET_HOST', () => {

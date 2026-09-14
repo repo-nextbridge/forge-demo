@@ -13,6 +13,9 @@
 # CONTAINER answers at that hostname. `bin/box-domains.guard.mjs` grades the pairing in both directions, and
 # grades the third end too: compose has to DELIVER each of these variables to this container.
 #
+# ★★ AND NOBODY TYPES THE VALUE EITHER (pk35/d4): `bash bin/box-up.sh --promote <one of these hostnames>`
+# writes every one of them from `seed/box.json`, and REFUSES rather than leave one on the sentinel below.
+#
 # ⛔⛔ AND THAT THIRD END IS WHERE THIS FILE WAS ALREADY DEAD. Measured 2026-09-12 on the live bench:
 # `docker inspect …-caddy-1` shows this container holding exactly THREE FORGE_* variables — FORGE_DOMAIN,
 # FORGE_ADMIN_DOMAIN, FORGE_CONTROL_ALLOW_CIDR. `FORGE_TOTEM_DOMAIN` was never passed, so `{$FORGE_TOTEM_DOMAIN}`
