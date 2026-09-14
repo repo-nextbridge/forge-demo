@@ -53,9 +53,23 @@ vi.mock('next/cache', () => ({ unstable_cache: unstableCache }));
 // proving the sitemap does not ask for the whole `ProductDoc` any more, and a mock that threw would prove only
 // that the call crashes. Wired to a working answer, a regression back to `client.products` produces a
 // PERFECTLY CORRECT sitemap and is caught anyway, by the assertion that the call never happened.
+// ★ THE MOCK IS `instanceReadClient`, AND THE RENAME IS THE POINT. Both halves of this document — the
+// per-host gate in `sitemap.ts` and the walk in `lib/sitemap-data.ts` — ask the port through the INSTANCE's
+// face, so that a crawler stops spending the shopper's 400/60 s bucket. Which face that resolves to is
+// decided in `instanceReadFace()` and is not observable here: the client is mocked, so this file says nothing
+// about the face and does not pretend to. What it keeps proving is the DOCUMENT.
+//
+// ⚠️ `readClient` IS STILL DECLARED, AND IT THROWS. Dropping it would have made a regression back to the
+// shopper's face fail with a missing-export message about a mock; wired to a refusal, it fails saying which
+// face this document may not spend. It is never reached on the way through — the modules this test loads that
+// do use `readClient` (`templates/collection/CollectionView`) call it only inside handlers this file does not
+// run; if that ever changes, the sentence above is what the run prints.
 vi.mock('@forgecommerce/storefront-kit/config', () => ({
   resolveStoreForHost,
-  readClient: () => ({
+  readClient: () => {
+    throw new Error('the sitemap is an enumeration, not a shopper page — it must not spend the anonymous face');
+  },
+  instanceReadClient: () => ({
     products,
     productPaths,
     brands,

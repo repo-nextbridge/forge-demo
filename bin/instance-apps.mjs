@@ -35,7 +35,7 @@
 
 import { existsSync, lstatSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { candidates, checkout, pinnedCommit, readJson, releaseTree, ROOT } from './release-tree.mjs';
+import { checkout, pinnedCommit, readJson, releaseTree, ROOT } from './release-tree.mjs';
 
 /** Where this repository keeps the apps it writes itself. The oven reads the same directory through
  *  `composition.json`'s `instanceApps[].source`, all of which are `./apps/<id>`. */
@@ -183,41 +183,43 @@ export function lendable(base) {
 }
 
 /**
- * The Forge checkout to link from, and the sentence saying how honest the answer is.
+ * The Forge checkout to link from — THE PINNED ONE, or nothing.
  *
- * ⚠️ THE PINNED TREE IS PREFERRED AND NOT REQUIRED, and that is a different posture from
- * `bin/fork-typecheck.guard.mjs`'s kit comparison — deliberately. That rule asks "is this the kit the release
- * pins?", which only the pinned tree can answer. This one lends a COMPILER, a RUNNER and the contracts an
- * app's manifest is validated against, which is the same thing `bin/pack-apps.sh:66-74` already does with
- * whatever checkout the operator names. So: the pinned tree when it is on this machine and built, any Forge
- * checkout otherwise WITH THE FALLBACK SAID OUT LOUD, and NOT CHECKED when there is none.
- * @returns {{ path: string, head: string, how: string, pinned: boolean } | { tried: string[] }}
+ * ── ⛔ THE FALLBACK THIS USED TO HAVE, AND THE MEASUREMENT THAT ENDED IT (pk38/d9) ───────────────────────
+ *
+ * It used to accept any Forge checkout when the pinned one was not on the machine, "with the fallback said
+ * out loud", on the reasoning that what is lent here is a COMPILER, a RUNNER and the contracts a manifest is
+ * validated against — none of them a versioned surface — which is what `bin/pack-apps.sh` already does with
+ * whatever checkout the operator names. That reasoning was measured false on 2026-09-14, and the set it is
+ * false about is DERIVED, not typed: `declaredDependencies()` lends whatever an app's own manifest names, and
+ * `apps/demo-setup` names `@forgecommerce/storefront-kit` — the kit. That IS the versioned surface, and it is
+ * precisely the thing `bin/fork-typecheck.guard.mjs` refuses to take from an unpinned tree.
+ *
+ * What it cost, on this machine, on an untouched tree: the only checkout here sits 545 commits BEHIND the
+ * pinned `v03/integra@888c80367`, and the kit there has no `mediaRenderSrc` — a function the pinned release
+ * ships and `apps/demo-setup/block/marks.tsx` imports. Both rules over that app went RED, naming this
+ * repository ("apps/demo-setup does not compile", "its OWN suite is RED", 5 failures) for a symbol that was
+ * ADDED in the other repository after the tree being lent. A green off an unpinned tree was already declared
+ * to mean "this app agrees with THAT tree"; the red says nothing at all, and nothing in it says so.
+ *
+ * ⇒ the pinned tree when it is on this machine and built, and NOT CHECKED otherwise — the same posture as the
+ * kit comparison next door, reached by the same argument. An operator who wants another tree graded names it
+ * in `FORGE_MONOREPO`, and `forge.lock` is what decides whether that tree is the release.
+ * @returns {{ path: string, head: string, how: string, clean: boolean } | { tried: string[] }}
  */
 export function lendingTree() {
   const tried = [];
   const pinned = pinnedCommit();
-  if (pinned) {
-    const found = releaseTree(pinned);
-    if (found.path && lendable(found.path)) {
-      return { ...found, pinned: true, how: `${found.how}, at the pinned ${pinned.ref}` };
-    }
-    tried.push(
-      found.path
-        ? `${found.path} — the tree at ${pinned.ref}, but @forgecommerce/contracts is not built ` +
-          'there (pnpm build)'
-        : `no checkout at ${pinned.ref} on this machine`,
-    );
+  if (!pinned) return { tried: ['forge.lock names no branch@sha, so there is no release to link against'] };
+  const found = releaseTree(pinned);
+  if (found.path && lendable(found.path)) {
+    return { ...found, how: `${found.how}, at the pinned ${pinned.ref}` };
   }
-  for (const base of candidates()) {
-    const found = lendable(base);
-    if (found) {
-      return {
-        ...found,
-        pinned: false,
-        how: `NOT the pinned tree — this is ${base} @ ${found.head.slice(0, 9)}`,
-      };
-    }
-    tried.push(`${base} — not a Forge checkout with a built @forgecommerce/contracts`);
-  }
+  tried.push(
+    found.path
+      ? `${found.path} — the tree at ${pinned.ref}, but @forgecommerce/contracts is not built there (pnpm build)`
+      : `no checkout at ${pinned.ref} on this machine`,
+  );
+  for (const line of found.tried ?? []) tried.push(line);
   return { tried };
 }

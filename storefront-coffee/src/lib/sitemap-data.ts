@@ -49,6 +49,35 @@
 // metadata, brand_id, media and skus — nearly the whole document — so `app/feeds/google.xml` still walks
 // `read.products` and still pays the 44,53 MB. That toll is irreducible by this read; it has its own card.
 //
+// ── ★★★ WHOSE BUDGET THE WALK SPENDS, AND WHY IT STOPPED BEING THE SHOPPER'S ───────────────────────────
+// This walk answers nobody's click. It is the INSTANCE enumerating ITSELF, exactly like the Google feed and
+// the cache warmer, and it used to knock on `/v1/read` — the ANONYMOUS face, one `400 / 60 s` bucket per
+// store+IP shared with every server-side read the store's own pages make. So a crawler asking for this
+// document competed with the first real visitor, and on a big enough store it WON.
+//
+// MEASURED on the product bench (491 products, 755 URLs) from the port's own totals: ONE walk is 6 calls —
+// `ceil(491/1000)` of `product_paths`, one page of `pages.published`, and one each of `categories`,
+// `category_paths`, `brands`, `collections` — i.e. 1,5 % of a store's whole window, up to twelve times an
+// hour (`CATALOG_REVALIDATE_SECONDS`). Small, and that is the honest number for a store this size.
+//
+// ⚠️ THE NUMBER THAT IS NOT SMALL IS THE UNCACHED ONE, and it is this file's own design: a store over
+// `CACHEABLE_ENTRIES`, or one whose walk went short, is served WHOLE and cached NOT AT ALL (`UncachedSitemap`
+// below) — so the walk runs on EVERY request. At 50.000 products that is 55 calls a request, and eight
+// crawler hits inside one minute spend the entire window the shopper's pages live on. That is the case the
+// bulk face exists for, and it is the case nobody would have noticed: the sitemap would look perfect while
+// the PLPs started answering 429.
+//
+// ⇒ the client is `instanceReadClient()`. WHICH face that is is decided in ONE place, `instanceReadFace()`,
+// off one variable: with `FORGE_BULK_READ_TOKEN` the walk goes out on `/v1/read/bulk` against the box's own
+// per-credential × store budget; WITHOUT it — the state every box is born in — this file behaves EXACTLY as
+// it did before, on the anonymous face, because an instance nobody configured must still serve its sitemap.
+// The bulk face carries all six of these reads and answers them byte for byte, so the face trades the budget
+// and never the document.
+//
+// ⚠️ ONE READ OF THE SITEMAP STAYS ANONYMOUS AND MUST: `read.store.by_host`, in `app/sitemap.ts`. It is a
+// caller-bounded lookup and is deliberately NOT on the bulk face — the crawler's Host is the crawler's
+// question, not an enumeration.
+//
 // ── WHAT IS CACHED, AND WHAT IS NOT ─────────────────────────────────────────────────────────────────────
 // PATHS, never absolute URLs. One deployment serves many hosts, and host → store is data (MS-STORE): two hosts
 // resolving to the same store must share one entry, and the origin is applied by the caller AFTER the cache.
@@ -62,7 +91,7 @@
 
 import { ltreeToSegments, productPathFrom } from '@forgecommerce/storefront-kit/catalog-path';
 import { isCategoryBrowsable } from '@forgecommerce/storefront-kit/category-visibility';
-import { readClient } from '@forgecommerce/storefront-kit/config';
+import { instanceReadClient } from '@forgecommerce/storefront-kit/config';
 import { CATALOG_REVALIDATE_SECONDS } from '@forgecommerce/storefront-kit/edge-cache';
 import { unstable_cache } from 'next/cache';
 import { collectAllParallel, PAGE, PATHS_PAGE, type Walk, walkStopText } from '@/lib/collect-pages';
@@ -127,7 +156,9 @@ function shortSections(walks: Record<string, Walk<unknown>>): string[] {
 
 async function walkStore(store: string): Promise<SitemapEntry[]> {
   const started = Date.now();
-  const client = readClient();
+  // ★★★ THE WALK IS THE INSTANCE ASKING ABOUT ITSELF, SO IT WALKS THE INSTANCE'S FACE. See the header's
+  // budget paragraph; the decision itself is `instanceReadFace()` and is taken nowhere else.
+  const client = instanceReadClient();
 
   const [products, pages, catmap, served, brands, collections] = await Promise.all([
     // ⚠️ `product_paths`, NEVER `products` — see the header.
@@ -136,10 +167,9 @@ async function walkStore(store: string): Promise<SitemapEntry[]> {
     // the most URLs this document could ever publish, so a port declaring a number nobody can serve costs 50
     // requests instead of a million. Reaching it is a named cut, not a quiet stop.
     //
-    // ⚠️ BULK-READ (B1) IS THE OTHER HALF, AND IT IS NOT HERE YET. These pages spend the ANONYMOUS read face's
-    // budget — the same 400/60s bucket the shopper's own pages draw from — so a 50.000-product catalog is 50
-    // calls of the store's window on a cache miss. The walk is one call site (`client.productPaths`) precisely
-    // so that pointing it at the bulk face is a change of client, not a change of this file.
+    // ★★ AND THE OTHER HALF ARRIVED: these pages are charged to the INSTANCE when the box has a credential.
+    // It was one call site (`client.productPaths`) precisely so that the move would be a change of CLIENT and
+    // not a change of this file, and that is exactly what it was — see the header.
     collectAllParallel((page) => client.productPaths(store, { page, limit: PATHS_PAGE }), {
       maxItems: SITEMAP_MAX_URLS,
     }),
