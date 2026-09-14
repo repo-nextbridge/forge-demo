@@ -34,6 +34,21 @@ async function initialLang(): Promise<Lang> {
   return resolveLang(accept?.split(',')[0]?.split('-')[0]);
 }
 
+/**
+ * ★ WHICH HOST THE BROWSER ASKED FOR, as the server saw it — the hub's "you are here".
+ *
+ * ⚠️ `x-forwarded-host` FIRST, AND THAT ORDER IS A MEASUREMENT, NOT A PREFERENCE. Behind the edge, `host` is
+ * whatever reached this container; after a Server Action's `redirect()` it has been observed to be the
+ * SERVER'S OWN address rather than the browser's (pack 03/09, p6-1: «todo formulário cai no Dashboard» was
+ * exactly this), and the true one is in `x-forwarded-host`. Undefined when neither is there — the hub then
+ * matches no face and shows its own door, which is the honest answer rather than a guessed one.
+ */
+async function requestHost(): Promise<string | undefined> {
+  const h = await headers();
+  const forwarded = h.get('x-forwarded-host')?.split(',')[0]?.trim();
+  return forwarded || h.get('host') || undefined;
+}
+
 /** The full-screen interstitial. `store` is deliberately unused: this gate is the demo's, and the demo is one
  * store's worth of stores — the copy says "Forge Demo", not the name of whichever store was asked for. */
 export async function GateInterstitial({ dismiss }: { store: string; dismiss: () => Promise<void> }) {
@@ -42,6 +57,7 @@ export async function GateInterstitial({ dismiss }: { store: string; dismiss: ()
     <GateBlock
       siteUrl={siteUrl}
       adminUrl={adminUrl}
+      here={await requestHost()}
       initialLang={await initialLang()}
       dismiss={dismiss}
     />

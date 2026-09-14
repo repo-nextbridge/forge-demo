@@ -99,6 +99,10 @@ const gapBody = (app) =>
 const shopBody = (handle, path) =>
   `<html><body><main data-testid="shop">${handle}${path || '/'}</main>` +
   `<form data-testid="${GATE_APP}-ribbon"></form></body></html>`;
+/** ⛔ THE SAME SHOP WITH THE RIBBON GONE — a front that mounts the interstitial and not the bar under it.
+ *  Byte-identical otherwise, so what the step reddens for can only be the ribbon. See SABOTAGE below. */
+const shopBodyWithoutRibbon = (handle, path) =>
+  `<html><body><main data-testid="shop">${handle}${path || '/'}</main></body></html>`;
 
 /**
  * A box that answers.
@@ -124,6 +128,8 @@ function fakeBox({
   gates = DEFAULT_GATES,
   ignoresCookie = false,
   neverLetsGo = false,
+  /** Doors (by path, `''` for the vitrine) whose front draws the shop and NOT the demo ribbon. */
+  noRibbon = [],
   refusesGate = [],
   leaksGate = [],
   extensionsRefuses = false,
@@ -263,7 +269,8 @@ function fakeBox({
         .end(shopBody(store?.handle ?? '?', path));
       return;
     }
-    res.writeHead(200, { 'x-forge-served-by': by }).end(shopBody(store?.handle ?? '?', path));
+    const shop = noRibbon.includes(path) ? shopBodyWithoutRibbon : shopBody;
+    res.writeHead(200, { 'x-forge-served-by': by }).end(shop(store?.handle ?? '?', path));
   });
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -635,6 +642,25 @@ test('★★★ SABOTAGE — THE GATE WILL NOT LET GO (the gate on both sides) �
   const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
   assert.ok(line, `the door that never opens is not named:\n${out}`);
   assert.match(line, /THE GATE WILL NOT LET GO/, line);
+});
+
+test('★★★ SABOTAGE — THE FRONT DROPS THE RIBBON ⇒ red, naming the door and the front that served it', async () => {
+  // ⛔ THE SILENCE THIS CLOSES, and it is the one he asked about on 13/09: «a demo gate tem uma feature que
+  // aparece uma barrinha no rodapé… só precisa checar se isso aparece nos 4 front». Until pk35/d1 the cookie
+  // side was graded only for what it must NOT contain, so a front that mounted the interstitial and not the
+  // bar under it was a GREEN birth with no way back to the gate. The box below is byte-identical to a healthy
+  // one except for that one element on ONE door, which is what makes this a statement about the ribbon.
+  const box = await fakeBox({ noRibbon: ['/checkout'] });
+  const { code, out } = await step(box.api);
+  await box.close();
+  assert.equal(code, 1, out);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/checkout'));
+  assert.ok(line, `the door with no ribbon is not named:\n${out}`);
+  assert.match(line, /THE WAY BACK IS MISSING/, line);
+  assert.match(line, /demo-gate-ribbon/, `the red does not name the mark it looked for: ${line}`);
+  assert.match(line, /checkout/, `the red does not name the front that served it: ${line}`);
+  // …and the doors that DO draw it are untouched in the same run, so this is not a step that simply broke.
+  assert.match(out, /✓ forge\/ .* gate ✓/, out);
 });
 
 test('★★ SABOTAGE — the front CANNOT DRAW the declared gate ⇒ its own red, not "no gate"', async () => {

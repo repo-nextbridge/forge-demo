@@ -1,6 +1,10 @@
-// The gate block renders the three languages and the two paths, and SWITCHES to the architecture screen. jsdom
-// smoke test — the visual fidelity is the human gate (screenshots vs design-base/gate.dc.html); this proves the
-// structure + i18n + the admin handoff href + that the two screens trade places.
+// The gate block's CHROME — the header, the footer, the language selector and the switch into the architecture
+// screen. jsdom smoke test; the visual fidelity is the human gate (screenshots vs design-base/gate.dc.html).
+//
+// ★ pk35/d1 — THE DESTINATIONS THEMSELVES ARE `hub.test.tsx`'s, not this file's. What used to be asserted here
+// ("Abrir a loja", "Abrir o admin", the `/enter` href) was the two-card screen that PRECEDED the hub; those
+// statements moved WITH the cards, and they are stronger there because they are held against `seed/box.json`
+// instead of against strings. This file keeps what wraps the hub.
 //
 // ⚠️ THE SWITCH IS PROVED BY MUTUAL EXCLUSION, not by "the new title is somewhere". A test that only looked for
 // the architecture title would stay green with the gate still rendered underneath it, and a test that only looked
@@ -16,8 +20,8 @@ import { GateBlock } from './gate';
 
 const noop = async () => {};
 
-test('renders the PT screen with both paths and the back link', () => {
-  render(
+test('renders the PT chrome, the back link, and the hub inside it', () => {
+  const { container } = render(
     <GateBlock
       siteUrl="https://forgecommerce.pro"
       adminUrl="https://admin.demo.example"
@@ -26,11 +30,12 @@ test('renders the PT screen with both paths and the back link', () => {
     />,
   );
   expect(screen.getByRole('heading', { name: 'Loja demo.' })).toBeTruthy();
-  expect(screen.getByText('Abrir a loja')).toBeTruthy();
-  expect(screen.getByText('Abrir o admin')).toBeTruthy();
-  expect(screen.getByText('Storefront')).toBeTruthy();
-  expect(screen.getByText('Admin')).toBeTruthy();
   expect(screen.getByText('← voltar para forgecommerce.pro')).toBeTruthy();
+  // The hub is MOUNTED, not re-asserted: one card per face the box declares (hub.test.tsx grades which).
+  expect(
+    container.querySelectorAll('[data-face]').length,
+    'the gate rendered no destination at all — the hub is not mounted',
+  ).toBeGreaterThan(1);
 });
 
 test('the footer selector switches the copy live (PT → EN → ES)', () => {
@@ -42,8 +47,8 @@ test('the footer selector switches the copy live (PT → EN → ES)', () => {
   expect(screen.getByRole('heading', { name: 'Tienda demo.' })).toBeTruthy();
 });
 
-test('"Open the admin" points at the admin origin /enter route (the redeem handoff)', () => {
-  render(
+test('the admin origin this box was promoted to reaches the hub, and lands on /enter', () => {
+  const { container } = render(
     <GateBlock
       siteUrl="https://x"
       adminUrl="https://admin.demo.example/"
@@ -51,8 +56,9 @@ test('"Open the admin" points at the admin origin /enter route (the redeem hando
       dismiss={noop}
     />,
   );
-  const link = screen.getByText('Open the admin').closest('a');
-  expect(link?.getAttribute('href')).toBe('https://admin.demo.example/enter');
+  // Which face it applies to, and why only the first, is hub.test.tsx's. Here: the wiring reaches the screen.
+  const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
+  expect(hrefs).toContain('https://admin.demo.example/enter');
 });
 
 test("the footer selector is the app's own language list, not a copy of it", () => {

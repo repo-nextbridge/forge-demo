@@ -1,0 +1,311 @@
+/* DEMO-GATE — the HUB: one card per tenant, one row per face. The owner's 10/09 layout
+ * (`design-base/gate.dc.html`), ported in pk35/d1. A deliberate, fixed surface (not a themed light/dark
+ * component), so literal design values are correct here, exactly as in `gate.module.css`.
+ *
+ * ★ WHICH CARD IS LIGHT IS DERIVED FROM POSITION, NOT FROM A TENANT'S NAME. The design draws the first
+ * tenant dark and the second light; `hub.tsx` alternates on the INDEX of the tenant in `seed/box.json`. A
+ * third tenant declared tomorrow therefore gets a card that looks like one of these two, instead of falling
+ * through a lookup keyed by an id somebody typed — the shape this repository keeps paying for.
+ *
+ * ⚠️ AND THE BADGES TAKE THE CARD'S TONE, not one colour per shop. The design gives each shop's tag its own
+ * hue (orange, rose, green, sand); reproducing that needs a colour keyed by store handle, which is a list
+ * that rots the day a fifth shop is declared. The tone of the card it sits on is derived, and it is the
+ * difference a reader is actually being told about: which TENANT this is. */
+
+.hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+}
+
+/* ── one tenant ───────────────────────────────────────────────────────────────────────────────────────── */
+
+.tenant {
+  box-sizing: border-box;
+  background: #17181a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  color: #ffffff;
+}
+.tenantLight {
+  background: #f3ede3;
+  color: #241c14;
+}
+
+.head {
+  padding: clamp(20px, 2.4vw, 26px) clamp(20px, 2.4vw, 28px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+.tenantLight .head {
+  border-bottom-color: rgba(43, 33, 24, 0.14);
+}
+
+.headTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a8478;
+}
+.tenantLight .eyebrow {
+  color: #7a6a55;
+}
+
+.badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c2410c;
+  border: 1px solid rgba(194, 65, 12, 0.4);
+  padding: 4px 9px;
+}
+.tenantLight .badge {
+  color: #2f3b30;
+  border-color: rgba(47, 59, 48, 0.35);
+}
+
+.headline {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.tenantLight .headline {
+  color: #241c14;
+}
+
+.blurb {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #8a8478;
+  text-wrap: pretty;
+}
+.tenantLight .blurb {
+  color: #6b5c49;
+}
+
+/* ── one face (a shop) ────────────────────────────────────────────────────────────────────────────────── */
+
+.face {
+  padding: clamp(20px, 2.4vw, 26px) clamp(20px, 2.4vw, 28px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+}
+.tenantLight .face {
+  border-bottom-color: rgba(43, 33, 24, 0.1);
+}
+
+.faceHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: #ffffff;
+}
+.tenantLight .mark {
+  color: #241c14;
+}
+.markDot {
+  color: #c2410c;
+}
+.tenantLight .markDot {
+  color: #a9793f;
+}
+.markTail {
+  font-weight: 500;
+  color: #c2410c;
+}
+.tenantLight .markTail {
+  font-weight: 600;
+  color: #241c14;
+}
+
+.faceBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f1011;
+  background: #e7e4de;
+  padding: 3px 7px;
+}
+.tenantLight .faceBadge {
+  color: #f3ede3;
+  background: #2f3b30;
+}
+
+.faceBlurb {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #b9b4ac;
+  text-wrap: pretty;
+}
+.tenantLight .faceBlurb {
+  color: #4a3f32;
+}
+
+.cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 18px;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+.cta:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #17181a;
+}
+.tenantLight .cta {
+  color: #241c14;
+  border-color: rgba(36, 28, 20, 0.28);
+}
+.tenantLight .cta:hover {
+  background: #2f3b30;
+  border-color: #2f3b30;
+  color: #f3ede3;
+}
+
+/* ★ THE STATE THE DESIGN HAS NO PICTURE FOR — a destination `seed/box.json` declares no address for. It is
+ * drawn, named and disabled; it is never hidden. A card that vanished would be a demo with a door nobody can
+ * find and nothing anywhere saying so. */
+.unaddressed {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.24);
+  color: #8a8478;
+}
+.tenantLight .unaddressed {
+  border-color: rgba(36, 28, 20, 0.28);
+  color: #7a6a55;
+}
+
+/* ── the admin row, at the foot of a tenant card ───────────────────────────────────────────────────────── */
+
+.admin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px clamp(20px, 2.4vw, 28px);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.admin:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.tenantLight .admin {
+  background: rgba(43, 33, 24, 0.05);
+}
+.tenantLight .admin:hover {
+  background: rgba(43, 33, 24, 0.11);
+}
+
+.adminName {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+.tenantLight .adminName {
+  color: #241c14;
+}
+
+.adminHost {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #8a8478;
+}
+.tenantLight .adminHost {
+  color: #7a6a55;
+}
+
+/* ── the two lines under the cards ─────────────────────────────────────────────────────────────────────── */
+
+.counts {
+  margin: 18px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.lede {
+  margin: 6px auto 0;
+  max-width: 520px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #8a8478;
+  text-wrap: pretty;
+}
+.ledeWord {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.notice {
+  margin: 0;
+  max-width: 640px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6e6a63;
+  text-wrap: pretty;
+}
+
+/* ★ THE WAY IN WHEN THE VISITOR IS ON A FACE THIS BOX DOES NOT PUBLISH — a bench, a tailnet, a preview.
+ * Every card above is an ordinary link to another origin, so without this row the hub would have no door at
+ * all on such a host, and the birth would be a shop nobody can enter. It names the host it is talking about. */
+.here {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.hereHost {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #6e6a63;
+}

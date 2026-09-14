@@ -876,17 +876,37 @@ visitante encontre a portaria, quer entre direto na loja: **a portaria responde 
 
 | onde | sem o cookie (1º visitante) | com o cookie (já entrou) |
 |---|---|---|
-| `/s/<forge>/`, `/s/<outlet>/` e as três portas de checkout de cada uma | a **portaria** (tela cheia, PT/EN/ES, dois caminhos: a loja e o admin) | a **loja**, com a **faixa** vermelha no rodapé que reabre a portaria |
+| `/s/<forge>/`, `/s/<outlet>/` e as três portas de checkout de cada uma | a **portaria** (tela cheia, PT/EN/ES, o **hub** dos seis destinos) | a **loja**, com a **faixa** vermelha no rodapé que reabre a portaria |
 | `/s/<balcao>/checkout`, `/account`, `/account/login` | a **portaria** (quem serve é o `checkout`, que compõe o app) | a porta de sempre |
 | `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão, e essa recusa é **acima** da portaria | **404**, idêntico |
 | `/s/<cafe>/…` | a **loja**, sem portaria — **declarado** (§6.1 acima e `seed/box.json` → `"gate": false`) | idem |
 
-⇒ **"Abrir a loja"** grava o cookie `forge_gate_dismissed=1` e a **MESMA url** passa a servir a página pedida —
-a portaria **cobre** a rota, nunca redireciona, então um link fundo (`/s/<loja>/account/orders/<id>`) continua
-valendo depois de passar por ela. **"Abrir o admin"** é um link para o `/enter` do admin, que resgata a chave de
-operador **no servidor**. ⚠️ **O admin NÃO tem portaria e isso é decisão dele** (11/09: *"não precisa de
-portaria no admin; se ele entrar na url do admin vai cair no login normalmente"*) — e como a loja e o admin são
-**origens diferentes**, o cookie de dispensa **não** acompanha esse salto. Isso é correto e esperado.
+★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout dele de 10/09): dois cartões de tenant,
+cada um com as suas lojas e, no pé, a linha que abre o admin daquele tenant. ⛔ **Nenhum endereço está escrito no
+app** — quem os declara é `seed/box.json` (`domain` por loja, `admin_domain` por tenant), `bin/gate-faces.mjs`
+renderiza essa declaração em `apps/demo-gate/faces.generated.ts` e `bin/gate-faces.guard.mjs` impede as duas
+pontas de divergirem. **Uma loja que perder o `domain` continua na tela, NOMEADA**, dizendo que não tem endereço
+publicado; ela nunca some em silêncio.
+
+⇒ **O destino em que o visitante JÁ ESTÁ** é o único que grava o cookie `forge_gate_dismissed=1` (botão, não
+link): a **MESMA url** passa a servir a página pedida — a portaria **cobre** a rota, nunca redireciona, então um
+link fundo (`/s/<loja>/account/orders/<id>`) continua valendo depois de passar por ela. Os outros cinco são
+links comuns para outras origens, e a linha do admin abre o `/enter`, que resgata a chave de operador **no
+servidor**. ⚠️ **Na bancada NENHUM dos seis casa com o host** (a caixa nasce em `localhost` e a promoção é passo
+à parte), então o hub desenha, no pé, **a sua própria porta**, dizendo em que host ela está — sem isso a caixa
+recém-nascida seria uma loja em que ninguém consegue entrar.
+
+⚠️ **O admin NÃO tem portaria e isso é decisão dele** (11/09: *"não precisa de portaria no admin; se ele entrar
+na url do admin vai cair no login normalmente"*) — e como a loja e o admin são **origens diferentes**, o cookie
+de dispensa **não** acompanha esse salto. Isso é correto e esperado.
+
+⛔ **E O MESMO VALE ENTRE AS SEIS LOJAS, o que AINDA não é o que ele decidiu.** O cookie de dispensa é escrito
+**sem atributo `domain`** (`packages/storefront-kit/src/gate/actions.ts:57-64`, no monorepo do Forge), logo é
+*host-only*: quem passou pela portaria em `store.forgecommerce.pro` encontra portaria de novo no outlet e no
+totem (medido 13/09: os dois admins não têm portaria por decisão, o café declara `gate: false`, e sobram esses
+dois). A decisão dele de 13/09 — *"não tem problema o cookie valer para todas"* ⇒ cookie de domínio
+`.forgecommerce.pro`, e a barrinha reabrindo nas seis — é mudança **no kit**, ou seja, **no outro repositório**;
+uma fatia nomeia um repo só.
 
 ★★ **O QUE MUDOU NO PASSO 14-bis, e ele ficou MELHOR, não mais frouxo.** Ele continua exigindo as mesmas 16
 portas, a mesma regra de *"a loja e não um pedido de desculpas"*, e o mesmo `⊘` deliberado do balcão. O que
@@ -896,6 +916,14 @@ corpos têm de **diferir**, afirmado diretamente. ⚠️ **Ele grada o CORPO, nu
 §6.1: a portaria responde **200** do mesmo contêiner que a loja, então um código não enxerga a diferença. A
 marca é `data-testid="<o id do app que a porta declara>"` — o passo **não digita** o nome do app: pergunta ao
 `read.extensions` quem preenche `storefront:gate` e monta o atributo com a resposta.
+
+★★★ **E DESDE pk35 ELE COBRA TAMBÉM A VOLTA — a barrinha.** Toda porta **gradada que renderizou página** (2xx;
+um `307` não tem corpo e é dito, não exigido) tem de trazer `data-testid="<id do app>-ribbon"` **com** o cookie.
+Era a metade que ninguém tinha: o lado do cookie só era gradado pelo que **não** podia conter, então um front
+que montasse a tela cheia e **não** a barrinha era uma perda silenciosa numa corrida verde. Medido na bancada
+em 13/09, no outlet: `/` → `200 · storefront` (barrinha), `/checkout` → `200 · checkout` (barrinha),
+`/account` → `307 · checkout` (sem corpo, correto), `/account/login` → `200 · checkout` (barrinha). O vermelho
+**nomeia a porta e o front que a serviu**.
 
 ★ **Quais lojas DEVEM ter portaria: todas, por padrão.** Nada em lugar nenhum lista as lojas com portaria — uma
 lista envelheceria calada na quinta loja. O que é declarado é a **exceção**, em `seed/box.json`, com o motivo ao

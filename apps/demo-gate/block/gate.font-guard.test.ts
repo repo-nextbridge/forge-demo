@@ -3,6 +3,9 @@
 // (fonts.googleapis / fonts.gstatic) may enter the gate's diff. This proves the H1 rides the theme font, not a
 // bundled or fetched one — the fidelity contract's font clause.
 //
+// ★ pk35/d1 — AND THE THIRD RULE IS NOW A PROPERTY RATHER THAN A WORD; see `fallsThroughToAGeneric` below for
+// the measurement that moved it.
+//
 // ⚠️ IT WALKS THE BLOCK DIRECTORY, IT DOES NOT READ TWO NAMES. Until FAXINA/F2a this file opened
 // `gate.module.css` and `gate.tsx` by name, and everything else the block ships was outside its eyes. That was
 // not a hypothetical: `ribbon.module.css` and `ribbon.tsx` were already sitting beside them, unread, and a
@@ -82,8 +85,55 @@ test('the gate imports no external font (no CDN, no @import)', () => {
   );
 });
 
-test('the gate sets no bespoke font-family other than inherit (the H1 uses the theme font)', () => {
-  // The only font-family declarations allowed are `inherit` (the CSS button reset). Geigyll must not appear.
+/**
+ * ★ THE RULE IS «THIS DECLARATION CANNOT NEED A FONT THAT IS NOT ALREADY THERE», not «the word inherit».
+ *
+ * ⚠️ IT USED TO BE THE WORD, and pk35/d1 met the wall the word built: the owner's hub prints each tenant's
+ * admin HOSTNAME in monospace (`design-base/gate.dc.html` does), and `ui-monospace, SFMono-Regular, Menlo,
+ * monospace` is not a bespoke face — every token in it is either a generic CSS family or a face the operating
+ * system already ships. Nothing is bundled and nothing is fetched, which is what DoD #5 is actually about, and
+ * the two tests above are what enforce that half (`@font-face` and the CDNs).
+ *
+ * So what this rule holds is the property that makes a stack SAFE: it ENDS IN A GENERIC FAMILY, so whatever
+ * the browser cannot find falls through to something it can. A declaration naming a face with no generic tail
+ * — `font-family: Geigyll` — is a promise this app has no way to keep, and stays red.
+ */
+const GENERIC_FAMILIES = [
+  'inherit',
+  'initial',
+  'unset',
+  'revert',
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+  'ui-serif',
+  'ui-sans-serif',
+  'ui-monospace',
+  'ui-rounded',
+];
+
+/** Does this declaration fall through to something every browser has? */
+export function fallsThroughToAGeneric(declaration: string): boolean {
+  const value = declaration.toLowerCase().replace(/^font-family:/, '').trim().replace(/[;!].*$/, '');
+  const last = value.split(',').pop()?.trim().replace(/^['"]|['"]$/g, '') ?? '';
+  return GENERIC_FAMILIES.includes(last);
+}
+
+test('★ the rule can say NO — the predicate, held against what it exists to refuse', () => {
+  // ⛔ ANTI-VACUUM FOR THE RULE ITSELF, not for the walk. A predicate that answered `true` to everything would
+  // make the loop below green over any stylesheet at all, and nothing else in this file would notice.
+  expect(fallsThroughToAGeneric('font-family: inherit')).toBe(true);
+  expect(fallsThroughToAGeneric('font-family: ui-monospace, SFMono-Regular, Menlo, monospace')).toBe(true);
+  expect(fallsThroughToAGeneric("font-family: 'Urbanist', Helvetica, sans-serif")).toBe(true);
+  expect(fallsThroughToAGeneric('font-family: Geigyll')).toBe(false);
+  expect(fallsThroughToAGeneric("font-family: 'Geigyll Display', Geigyll")).toBe(false);
+});
+
+test('the gate sets no font-family that needs a face nobody has (the H1 uses the theme font)', () => {
+  // Geigyll — the design's dropped display face — must not appear at all, generic tail or no generic tail.
   noneMatch(/geigyll/i, "names the design's dropped display face");
   const declarations = stylesheets.flatMap((sheet) =>
     (sheet.source.match(/font-family:[^;]+/gi) ?? []).map((decl) => ({
@@ -97,7 +147,11 @@ test('the gate sets no bespoke font-family other than inherit (the H1 uses the t
     declarations.length,
     'no font-family declaration found: the loop below asserts nothing',
   ).toBeGreaterThan(0);
-  for (const { where, decl } of declarations) {
-    expect(decl, `${where}: ${decl}`).toContain('inherit');
-  }
+  const bespoke = declarations
+    .filter(({ decl }) => !fallsThroughToAGeneric(decl))
+    .map(({ where, decl }) => `${where}: ${decl}`);
+  expect(
+    bespoke,
+    'a font-family names a face this app neither bundles nor fetches and offers no generic fallback',
+  ).toEqual([]);
 });
