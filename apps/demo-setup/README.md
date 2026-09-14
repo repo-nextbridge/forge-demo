@@ -21,7 +21,7 @@ admin page, no scope, no table, no migration.
 the DEPLOYABLE.** That screen is the **checkout**'s, which Forge hosts and nobody forks, so a mark there has
 to be configurable without a fork: it is a capability of the **product** (the OOTB `chrome` app) and never of
 one instance's app. The **vitrine** is the opposite — a customer forks it and makes it theirs — which is why
-these three stayed. The owner, 09/09: *"essas 3 são do storefront e a caixa de login é do checkout."* The slot
+these three stayed: **these three are the storefront's, and the login box is the checkout's.** The slot
 itself did not move.
 
 Config: `logo` (`type: 'id'` — the generated drawer renders the shared asset picker and the kernel stamps

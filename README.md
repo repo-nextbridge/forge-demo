@@ -228,12 +228,11 @@ into either, for the same reason, and `bin/coffee-store-id.guard.mjs` grades all
 
 ### ★★ 13–15 are the reset's own tail: reborn → purge → warm → grade
 
-Renan, 04/09, on what a reset has to guarantee: *"no fim dele … sobe tudo novamente"*, and *"ele precisaria
-também garantir que ligue tudo que só tem online, exemplo cdn se tiver na demo… ou qualquer coisa assim que
-morre no reset."*
+What a reset has to guarantee: at the end of it **everything is up again** — including whatever only lives
+online (a CDN, say) and dies with the reset.
 
-**Warming is part of DONE, not a courtesy**, and the argument is commercial: *"ele também vai ser testado por
-exemplo performance e tal, se ele falhar em um teste de performance é prejudicial ao meu comercial"*. A box
+**Warming is part of DONE, not a courtesy**, and the argument is commercial: this box gets evaluated on
+performance too, and failing a performance test costs the sale. A box
 handed over cold makes the **first visitor** pay for every cache this box could have filled by itself in the
 minutes nobody was watching — and here that visitor may be whoever is evaluating it. Step 14 drives
 `POST /api/warm`, which the **vitrine itself publishes** (guarded by `FORGE_REVALIDATE_SECRET`, the secret the
@@ -242,7 +241,7 @@ admin already uses to invalidate). One call warms three containers, because the 
 
 ### ★★ Step 14 REPORTS; it stopped grading — and that was the point
 
-Renan, 05/09: *"D1 - Pode ser só relatório"*. Three measurements, all from real births of this box:
+**This step is allowed to be a report and nothing more.** Three measurements, all from real births of this box:
 
 1. **Red by construction** — ★ **and this one was repaired in pk21**, see below. The plan is not made of
    pages: ~420 pages plus ~20 400 **image derivatives** discovered in each HTML's `srcset` —
@@ -299,7 +298,7 @@ never a number of size: a plan ten times bigger gets a net ten times bigger with
 
 ### ★★★ The run's ceiling DERIVES FROM THE PLAN (pk21 — see above: superseded except on a pre-p1 image)
 
-Renan, 07/09: *"deriva do plano"*. Measurement 1 above was not a fact about the box, it was a fact about a
+**The ceiling DERIVES FROM THE PLAN.** Measurement 1 above was not a fact about the box, it was a fact about a
 **constant**: 20 800 planned URLs against 900 000 ms. ⚠️ And the note that this box "cannot raise" that
 ceiling was simply **false** — `/api/warm?max_duration_ms=` overrode the vitrine's default
 (`apps/storefront/src/app/api/warm/route.ts`, its `parse` block); the product had always exposed it. What was
@@ -865,9 +864,9 @@ a check people route around.
 ★★ **THE MAILBOX IS THE ONE A HUMAN CAN ACTUALLY READ, and it is a declaration.** `FORGE_BENCH_MAILBOX` in
 `.env` points the four `FORGE_SMTP_*` at the `mailpit` container instead of the real provider, and the
 service carries a compose **profile**, so an instance that declares nothing never creates one. Until
-2026-09-13 this box had no collector and mailed through Resend, whose only deliverable address here is the
-owner's — so nobody else could log in as anybody. ⚠️ It is not optional dressing: the transport that prints
-the code to a terminal is constructible only under `!production` and every container here declares
+2026-09-13 this box had no collector and mailed through Resend, whose only deliverable address here is a
+single real inbox — so nobody else could log in as anybody. ⚠️ It is not optional dressing: the transport
+that prints the code to a terminal is constructible only under `!production` and every container here declares
 `NODE_ENV=production`, so a box with no mailbox does **not** log the code, it fails by name. See
 `mail/README.md`.
 
@@ -886,8 +885,8 @@ saying nothing at all stops `docker compose` by name before the first container.
 
 ### ★★★ A DEPLOYMENT'S addresses — the SIX, and where each one is declared (pk34/d1)
 
-The bench above is **one origin and four ports**. A deployment of this instance is **six hostnames**, and he
-named them on 2026-09-12 — *"vão ser essas urls das demos"*:
+The bench above is **one origin and four ports**. A deployment of this instance is **six hostnames**, and
+they are **named** — one row each:
 
 | face | address | the front behind it | variable |
 |---|---|---|---|
@@ -930,8 +929,8 @@ variable that is present and EMPTY. A forgotten variable now costs **one face**,
 
 ### ★★ The café's fork IS the café's vitrine — its root is the café's home, not a store the host names
 
-The owner's rule, 09/09: *"o storefront usado é um fork, é ele que será acessado pelo subdomínio … acessar uma
-home de café de storefront vanilla nem deveria existir, afinal o fork do storefront assume esse papel."* So
+**The rule: the storefront in use is a fork, and the fork is what the subdomain reaches.** A vanilla
+storefront's café home should not exist at all — the fork takes that role. So
 `storefront-coffee/` serves **one shop**: the store `FORGE_COFFEE_STORE_ID` names (`src/lib/own-store.ts`,
 asked by `src/middleware.ts` **before** the host). Every clean address of that image — `/` first of all — is
 that store's.
@@ -1176,8 +1175,8 @@ birth itself is graded rather than merely finished. It prints the four shops aga
 each, and the placeholder art in the Asset Library.
 
 ★★ **pk30/§11 — and the ADMIN HOME's widget order is graded PER TENANT, because "some tenant is right" is how
-it hid.** On 10/09 he used both admins and reported it: *"o bloco de últimas assinaturas na demo ainda está
-vindo no topo, o admin de café está certo mas o de sapato está errado."* Installing an app **auto-places** its
+it hid.** Compared side by side, the two admins disagreed: the latest-subscriptions block came out on TOP of the
+shoe tenant's home and in its declared place on the coffee tenant's. Installing an app **auto-places** its
 widgets at the **end** of `admin:admin.home.widgets`, so a widget's position *is* the order its app was
 installed in — `forgeco` installed `subscriptions` first, `forgecafe` installed it last, and neither had
 decided anything. ⇒ The order is now **declared** (the mounted dataset's `admin_widgets` — the same key the
@@ -1252,10 +1251,10 @@ store axis, so the Outlet's «Trocas e devoluções» renders the same paragraph
 measurement and the two ways out (a store axis on that registry, or a body on the page card — both the
 product's, neither this repo's) are in `seed/outlet.json`'s `_pages_why`.
 
-⚠️ **Three of those four sit in TWO slots, and where they sit is his call of 08/09.** The reference home draws
+⚠️ **Three of those four sit in TWO slots, and where they sit is a curation decision.** The reference home draws
 its sections in a fixed order and the two headings this store keeps — «Compre por categoria» and «Marcas que
-amamos» — are theme chrome, not slots. He moved the banner mosaic ABOVE the first of them by dragging it in
-Compose («arrastei os banners para o slot hero e ficou melhor. Então deixa assim no dataset»), so the mosaic
+amamos» — are theme chrome, not slots. The banner mosaic was dragged in Compose to sit ABOVE the first of them
+because it reads better there, and the dataset was frozen that way, so the mosaic
 is `home.hero#0` and «Quase de graça» / «Outlet Kids» are `home.below_categories#0..1`; `home.banner_strip`,
 `home.below_shelf`, `home.below_brands` and the whole PLP are **empty on purpose** — see `seed/outlet.json`'s
 `_home_why`. Positions are dense **per slot**, because `place`/`move` shift everything at or after them inside
@@ -1487,9 +1486,9 @@ is forked, which theme each wears), one admin under both, and the stack they all
 SDK · Docs → the single command port → the kernel → PostgreSQL/Redis → infra). Both screens are PT/EN/ES, on
 the one selector the gate already had, and both are embedded copy — `config_schema` stays `[]`.
 
-**THE FIRST SCREEN IS THE OWNER'S 10/09 LAYOUT SINCE pk35: a HUB over the six faces this box publishes** — two
-tenant cards, each with its shops and, at its foot, the row that opens that tenant's admin at `/enter`. ⛔ **Not
-one address is written in the app.** `seed/box.json` declares them (one `domain` per store, one `admin_domain`
+**SINCE pk35 THE FIRST SCREEN IS A HUB over the six faces this box publishes** — two tenant cards, each with
+its shops and, at its foot, the row that opens that tenant's admin at `/enter`. ⛔ **Not one address is
+written in the app.** `seed/box.json` declares them (one `domain` per store, one `admin_domain`
 per tenant — a hostname is DATA, §"the six addresses"), `bin/gate-faces.mjs` renders that declaration into
 `apps/demo-gate/faces.generated.ts`, and `bin/gate-faces.guard.mjs` refuses to let the two drift: a fifth store
 is a fifth card with no edit to the screen, and a store whose `domain` is deleted is a card that SAYS SO rather
@@ -1505,8 +1504,8 @@ faces are other hostnames. And the dismissal cookie is still written with **no `
 one. Measured on the bench, 2026-09-13: the two admins have no gate by decision (pk33), the café declared
 `gate: false`, and the outlet and the counter did show one — **two second gates, not five**. ⚠️ **Since pk36/d1
 that count is THREE:** the café's exception is gone (its fork regenerates its own gate registry), so four of the
-six faces carry a gate and only the two admins do not. His 13/09 decision — *"não tem problema o cookie valer
-para todas"* ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all six — is a change to the **kit**,
+six faces carry a gate and only the two admins do not. The decided shape — **one dismissal may count for all
+six** ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all six — is a change to the **kit**,
 and this repository can only name it; the change above makes it worth one more face.
 
 **That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
@@ -1539,9 +1538,9 @@ entry is a Server Component in the storefront and the checkout, so its wiring li
 ## 4b. `demo-setup` — the shop's own MARK, and the app that exists to be looked at
 
 `demo-setup` (`apps/demo-setup/`) is the second app this repository owns, and the one written to answer a
-question rather than to fill a hole: **how does a customer extend Forge?** The owner's words, 08/09 — *"esse
-app me ajuda a mostrar para os clientes como eles podem fazer apps livremente (principal forma de extensão do
-Forge) … esse mostra mais claramente e de forma simples um logo virando outro"*.
+question rather than to fill a hole: **how does a customer extend Forge?** It exists to SHOW customers that
+they can write apps freely — the platform's main form of extension — through the simplest visible example
+there is: one logo turning into another.
 
 It declares **three blocks — one per place the SHOP WINDOW shows a name**: the header bar
 (`storefront:header.brand`), the mobile drawer (`header.drawer_brand`) and the footer's brand column
@@ -1553,16 +1552,16 @@ the Outlet without a line of code.
 screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable
 *without* a fork, which makes it a capability of the **product**: the OOTB `chrome` app carries it from pk28
 on. The **vitrine** is the opposite, a deployable the customer forks and makes theirs, so identity there may
-live in an app of their own. The owner, 09/09: *"prefiro colocar N blocos em N lugares do que colocar só um
-para todos … essas 3 são do storefront e a caixa de login é do checkout."* ⚠️ The slot did not move; only this
+live in an app of their own. Hence **N blocks in N places rather than one block for all**: these three are the
+storefront's, and the login box is the checkout's. ⚠️ The slot did not move; only this
 app's block did — and `seed/chrome.json` will not place the product's replacement until a kernel image baked
 from that slice is pinned, because `composition.place` refuses a component the installed manifest does not
 declare and would fail the birth rather than skip a mark.
 
 **Why one per place and not one for all.** Until pk26 the mark was a single block of the OOTB `chrome` app,
 read in four renders — so an operator dragged one row in Compose and changed four places, and the board could
-not say which. The owner named it (*"o compose não faz sentido, está configurando algo lá que nem sabe onde
-vai aparecer"*), Forge gave each place its own slot, and the vitrine's mark left the product: **a logo is
+not say which — **a Compose board that configures something without knowing where it will show up makes no
+sense**. Forge gave each place its own slot, and the vitrine's mark left the product: **a logo is
 CONTENT**, and the product ships slots with a bare default while whoever wants a mark writes the block. ⛔ The
 kernel already required it — `placement: 'single'` is enforced per *(store, app, component)*, so one component
 cannot fill two slots.
