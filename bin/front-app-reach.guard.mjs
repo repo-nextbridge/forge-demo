@@ -43,7 +43,7 @@ import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 import { forks, surfaceForks } from './forks.mjs';
 import { composedInstanceApps, frontComponents, frontFacts, reach } from './front-apps.mjs';
-import { pinnedCommit, releaseTree } from './release-tree.mjs';
+import { pinnedCommit, readJson, releaseTree } from './release-tree.mjs';
 
 const say = (line) => console.error(`[front-app-reach] ${line}`);
 
@@ -55,34 +55,64 @@ const say = (line) => console.error(`[front-app-reach] ${line}`);
  *   · an entry that matches NO finding is RED, so a waiver outlives its reason for exactly one run.
  *
  * One entry per (fork, app) or (fork, app, component). `why` is not decoration.
+ *
+ * ★★★ pk35/d2 — AND A THIRD SAFEGUARD, BECAUSE THE SECOND ONE DOES NOT COVER THE WAY THESE TWO ROTTED.
+ * Both entries below were written waiting on ONE artifact of the product, and both said so in prose: *"the
+ * tool is owed by the product and is being fiado by pk32/p1-parto"*. The tool LANDED — measured 2026-09-13,
+ * `@forgecommerce/surface-codegen` is a package of the pinned release and is on its `publishable.json` — and
+ * nothing here moved, because a blocker written in prose is a blocker nobody can grade. The waivers went on
+ * matching a finding, so safeguard two stayed green, and went on PRINTING a reason that had stopped being
+ * true. Two weeks of "somebody else owes this" over an artifact already in the box's own vendor directory.
+ *
+ * ⇒ `until` is that sentence made checkable: the conditions THIS BOX would have to meet for the waiver to
+ * die, written as things on disk rather than as a story. When every one of them holds, the entry is RED and
+ * names them — so a waiver may outlive its reason for exactly one run in THIS direction too, and the reason
+ * it prints is a reason a run can still disprove.
  */
 const DIVERGENCES = [
   {
     fork: 'storefront-coffee',
     app: 'demo-setup',
     why:
-      'THE SPECIMEN, AND IT IS WAITING ON A PRODUCT ARTIFACT RATHER THAN ON A DECISION. The three marks are ' +
-      'reachable only once this fork can REGENERATE `storefront-coffee/src/lib/extensions/generated/' +
-      'registry.tsx`, which is a GENERATED surface (its own first line says "do not edit") and which nothing ' +
-      'in this repository regenerates: `bin/build-coffee.sh` and `bin/build-totem.sh` mention no codegen, and ' +
-      'the 18 tarballs in `storefront-coffee/vendor/` do not include one. Welding the import by hand is ' +
-      'exactly what `totem/src/lib/gate/registry.tsx` did, and that file\'s prose had already rotted by the ' +
-      'time pk31/d1 read it. The tool is owed by the product and is being fiado by pk32/p1-parto (pack:surface ' +
-      'born with the codegen vendored + the regeneration step wired); when it lands, the fix here is the three ' +
-      'gestures plus `npm run codegen`, and this entry goes away.',
+      'THE SPECIMEN, AND IT IS WAITING ON WORK IN THIS REPOSITORY — WHICH IS NOT WHAT THIS ENTRY USED TO SAY. ' +
+      'The three marks are reachable only once this fork can REGENERATE `storefront-coffee/src/lib/extensions/' +
+      'generated/registry.tsx`, which is a GENERATED surface (its own first line says "do not edit"). ' +
+      '⛔ THE OLD REASON — "the tool is owed by the product and is being fiado by pk32/p1-parto" — IS FALSE ' +
+      'AND WAS FALSE FOR TWO WEEKS. Measured 2026-09-13 against the pinned release ' +
+      '(`git show <forge.lock built_from>:scripts/publishing/publishable.json`): `@forgecommerce/' +
+      'surface-codegen` IS a package of that release and IS on its publishable list, so ' +
+      '`bin/vendor-packages.sh` already writes its tarball into `storefront-coffee/vendor/` on every build — ' +
+      'and `storefront-coffee/package.json` already carries the override for it. What is missing is entirely ' +
+      "this box's: the fork has no `composition.json` of its own (the list the tool derives everything from), " +
+      'no `codegen` script, and does not depend on the tool. ⇒ the fix is `until` below plus the three ' +
+      'gestures, and it is ONE slice for both entries of this list.',
+    until: {
+      fork: 'storefront-coffee',
+      files: ['composition.json'],
+      scripts: ['codegen'],
+      dependencies: ['@forgecommerce/surface-codegen'],
+    },
   },
   {
     fork: 'storefront-coffee',
     app: 'demo-gate',
     why:
-      'THE SAME MISSING TOOL, PLUS A SECOND HOLE THAT IS THE PRODUCT\'S: this cut (2026-09-01, commit 0d1c37f) ' +
-      'predates the gate seam by hours, so it has NEITHER `src/lib/extensions/generated/gate-registry.tsx` NOR ' +
+      'THE SAME MISSING PIECE, AND IT IS THIS BOX\'S: this cut (2026-09-01, commit 0d1c37f) predates the gate ' +
+      'seam by hours, so it has NEITHER `src/lib/extensions/generated/gate-registry.tsx` NOR ' +
       '`src/lib/extensions/gate.ts` — the reference grew both on 2026-09-01 (ff2006e9d). Its ' +
-      '`src/app/s/[store]/layout.tsx:22` still resolves the gate through `@forgecommerce/storefront-kit/gate/' +
-      'registry`, whose map is EMPTY and whose header tells a forker to weld his entry into that very file — ' +
-      'which a `pack:surface` fork CANNOT do, because it installs the kit as a tarball and owns no copy of it. ' +
-      '⇒ reported upstream, not patchable from here (repo boundary): ' +
-      'packages/storefront-kit/src/gate/registry.tsx:20-26 and :42-48. ' +
+      '`src/app/s/[store]/layout.tsx:27` still resolves the gate through `@forgecommerce/storefront-kit/gate/' +
+      'registry`, whose map is `{}` (that release, line 145) and stays `{}` by design. ' +
+      '⛔ THE SENTENCE THAT USED TO FOLLOW — "reported upstream, not patchable from here (repo boundary)" — IS ' +
+      'FALSE. The reference no longer resolves the gate from the kit either: at the pinned release ' +
+      '`apps/storefront/src/app/s/[store]/layout.tsx:45` imports `resolveGate` from its OWN ' +
+      '`src/lib/extensions/gate.ts`, which is `resolveComposedGate(id) ?? resolveWeldedGate(id)` — and the ' +
+      'composed half is written by `@forgecommerce/surface-codegen`, the fork\'s own tool, which that release ' +
+      'carries and publishes. So the repair is INSIDE this repository and needs nothing from upstream. ' +
+      'Measured 2026-09-13 by running that tool against this fork (its list drafted, its own ' +
+      '`node_modules` standing in): it answers `6 generated file(s) do not match composition.json` and names ' +
+      'them, `gate-registry.tsx` among them. ⇒ THAT is the slice, and it is bigger than a gate: five of those ' +
+      'six files are the shelves, the card annotations, the feed route and the public routes of a shop the ' +
+      'owner is about to test, so it wants its own cut and a real `next build`, not a rider on a portaria. ' +
       '★★★ pk33 — AND THE CONSEQUENCE IS NO LONGER LEFT TO THE BOX. The gate app is installed at birth for ' +
       'BOTH tenants now, and an install is TENANT-wide: it would place the gate on the café too, whose front ' +
       'is this fork. Since pk32 a structural slot a build cannot draw REFUSES the page, so that would be a ' +
@@ -92,11 +122,60 @@ const DIVERGENCES = [
       'on that store, and `bin/prove-doors.mjs` grades the declaration against the port AND against the ' +
       'screen. So the café is gateless BY DECLARATION rather than by accident — which is his own rule ' +
       '(11/09: «o fork é do cliente, 100% liberdade» ⇒ the instance removes the placement). ⛔ THIS ENTRY ' +
-      'STILL STANDS, and it is what keeps the arrangement temporary: it is printed on every run and goes RED ' +
-      'the day it stops matching a finding. The day this fork can regenerate its registry, the removal, the ' +
-      '`gate: false` and this entry go together.',
+      'STILL STANDS, and it is what keeps the arrangement temporary: it is printed on every run, goes RED the ' +
+      'day it stops matching a finding, and now ALSO goes red the day `until` below is satisfied. ' +
+      '★ 13/09 HE REVERSED THE EXCEPTION — «Sim ganha portaria» — and pk35/d2 measured the reversal and ' +
+      'REFUSED to ship it: the fork still cannot draw, so giving the café the placement today hands over a ' +
+      'shop whose every page is a refusal screen. The decision stands and is owed; what it is owed is the ' +
+      'regeneration slice above, in this order — the fork draws FIRST, `gate: false` goes SECOND.',
+    until: {
+      fork: 'storefront-coffee',
+      files: ['composition.json'],
+      scripts: ['codegen'],
+      dependencies: ['@forgecommerce/surface-codegen'],
+    },
   },
 ];
+
+/**
+ * ★ THE CONDITIONS A WAIVER NAMED FOR ITS OWN DEATH, each answered from disk rather than from the entry.
+ *
+ * A waiver with no `until` produces none, and that is legal — some divergences are a DECISION and wait on
+ * nothing. What is not legal is an `until` that names a fork this box does not build, or a condition list
+ * that is empty: both would make the verdict below vacuously true, which is the shape this whole file exists
+ * to refuse. The premise test grades exactly that.
+ *
+ * @returns {{ what: string, holds: boolean }[]}
+ */
+function conditionsOf(divergence) {
+  const until = divergence.until;
+  if (!until) return [];
+  const fork = BUILDING_FORKS.find((f) => f.dir === until.fork);
+  if (!fork) return [{ what: `${until.fork} is not a front this box builds`, holds: false }];
+  const manifestPath = join(fork.path, 'package.json');
+  const manifest = existsSync(manifestPath) ? readJson(manifestPath) : {};
+  const out = [];
+  for (const file of until.files ?? []) {
+    out.push({ what: `${until.fork}/${file} exists`, holds: existsSync(join(fork.path, file)) });
+  }
+  for (const script of until.scripts ?? []) {
+    out.push({
+      what: `${until.fork}/package.json declares the \`${script}\` script`,
+      holds: Boolean(manifest.scripts?.[script]),
+    });
+  }
+  for (const dep of until.dependencies ?? []) {
+    out.push({
+      what: `${until.fork} depends on ${dep}`,
+      // ⚠️ A DEPENDENCY, NOT AN `overrides` ENTRY, AND THE DIFFERENCE IS THE WHOLE MEASUREMENT OF pk35/d2:
+      // `storefront-coffee/package.json` has carried `@forgecommerce/surface-codegen` under `overrides` for
+      // days — which pins a version npm would only reach for if something ELSE asked for it, and nothing
+      // does. An override is not an install; grading it would call this waiver dead while the tool is absent.
+      holds: Boolean(manifest.dependencies?.[dep] ?? manifest.devDependencies?.[dep]),
+    });
+  }
+  return out;
+}
 
 // ── what this run could read, said before any assertion ──────────────────────────────────────────────────
 
@@ -123,6 +202,9 @@ if (TREE.path) {
 }
 for (const divergence of DIVERGENCES) {
   say(`★ DIVERGENCE declared: ${divergence.fork} does not reach ${divergence.app} — ${divergence.why.slice(0, 96)}…`);
+  for (const condition of conditionsOf(divergence)) {
+    say(`   until: ${condition.holds ? '✔' : '✗'} ${condition.what}`);
+  }
 }
 
 /** Every front, with the three facts read from disk. Its Next config is IMPORTED rather than grepped: a
@@ -156,6 +238,60 @@ test('⛔ this box composes at least one app of its own that ships a front compo
 
 test('⛔ this box owns at least one front that produces a bundle', () => {
   assert.ok(BUILDING_FORKS.length > 0, 'no directory of this repo installs the kit and declares a `build` script');
+});
+
+test('⛔ every declared `until` GRADES something — a condition list that is empty is a lid', () => {
+  const withUntil = DIVERGENCES.filter((d) => d.until);
+  assert.ok(
+    withUntil.length > 0,
+    'no divergence carries an `until`. That is legal for a waiver that is a DECISION, but if every entry ' +
+      'here is waiting on work, none of them says what — and the rule below grades nothing. Either write the ' +
+      'conditions, or say in `why` that this divergence waits on nobody.',
+  );
+  for (const divergence of withUntil) {
+    const conditions = conditionsOf(divergence);
+    assert.ok(
+      conditions.length > 0,
+      `${divergence.fork} × ${divergence.app} declares an \`until\` that produced NO condition — it names no ` +
+        'file, no script and no dependency, so "the waiver outlived its reason" can never become true. An ' +
+        'empty condition list reads like a promise and behaves like a comment.',
+    );
+    const known = BUILDING_FORKS.some((f) => f.dir === divergence.until.fork);
+    assert.ok(
+      known,
+      `${divergence.fork} × ${divergence.app} points its \`until\` at "${divergence.until.fork}", which is ` +
+        'not a front this box builds. A condition measured against a directory that is not there is a ' +
+        'condition that is permanently unmet, which is how a waiver becomes permanent.',
+    );
+  }
+});
+
+test('★★ a waiver whose OWN conditions are all met is RED — it outlived its reason, and says so', () => {
+  // ⛔ WHY THIS IS NOT THE SAME TEST AS "a waiver that matches no finding". That one fires when the finding
+  // disappears — the app left, the fork renamed, somebody closed the gap. This one fires while the finding is
+  // still there and the REASON is gone: the box now has everything the entry said it was waiting for, so the
+  // remaining gap is nobody's blocker but the author's. Both entries of this list rotted in exactly that
+  // window, for two weeks, printing a product artifact that had already shipped.
+  const dead = DIVERGENCES.filter((d) => {
+    const conditions = conditionsOf(d);
+    return conditions.length > 0 && conditions.every((c) => c.holds);
+  });
+  assert.deepEqual(
+    dead.map((d) => `${d.fork} × ${d.app}`),
+    [],
+    `${dead.length} declared DIVERGENCE(s) have met every condition they set for their own death:\n` +
+      dead
+        .map(
+          (d) =>
+            `  · ${d.fork} × ${d.app}: ${conditionsOf(d)
+              .map((c) => c.what)
+              .join('; ')}`,
+        )
+        .join('\n') +
+      '\nThe thing this waiver was waiting for is here. Close the gap and DELETE the entry — or, if the ' +
+      'gap is now waiting on something else, write the new conditions; a reason that has become untrue is ' +
+      'worse than no reason, because it is still printed on every run.',
+  );
 });
 
 test('⛔ the jurisdictions are not empty — a rule that grades no PAIR is a rule that is merely quiet', async (t) => {
