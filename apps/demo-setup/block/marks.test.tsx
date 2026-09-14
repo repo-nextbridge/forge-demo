@@ -59,10 +59,52 @@ describe('the three marks', () => {
       />,
     );
     const img = screen.getByRole('img');
+    // ★ pk35/d7 — no `logo_provider_key` in this config, so there is no door to go through and the kernel's
+    // own url is the only address there is. The rule below is the other half.
     expect(img.getAttribute('src')).toBe('https://media.example/forge-co.png');
     expect(img.getAttribute('alt')).toBe('forge.co');
     expect(screen.queryByText('forge.co', { selector: 'span' })).toBeNull();
   });
+
+  it.each(MARKS)(
+    '★★★ %s draws through the front\u2019s OWN DOOR when the kernel stamped a key, never the master url',
+    (name, Mark) => {
+      // ⛔ THE SPECIES, NOT THE CASE. `packages/core/src/read/media.ts` stamps three sidecars beside a
+      // `type:'id'` ref and the third one — `<field>_provider_key` — exists, in that file's own words, "so a
+      // consumer can route the MASTER through its own `/api/media/<key>` door … instead of pointing an
+      // `<img>` at the raw bucket url". This block read the first and ignored the third, which is the same
+      // cause repaired four times elsewhere (banners D2-F3, the theme K3-M2, the shelf banner pk34/p5, the
+      // whole `chrome` app pk35/p2) with nothing red in between.
+      //
+      // What the master costs, measured on the demo bench 2026-09-13: it answers with NO `Cache-Control`
+      // while the same object through the door answers `public, max-age=31536000, immutable`, and
+      // `/v1/media/` is on no door the warmer knows — so the first shopper of every page pays for it.
+      //
+      // ⇒ SABOTAGE: make `assetSrc` read `<field>_url` alone and all three of these name the app, the field
+      //   and the absolute address they drew instead of the path.
+      const { container } = render(
+        <Mark
+          config={{
+            logo: 'ast_1',
+            logo_url: 'https://ms-s1.example.ts.net/v1/media/local/tenant_x/01-forge-co-logo.png',
+            logo_provider_key: 'tenant_x/01-forge-co-logo.png',
+            logo_kind: 'image',
+            text: 'forge.co',
+          }}
+          storeHref={storeHref}
+        />,
+      );
+      const src = container.querySelector('img')?.getAttribute('src');
+      expect(src, `${name} drew no picture at all`).toBeTruthy();
+      expect(
+        src,
+        `${name} painted the kernel's MASTER address for \`logo\` instead of routing the key it was handed ` +
+          'through the front\u2019s own media door. An absolute url has an origin to be wrong about, carries no ' +
+          'cache headers, and the warmer has no door for it.',
+      ).not.toMatch(/^https?:\/\//);
+      expect(src).toContain('01-forge-co-logo.png');
+    },
+  );
 
   it('⛔ a ref the kernel could not stamp a url for draws NOTHING — never a broken image', () => {
     // An asset that has gone away is the one case where the config is complete and the picture is not.

@@ -91,13 +91,26 @@ services:
       # So: this box CONFIGURES the full set. The values are assembled in `env-source.sh`, where the presence
       # of the `forge-smtp-pass` secret decides whether the set exists at all — three here and a conditional
       # password would rebuild the partial set that refuses to boot.
-      # WHERE THE CODE ARRIVES: the mailbox of `FORGE_ADMIN_SEED_EMAIL`. There is no terminal inbox on this box.
+      # WHERE THE CODE ARRIVES: the mailbox of `FORGE_ADMIN_SEED_EMAIL` — unless this box declared the BENCH
+      # COLLECTOR, in which case it arrives in the `mailpit` service below and NOTHING leaves this machine.
+      # Which of the two is a declaration and never an accident: `FORGE_BENCH_MAILBOX` in `.env`, read by
+      # `env-source.sh`, which assembles these four. There is no terminal inbox on this box in either mode.
       # `bin/dev-mail-promise.guard.mjs` holds this comment to the code that would have to keep it.
       FORGE_SMTP_HOST: ${FORGE_SMTP_HOST:-}
       FORGE_SMTP_PORT: ${FORGE_SMTP_PORT:-}
       FORGE_SMTP_USER: ${FORGE_SMTP_USER:-}
       FORGE_SMTP_PASS: ${FORGE_SMTP_PASS:-}
       FORGE_SMTP_FROM: ${FORGE_SMTP_FROM:-}
+      # ★★ THE COLLECTOR'S CERTIFICATE, AND IT IS HERE BECAUSE THE DRIVER LEAVES NO CHOICE. The transport is
+      # built as `requireTLS: !secure` (apps/api/src/smtp-channel-driver.ts), and nodemailer sends `STARTTLS`
+      # whether or not the server advertises it, then refuses to deliver if the upgrade fails. Measured
+      # 2026-09-14 against nodemailer 9.0.3, the version the pinned image carries:
+      #     plain collector  → ETLS    «Error upgrading connection with STARTTLS: 502 5.5.1 Not implemented»
+      #     self-signed, untrusted → ESOCKET «self-signed certificate»
+      #     the same cert, with this variable → DELIVERED «250 2.0.0 Ok: queued»
+      # ⇒ a local collector is not four variables, it is four variables AND this one. EMPTY in a deployment,
+      # where the mailbox is a real provider with a public chain and Node needs no help. See mail/README.md.
+      NODE_EXTRA_CA_CERTS: ${FORGE_MAIL_CA:-}
       # Read only by the one-shot bootstrap (`run --rm kernel node dist/provision-ref.js`): the tenant, store
       # and first operator this instance is created with. The demo's OTHER stores are created by bin/seed.mjs,
       # through the port, because a second store is data and not bootstrap.
@@ -149,6 +162,11 @@ services:
       # already on disk, so the second seed of a box costs nothing.
       - seed_photos:/data/seed-photos
       - media:/data/media
+      # ★ THE BENCH COLLECTOR'S CERTIFICATE — mounted ALWAYS and read only when `FORGE_MAIL_CA` names it, so
+      # there is no conditional mount and no birth step that can be forgotten. A deployment carries the file
+      # and never points Node at it. `mail/README.md` says why the pair is committed and why it is not a
+      # secret.
+      - ./mail:/mail:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -433,6 +451,61 @@ services:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
+      retries: 5
+
+  # ★★★ DIFFERENCE 4 — THE BENCH'S MAILBOX, AND IT IS BEHIND A PROFILE SO A DEPLOYMENT NEVER GETS ONE.
+  #
+  # ⛔ THE DEFECT, MEASURED ON BOTH BENCHES 2026-09-13: `docker ps -a` showed ZERO mail containers and the
+  # four `FORGE_SMTP_*` pointed at Resend. So the only deliverable address on this box was the owner's own
+  # (it is in the dataset), and NOBODY ELSE COULD LOG IN — not as a shopper, not as an operator. `pk34/p1`
+  # stopped on exactly that and refused to fake a session, which was right.
+  #
+  # ⚠️ AND THE OBVIOUS ESCAPE DOES NOT EXIST HERE. The transport that PRINTS the code to a terminal is
+  # constructible only under `!production` (apps/api/src/smtp-channel-driver.ts, deliberately: a credential
+  # printed to a terminal must be impossible in production BY CONSTRUCTION), and this box declares
+  # `NODE_ENV: production` up at the kernel. A collector is the way that does not weaken anything.
+  #
+  # ★★ A PROFILE IS THE DECLARATION. A service carrying `profiles:` is not created by `docker compose up`
+  # unless something asks for the profile, so this row is inert everywhere until a `.env` says otherwise —
+  # which is the distinction §1 of the brief demands be DECLARED and not accidental. The one thing that asks
+  # is `FORGE_BENCH_MAILBOX` in `.env`; `env-source.sh` turns that single fact into the profile AND into the
+  # four `FORGE_SMTP_*` AND into `FORGE_MAIL_CA`, because three facts that can disagree is how a box ends up
+  # sending real mail while an operator believes it is captured.
+  #
+  # ⚠️ THE THREE FLAGS ARE THE DRIVER'S CONTRACT, NOT TASTE (mail/README.md carries the measurement):
+  #   · `--smtp-tls-cert/--smtp-tls-key` — the driver FORCES `STARTTLS`; mailpit's default has none and the
+  #     send dies `ETLS 502 5.5.1 Not implemented`.
+  #   · `--smtp-auth-accept-any` — the four variables travel together, so one of them is a password and the
+  #     driver always sends `AUTH`. The collector accepts any, because there is nothing here to protect.
+  #   · `--smtp-auth-allow-insecure` — `AUTH` is offered before the upgrade; without it the collector refuses
+  #     the credential it is about to ignore.
+  #
+  # ⛔ PINNED BY VERSION, like everything else this box starts. `latest` on a bench is a box that changes
+  # under whoever is testing it.
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    profiles: ['bench-mailbox']
+    restart: unless-stopped
+    command:
+      - --smtp-tls-cert=/certs/bench-collector.crt
+      - --smtp-tls-key=/certs/bench-collector.key
+      - --smtp-auth-accept-any
+      - --smtp-auth-allow-insecure
+    volumes:
+      - ./mail:/certs:ro
+    ports:
+      # The web face, on the same interface every other door of this box is published on. The SMTP port is
+      # deliberately NOT published: the only thing that speaks to it is the kernel, by service name.
+      - '${FORGE_BENCH_BIND?see .env.example — 127.0.0.1 on a bench, EMPTY to publish on every interface}:${FORGE_MAIL_HTTP_PORT:-8204}:8025'
+    # ⚠️ THE IMAGE ALREADY CARRIES ONE (`/mailpit readyz`, verified with `docker inspect`), so this line is a
+    # RESTATEMENT — and `bin/container-health.guard.mjs` asks for it anyway, because its rule is "a
+    # third-party tag declares its probe HERE" and that rule cannot look inside an image it has not pulled.
+    # Restating the image's own probe is cheap and true; weakening the rule to trust an unread image is not.
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
       retries: 5
 
 volumes:

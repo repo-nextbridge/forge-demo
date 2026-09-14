@@ -77,7 +77,20 @@ test('★★★ every dressed store declares ALL THREE marks — a shop with two
       `store "${handle}" does not declare all three marks`,
     );
   }
-  assert.equal(dressed.length, 3, 'three shops wear a mark — a shorter list is a shop that vanished');
+  // ⛔ TWO SINCE pk35/d7, AND THE NUMBER IS THE DECISION. The café's vitrine is a FORK that draws its own
+  // mark, and its account screens replace the kit's whole header and footer with `chrome/account_header` and
+  // `chrome/account_footer` — measured live on the bench: ZERO `demo-setup-*` marks on either. So its three
+  // rows drew nothing anywhere, and the owner's rule of 11/09 («o fork é do cliente, 100% liberdade») says
+  // the INSTANCE removes the placement of a store whose fork draws it. `seed/demo-setup.json` carries the
+  // measurement in full. ⇒ a THIRD dressed shop here is a shop somebody dressed without saying why.
+  assert.equal(dressed.length, 2, 'two shops wear a mark — a different count is a shop that arrived or vanished');
+  assert.equal(
+    DATA.stores.cafe,
+    null,
+    'the café is dressed again. Its vitrine is a fork with its own chrome and its account screens draw the ' +
+      '`chrome` app\u2019s instead of the kit\u2019s, so these three rows render on no screen of that store — ' +
+      'three rows an operator can drag and never see the effect of.',
+  );
 });
 
 test('★★ the LOGIN BOX is not this file’s — the block moved to the product on the deployable axis', () => {
@@ -194,7 +207,18 @@ test('★★ in every mark the picture and the words are EXCLUSIVE, so each shop
   //
   // ⚠️ NEITHER BRANCH IS A SKIP: a logo appearing beside a wordmark and a wordmark quietly losing its picture
   // are the same class of silent change, so the opposite case is asserted rather than passed over.
-  const WORDMARK = { forge: true, outlet: true, cafe: false };
+  // ⚠️ pk35/d7 — THE PICTURE BRANCH HAS NO LIVE SPECIMEN HERE ANY MORE, and that is said rather than left as
+  // a dead `else`. The café was the one store of this declaration with art, and the instance removed its
+  // placements (see the rule above). The block's own picture/word exclusivity is still GRADED where it can
+  // be: `apps/demo-setup/block/marks.test.tsx` renders all three marks with a logo and asserts the words
+  // disappear. What this rule keeps is the half that can still go wrong HERE — a logo dropped into a shop
+  // whose mark is a word, which deletes that word from every page of its vitrine.
+  const WORDMARK = { forge: true, outlet: true };
+  assert.deepEqual(
+    Object.keys(WORDMARK).sort(),
+    dressed.map(([handle]) => handle).sort(),
+    'this table and the dressed shops disagree, so the loop below is grading something else',
+  );
   for (const [handle] of dressed) {
     for (const block of blocksFor(DATA, handle)) {
       const config = block.config ?? {};
@@ -287,12 +311,24 @@ test('★★★ the mark the vitrine wears is the mark the FUNNEL wears — two 
     );
     signed += 1;
   }
-  assert.equal(signed, 3, 'three dressed shops sign their footers — a shorter loop is a shop that vanished');
+  assert.equal(signed, 2, 'two dressed shops sign their footers — a different count is a shop that arrived or vanished');
 });
 
 test('★★ every picture the declaration names is a file this repository actually has', () => {
+  // ⚠️ pk35/d7 — THE LIST IS EMPTY TODAY, AND THAT IS DATA RATHER THAN A HOLE. The café was the only store
+  // here with art and the instance removed its placements; the two shoe shops keep WORDS on purpose, because
+  // `tail` takes the theme's accent and a raster does not. So this loop grades whatever is named, and what
+  // must not go silent is the CHAIN behind a name — filename here, asset id in the placement — which is
+  // driven for real against the SAME hand (`seed/blocks.mjs`) in `seed/chrome.test.mjs`, whose declaration
+  // still names three pictures, the café's among them.
   const files = imagesOf(DATA);
-  assert.ok(files.length > 0, 'no store uses a logo — the `type:id` half of the app is then undemonstrated');
+  assert.deepEqual(
+    files,
+    [],
+    'a store of this declaration names a picture again. Good — say so here, and keep the line below: a ' +
+      'filename the seed cannot upload becomes a ref the kernel cannot resolve, no `logo_url` is stamped, ' +
+      'and the mark draws nothing at all.',
+  );
   for (const file of files) {
     assert.ok(
       existsSync(join(SEED, 'photos', file)),
@@ -365,15 +401,25 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
       ['demo-setup'],
       'the app is installed once, by id — installing is not composing and not placing',
     );
-    // ⛔ THE CAFÉ'S PICTURE IS UPLOADED ONCE, not once per block that names it.
-    assert.deepEqual(uploaded, ['forge-co-logo.png']);
+    // ⛔ NOTHING IS UPLOADED, because no store of this declaration names a picture since pk35/d7. The
+    // filename → asset-id chain is driven for real against the SAME hand (`seed/blocks.mjs`) in
+    // `seed/chrome.test.mjs`, whose declaration still names three.
+    assert.deepEqual(uploaded, []);
 
     const placed = calls.filter((c) => c.name === 'composition.place');
-    assert.equal(placed.length, 9, 'three dressed shops × three marks');
+    assert.equal(placed.length, 6, 'two dressed shops × three marks');
     assert.deepEqual(
       [...new Set(placed.map((c) => c.input.store))].sort(),
-      ['sto_cafe', 'sto_forge', 'sto_outlet'],
-      'the counter and a store this file has never heard of are NOT dressed',
+      ['sto_forge', 'sto_outlet'],
+      'the café, the counter and a store this file has never heard of are NOT dressed',
+    );
+    // ⛔ AND THE CAFÉ IS SKIPPED AS A DECLARED DECISION, never as an absence — `null` is this box saying
+    //   «this shop wears none», which is what its fork made true.
+    assert.equal(
+      placed.filter((c) => c.input.store === 'sto_cafe').length,
+      0,
+      'the café was dressed by the seed. Its fork draws its own mark and its account screens draw the ' +
+        '`chrome` app\u2019s, so every one of these rows would land on a screen that never renders it.',
     );
     for (const call of placed) {
       assert.equal(call.input.extension_id, 'demo-setup');
@@ -383,13 +429,15 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
         `${call.input.component} was placed in ${call.input.slot}, which is not the slot it declares`,
       );
     }
-    // ⛔ THE WHOLE POINT OF THE DRIVING: a FILENAME in the config would be a ref the kernel cannot resolve.
-    for (const call of placed.filter((c) => c.input.store === 'sto_cafe')) {
-      assert.equal(
-        call.input.config.logo,
-        'ast_1',
-        `cafe/${call.input.component} was placed with ${JSON.stringify(call.input.config.logo)} — a filename ` +
-          'here is a ref the kernel cannot resolve, so no `logo_url` is stamped and the mark draws nothing.',
+    // ⛔ THE WHOLE POINT OF THE DRIVING: a FILENAME in a placed config is a ref the kernel cannot resolve, so
+    // no `logo_url` is stamped and the mark draws nothing. Asked of EVERY placement rather than of one
+    // store's — the café's was the only picture and it is gone, and a rule tied to it would have gone with it.
+    for (const call of placed) {
+      assert.ok(
+        call.input.config.logo === undefined || /^ast_/.test(String(call.input.config.logo)),
+        `${call.input.store}/${call.input.component} was placed with ` +
+          `${JSON.stringify(call.input.config.logo)} — a filename here is a ref the kernel cannot resolve, ` +
+          'so no `logo_url` is stamped and the mark draws nothing.',
       );
     }
     // …and the sentence reached exactly the two footers the owner named.

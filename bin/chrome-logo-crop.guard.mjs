@@ -118,9 +118,11 @@ const BARE = ['balcao'];
  *
  * ⛔ IT WAS A NUMBER, AND THE NUMBER'S OWN COMMENT HAD GONE FALSE. `const DECLARED_LOGOS = 10` went 10 → 9 →
  * 10 across pk26 and pk28 as the marks moved between the two apps, and the sentence explaining it still said
- * «the café names its mark in five blocks (two funnel bars + three marks)» — the café names it in SIX today
- * (three in `chrome` since the sign-in mark arrived, three in `demo-setup`). The total happened to survive the
- * move; the reason for it did not, and a reason nobody can check is how a number goes on looking measured.
+ * «the café names its mark in five blocks (two funnel bars + three marks)» — and then in SIX, and since
+ * pk35/d7 in THREE, all of them `chrome`'s: the instance removed the café's `demo-setup` placements because
+ * its vitrine is a fork that draws its own mark and its account screens draw `chrome`'s. Three rewrites of one
+ * sentence in three waves; the total survived two of the moves and the reason survived none of them, which is
+ * how a number goes on looking measured.
  *
  * ⇒ THE ANTI-VACUUM IS A RULE PER BLOCK NOW, NOT A TOTAL. A block CAN carry a mark when its manifest declares
  * a `logo` field; it MUST carry one unless it is a wordmark block — which the manifest also says, by

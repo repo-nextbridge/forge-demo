@@ -182,6 +182,16 @@ export function parseBlocks(source, where) {
   for (const block of blocks) {
     if (typeof block?.component !== 'string' || !block.component)
       throw new Error(`${where} has a block with no \`component\` — the parse is wrong, not the manifest`);
+    // ⚠️ pk35/d7 — AN ABSENT `config_schema` IS DATA, NOT A FAILED PARSE, and this line said otherwise until
+    // the first caller asked about an app that has one. The contract declares the field
+    // `z.array(blockConfigFieldSchema).optional()` (packages/contracts/src/extensions.ts:215) and
+    // `apps/payment-pos` really ships two blocks with no config at all — a block the operator drops and does
+    // not fill in. Refusing that read a legal manifest as a broken reader, which is the opposite of what the
+    // refusal below is for, and it was invisible for as long as nobody called `blocksOf('payment-pos')`. So
+    // absence is normalised to `[]` — every consumer here walks `config_schema` and none of them wants a
+    // branch — and what still throws is a schema this reader HALF understood: present, and not a list of
+    // named fields.
+    if (block.config_schema === undefined) block.config_schema = [];
     if (!Array.isArray(block.config_schema) || block.config_schema.some((f) => typeof f?.name !== 'string'))
       throw new Error(`${where}: block \`${block.component}\` has no readable \`config_schema\``);
   }
