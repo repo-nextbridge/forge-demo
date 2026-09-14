@@ -177,7 +177,7 @@ test('★ PACK item 16 — three tags EARNED, two shown: the cap drops the least
     freeShippingThreshold: 60000,
     isNew: true,
   });
-  // This product earns all three. Renan's cap (item 16-bis) is TWO, and the theme's precedence is
+  // This product earns all three. The cap (item 16-bis) is TWO, and the theme's precedence is
   // discount > free-shipping > new — so the price badge and the shipping badge survive and "NOVO" does not.
   // Three tags on one card is the noise the cap exists to prevent.
   expect(getByTestId('tag-discount').textContent).toBe('-25%');

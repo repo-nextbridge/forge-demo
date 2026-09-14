@@ -5,7 +5,7 @@
 // we're waiting — this hook returns `true` only after `active` has been continuously true for
 // `delayMs`, and snaps back to `false` the instant `active` clears. Wire an indicator to its return.
 //
-// Threshold: 1000ms (locked with Renan — "~1s"; the spec's earlier 800ms lean is superseded). A fast
+// Threshold: 1000ms (locked at ~1s; the spec's earlier 800ms lean is superseded). A fast
 // mutation never flashes a spinner; a slow one earns one at exactly 1s.
 'use client';
 

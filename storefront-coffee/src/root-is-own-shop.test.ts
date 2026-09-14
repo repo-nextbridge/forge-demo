@@ -1,9 +1,9 @@
 // ★★ THE ROOT OF THIS FORK IS THIS SHOP — the rule a CUT of a multi-store vitrine does not come with.
 //
-// ── THE OWNER'S RULE, 2026-09-09 ─────────────────────────────────────────────────────────────────────────
+// ── THE RULE ─────────────────────────────────────────────────────────────────────────────────────────────
 //
-//   "o storefront usado é um fork, é ele que será acessado pelo subdomínio … acessar uma home de café de
-//    storefront vanilla nem deveria existir, afinal o fork do storefront assume esse papel."
+//   The storefront in use is a FORK, and the fork is what the subdomain reaches. A café home served by the
+//   vanilla vitrine should not exist at all: the fork takes that role over.
 //
 // This image is the café's vitrine. Not "a storefront that can render the café" — the café's. So the address
 // it answers at is the café's address, and `/` is the café's home. There is no request this deployable can

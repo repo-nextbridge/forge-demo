@@ -16,7 +16,7 @@
 // amplification vector: one cheap GET buys 33 reads and 8,8 MB.
 //
 // The fix is NOT a cap on how far the shopper may go — "a cap nobody can lift is a capability removed in
-// silence", and Renan's own reason for uncapping this in the first place stands (the demo's big categories,
+// silence", and the original reason for uncapping this stands (the demo's big categories,
 // 959 in tênis, must be browsable to the END, not stuck at 100). So the ceiling is on the RESPONSE, not on the
 // journey: a request renders at most `PLP_MAX_PAGES_PER_REQUEST` pages, and past that the window SLIDES —
 // `?page=6` renders pages 2..6, `?page=33` renders 29..33. Every page of the catalog stays reachable, one

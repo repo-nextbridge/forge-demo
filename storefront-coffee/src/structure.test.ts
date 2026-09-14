@@ -213,7 +213,7 @@ test('every @media width breakpoint is a sanctioned px value (no rem drift, no a
   // 768 / 767.98 = the mobile boundary; 900 = checkout; 560 / 720 = documented component-local reflows.
   //
   // 1100 lived here for one commit (PACK item 17, when the PDP buybox was fixed at 525px and needed a floor)
-  // and came back OUT: Renan chose the prototype's own proportional hero, which asks for no breakpoint of its
+  // and came back OUT: the prototype's own proportional hero was chosen, and it asks for no breakpoint of its
   // own. A scale this small is the point — an entry has to be paid for, and this one stopped being owed.
   const SANCTIONED = new Set(['768px', '767.98px', '900px', '560px', '720px']);
   const offenders: string[] = [];

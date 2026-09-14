@@ -61,7 +61,7 @@ const STAND_INS: [RegExp, string][] = [
  * A reserved `.example` address IS the shape of scaffolding, and the list above is right to hunt it: a shopper
  * reading `@cafe.example` reads a blank somebody forgot to fill. But this box ALSO has the opposite rule, and
  * it is not a preference — `bin/fork-contact.guard.mjs` refuses any contact detail that could belong to a real
- * stranger, because this dataset shipped the owner's own address once, in fifteen files. The two rules met on
+ * stranger, because this dataset shipped a real personal address once, in fifteen files. The two rules met on
  * this page during the pk21 merge and neither is wrong.
  *
  * What tells the two cases apart is not the SHAPE of the address, it is whether anybody DECLARED it. An

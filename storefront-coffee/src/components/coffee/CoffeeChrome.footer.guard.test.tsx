@@ -1,6 +1,6 @@
 // ★★ A34 — WHAT THE LAST LINE OF THIS SHOP'S FOOTER SAYS, AND WHY IT IS WORTH A GUARD.
 //
-// It used to carry a copyright notice. Renan replaced it with the one thing a shopper at the bottom of a page
+// It used to carry a copyright notice. It now carries the one thing a shopper at the bottom of a page
 // is actually asking — "compra segura" — beside the padlock that says it without words.
 //
 // ⚠️ THE GUARD IS THE PAIR, NOT THE PHRASE. Either half alone is the failure mode: the words with no mark are

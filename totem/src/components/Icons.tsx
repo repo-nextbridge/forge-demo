@@ -1,8 +1,8 @@
-// THE THREE ICONS RENAN ASKED TO REPLACE, plus the QR the pix screen draws.
+// THE THREE ICONS THAT WERE REPLACED, plus the QR the pix screen draws.
 //
-// ★ THE ARTBOARD IS THE MANDATE, WITH TWO EXCEPTIONS HE NAMED, and this file is one of them: "os ícones de
-// Pix, cartão e sacola — não gostei, pode usar outro". So these three are NEW, and the brief's only
-// constraint is that they be "coerentes com o traço do resto".
+// ★ THE ARTBOARD IS THE MANDATE, WITH TWO DECLARED EXCEPTIONS, and this file is one of them: the Pix, card
+// and bag icons were rejected and reopened for a redraw. So these three are NEW, and the only constraint on
+// them is that they stay coherent with the stroke of the rest.
 //
 // The artboard's line is unmistakable and it is what these follow: everything is drawn with a 3px stroke, no
 // fills, generously rounded joins, and geometry built from a few large shapes rather than detail — the

@@ -1,8 +1,8 @@
 // ★★ WHAT THE GLASS SAYS — AND NOW OFFERS — AFTER A RELOAD. pk9/d1 (04/09) + C5 (05/09).
 //
-// The owner's report, verbatim: "se eu fizer um pedido e ir até o final e só recarregar a página … ele vai
-// para a tela bloqueada e eu consigo começar outro pedido mas não terminar, vai até a parte de pagar mas
-// quando aperto pagar dá um erro." The till's own container log, from that session, five times over:
+// THE REPORTED DEFECT: an order taken all the way to the end and then a plain page RELOAD lands on the
+// blocked screen; a second order can be started but not finished — it reaches the payment step and errors
+// there. The till's own container log, from that session, five times over:
 //
 //     [totem] payWith refused by the port — payment.initiate · validation_failed: order not payable
 //

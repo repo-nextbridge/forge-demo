@@ -5,7 +5,7 @@
 // so nothing a shopper can open renders this file. Measured 2026-09-05, in source: its only importers are
 // `chrome-parity.test.tsx` and `app/chrome-identity.test.tsx` — both TESTS, neither a route.
 //
-// ★ IT IS KEPT ANYWAY, on Renan's call (05/09), because deleting it would delete a rule rather than dead
+// ★ IT IS KEPT ANYWAY, because deleting it would delete a rule rather than dead
 // code. `chrome-identity.test.tsx` judges the two trees by what they must NOT look like, and it re-derives
 // that marker from THIS component on every run instead of trusting a literal: the day `site-header` stops
 // being what the reference chrome renders, its negative assertions would quietly become true of everything.

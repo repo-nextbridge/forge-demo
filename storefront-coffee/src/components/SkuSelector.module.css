@@ -73,8 +73,8 @@
   border-color: var(--color-border-strong);
 }
 
-/* o4 #20 — the selected size chip is a plain DARK border only (no accent fill/tint, no focus ring): Renan read the
- * accent border + ring as an orange fill. Dark ink border marks the pick cleanly. */
+/* o4 #20 — the selected size chip is a plain DARK border only (no accent fill/tint, no focus ring): the
+ * accent border + ring read as an orange fill. Dark ink border marks the pick cleanly. */
 .chip[data-active="true"] {
   border-color: var(--color-ink);
 }

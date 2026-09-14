@@ -60,7 +60,7 @@ export const config = {
   // ★★ D2-C1 — `assets/` IS THE OWNER'S OWN FILES, AND IT IS A PREFIX ON PURPOSE.
   //
   // Everything else on this line is one of Next's file-convention assets, emitted from `app/`. `public/` was
-  // covered by nothing, so a fork owner who dropped his logo in it met the failure this comment describes
+  // covered by nothing, so a fork owner who dropped their logo in it met the failure this comment describes
   // three lines up, one directory over: `/logo.png` was rewritten to `/s/<store>/logo.png`, which does not
   // exist, and the asset 404'd on every store. Nothing said so — the file was right there in the image.
   //

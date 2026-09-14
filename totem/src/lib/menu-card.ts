@@ -31,7 +31,7 @@ export type MenuCard = {
  *
  * A card is a tile on a screen a metre away; the shop's `description` is a paragraph written for a product
  * page somebody reads sitting down. The six coffees the counter re-sells carry the shop's paragraph — 200+
- * characters — and it ran over the tile (Renan, 2026-09-02). So the counter reads its OWN field first.
+ * characters — and it ran over the tile. So the counter reads its OWN field first.
  *
  * ⚠️ WITHOUT THE `??` A PRODUCT NOBODY WROTE ONE FOR WOULD HAVE A MUTE CARD, which is worse than a long one
  * and would make the new field a REQUIREMENT rather than an upgrade. With it, the fifteen products of the

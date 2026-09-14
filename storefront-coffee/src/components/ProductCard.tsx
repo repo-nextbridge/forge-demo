@@ -140,7 +140,7 @@ export function ProductCard({
   const installmentEach = maxInstallments ? Math.round(effective / maxInstallments) : null;
   // PACK item 16 — the card used to light FOUR independent tags at once (Esgotado, Frete grátis, NOVO, -N%),
   // each deciding for itself, with no precedence and no cap. One function decides now, and it caps at two
-  // (Renan, 16-bis). The view still places each badge in the corner the design gives it.
+  // (item 16-bis). The view still places each badge in the corner the design gives it.
   const tags = cardBadges({
     soldOut,
     percentOff: shown?.percent ?? null,

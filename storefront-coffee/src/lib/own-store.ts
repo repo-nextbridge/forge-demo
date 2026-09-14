@@ -21,7 +21,7 @@
 //
 // ── ★★ pk27/D1 — AND SINCE THEN IT ALSO ANSWERS "WHOSE SHOP IS THIS ADDRESS?" ─────────────────────────────
 //
-// `src/middleware.ts` asks this module BEFORE it asks the host. The owner's rule (09/09): the fork IS the
+// `src/middleware.ts` asks this module BEFORE it asks the host. The rule pk27/D1 fixed: the fork IS the
 // store's vitrine, so `/` on this image is that store's home and no request it receives belongs to another
 // shop. Measured on the bench before that line, this container's own `FORGE_STORE_HOSTS` mapped every
 // hostname of the box to the SHOE shop, and a hostname of the café's own resolved to nothing at all — the

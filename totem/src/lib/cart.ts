@@ -107,11 +107,11 @@ export async function ensureCartId(): Promise<string> {
 /**
  * ★★ THE CART A CUSTOMER IS PUTTING ITEMS INTO — never the previous customer's spent vessel (pk9/d1, 04/09).
  *
- * ── THE DEFECT THE OWNER REPORTED, AND THE MEASUREMENT ────────────────────────────────────────────────────
+ * ── THE REPORTED DEFECT, AND THE MEASUREMENT ──────────────────────────────────────────────────────────────
  *
- * "se eu fizer um pedido e ir até o final e só recarregar a página … eu consigo começar outro pedido mas não
- * terminar, vai até a parte de pagar mas quando aperto pagar dá um erro." The till's own container log, from
- * the owner's session, five times over:
+ * An order taken all the way to the end and then a plain page RELOAD: a second order can be started but not
+ * finished — it reaches the payment step and errors there. The till's own container log, from that session,
+ * five times over:
  *
  *     [totem] payWith refused by the port — payment.initiate · validation_failed: order not payable
  *

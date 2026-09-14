@@ -46,10 +46,10 @@
  *     525. The number was the defect, not the freezing;
  *   · then MY proportional 54fr/46fr — right shape, invented numbers;
  *   · then a buybox frozen at the design's 525px, which forced a new 1100px breakpoint into the house's
- *     sanctioned scale to stop the gallery collapsing to 131px at 768. Renan chose proportional instead, and
+ *     sanctioned scale to stop the gallery collapsing to 131px at 768. Proportional was chosen instead, and
  *     that entry came back out of `structure.test.ts`: the prototype asks for no breakpoint of its own.
  *
- * The consequence Renan accepted knowingly, MEASURED (not estimated — the first version of this comment
+ * The consequence, accepted knowingly and MEASURED (not estimated — the first version of this comment
  * carried a number I had guessed, and it was wrong by 91px): below the container the BUYBOX narrows with the
  * page — 517 at 1387 and above, 453 at 1100, 418 at 1024, 361 at 900, 316 at 800. The decision column gives
  * way rather than the photo. It is the design's own behaviour (the prototype renders 525 at 1387 and 461 at

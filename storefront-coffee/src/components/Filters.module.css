@@ -206,7 +206,7 @@
   color: var(--color-ink);
   text-decoration: none;
   font-family: var(--type-ui-family);
-  /* L3-9 — lighter, smaller size chips (Renan: the bold digits read too coarse). Only the size .value, not the
+  /* L3-9 — lighter, smaller size chips (the bold digits read too coarse). Only the size .value, not the
      colour swatch. Deliberate departure from the design source, which asked for bold. */
   font-size: var(--font-size-13);
   font-weight: var(--type-ui-weight);
