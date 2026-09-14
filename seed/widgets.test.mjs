@@ -50,7 +50,8 @@ const widget = (app, component, position, extra = {}) => ({
  *  re-typed: it used to be spelled out here AND in `bin/verify-seed.test.mjs`, two copies of a list about a
  *  screen declared in ANOTHER repository, and neither could notice a widget renamed, dropped or added
  *  upstream. It lives in `bin/app-blocks.mjs` now, where `bin/app-blocks.guard.mjs` grades it against the
- *  manifest of the pinned release. */
+ *  pinned release — ★ pk36/D2: against the INSTANCE DATASET's `admin_widgets` when that declares one, and
+ *  against the manifests when it does not, saying which of the two answered. */
 const DECLARED = ADMIN_WIDGETS;
 
 /** `forgeco`'s board as it was MEASURED on 10/09 — `subscriptions` first, because its app was installed first. */

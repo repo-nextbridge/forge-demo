@@ -1137,8 +1137,9 @@ test('★ a dataset dir that holds no storefront.json says "I could not look", n
 
 /** The seven the board opens on and the slot it fills are `ADMIN_WIDGETS` / `ADMIN_SLOT`, imported at the top
  *  of this file. ★ pk35/D6: they left this suite the way `APP_BLOCKS` did on 2026-09-12, so that
- *  `bin/app-blocks.guard.mjs` can grade them against the manifest of the PINNED release without importing a
- *  test file. They used to be typed here under a sentence — "the seven the dataset declares, in the order he
+ *  `bin/app-blocks.guard.mjs` can grade them against the PINNED release without importing a test file —
+ *  ★ pk36/D2: against the release's own instance dataset when it declares `admin_widgets` (which is what THIS
+ *  suite stages as the mounted dataset), and against the manifests when it does not. They used to be typed here under a sentence — "the seven the dataset declares, in the order he
  *  left them" — that nothing could check: seven names about a screen declared in another repository, in a
  *  file that never opens it. Their reasons live with them now.
  *

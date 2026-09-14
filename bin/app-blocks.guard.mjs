@@ -30,6 +30,7 @@ import test from 'node:test';
 
 import { ADMIN_SLOT, ADMIN_WIDGET_APPS, ADMIN_WIDGETS, APP_BLOCK_APPS, APP_BLOCKS, STOREFRONT } from './app-blocks.mjs';
 import { hooksOf, parseHooks } from './app-manifest.mjs';
+import { boardAuthority, datasetAdminWidgets } from './release-dataset.mjs';
 
 const say = (line) => console.error(`[app-blocks] ${line}`);
 
@@ -155,12 +156,25 @@ test('★★ and the omission is REAL — the release declares admin hooks this 
   say(`deliberately outside the fixture: ${omitted.join(', ')}`);
 });
 
-// ── 3. the operator's board against the release (pk35/D6) ───────────────────────────────────────────────
+// ── 3. the operator's board against the release (pk35/D6, pk36/D2) ──────────────────────────────────────
 //
 // ⛔ THE DEFECT, AND IT IS §2 OF THE SAME CARD THAT BOUGHT THIS FILE. pk34/D3 derived the STORE placements and
 // left the admin home's seven widgets typed inside `bin/verify-seed.test.mjs`, under a sentence nothing could
 // check. The remedy was already here: `hooksOf` returns the `admin:` hooks too — the rules above throw them
 // away on purpose, which is not the same thing as nobody grading them.
+//
+// ⛔ AND pk36/D2 IS THE SECOND HALF OF THAT SAME MISS, measured 2026-09-14: pk35/D6 graded the board against
+// the MANIFEST and only the manifest, while the seven names are also declared by the INSTANCE, in
+// `<forge.lock → dataset.source>/storefront.json` → `admin_widgets` — the list `seed/widgets.mjs` hands
+// `composition.reorder` at birth and `bin/verify-seed.mjs` grades a live tenant against. At the pinned commit
+// the two are byte-identical, so the rule passed BY COINCIDENCE: reorder only the dataset and this file would
+// have gone on asserting the manifest's order, green, about boards that open in another one.
+//
+// ★★★ THE ORDER HAS THREE OWNERS (his decision of 2026-09-14, after withdrawing a stronger one): the MANIFEST
+// is the product's default, the DATASET is this instance's arrangement applied AT BIRTH, and COMPOSE is the
+// merchant's last word that ⛔ nobody rewrites. So the fixture answers to the dataset when the dataset
+// declares and to the manifests when it does not — and `boardAuthority` makes the run SAY WHICH, because an
+// instrument that cannot name its own source is the defect this arc is named after.
 
 /** The widgets one app declares at the admin home's slot, in the manifest's own order — `<app>/<component>`. */
 const widgetsDeclaredBy = (id) =>
@@ -168,7 +182,52 @@ const widgetsDeclaredBy = (id) =>
     .hooks.filter((hook) => hook.target === ADMIN_SLOT)
     .map((hook) => `${id}/${hook.component}`);
 
-test('★★★ the admin board is the one the PINNED manifests declare, widget for widget and in their order', (t) => {
+test('★★★ the choice between the two declarations is itself graded — and it can never be made in silence', () => {
+  // ⛔ ANTI-VACUUM, AND IT IS DELIBERATELY FIRST AND PURE. Every rule below compares the fixture against
+  // "whichever declaration won"; a resolver that always picked the manifest would satisfy all of them today,
+  // because at this pinned commit the two lists are IDENTICAL. So the resolver is graded here on staged
+  // inputs, on a machine with no Forge clone at all, and what is graded is that each branch NAMES its source.
+  const manifest = { declared: ['a-app/one', 'a-app/two'], where: 'the pinned manifests of a-app' };
+
+  const declares = boardAuthority({ declared: ['a-app/two', 'a-app/one'], where: 'ds/storefront.json @ abc' }, manifest);
+  assert.deepEqual(declares.expected, ['a-app/two', 'a-app/one'], 'a declaring dataset outranks the default');
+  assert.equal(declares.source, 'dataset');
+  assert.match(declares.sentence, /THE DATASET ANSWERS: ds\/storefront\.json @ abc/);
+  // ★ AND THE LOSER IS NAMED: a dataset that departs from the default says so, one that matches says that.
+  assert.match(declares.sentence, /DEPARTS from the product default: the manifests place a-app\/one · a-app\/two/);
+  const agrees = boardAuthority({ declared: [...manifest.declared], where: 'ds/storefront.json @ abc' }, manifest);
+  assert.equal(agrees.source, 'dataset');
+  assert.match(agrees.sentence, /IDENTICAL to the product default/);
+
+  const silent = boardAuthority({ declared: [], where: 'ds/storefront.json @ abc' }, manifest);
+  assert.deepEqual(silent.expected, manifest.declared, 'a dataset that declares nothing leaves the default standing');
+  assert.equal(silent.source, 'manifest');
+  // ★ AND IT SAYS SO. "Fell back" is the sentence that was missing: a run graded against the product default
+  // while a reader believed it was graded against this instance is a green that means something else.
+  assert.match(silent.sentence, /THE MANIFESTS ANSWER .* declares no admin_widgets/);
+
+  const blind = boardAuthority({ tried: ['no clone holds the blob'] }, manifest);
+  assert.deepEqual(blind.expected, manifest.declared);
+  assert.equal(blind.source, 'manifest');
+  assert.match(blind.sentence, /could not be read \(no clone holds the blob\)/);
+
+  // ⛔ AND A MALFORMED DECLARATION IS NOT AN ABSENT ONE. Falling back there would grade the default while the
+  // box born from that dataset is refused at seed time.
+  assert.throws(
+    () => boardAuthority({ declared: null, why: 'ds/storefront.json @ abc → admin_widgets is not a list of names' }, manifest),
+    /unusable admin board.*is not a list of names/s,
+  );
+});
+
+/** What the RELEASE'S OWN INSTANCE DATASET declares, read once — a git blob at the pinned commit. */
+const DATASET_BOARD = datasetAdminWidgets();
+say(
+  DATASET_BOARD.tried
+    ? `dataset: NOT READ — ${DATASET_BOARD.tried.join(' · ')}`
+    : `dataset: ${DATASET_BOARD.declared?.length ?? 'unusable'} widget(s) from ${DATASET_BOARD.where}`,
+);
+
+test('★★★ the board fixture answers to the DATASET when it declares, to the MANIFESTS when it does not — and says which', (t) => {
   if (unreadable.length > 0) {
     t.skip(
       `NOT CHECKED — ${unreadable.map(([id, f]) => `${id}: ${f.tried.join('; ')}`).join(' | ')} ` +
@@ -176,19 +235,50 @@ test('★★★ the admin board is the one the PINNED manifests declare, widget 
     );
     return;
   }
-  // ★ ORDER, NOT SET, and the manifest is what says so: `extensions/admin-dashboard/manifest.ts` (AJ4) —
-  // "THIS ARRAY'S ORDER IS THE HOME'S ORDER", because `seedDefaultPlacements` walks the hooks in array order
-  // giving each `position = max(position) + 1`. A sorted comparison would go green on a board shuffled
-  // upstream, and the section of the verifier this fixture feeds is ABOUT the order.
-  const declared = ADMIN_WIDGET_APPS.flatMap(widgetsDeclaredBy);
+  // ★ ORDER, NOT SET, and BOTH declarations say so. The manifest half is written in
+  // `extensions/admin-dashboard/manifest.ts` (AJ4) — "THIS ARRAY'S ORDER IS THE HOME'S ORDER", because
+  // `seedDefaultPlacements` walks the hooks in array order giving each `position = max(position) + 1`. The
+  // dataset half is `composition.reorder`, which writes `position` in the order it is handed the placements.
+  // A sorted comparison would go green on a board shuffled upstream, and the section of the verifier this
+  // fixture feeds is ABOUT the order — pk35/D6 proved it with a sabotage a set comparison survived.
+  const manifest = {
+    declared: ADMIN_WIDGET_APPS.flatMap(widgetsDeclaredBy),
+    where: `the pinned manifests of ${ADMIN_WIDGET_APPS.join(', ')}`,
+  };
+  const { expected, source, sentence } = boardAuthority(DATASET_BOARD, manifest);
+  say(sentence);
+
   assert.deepEqual(
     ADMIN_WIDGETS,
-    declared,
-    `the board fixture and the release disagree about the admin home. The manifest is the truth — it is what ` +
-      `\`extension.install\` materializes on a tenant — so this repository follows it: fix \`ADMIN_WIDGETS\` in ` +
-      `bin/app-blocks.mjs (and say in the commit WHICH widget moved, because a tenant that already has the ` +
-      `app keeps the arrangement it has: the seed is idempotent per (store, ext, component, slot) and ` +
-      `nobody's home is silently rewritten).`,
+    expected,
+    `the board fixture and the ${source.toUpperCase()} disagree about the admin home. ${sentence}\n` +
+      `  Fix \`ADMIN_WIDGETS\` in bin/app-blocks.mjs (and say in the commit WHICH widget moved, because a\n` +
+      `  tenant that already has the app keeps the arrangement it has: the seed is idempotent per (store, ext,\n` +
+      `  component, slot), \`composition.reorder\` runs at BIRTH, and nobody's home is silently rewritten).\n` +
+      `  ⛔ Do not "fix" this by editing the release: the dataset is this instance's arrangement and the\n` +
+      `  manifests are the product's default — this repository follows whichever of the two answered above.`,
+  );
+
+  // ⛔ AND THE WINNER IS CHECKED AGAINST WHAT THE RELEASE CAN ACTUALLY PLACE. Obeying the dataset blindly
+  // would let a typo there drag this fixture along and keep the file green — while `seedAdminWidgets` refuses
+  // that very list at birth ("an order applied to six of seven widgets is worse than none"). ⚠️ WHEN THE
+  // MANIFESTS ANSWERED THIS IS TRUE BY CONSTRUCTION and it is said so here rather than hidden: the branch
+  // that grades is the dataset's. It is folded into this test instead of standing as its own — a separate
+  // rule would have to SKIP on a silent dataset, and a skip turns a legitimate product state into a red
+  // under FORGE_STRICT_CHECKS.
+  const publishable = new Set(APPS.flatMap(widgetsDeclaredBy));
+  assert.ok(
+    publishable.size > 0 && expected.length > 0,
+    `nothing to compare: ${publishable.size} widget(s) published at ${ADMIN_SLOT} in this release and ` +
+      `${expected.length} on the board the ${source} declares. A board rule over an empty release grades nothing.`,
+  );
+  const phantom = expected.filter((name) => !publishable.has(name));
+  assert.deepEqual(
+    phantom,
+    [],
+    `the ${source.toUpperCase()} names widget(s) no app of this release places at ${ADMIN_SLOT}: ` +
+      `${phantom.join(', ')}. A box born from it would be REFUSED at seed time — seed/widgets.mjs fails ` +
+      `rather than apply an order to the others. Published here: ${[...publishable].join(', ')}.`,
   );
 });
 
