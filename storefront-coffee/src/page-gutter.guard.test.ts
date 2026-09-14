@@ -226,3 +226,48 @@ test('★ and that inset has ONE spelling — no literal copy of it anywhere in 
     'no stylesheet references the page gutter token, so nothing above was tested',
   ).toBeGreaterThan(0);
 });
+
+test('★★ a centred column carries NO inline padding of its own — it would be NARROWER than the site', () => {
+  // ★ pk37 — THE HALF THE VALUE COULD NOT SEE, and he found it with his eyes: "olha o header, ele não tem a
+  // mesma largura que o conteúdo da página".
+  //
+  // pk31 §9 made every page edge quote ONE inset, and it did. The bar was still narrower than the page,
+  // because an inset is a number and a column is a BOX: `.headerInner` carried `max-width:
+  // var(--size-container)` AND the gutter padding on the same element, and `box-sizing: border-box` takes
+  // that padding OUT of the 1240px. Content 1240 - 2 x gutter against 1240 everywhere else — invisible below
+  // ~1304px, where both collapse to `100vw - 2 x gutter`, and 32px out on every screen above it.
+  //
+  // ⚠️ AND THE GUARD WAS TAUGHT TO ACCEPT IT: `pageEdges` reads "its own inline padding when it carries one
+  // (the header bar does)". One value, two widths, green. So the claim graded above — the inset is the same —
+  // was true and insufficient; this is the other half, and it is about SHAPE: the gutter belongs to the
+  // full-bleed band, the width belongs to the column, and no element is both.
+  const vars = tokenTable();
+  const zero = /^0(?:[a-z%]+)?$/;
+  let columns = 0;
+  for (const [name, file] of Object.entries(SHEETS)) {
+    for (const rule of rules(readFileSync(file, 'utf8'))) {
+      if (declaration(rule.body, 'max-width') !== 'var(--size-container)') continue;
+      if (declaration(rule.body, 'margin') !== '0 auto') continue;
+      columns += 1;
+      const padding = declaration(rule.body, 'padding');
+      const inline = padding === undefined ? undefined : inlineSide(padding);
+      for (const [property, value] of [
+        ['padding', inline],
+        ['padding-inline', declaration(rule.body, 'padding-inline')],
+        ['padding-left', declaration(rule.body, 'padding-left')],
+        ['padding-right', declaration(rule.body, 'padding-right')],
+      ] as const) {
+        if (value === undefined || zero.test(value)) continue;
+        expect.fail(
+          `${name}: ${rule.selector} caps itself at the site width AND insets itself with ` +
+            `${property}: ${value}. With border-box that inset comes out of ` +
+            `${resolve('var(--size-container)', vars, 'the site width')}, so this column is narrower than ` +
+            'every other one in the shop. Move the gutter to the full-bleed band around it, the way ' +
+            '`.header` and `.footer` do.',
+        );
+      }
+    }
+  }
+  // Anti-vacuum: a scan that found no column would satisfy every assertion above by having nothing to check.
+  expect(columns, 'no centred column was scanned, so this guard proved nothing').toBeGreaterThan(0);
+});

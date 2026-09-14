@@ -26,12 +26,19 @@
   background: color-mix(in srgb, var(--color-canvas) 92%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 9%, transparent);
+  /* ★ The page gutter lives on the FULL-BLEED band, never on the centred column — the same shape `.footer`
+   * below already has. It used to sit on `.headerInner` itself, and with `box-sizing: border-box` that
+   * padding came OUT of the 1240px: the bar's content was 1240 - 2 x gutter wide while every other column in
+   * the shop was 1240, so above ~1304px the bar sat 32px inside the page it was supposed to line up with.
+   * `page-gutter.guard.test.ts` graded the inset VALUE and was written to accept either shape, which is why
+   * one value could be right and the two columns still different widths. */
+  padding: 0 var(--space-page-gutter);
 }
 
 .headerInner {
   max-width: var(--size-container);
   margin: 0 auto;
-  padding: 6px var(--space-page-gutter);
+  padding-block: 6px;
   min-height: 52px;
   display: flex;
   align-items: center;
