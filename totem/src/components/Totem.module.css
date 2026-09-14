@@ -1010,6 +1010,41 @@
   gap: 20px;
 }
 
+/* ★★★ THE STEP SEAL — "ETAPA 1 DE 2" / "ETAPA 2 DE 2", AT THE FOOT OF THE PANEL AND AFTER EVERYTHING (B15).
+ *
+ * ── THE DEFECT, AS REPORTED: in landscape the badge was cut off at the top of the glass.
+ * ── WHERE IT COMES FROM, MEASURED IN A REAL ENGINE (headless Chromium, this sheet, the panel's own
+ *    1080x1920 geometry). `--totem-scale` is written by JavaScript and `.panel` falls back to `scale(1)`
+ *    until that runs. With the fallback in force:
+ *
+ *        viewport        panel top     the badge, 56px into the header band
+ *        1080x1920                0     top =   56    fully visible
+ *        1280x720              -600     top = -544    clipped, off the top of the glass
+ *         844x390              -765     top = -709    clipped, off the top of the glass
+ *
+ *    Portrait glass is at scale 1 anyway, which is why the report names landscape and only landscape. With
+ *    the scale applied the panel fits exactly in every one of those viewports and nothing is ever clipped.
+ * ── AND THE PLACEMENT IS THE RULE, not an attempt to make the badge fit at the top. A step counter is the
+ *    least urgent thing on a step screen: the question comes first and "where am I" comes last. So the
+ *    header keeps its title and its note, and this band closes the panel.
+ *
+ * ⚠️ IT IS A FLEX CHILD OF `.step`, NEVER AN OVERLAY — an absolutely positioned seal would have to guess at
+ * the footer's height, and the two footers here are different heights. It continues `--totem-rail` so the
+ * footer and the seal read as one band rather than as a stripe stuck under the screen.
+ * ⚠️ `flex: none` IS LOAD-BEARING: `.stepBody` / `.identifyBody` are the only things that may shrink, and a
+ * seal that could would be the first thing a long basket ate. */
+.stepSeal {
+  flex: none;
+  background: var(--totem-rail);
+  padding: 0 60px 30px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(47, 38, 32, 0.45);
+}
+
 /* ── BAG LINES ───────────────────────────────────────────────────────────────────────────────────────── */
 
 .line {
@@ -1965,6 +2000,34 @@
   font-size: 24px;
   color: rgba(248, 244, 236, 0.7);
   text-align: center;
+}
+
+/* ★★ "NOVO PEDIDO" — the queue's way past a receipt that is not theirs (M9). See `newOrder` in Totem.tsx
+ * for why the answer to a till held by a confirmation is a button and not a shorter window.
+ *
+ * It is the one target on this screen, so it is sized like one: 112px is the flow's own button height minus
+ * the footer's air, ~2.5x the 44px touch floor. Sand on the green footer rather than a ghost outline —
+ * whoever is looking at this screen is the NEXT person in line, and they are reading it from standing
+ * distance over somebody's shoulder. */
+.newOrderButton {
+  appearance: none;
+  margin-top: 16px;
+  min-width: 420px;
+  height: 112px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--totem-sand);
+  color: var(--totem-ink);
+  font-family: var(--totem-display);
+  font-size: 34px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.newOrderButton:disabled {
+  background: rgba(220, 199, 166, 0.4);
+  color: rgba(47, 38, 32, 0.45);
+  cursor: default;
 }
 
 /* ── THE COUNTER IS NOT READY YET ────────────────────────────────────────────────────────────────────── */
