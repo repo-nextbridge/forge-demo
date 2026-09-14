@@ -798,20 +798,24 @@ commitada e travada no `totem/package-lock.json`. ⇒ **o gêmeo front-side do `
 de empacotar: não há o que empacotar.** O kernel precisa de artefato porque **lê** manifestos de um diretório
 montado no boot; um front precisa de um **módulo que o bundler resolva**, e isso são as quatro linhas acima.
 
-★★★ **pk33 — E O QUE ISSO CUSTA NA TELA DEIXOU DE SER SURPRESA: o café nasce SEM portaria, POR DECLARAÇÃO.**
-Decisão dele (11/09): *"sim a portaria vem instalada no nascimento da demo"*, e a demo é *"sapatos, outlet,
-café, totem"*. Mas `extension.install` é **por TENANT** e o kernel coloca o bloco **em toda loja do tenant** —
-então instalar para o `forgecafe` alcança o **café** e o **balcão**, e só um dos dois sabe desenhar: o balcão é
-o totem, que solda o registro dele; o café é o `storefront-coffee`, que resolve pelo registro do kit (`{}` por
-desenho). ⚠️ **E desde a pk32 "não sabe desenhar" não é mais "serve a loja calada":** `storefront:gate` é alvo
-**estrutural**, então o fork **RECUSA a página** em voz alta (*"Esta loja está temporariamente indisponível"*).
-Deixar a colocação lá entregaria um café cuja **página inteira** é uma tela de recusa. ⇒ `seed/coffee.mjs`
-instala e em seguida **REMOVE a colocação do café** (`dropGateOnTheCafe`), `seed/box.json` declara
-`"gate": false` + o motivo nessa loja, e o passo 14-bis grada a declaração contra a porta **e contra a tela**.
-Isso é a régua dele de 11/09 — *"o fork é do cliente, 100% liberdade"* ⇒ **a instância remove a colocação** — e
-o mesmo padrão que o `seed/outlet.mjs` já usa na PLP. ⛔ **A divergência continua declarada** em
-`bin/front-app-reach.guard.mjs`: ela é impressa a cada corrida e fica **vermelha** no dia em que deixar de
-casar com um achado, então o arranjo não consegue virar permanente em silêncio.
+★★★ **pk36/d1 — O CAFÉ GANHOU PORTARIA, e agora as QUATRO lojas nascem com ela.** Decisão dele (13/09:
+*"o café ganha portaria? Sim ganha portaria"*, confirmada em 14/09), e o que a destravou foi a pk35/d2.
+⚠️ **O arranjo anterior está descrito aqui porque ele explica o mecanismo, não porque ainda valha:**
+`extension.install` é **por TENANT** e o kernel coloca o bloco **em toda loja do tenant**, então instalar para o
+`forgecafe` alcança o **café** e o **balcão** — e até a pk35 só um dos dois sabia desenhar (o balcão é o totem,
+que solda o registro dele; o café é o `storefront-coffee`, que resolvia pelo registro do kit, `{}` por desenho).
+Como `storefront:gate` é alvo **estrutural**, o fork **RECUSAVA a página** em voz alta (*"Esta loja está
+temporariamente indisponível"*), então `seed/coffee.mjs` **removia a colocação do café** e `seed/box.json`
+declarava `"gate": false` + o motivo. ⇒ **As duas coisas morreram juntas nesta fatia**, porque a pk35/d2 deu ao
+fork um `composition.json` próprio, um script `codegen` e a dependência real do `@forgecommerce/surface-codegen`:
+`storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` **existe** e resolve o `demo-gate` nas duas
+faces. ⛔ **E a divergência declarada saiu junto** — o `bin/front-app-reach.guard.mjs` agora **grada** o par
+`storefront-coffee × demo-gate` em vez de dispensá-lo, e fica vermelho no dia em que o fork deixar de alcançar
+o app. 📌 **A chave `gate: false` continua existindo** — é como qualquer loja de qualquer caixa declara que não
+tem portaria — e as quatro reações do 14-bis a ela continuam gradadas: como nenhuma loja real a declara,
+`bin/prove-doors.test.mjs` as grada contra uma **caixa de fixture própria**, com uma loja que só existe lá.
+⚠️ **A colocação só chega no NASCIMENTO** (`extension.install` materializa as colocações), então uma caixa já de
+pé **não** ganha a portaria do café por esta mudança: ela chega no próximo nascimento.
 
 ⚠️ **O que ainda NÃO fecha, e está dito em voz alta:** o gesto 4 é uma **superfície gerada** e **nada neste
 repositório a regera** — `bin/build-coffee.sh` e `bin/build-totem.sh` não mencionam codegen, e entre os 18
@@ -918,7 +922,7 @@ visitante encontre a portaria, quer entre direto na loja: **a portaria responde 
 | `/s/<forge>/`, `/s/<outlet>/` e as três portas de checkout de cada uma | a **portaria** (tela cheia, PT/EN/ES, o **hub** dos seis destinos) | a **loja**, com a **faixa** vermelha no rodapé que reabre a portaria |
 | `/s/<balcao>/checkout`, `/account`, `/account/login` | a **portaria** (quem serve é o `checkout`, que compõe o app) | a porta de sempre |
 | `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão, e essa recusa é **acima** da portaria | **404**, idêntico |
-| `/s/<cafe>/…` | a **loja**, sem portaria — **declarado** (§6.1 acima e `seed/box.json` → `"gate": false`) | idem |
+| `/s/<cafe>/…` | a **portaria** — desde a pk36/d1 o café é gradado como as outras três (§6.1 acima) | a **loja**, com a **faixa** no rodapé |
 
 ★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout dele de 10/09): dois cartões de tenant,
 cada um com as suas lojas e, no pé, a linha que abre o admin daquele tenant. ⛔ **Nenhum endereço está escrito no
@@ -941,9 +945,9 @@ de dispensa **não** acompanha esse salto. Isso é correto e esperado.
 
 ⛔ **E O MESMO VALE ENTRE AS SEIS LOJAS, o que AINDA não é o que ele decidiu.** O cookie de dispensa é escrito
 **sem atributo `domain`** (`packages/storefront-kit/src/gate/actions.ts:57-64`, no monorepo do Forge), logo é
-*host-only*: quem passou pela portaria em `store.forgecommerce.pro` encontra portaria de novo no outlet e no
-totem (medido 13/09: os dois admins não têm portaria por decisão, o café declara `gate: false`, e sobram esses
-dois). A decisão dele de 13/09 — *"não tem problema o cookie valer para todas"* ⇒ cookie de domínio
+*host-only*: quem passou pela portaria em `store.forgecommerce.pro` encontra portaria de novo em cada uma das
+outras (medido 13/09: os dois admins não têm portaria por decisão, e desde a pk36/d1 o café tem — então são
+**três** fronts de loja, não dois). A decisão dele de 13/09 — *"não tem problema o cookie valer para todas"* ⇒ cookie de domínio
 `.forgecommerce.pro`, e a barrinha reabrindo nas seis — é mudança **no kit**, ou seja, **no outro repositório**;
 uma fatia nomeia um repo só.
 
@@ -966,7 +970,8 @@ em 13/09, no outlet: `/` → `200 · storefront` (barrinha), `/checkout` → `20
 
 ★ **Quais lojas DEVEM ter portaria: todas, por padrão.** Nada em lugar nenhum lista as lojas com portaria — uma
 lista envelheceria calada na quinta loja. O que é declarado é a **exceção**, em `seed/box.json`, com o motivo ao
-lado (`"gate": false` + `_gate_why`), e hoje há **uma só**: o `cafe`. `bin/gate-at-birth.guard.mjs` fecha o
+lado (`"gate": false` + `_gate_why`), e desde a pk36/d1 **não há nenhuma** — o `cafe` era a última.
+`bin/gate-at-birth.guard.mjs` fecha o
 outro lado no laço de testes: *todo tenant cujas lojas querem portaria tem um seed que a INSTALA* — derivado do
 manifesto do app, do `seed/box.json` e das quatro listas de `extension.install` deste repo, sem nome digitado.
 
@@ -990,8 +995,9 @@ a passada de imagens (que deriva a lista do `imageUrlsFrom(corpo)`) encontra **z
 verde**: cada visita é 200 e o relatório diz *"warm"*, porque nada nele distingue os dois corpos. ⇒ **desde a
 pk33 o passo 14 NOMEIA cada loja com portaria** e diz, na linha, que aquela loja deve ser tratada como **FRIA**
 qualquer que seja o número. ⛔ **O conserto é um header no fetcher do aquecedor, no OUTRO repositório** — uma
-fatia nomeia um repo só. O que foi consertado aqui é o **silêncio**. 📌 Hoje isso vale para `forge` e `outlet`
-(o café não tem portaria, então ele aquece de verdade).
+fatia nomeia um repo só. O que foi consertado aqui é o **silêncio**. 📌 **E desde a pk36/d1 isso vale para as
+TRÊS lojas de vitrine** — `forge`, `outlet` e agora o `cafe`, que deixou de ser a única a aquecer de verdade.
+O passo 14 deriva a lista do `read.extensions`, então ele já nomeia o café sozinho: nenhuma lista a atualizar.
 
 ⇒ **Na prática, para quem opera:** se a demo aparecer **sem** a tela *"Loja demo."*, o nascimento já vai ter
 dito qual loja e por quê, antes de a caixa ser entregue. E se você precisar ver a loja **sem** a portaria para

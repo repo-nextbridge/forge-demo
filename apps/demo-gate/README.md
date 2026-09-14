@@ -49,10 +49,15 @@ it:
    > loop, and step 14-bis opens every door of every store on **both sides of the dismissal cookie** — the gate
    > without it, the shop with it — so a box where this screen is missing is red at birth, naming the store.
    >
-   > ⚠️ **An install is TENANT-wide** and the kernel places the block on **every store of the tenant**, which
-   > is why one of the four is deliberately taken back out: `seed/coffee.mjs::dropGateOnTheCafe` removes the
-   > placement from `cafe`, whose forked vitrine carries no gate registry and would therefore refuse the page
-   > rather than draw it. That store declares `gate: false` in `seed/box.json`, with the reason.
+   > ⚠️ **An install is TENANT-wide** and the kernel places the block on **every store of the tenant** — and
+   > since pk36/d1 all four keep it. Until then `cafe` was taken back out by `seed/coffee.mjs`, because the
+   > forked vitrine carried no gate registry and a structural slot it cannot draw REFUSES the page; that
+   > removal, and the `gate: false` in `seed/box.json` that declared it, are both gone. What ended them is
+   > pk35/d2: the fork regenerates its own surfaces, so
+   > `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` resolves this app like any other front.
+   > ⚠️ **The `gate: false` key itself did NOT go away** — it is how any store of any box declares it has no
+   > front door, and `bin/prove-doors.mjs` still grades all four of its behaviours. With no real store
+   > declaring it, `bin/prove-doors.test.mjs` keeps them graded against a fixture box of its own.
 2. **One import + one entry** in that storefront's `src/lib/extensions/gate-registry.tsx` — and the two
    names come from **this app's own declaration**, never from a reader's memory:
    `package.json` → `forge.wiring.gate` names the module (`./block/entry`) and the two exports

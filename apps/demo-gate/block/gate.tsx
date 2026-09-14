@@ -30,10 +30,13 @@
 // gate again on the next face that has one.
 //
 // ⇒ MEASURED, NOT ESTIMATED (bench `forge-preseed`, 2026-09-13): of the six, the two admins have no gate by
-// decision (pk33: «não precisa de portaria no admin»), the café declares `gate: false`, and the outlet and the
-// counter DO show one. So it is two second gates today, not five. The owner's 13/09 decision — «não tem
-// problema o cookie valer para todas» ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all six — is
-// a change to the KIT and belongs to the product; this slice names it rather than remedying it from here.
+// decision (pk33: «não precisa de portaria no admin»), the café declared `gate: false`, and the outlet and the
+// counter DO show one. So it was two second gates, not five. ⚠️ THAT COUNT MOVED TO **THREE** IN pk36/d1 and
+// the sentence is corrected rather than left standing: the café's exception is gone — its fork regenerates a
+// gate registry of its own now — so four of the six faces carry a gate and only the two admins do not. The
+// owner's 13/09 decision — «não tem problema o cookie valer para todas» ⇒ a `.forgecommerce.pro` cookie, and a
+// ribbon that reopens all six — is a change to the KIT and belongs to the product; this repository names it
+// rather than remedying it from here, and the change above makes it worth one more face.
 
 import { useEffect, useState } from 'react';
 import { ARCH, GATE_LANG_COOKIE, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';

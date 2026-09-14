@@ -1502,10 +1502,12 @@ half of that reason fell. `dismissGate()` now takes a destination (`packages/sto
 in the Forge monorepo, since pk33), but `safeNextPath` admits **same-origin paths only** and five of the six
 faces are other hostnames. And the dismissal cookie is still written with **no `domain` attribute** (same file,
 `:57-64`), so it is host-only: a visitor who came through the gate here meets it again on the next face that has
-one. Measured on the bench, 2026-09-13: the two admins have no gate by decision (pk33), the café declares
-`gate: false`, and the outlet and the counter do show one — **two second gates, not five**. His 13/09 decision
-— *"não tem problema o cookie valer para todas"* ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all
-six — is a change to the **kit**, and this repository can only name it.
+one. Measured on the bench, 2026-09-13: the two admins have no gate by decision (pk33), the café declared
+`gate: false`, and the outlet and the counter did show one — **two second gates, not five**. ⚠️ **Since pk36/d1
+that count is THREE:** the café's exception is gone (its fork regenerates its own gate registry), so four of the
+six faces carry a gate and only the two admins do not. His 13/09 decision — *"não tem problema o cookie valer
+para todas"* ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all six — is a change to the **kit**,
+and this repository can only name it; the change above makes it worth one more face.
 
 **That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
 ONE box could not be on a composition list at all, and both front registries are built from that list — so
