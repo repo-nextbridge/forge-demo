@@ -16,7 +16,6 @@
 // them (`GateBlock`, `GateRibbon`) is a client component, and gets its values as props already resolved.
 
 import { cookies, headers } from 'next/headers';
-import { readShopCounts } from '../counts';
 import { GATE_LANG_COOKIE, type Lang, resolveLang } from '../i18n';
 import { gateWiring } from '../wiring';
 import { GateBlock } from './gate';
@@ -53,26 +52,22 @@ async function requestHost(): Promise<string | undefined> {
 /**
  * The full-screen interstitial.
  *
- * ★ `store` IS NOT COPY AND NEVER WAS — the screen names the demo, not whichever store was asked for. What it
- * is, since pk38/d7, is the one store id this process holds for FREE: the shop sizes on the cards are read off
- * the port by face, and the face the visitor is standing on can skip the directory hop with this. It is also
- * the only face that can answer at all on a box not yet promoted to its published hostnames.
+ * ★ `store` IS DELIBERATELY UNUSED, and the slot hands it to every gate all the same: this gate is the
+ * DEMO's, and the demo is a box of shops rather than one of them — the screen names the demo and lists what
+ * the box publishes, never whichever store the visitor's request happened to resolve to.
  */
 export async function GateInterstitial({
-  store,
   dismiss,
 }: {
   store: string;
   dismiss: () => Promise<void>;
 }) {
   const { siteUrl, adminUrls } = gateWiring();
-  const here = await requestHost();
   return (
     <GateBlock
       siteUrl={siteUrl}
       adminUrls={adminUrls}
-      here={here}
-      counts={await readShopCounts({ here, store })}
+      here={await requestHost()}
       initialLang={await initialLang()}
       dismiss={dismiss}
     />

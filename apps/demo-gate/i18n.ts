@@ -12,10 +12,6 @@ export type Lang = 'pt' | 'en' | 'es';
 
 export const LANGS: readonly Lang[] = ['pt', 'en', 'es'] as const;
 
-/** The BCP-47 tag each gate language formats numbers in. The hub prints counts it read off the port, and a
- *  thousands separator is the reader's, not the screen's: `2.777` in pt-BR and es, `2,777` in en. */
-export const LOCALES: Record<Lang, string> = { pt: 'pt-BR', en: 'en', es: 'es' };
-
 /** The chosen-language cookie. The gate splash writes it when the visitor picks a language in the footer
  * selector; the storefront layout reads it so the choice PERSISTS across the gate, the "demo store" ribbon, and
  * a re-opened splash (instead of re-guessing from Accept-Language each time). Non-secret UI preference. */
@@ -31,8 +27,8 @@ export type GateStrings = {
    * hero — a small uppercase line, a large "Loja demo." and a paragraph of prose — that the 10/09 layout
    * REPLACES with the hub. The port that brought the hub in mounted it UNDER that hero instead of in its
    * place, so the first screen said the same thing twice and neither in the design's shape. What the visitor
-   * is told now is the count of what this box publishes (`HUB.counts`) plus the notice at the foot; what
-   * stays in this type is the chrome around the hub that the design does keep. */
+   * is told now is the design's own headline (`HUB.headline`) plus the notice at the foot; what stays in
+   * this type is the chrome around the hub that the design does keep. */
   back: string;
   /** The persistent bottom ribbon shown while browsing the store (gate dismissed). Clicking it re-opens the gate. */
   ribbon: string;
@@ -193,12 +189,33 @@ export const ARCH: Record<Lang, ArchStrings> = {
  * The 10/09 layout (`block/design-base/gate.dc.html`): two tenant cards, each with its shops and, at its
  * foot, the row that opens that tenant's admin. Same mechanism as everything above — embedded copy, three languages, one selector.
  *
- * ⚠️ WHAT IS *NOT* HERE, AND THE RULE IS THE ONE `ARCH` ALREADY LIVES BY. No ADDRESS and no COUNT is written
- * in this file. Which faces exist, which tenant each belongs to and what hostname each is published at come
- * from `seed/box.json` through `faces.generated.ts`; the numbers in `counts` are handed in by the screen,
- * which derives them from that list, and the per-shop size in `blurb` is handed in by `block/counts.ts`,
- * which asks the port. A translator editing this file cannot invent a shop, and a fifth shop
- * declared in the box makes `block/hub.test.tsx` red instead of making this screen quietly short.
+ * ⚠️ WHAT IS *NOT* HERE. No ADDRESS is written in this file, and that rule is the one `ARCH` already lives
+ * by: which faces exist, which tenant each belongs to and what hostname each is published at come from
+ * `seed/box.json` through `faces.generated.ts`. A translator editing this file cannot invent a shop, and a
+ * fifth shop declared in the box makes `block/hub.test.tsx` red instead of making this screen quietly short.
+ *
+ * ── ★★★ THE NUMBERS, ON THE OTHER HAND, ARE TYPED — AND THAT IS THE DECISION, NOT AN OVERSIGHT ───────────
+ *
+ * "Derive, never list" exists to protect what a CUSTOMER is handed: an instance whose catalogue nobody here
+ * controls, where a figure typed into a screen is a claim that goes stale on somebody else's box. THIS
+ * SCREEN IS NOT THAT. It is the public demo's own front door — one box, one catalogue, one audience — and it
+ * is not an app a customer installs or configures; anyone who wants a different first screen forks this app,
+ * which is the whole way this repository says "different". ⇒ here the truth is the DESIGN
+ * (`design-base/gate.dc.html`), word for word, and `block/hub.test.tsx` holds every sentence below against
+ * that file, so the screen and the artboard cannot drift apart in silence.
+ *
+ * ★ AND TYPING IT IS WHAT GIVES THE SENTENCE ITS SECOND HALF BACK. The design writes "2 777 produtos →
+ * 44 399 SKUs"; a screen deriving that number from the public read face could answer the first half and had
+ * to DROP the second, because no capability on that face returns a SKU total and summing variants means
+ * walking the whole catalogue on the first screen a visitor meets. Typed, the line is the design's again.
+ *
+ * ⛔ WHAT WENT WITH IT, NAMED SO NOBODY REBUILDS HALF OF IT: the `store.by_host` + `product_paths` reads,
+ * their 1 500 ms ceiling, the 300 s cache window, the per-face failure case and the second "no number"
+ * sentence each shop card carried for it. There is no reader left, and a `blurb` is a
+ * string again rather than a function of a number that may not arrive.
+ *
+ * ⚠️ THE ONE THING ON THIS SCREEN THAT IS STILL DYNAMIC IS THE ADMIN ORIGIN (`FORGE_GATE_ADMIN_URLS`,
+ * `wiring.ts`) — an address this box is promoted to, which no design can know.
  *
  * ⚠️ AND THE KEYS ARE THE BOX'S KEYS. `tenants` is keyed by tenant id and `faces` by `<tenant>/<handle>` —
  * the same strings the generated module carries — so copy written for a face that no longer exists, and a
@@ -228,32 +245,24 @@ export type HubFaceStrings = {
   /** The tag beside the wordmark ("Referência", "Totem"). */
   badge: string;
   /**
-   * ★★★ THE SENTENCE UNDER THE WORDMARK, AND IT TAKES A NUMBER THE SCREEN READ OFF THE PORT. The design
-   * writes the shop's size into this line ("Uma loja completa com 2 777 produtos."), and a size typed into a
-   * screen is a claim that goes stale the first time anybody seeds the box. `block/counts.ts` asks the public
-   * read face how many products each shop publishes and hands the answer in here.
-   *
-   * ⛔ `null` IS NOT ZERO AND MUST NOT READ LIKE IT. It means the question could not be answered right now —
-   * the face is not claimed at this address yet, the port refused, the request timed out. The sentence for
-   * that case is a COMPLETE sentence with no number in it, never "0 produtos" and never the number this
-   * screen was told last time.
+   * ★★★ THE SENTENCE UNDER THE WORDMARK, AND IT CARRIES THE SHOP'S SIZE AS THE DESIGN WRITES IT — "Uma loja
+   * completa com 2 777 produtos → 44 399 SKUs.", not a figure this process went and asked for. See the head
+   * of this section for why a typed number is right on THIS screen and wrong on a customer's.
    */
-  blurb: (products: number | null) => string;
+  blurb: string;
   /** The button ("Abrir a loja", "Abrir o totem"). */
   cta: string;
 };
 
 export type HubStrings = {
   /**
-   * The headline of the screen, from numbers it DERIVES off the declaration — never typed here.
+   * The headline of the screen, as the design writes it: "Dois tenants. Quatro lojas. Dois admins."
    *
-   * ★ THREE CLAUSES, ONE PER LINE, and that is the return type rather than a rendering detail. The design's
-   * headline is three lines because its sentence is long enough to break at 14 characters — and it is long
-   * because its numbers are spelled out. These are numerals, so the same measure broke the same sentence
-   * mid-clause instead. Declaring the clauses keeps the shape whatever the box declares and whichever of the
-   * three languages is on.
+   * ★ THREE CLAUSES, ONE PER LINE, and that is the type rather than a rendering detail. The design's
+   * headline is three lines because `max-width: 14ch` breaks it there; declaring the clauses makes that
+   * shape the screen's own, in all three languages, instead of a measure that happens to agree today.
    */
-  counts: (tenants: number, shops: number, admins: number) => readonly [string, string, string];
+  headline: readonly [string, string, string];
   /** [before, the emphasised word, after] — the emphasised word is "kernel", in all three languages. */
   lede: readonly [string, string, string];
   /** The row at the foot of a tenant card. */
@@ -277,16 +286,9 @@ export type HubStrings = {
   faces: Record<string, HubFaceStrings>;
 };
 
-/** A count as the gate's current language writes it. One place, so three copies cannot drift. */
-const count = (lang: Lang, n: number): string => new Intl.NumberFormat(LOCALES[lang]).format(n);
-
 export const HUB: Record<Lang, HubStrings> = {
   pt: {
-    counts: (tenants, shops, admins) => [
-      `${tenants} tenants.`,
-      `${shops} lojas.`,
-      `${admins} admins.`,
-    ],
+    headline: ['Dois tenants.', 'Quatro lojas.', 'Dois admins.'],
     lede: [
       'Cada tenant é uma conta isolada: banco, catálogo, pedidos e login próprios. Mas o mesmo ',
       'kernel',
@@ -315,38 +317,28 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Referência',
-        blurb: (n) =>
-          n === null
-            ? 'Uma loja completa, na vitrine que ninguém forkou.'
-            : `Uma loja completa com ${count('pt', n)} produtos.`,
+        blurb: 'Uma loja completa com 2 777 produtos → 44 399 SKUs.',
         cta: 'Abrir a loja',
       },
       'forgeco/outlet': {
         badge: 'Segunda loja',
-        blurb: (n) =>
-          n === null
-            ? 'Multi-loja: o mesmo catálogo, tema e preços próprios.'
-            : `Multi-loja: ${count('pt', n)} produtos do mesmo catálogo, tema e preços próprios.`,
+        blurb: 'Multi-loja: 55 produtos do mesmo catálogo, tema e preços próprios.',
         cta: 'Abrir o outlet',
       },
       'forgecafe/cafe': {
         badge: 'Storefront forkado',
-        blurb: () => 'Outro storefront mas o mesmo checkout, repositório e imagem próprios.',
+        blurb: 'Outro storefront mas o mesmo checkout, repositório e imagem próprios.',
         cta: 'Abrir a loja',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: () => 'Totem de balcão: aplicação exclusiva própria falando direto com a porta.',
+        blurb: 'Totem de balcão: aplicação exclusiva própria falando direto com a porta.',
         cta: 'Abrir o totem',
       },
     },
   },
   en: {
-    counts: (tenants, shops, admins) => [
-      `${tenants} tenants.`,
-      `${shops} shops.`,
-      `${admins} admins.`,
-    ],
+    headline: ['Two tenants.', 'Four shops.', 'Two admins.'],
     lede: [
       'Each tenant is an isolated account: its own database, catalogue, orders and sign-in. But the same ',
       'kernel',
@@ -375,39 +367,29 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Reference',
-        blurb: (n) =>
-          n === null
-            ? 'A complete shop, on the storefront nobody forked.'
-            : `A complete shop with ${count('en', n)} products.`,
+        blurb: 'A complete shop with 2,777 products → 44,399 SKUs.',
         cta: 'Open the store',
       },
       'forgeco/outlet': {
         badge: 'Second shop',
-        blurb: (n) =>
-          n === null
-            ? 'Multi-store: the same catalogue, its own theme and its own prices.'
-            : `Multi-store: ${count('en', n)} products of the same catalogue, its own theme and its own prices.`,
+        blurb: 'Multi-store: 55 products of the same catalogue, its own theme and its own prices.',
         cta: 'Open the outlet',
       },
       'forgecafe/cafe': {
         badge: 'Forked storefront',
-        blurb: () =>
+        blurb:
           'Another storefront but the same checkout, with a repository and an image of its own.',
         cta: 'Open the shop',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: () => 'The counter totem: an application of its own, talking straight to the port.',
+        blurb: 'The counter totem: an application of its own, talking straight to the port.',
         cta: 'Open the totem',
       },
     },
   },
   es: {
-    counts: (tenants, shops, admins) => [
-      `${tenants} tenants.`,
-      `${shops} tiendas.`,
-      `${admins} admins.`,
-    ],
+    headline: ['Dos tenants.', 'Cuatro tiendas.', 'Dos admins.'],
     lede: [
       'Cada tenant es una cuenta aislada: base de datos, catálogo, pedidos y acceso propios. Pero el mismo ',
       'kernel',
@@ -436,28 +418,22 @@ export const HUB: Record<Lang, HubStrings> = {
     faces: {
       'forgeco/forge': {
         badge: 'Referencia',
-        blurb: (n) =>
-          n === null
-            ? 'Una tienda completa, en la vitrina que nadie forkeó.'
-            : `Una tienda completa con ${count('es', n)} productos.`,
+        blurb: 'Una tienda completa con 2.777 productos → 44.399 SKUs.',
         cta: 'Abrir la tienda',
       },
       'forgeco/outlet': {
         badge: 'Segunda tienda',
-        blurb: (n) =>
-          n === null
-            ? 'Multi-tienda: el mismo catálogo, tema y precios propios.'
-            : `Multi-tienda: ${count('es', n)} productos del mismo catálogo, tema y precios propios.`,
+        blurb: 'Multi-tienda: 55 productos del mismo catálogo, tema y precios propios.',
         cta: 'Abrir el outlet',
       },
       'forgecafe/cafe': {
         badge: 'Storefront forkeado',
-        blurb: () => 'Otro storefront pero el mismo checkout, repositorio e imagen propios.',
+        blurb: 'Otro storefront pero el mismo checkout, repositorio e imagen propios.',
         cta: 'Abrir la tienda',
       },
       'forgecafe/balcao': {
         badge: 'Totem',
-        blurb: () => 'Totem de mostrador: una aplicación propia hablando directo con la puerta.',
+        blurb: 'Totem de mostrador: una aplicación propia hablando directo con la puerta.',
         cta: 'Abrir el totem',
       },
     },

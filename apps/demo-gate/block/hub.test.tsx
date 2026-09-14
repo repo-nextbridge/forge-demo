@@ -14,10 +14,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import { GATE_FACES, GATE_TENANTS } from '../faces.generated';
-import { HUB, HUB_MARKS, LANGS, LOCALES } from '../i18n';
+import { HUB, HUB_MARKS, LANGS } from '../i18n';
 import { GateHub, adminHrefOf, hubTally, isHere, urlOf } from './hub';
 
 const BOX_PATH = join(process.cwd(), '..', '..', 'seed', 'box.json');
+const DESIGN_PATH = join(process.cwd(), 'design-base', 'gate.dc.html');
 const box = JSON.parse(readFileSync(BOX_PATH, 'utf8')) as {
   tenants: {
     id: string;
@@ -84,14 +85,20 @@ test("★ every admin row opens its own host's /enter — the server-side redeem
   }
 });
 
-test('★★ FORGE_GATE_ADMIN_URL wins for the FIRST tenant only — the bench door, never the other brand’s', () => {
-  // `bin/box-up.sh` fills that variable from the first admin door the directory accepted, so handing it to
-  // both cards would point the second tenant's admin at the first tenant's.
+test('★★ FORGE_GATE_ADMIN_URLS wins PER TENANT — the bench door, never the other brand’s', () => {
+  // The map is keyed by tenant id, so an override written for one tenant must not reach the other's card:
+  // a tenant absent from it keeps the address `seed/box.json` declares.
+  const firstTenant = must(GATE_TENANTS[0], 'a first tenant');
   const { container } = render(
-    <GateHub lang="pt" here="x" adminUrl="https://bench.example:8443/" dismiss={noop} />,
+    <GateHub
+      lang="pt"
+      here="x"
+      adminUrls={{ [firstTenant.id]: 'https://bench.example:8443/' }}
+      dismiss={noop}
+    />,
   );
   const first = must(
-    must(GATE_TENANTS[0], 'a first tenant').faces.find((f) => f.kind === 'admin'),
+    firstTenant.faces.find((f) => f.kind === 'admin'),
     "the first tenant's admin",
   );
   const second = must(
@@ -213,9 +220,9 @@ test('★★ the copy is keyed by the BOX’s keys — no orphan copy, no unwrit
   }
 });
 
-test('★ the tally the headline is written from is DERIVED from the faces, never typed', () => {
-  // The sentence itself is drawn by `./gate` (the design puts it in the page's header row, beside the
-  // wordmark); what lives here is the arithmetic, and `gate.test.tsx` holds that the heading prints it.
+test('★ the tally the screen publishes is DERIVED from the faces, never typed', () => {
+  // `data-hub-faces` is the one number a probe on the other side of the wire can count the cards against;
+  // the headline beside it is the design's sentence, not this arithmetic (see the artboard rules above).
   const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
   expect(container.querySelector('[data-hub-faces]')?.getAttribute('data-hub-faces')).toBe(
     String(GATE_FACES.length),
@@ -228,39 +235,51 @@ test('★ the tally the headline is written from is DERIVED from the faces, neve
   });
 });
 
-test('★★★ the number on a shop card is the PORT’s, and a missing answer is a sentence — never a zero', () => {
-  const first = must(shops[0], 'a first shop');
-  const withCount = render(
-    <GateHub lang="pt" here="x" counts={{ [first.key]: 2777 }} dismiss={noop} />,
-  );
-  const said = withCount.container.querySelector(`[data-face="${first.key}"] [data-products]`);
-  expect(said?.getAttribute('data-products')).toBe('2777');
-  expect(said?.textContent, 'the count the port answered is not on the card').toContain(
-    new Intl.NumberFormat(LOCALES.pt).format(2777),
-  );
-  expect(said?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(2777));
-  withCount.unmount();
+// ★★★ THE SENTENCES ON THIS SCREEN ARE THE ARTBOARD'S, WORD FOR WORD — held against the design FILE, not
+// against a copy of it typed here. The numbers ("2 777 produtos → 44 399 SKUs", "55 produtos") are fixed on
+// purpose: this gate is the public demo's own front door rather than an app a customer installs, so its
+// truth is the design and a different one is a FORK. See the head of the `HUB` section in `../i18n`.
+//
+// ⚠️ THE EXPECTATION IS READ OFF `design-base/gate.dc.html`. A drawing that is redrawn with other numbers
+// makes this red naming the sentence that no longer appears, which is the only thing that keeps "word for
+// word" true six slices from now.
+const design = readFileSync(DESIGN_PATH, 'utf8');
 
-  // ⛔ THE FAILURE MODE, DECIDED AND HELD. No counts at all is what a bench, a refused read or a timeout looks
-  // like from here: the card keeps a complete sentence, and it must not contain a number for a shop whose size
-  // nobody could state.
-  const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
-  const quiet = container.querySelector(`[data-face="${first.key}"] [data-products]`);
-  expect(quiet?.getAttribute('data-products')).toBe('unknown');
-  expect(quiet?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(null));
-  expect(quiet?.textContent, 'the unanswered case prints a number').not.toMatch(/\d/);
+test('⛔ the design this rule grades against is really the gate artboard', () => {
+  // Anti-vacuum: every assertion below is a substring search, and a search over the wrong file — or an empty
+  // one — passes for nothing. The artboard is named by the screen it draws.
+  expect(design.length, `${DESIGN_PATH} is empty`).toBeGreaterThan(2000);
+  expect(design, 'this is not the gate artboard').toContain('Duas lojas, um único banco.');
 });
 
-test('⛔ a count of ZERO is drawn as zero, and never as the no-number sentence', () => {
-  // The two states are different facts — "this shop publishes nothing" and "nobody could say" — and the one
-  // way to collapse them is to treat 0 as falsy. A shop emptied by a bad seed has to be visible as empty.
+test('★★★ every PT sentence on a shop card is the DESIGN’s, word for word', () => {
+  for (const face of shops) {
+    const copy = must(HUB.pt.faces[face.key], `copy for the declared shop ${face.key}`);
+    expect(
+      design.includes(copy.blurb),
+      `the design does not carry "${copy.blurb}" — the card for ${face.key} drifted from the artboard`,
+    ).toBe(true);
+    expect(
+      design.includes(copy.cta),
+      `the design does not carry the button "${copy.cta}" (${face.key})`,
+    ).toBe(true);
+  }
+  // …and the sizes really are in there, which is what a rewrite that quietly drops them would lose.
+  expect(
+    Object.values(HUB.pt.faces).some((copy) => /\d/.test(copy.blurb)),
+    'no shop sentence carries a number any more — the design writes two of them',
+  ).toBe(true);
+});
+
+test('★★ the headline is the design’s sentence too, split into its three lines', () => {
+  expect(design).toContain(HUB.pt.headline.join(' '));
+});
+
+test('★ the card prints that sentence, and asks nothing to get it', () => {
   const first = must(shops[0], 'a first shop');
-  const { container } = render(
-    <GateHub lang="pt" here="x" counts={{ [first.key]: 0 }} dismiss={noop} />,
-  );
-  const said = container.querySelector(`[data-face="${first.key}"] [data-products]`);
-  expect(said?.getAttribute('data-products')).toBe('0');
-  expect(said?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb(0));
+  const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
+  const said = container.querySelector(`[data-face="${first.key}"] p`);
+  expect(said?.textContent).toBe(must(HUB.pt.faces[first.key], 'copy').blurb);
 });
 
 test('⚠️ "you are here" is ANCHORED on the host — a lookalike domain is not this box', () => {
@@ -280,7 +299,7 @@ for (const lang of LANGS) {
       HUB[lang].faces[must(shops[0], 'a first shop').key],
       'copy for the first shop',
     );
-    expect(screen.getByText(copy.blurb(null))).toBeTruthy();
+    expect(screen.getByText(copy.blurb)).toBeTruthy();
     expect(container.querySelectorAll('[data-face]').length).toBe(GATE_FACES.length);
   });
 }

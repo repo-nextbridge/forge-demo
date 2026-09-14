@@ -16,9 +16,9 @@
 // ⚠️ WHAT IS A FACT AND WHAT IS A WORD. The STRUCTURE below — two tenants, two shops each, which storefront is
 // forked, which theme each shop wears — is a fact about THIS box and lives in code; the words are in `../i18n`
 // in three languages. `arch.test.tsx` checks the structure against `seed/box.json`, the box's own declaration, so
-// a third tenant or a third shop turns a test red instead of leaving this screen quietly lying. The shop sizes on
-// the FIRST screen are not measured by hand any more either: since pk38/d7 they are read off the port per
-// render window (`../counts`). Nothing HERE recomputes anything — this screen states structure, not size.
+// a third tenant or a third shop turns a test red instead of leaving this screen quietly lying. The shop sizes
+// on the FIRST screen are the design's own words, held against the artboard by `hub.test.tsx`. Nothing HERE
+// carries a size at all — this screen states structure, not size.
 
 import { ARCH, type ArchStrings, type Lang } from '../i18n';
 import styles from './arch.module.css';

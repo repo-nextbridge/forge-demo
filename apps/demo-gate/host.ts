@@ -1,8 +1,8 @@
-// DEMO-GATE — "is the browser on THIS face?", asked in one place because it is asked from two.
+// DEMO-GATE — "is the browser on THIS face?", in one place because the answer has a sharp edge and a second
+// copy of it is how one copy quietly stops matching the other.
 //
-// The hub asks it to decide which card is the way in (`block/hub`), and the count reader asks it to decide
-// which shop it already has an id for (`counts`). Two copies of a host comparison is how one of them quietly
-// stops matching the other, and this one has a sharp edge worth stating once:
+// The hub asks it to decide which card is the way in — the face the visitor is standing on is a dismiss form
+// and every other is a link to another origin (`block/hub`). The edge:
 //
 // ⚠️ ANCHORED EQUALITY, NEVER A SUBSTRING. `cafe.forgecommerce.pro` is inside `notcafe.forgecommerce.pro`,
 // and this repository has paid for an unanchored host match more than once.

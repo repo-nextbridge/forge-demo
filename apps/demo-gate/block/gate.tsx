@@ -17,8 +17,10 @@
 //   · the "carry on in this window" BUTTON. This window only exists while there is no dismissal cookie, so
 //     the six cards ARE the choice and "carry on here" names nothing. What is left of that door is a foot
 //     line drawn only on a host the box does not declare (`./hub`).
-// The headline that took the hero's place is not prose: it is the COUNT of what the box publishes, derived
-// from the declaration (`hubTally`), and each shop's own sentence carries a number read off the port.
+// The headline that took the hero's place, and the size on each shop's card, are the DESIGN's own words —
+// typed, on purpose, because this screen is the demo's own front door and not an app a customer installs.
+// The reasoning, and what was removed with the port reading that used to produce those numbers, is at the
+// head of the `HUB` section of `../i18n`.
 //
 // The destinations are not written anywhere near here — `seed/box.json` declares them and `bin/gate-faces.mjs`
 // renders that declaration into `../faces.generated.ts`. The two paths a visitor has are the hub's:
@@ -53,11 +55,10 @@
 // repository names it rather than remedying it from here, and the change above makes it worth one more face.
 
 import { useEffect, useState } from 'react';
-import type { ShopCounts } from '../counts';
 import { ARCH, GATE_LANG_COOKIE, HUB, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import { ArchScreen, ArchSwitch } from './arch';
 import styles from './gate.module.css';
-import { GateHub, hubTally } from './hub';
+import { GateHub } from './hub';
 import { GATE_MARK } from './marks';
 
 export type GateBlockProps = {
@@ -69,9 +70,6 @@ export type GateBlockProps = {
   adminUrls?: Readonly<Record<string, string>>;
   /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
   here?: string;
-  /** How big each shop is, read off the port by `../counts` on the server. Absent ⇒ no numbers, and the copy
-   *  has a complete sentence for that. */
-  counts?: ShopCounts;
   /** The server's Accept-Language guess (PT default). `?lang=` on the URL overrides it on mount. */
   initialLang: Lang;
   /** A Server Action that sets the dismissal cookie; the way IN, on this origin. */
@@ -81,14 +79,7 @@ export type GateBlockProps = {
 /** Which of the gate's two screens is on. One at a time: the other is unmounted, so each fades itself in. */
 type View = 'gate' | 'arch';
 
-export function GateBlock({
-  siteUrl,
-  adminUrls,
-  here,
-  counts,
-  initialLang,
-  dismiss,
-}: GateBlockProps) {
+export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: GateBlockProps) {
   const [lang, setLang] = useState<Lang>(initialLang);
   const [view, setView] = useState<View>('gate');
 
@@ -119,7 +110,6 @@ export function GateBlock({
 
   const t = STRINGS[lang];
   const hub = HUB[lang];
-  const tally = hubTally();
 
   // The second screen REPLACES the first rather than sitting under it: the switch is a move between two
   // full-height pages, and the language the visitor chose travels with them.
@@ -138,11 +128,10 @@ export function GateBlock({
               </span>
               <span className={styles.brandDemo}>demo</span>
             </div>
-            {/* ★ THE HEADLINE IS A COUNT OF THIS BOX, not a sentence somebody wrote: two tenants, four shops,
-                two admins is what `seed/box.json` declares, and a fifth store rewrites this line by itself.
+            {/* ★ THE HEADLINE IS THE DESIGN'S, word for word ("Dois tenants. Quatro lojas. Dois admins.").
                 One clause per LINE, declared rather than left to a character measure — see `.title`. */}
             <h1 className={styles.title}>
-              {hub.counts(tally.tenants, tally.shops, tally.admins).map((clause) => (
+              {hub.headline.map((clause) => (
                 <span key={clause} className={styles.titleLine}>
                   {clause}
                 </span>
@@ -156,7 +145,7 @@ export function GateBlock({
           </p>
         </div>
 
-        <GateHub lang={lang} here={here} adminUrls={adminUrls} counts={counts} dismiss={dismiss} />
+        <GateHub lang={lang} here={here} adminUrls={adminUrls} dismiss={dismiss} />
 
         <div className={styles.foot}>
           <p className={styles.notice}>{hub.notice}</p>

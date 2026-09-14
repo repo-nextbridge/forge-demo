@@ -6,7 +6,7 @@ again while they browse. PT/EN/ES embedded.
 
 Its first screen **is** a HUB over every face this box publishes — one card per shop, one row per tenant
 admin — and nothing sits above it: the screen is the 10/09 layout in `design-base/gate.dc.html`, whose
-headline is the COUNT of what the box publishes and whose only frame is the tenant card's own.
+headline is that layout's own sentence and whose only frame is the tenant card's own.
 
 ⛔ **No address is written in this app.** `seed/box.json` declares them and `bin/gate-faces.mjs`
 renders that declaration into `faces.generated.ts`, which the screen imports; `bin/gate-faces.guard.mjs`
@@ -16,12 +16,13 @@ the one that posts `dismiss` (the deep link survives); every other one is an ord
 box does not declare, a line at the foot says so and carries the way in — that is the only place a "go in
 anyway" door exists, because on a published face the six cards *are* the choice.
 
-⛔ **And no NUMBER is written here either.** Each shop's sentence states how many products it publishes, and
-that is read off the public read face per render window (`counts.ts`: `read.store.by_host` for the id, then
-the `total` of `read.product_paths`). A face the port cannot answer for — a box not yet promoted to its
-published hostnames, a refusal, a timeout — keeps a complete sentence with no number in it: never a zero,
-never the figure the screen was told last time. It needs `FORGE_READ_BASE_URL`, which every front of this
-box already carries.
+✅ **The NUMBERS, on the other hand, are typed — and that is the decision.** Each shop's sentence carries
+its size ("2 777 produtos → 44 399 SKUs") exactly as the design writes it, and `block/hub.test.tsx` holds
+every one of those sentences against `design-base/gate.dc.html` so the screen and the artboard cannot drift.
+"Derive, never list" protects what a **customer** is handed; this screen is the public demo's own front
+door, not an app a customer installs or configures, and anyone who wants a different one **forks this app**.
+The screen asks the port for nothing: the only value it resolves at run time is the admin origin this box
+was promoted to (`FORGE_GATE_ADMIN_URLS`, `wiring.ts`), which no design can know.
 
 ## This app is one instance's, not the platform's
 

@@ -28,12 +28,12 @@
 // ⇒ a fifth store declared in the box is a fifth card here, with no edit to this file. A store whose
 // `domain` is deleted is a card that SAYS SO — see `unaddressed` below. It is never one that disappears.
 //
-// ── AND NOR DO THE NUMBERS ──────────────────────────────────────────────────────────────────────────────
+// ── ⚠️ THE NUMBERS, THOUGH, ARE THE DESIGN'S WORDS AND NOT A READING ────────────────────────────────────
 //
-// The design writes each shop's size into its own sentence. Those numbers are read off the port by
-// `../counts` and arrive here as a map keyed by face; a face the port could not answer for gets `null`, and
-// the copy has a complete sentence with no number in it for exactly that case. ⛔ Never a zero, never the
-// number this screen was told last time.
+// Each shop's sentence carries its size ("2 777 produtos → 44 399 SKUs"), and it is TYPED, in `../i18n`,
+// because this screen is the public demo's own front door rather than an app a customer installs — the long
+// form of that reasoning, and the list of what was removed with the reading, is at the head of the `HUB`
+// section there. ⛔ Do not turn a `blurb` back into a function of a number that may not arrive.
 //
 // ── THE ONE CARD THAT IS NOT A LINK ─────────────────────────────────────────────────────────────────────
 //
@@ -55,7 +55,6 @@
 // `.forgecommerce.pro` zone was decided on 13/09 and lands in the KIT, not in this repository — see the head
 // of `./gate`.
 
-import type { ShopCounts } from '../counts';
 import type { GateFace, GateTenant } from '../faces.generated';
 import { GATE_TENANTS } from '../faces.generated';
 import { sameHost } from '../host';
@@ -119,11 +118,13 @@ export const adminHrefOf = (face: GateFace, override?: string): string | null =>
 export const hostOf = (url: string): string => url.replace(/^\w+:\/\//, '').replace(/\/.*$/, '');
 
 /** Is the browser already on this face? Anchored on the hostname, port dropped — the rule lives in
- *  `../host` because `../counts` asks the same question and two copies would drift. */
+ *  `../host`, where the sharp edge it has is stated once. */
 export const isHere = (face: GateFace, here: string | undefined): boolean =>
   sameHost(face.host, here);
 
-/** What the headline counts. Derived from the declaration, never typed — `./gate` writes the sentence. */
+/** How many of each thing the box declares. The headline is the DESIGN's sentence (`../i18n`), so nothing
+ *  reads this to write prose; `data-hub-faces` publishes it as the one number a probe can count the cards
+ *  against, and `block/hub.test.tsx` holds it against `seed/box.json`. */
 export function hubTally(tenants: readonly GateTenant[] = GATE_TENANTS) {
   const faces = tenants.flatMap((tenant) => tenant.faces);
   return {
@@ -141,8 +142,6 @@ export type HubProps = {
   /** `FORGE_GATE_ADMIN_URLS` — the admin origin PER TENANT, as this box really publishes it, keyed by tenant
    *  id. A tenant absent from the map keeps the address `seed/box.json` declares for it. See `adminHrefOf`. */
   adminUrls?: Readonly<Record<string, string>>;
-  /** Face key → how many products that shop publishes, from `../counts`. Absent or `null` ⇒ no number. */
-  counts?: ShopCounts;
   /** The slot's dismissal Server Action — the way IN, on this origin. */
   dismiss: () => Promise<void>;
 };
@@ -152,14 +151,12 @@ function ShopFace({
   index,
   lang,
   here,
-  products,
   dismiss,
 }: {
   face: GateFace;
   index: number;
   lang: Lang;
   here: string | undefined;
-  products: number | null;
   dismiss: () => Promise<void>;
 }) {
   const t = HUB[lang];
@@ -188,13 +185,7 @@ function ShopFace({
         </span>
         {copy ? <span className={styles.faceBadge}>{copy.badge}</span> : null}
       </div>
-      {copy ? (
-        // `data-products` is how a probe on the other side of the wire can tell "the port answered N" from
-        // "the port did not answer" — the two sentences are both complete prose, which is the point.
-        <p className={styles.faceBlurb} data-products={products === null ? 'unknown' : products}>
-          {copy.blurb(products)}
-        </p>
-      ) : null}
+      {copy ? <p className={styles.faceBlurb}>{copy.blurb}</p> : null}
       {url === null ? (
         // ⛔ NAMED, NEVER HIDDEN. The box declares this destination and declares no address for it.
         <span className={styles.unaddressed} data-unaddressed={face.key}>
@@ -262,7 +253,6 @@ function TenantCard({
   lang,
   here,
   adminUrl,
-  counts,
   dismiss,
 }: {
   tenant: GateTenant;
@@ -270,7 +260,6 @@ function TenantCard({
   lang: Lang;
   here: string | undefined;
   adminUrl: string | undefined;
-  counts: ShopCounts | undefined;
   dismiss: () => Promise<void>;
 }) {
   const t = HUB[lang];
@@ -297,7 +286,6 @@ function TenantCard({
             index={shopIndex}
             lang={lang}
             here={here}
-            products={counts?.[face.key] ?? null}
             dismiss={dismiss}
           />
         ))}
@@ -310,7 +298,7 @@ function TenantCard({
   );
 }
 
-export function GateHub({ lang, here, adminUrls, counts, dismiss }: HubProps) {
+export function GateHub({ lang, here, adminUrls, dismiss }: HubProps) {
   const t = HUB[lang];
   const tally = hubTally();
   /** Is the visitor standing on one of the faces this box publishes? If not, the foot carries the door. */
@@ -332,7 +320,6 @@ export function GateHub({ lang, here, adminUrls, counts, dismiss }: HubProps) {
             // from the FIRST admin door the directory accepted; handing it to both cards would point the
             // café's admin row at the shoe brand's.
             adminUrl={adminUrls?.[tenant.id]}
-            counts={counts}
             dismiss={dismiss}
           />
         ))}

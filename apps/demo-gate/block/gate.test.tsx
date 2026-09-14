@@ -24,16 +24,17 @@ import { GateBlock } from './gate';
 import { hubTally } from './hub';
 
 const noop = async () => {};
+/** The tenant an admin override is handed to — read off the declaration, never a typed id. */
+const FIRST_TENANT = GATE_TENANTS[0]?.id ?? '';
 const tally = hubTally();
 /** The heading's accessible name: the three clauses, as the browser reads one block per line. */
-const headline = (lang: 'pt' | 'en' | 'es') =>
-  HUB[lang].counts(tally.tenants, tally.shops, tally.admins).join(' ');
+const headline = (lang: 'pt' | 'en' | 'es') => HUB[lang].headline.join(' ');
 
 test('★★★ the first screen IS the hub — the hero it replaced is not drawn anywhere', () => {
   const { container } = render(
     <GateBlock
       siteUrl="https://forgecommerce.pro"
-      adminUrl="https://admin.demo.example"
+      adminUrls={{ [FIRST_TENANT]: 'https://admin.demo.example' }}
       initialLang="pt"
       dismiss={noop}
     />,
@@ -63,7 +64,12 @@ test('★★ ONE frame on the screen, and it belongs to the tenant card', () => 
   // was `.frame`, and this runner keeps CSS-module class names unscoped (`vitest.config.ts`), so the element
   // is nameable: a page that grows a second frame again is named here rather than found in a screenshot.
   const { container } = render(
-    <GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />,
+    <GateBlock
+      siteUrl="https://x"
+      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
+      initialLang="pt"
+      dismiss={noop}
+    />,
   );
   expect(
     container.querySelectorAll('[data-tenant]').length,
@@ -87,7 +93,14 @@ test('⛔ there is no "carry on in this window" button on a face the box publish
 });
 
 test('the footer selector switches the copy live (PT → EN → ES)', () => {
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(
+    <GateBlock
+      siteUrl="https://x"
+      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
+      initialLang="pt"
+      dismiss={noop}
+    />,
+  );
   expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'en' }));
   expect(screen.getByText(HUB.en.notice)).toBeTruthy();
@@ -95,16 +108,15 @@ test('the footer selector switches the copy live (PT → EN → ES)', () => {
   expect(screen.getByText(HUB.es.notice)).toBeTruthy();
 });
 
-test('★★ the headline is COUNTED off the declaration, never written in the copy', () => {
+test('★★ the headline is the DESIGN’s sentence, in three declared lines', () => {
   render(<GateBlock siteUrl="https://x" initialLang="pt" dismiss={noop} />);
   const heading = screen.getByRole('heading', { level: 1 });
-  const clauses = HUB.pt.counts(tally.tenants, tally.shops, tally.admins);
+  const clauses = HUB.pt.headline;
   expect(heading.textContent).toBe(clauses.join(''));
   // ⛔ ONE ELEMENT PER CLAUSE — the design's headline is three lines, and leaving that to a character measure
   // is what broke it into "2 tenants. 4 / lojas. 2 admins." in a real render.
   expect([...heading.children].map((line) => line.textContent)).toEqual([...clauses]);
-  // …and the counts really are the box's: a fifth store rewrites this heading with no edit here.
-  expect(heading.textContent).toContain(String(GATE_TENANTS.length));
+  // …and the words really are the artboard's — that rule lives in `hub.test.tsx`, over all four sentences.
   expect(tally.shops + tally.admins, 'the declaration carries no face at all').toBeGreaterThan(1);
 });
 
@@ -112,7 +124,7 @@ test('the admin origin this box was promoted to reaches the hub, and lands on /e
   const { container } = render(
     <GateBlock
       siteUrl="https://x"
-      adminUrl="https://admin.demo.example/"
+      adminUrls={{ [FIRST_TENANT]: 'https://admin.demo.example/' }}
       initialLang="en"
       dismiss={noop}
     />,
@@ -124,7 +136,14 @@ test('the admin origin this box was promoted to reaches the hub, and lands on /e
 
 test("the footer selector is the app's own language list, not a copy of it", () => {
   // `LANGS` is the one list; the screen used to transcribe it as `['pt','en','es']` beside it.
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(
+    <GateBlock
+      siteUrl="https://x"
+      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
+      initialLang="pt"
+      dismiss={noop}
+    />,
+  );
   for (const code of LANGS) expect(screen.getByRole('button', { name: code })).toBeTruthy();
   expect(LANGS.length, 'a one-language app would make the loop above vacuous').toBeGreaterThan(2);
 });
@@ -132,7 +151,14 @@ test("the footer selector is the app's own language list, not a copy of it", () 
 test('the gate switches to the architecture screen and back, and each screen HIDES the other', () => {
   const scrollTo = vi.fn();
   window.scrollTo = scrollTo;
-  render(<GateBlock siteUrl="https://x" adminUrl="https://a" initialLang="pt" dismiss={noop} />);
+  render(
+    <GateBlock
+      siteUrl="https://x"
+      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
+      initialLang="pt"
+      dismiss={noop}
+    />,
+  );
 
   // On the gate: its own headline is there and the architecture's is NOT (the control, before any click).
   expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
@@ -160,7 +186,12 @@ for (const lang of LANGS) {
     // whichever language the visitor chose, and it has no selector of its own.
     window.scrollTo = vi.fn();
     render(
-      <GateBlock siteUrl="https://x" adminUrl="https://a" initialLang={lang} dismiss={noop} />,
+      <GateBlock
+        siteUrl="https://x"
+        adminUrls={{ [FIRST_TENANT]: 'https://a' }}
+        initialLang={lang}
+        dismiss={noop}
+      />,
     );
     fireEvent.click(screen.getByRole('button', { name: ARCH[lang].open }));
     expect(screen.getByRole('heading', { name: ARCH[lang].title })).toBeTruthy();
