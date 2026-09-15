@@ -4,6 +4,7 @@
 #   bash bin/box-up.sh                     birth: the fifteen steps below, on `localhost`
 #   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14 (see below; --warm-only warms later)
 #   bash bin/box-up.sh --warm-only         ONLY step 14, on a box that is already standing (§0w)
+#   bash bin/box-up.sh --verdict-only      ONLY steps 14-bis and 15, on a box that is already standing (§0v)
 #   bash bin/box-up.sh --plan [--no-warm]  print the roteiro this invocation would run, and do nothing
 #   bash bin/box-up.sh --promote <where>   PROMOTION: point the born box at an address (A15, §B5)
 #                                          <where> = `tailnet` · `localhost` (the way back) · a hostname
@@ -66,6 +67,10 @@
 #  15. verify-config             the verdict over the CONFIGURATION — is the box WHAT it declares? This is
 #                                the one a rebirth eats: it comes back half promoted and used to exit 0.
 #
+# ⚠️ AND 14-bis AND 15 ARE THE TWO THE BIRTH TAKES TOO EARLY WHEN IT IS THE FIRST GESTURE OF A CYCLE — both
+# grade the PROMOTED address of a box that is still on `localhost`. `--verdict-only` (§0v) is the same two
+# steps asked AGAIN, of the box as it is handed over; it does not soften either of them here.
+#
 # ⚠️ 8, 9 AND 10 ARE ONE DIRECTION AND NOT A CYCLE, and it only looks circular if you read 8 and 10 as one
 # step. The window promotes products of the MASSIVE catalogue, so it must follow 9; 9 publishes an assortment
 # naming CURATED handles, so it must follow 8. They are three moments because the massive is another PROCESS
@@ -112,7 +117,8 @@ cd "$HERE" || exit 1
 USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan]
          bash bin/box-up.sh --promote <tailnet|localhost|hostname>
          bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)
-         bash bin/box-up.sh --warm-only                  step 14 alone, on a box already standing'
+         bash bin/box-up.sh --warm-only                  step 14 alone, on a box already standing
+         bash bin/box-up.sh --verdict-only               steps 14-bis and 15 alone, asked AGAIN of a standing box'
 MODE=birth
 PROMOTE_TO=''
 WARM=1
@@ -135,6 +141,10 @@ while [ $# -gt 0 ]; do
     # `--promote` is: it runs one block and leaves. See §0w, just below the promotion, for why the scheduled
     # cycle needs it and why the loop it drives may not be copied into the script that schedules it.
     --warm-only) MODE=warm; shift ;;
+    # ★★ pk40 — THE TWO VERDICTS ALONE, AND IT IS A MODE FOR THE SAME REASON `--warm-only` IS. See §0v, just
+    # below the re-warm, for the measurement that opened it: a birth is asked its two verdicts about a state
+    # that has not finished existing, and both of them answer ✓ once the promotion has run.
+    --verdict-only) MODE=verdict; shift ;;
     --plan)      PLAN_ONLY=1; shift ;;
     *) printf '\n[box-up] unknown argument "%s".\n  %s\n\n' "$1" "$USAGE" >&2; exit 1 ;;
   esac
@@ -144,7 +154,7 @@ if [ "$MODE" != birth ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
   # would answer a question nobody asked — the operator asked for something this invocation cannot do.
   # ⚠️ `--warm-only` is covered by the same line and not by a second one: it is the step list reduced to a
   # single step, so "do not warm" and "plan the birth" are exactly as meaningless there as in a promotion.
-  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote and --warm-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
+  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote, --warm-only and --verdict-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
   exit 1
 fi
 
@@ -1431,6 +1441,85 @@ if [ "$MODE" = warm ]; then
   exit 0
 fi
 
+# ── 0v · ★★★ `--verdict-only` · THE TWO VERDICTS ASKED AGAIN, OF THE BOX AS IT IS HANDED OVER (pk40) ────────
+#
+# ⛔ THE MEASUREMENT THAT OPENED THIS MODE, from the first real run of the scheduled cycle (2026-09-15). The
+# birth ran with `--no-warm` and exited 1 for two reasons, and BOTH of them had already stopped being true by
+# the time the cycle finished:
+#
+#     14-bis  `cafe/` — NO GATE ON THIS DOOR        ⇒ after the promotion: `every door answers as it must (8)`
+#     15      the configuration is not what it declares ⇒ after the promotion: `VERDICT: settled`, 11 faces ✓
+#
+# ⇒ ★★ A BIRTH TAKES BOTH VERDICTS OVER A STATE THAT HAS NOT FINISHED EXISTING. The box is born on `localhost`
+# by decision (§0b) and is probed at the address it is PROMOTED to, which it has not claimed yet: the admin
+# directory still holds the `localhost` doors, and the front that carries the gate has not been recreated. The
+# two steps are right about the box AT THAT MOMENT and wrong about the box that is handed over.
+#
+# ★★★ AND THE RULE IS BIGGER THAN THE ITEM: a verdict taken before the state it grades is finished is not a
+# verdict. What was missing was not a softer step — it was a LATER ASKING. ⛔ So nothing here weakens 14-bis
+# or 15: they still run in the birth and they still make it non-zero. This mode ASKS THE SAME TWO QUESTIONS
+# AGAIN, and it is the LAST gesture of the cycle, which is what turns "not yet" into an answer instead of a
+# red that fires every night — and a red that always fires is a red people learn to skip (which is exactly how
+# step 14 stopped being a gate).
+#
+# ⚠️ IT IS NOT A BIRTH AND IT DOES NOT PRETEND TO BE ONE. It stamps no roteiro, it builds nothing, it moves no
+# address. It runs 14-bis and 15 and grades what they answer — and its own non-zero is nobody's "not yet":
+# nothing comes after it, so `bin/box-cycle.sh` never pardons a reason this mode reports.
+#
+# ⚠️ AND THE LOOP IS NOT COPIED INTO THE SCRIPT THAT SCHEDULES IT, for the reason §0w gives at length: the
+# doors are opened ONCE PER TENANT WITH THAT TENANT'S OWN TOKEN, because the read face that lists a tenant's
+# stores resolves the tenant from the CREDENTIAL — and the rule for the name of a tenant's secret
+# (`secret_name_for`) already has two authors. So `prove_every_tenant` has one copy and two callers: step
+# 14-bis and this block.
+prove_every_tenant() {
+  local t tokvar tokval
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    [ -n "$tokval" ] || die "no \$$tokvar in the environment for the doors step."
+    # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if` — the same reason step 14 does it, and pk19 is why it
+    # matters here too. This step answers 0 (every door opens), 1 (a door is shut) and 2 (IT COULD NOT ASK: no
+    # declaration for this tenant, or a credential that belongs to somebody else). An `if` folded 2 into 1 and
+    # printed "has SHUT doors" over a run that never opened one — a wrong sentence about the very failure this
+    # step was just taught to detect. ⛔ BOTH still exit the birth non-zero; nothing was demoted here.
+    FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+    case "$?" in
+      0) note "$t — every door opens" ;;
+      1)
+        SHUT="$SHUT $t"
+        note "⛔ $t has SHUT doors — the ✗ lines above name the store and the path." ;;
+      2)
+        DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
+        note "⛔ $t was never ASKED about its doors — the ⚑ line above says why. Nothing was learned." ;;
+      *)
+        DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
+        note "⛔ the doors step ended with a status it does not define — nothing was learned about $t." ;;
+    esac
+  done
+}
+
+if [ "$MODE" = verdict ]; then
+  SHUT=''
+  DOORS_UNKNOWN=''
+  MISCONFIGURED=''
+  say 'the verdict · the two questions of the birth, asked again of the box as it stands now'
+  note "origin    $FORGE_PUBLIC_ORIGIN"
+  note 'this is 14-bis and 15 and nothing else — nothing is built, nothing is warmed, no address is moved.'
+  prove_every_tenant
+  say 'the verdict over the configuration (verify-config)'
+  host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" || MISCONFIGURED=1
+  # ⚠️ THE SAME NAMED SENTENCES THE BIRTH PRINTS, and they are named on purpose: a wrapper that has to tell
+  # one reason from another reads THESE, and `bin/box-cycle.guard.mjs` pins them to the birth's own. Kept
+  # short here — the long form is in the birth's closing block, and two long copies of one paragraph is how
+  # the reasoning in this repository goes out of date.
+  [ -z "$SHUT" ] || printf '\n[box-up] ⛔ THE BOX IS UP AND%s HAS DOORS A SHOPPER CANNOT OPEN. This was asked AGAIN, after the\n         promotion and the warming, and it is still true: nothing comes after this to repair it.\n\n' "$SHUT" >&2
+  [ -z "$DOORS_UNKNOWN" ] || printf '\n[box-up] ⛔ THE BOX IS UP AND NOTHING WAS LEARNED ABOUT%s'"'"'S DOORS. Read it as UNPROVEN, never as\n         proven-open — the ⚑ line above says which question could not be put.\n\n' "$DOORS_UNKNOWN" >&2
+  [ -z "$MISCONFIGURED" ] || printf '\n[box-up] ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Asked AGAIN, after the promotion — so this\n         is no longer a box that has not been pointed anywhere yet. The ✗ lines above name the face.\n\n' >&2
+  if [ -n "$SHUT" ] || [ -n "$DOORS_UNKNOWN" ] || [ -n "$MISCONFIGURED" ]; then exit 1; fi
+  note 'both questions of the birth were asked again here and both answered ✓.'
+  exit 0
+fi
+
 # ── 0c · ★★ THE DATASET THIS BOX WOULD SEED FROM IS THE ONE ITS IMAGES WERE BUILT WITH (pk7·D2) ────────────
 #
 # ⛔ MEASURED ON THE BIRTH OF 2026-09-03. `.env` pointed at `…/wt-v03/t-forno/instances/demo/dataset`, a
@@ -2416,32 +2505,14 @@ fi
 #
 # ONCE PER TENANT with that tenant's own token, for the same reason 3, 6, 8, 11 and 14 are: the read face
 # that lists a tenant's stores resolves the tenant from the CREDENTIAL.
+#
+# ★ THE LOOP ITSELF IS `prove_every_tenant`, DEFINED IN §0v — one copy, two callers (this step and
+# `--verdict-only`), for exactly the reason step 14 has one copy: the rule for the name of a tenant's secret
+# already has two authors and a third would drift the day a tenant is added to `seed/box.json`.
 say '14-bis · opening every door of every store (a shop nobody can sign in to is a red box)'
 SHUT=''
 DOORS_UNKNOWN=''
-for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-  eval "tokval=\${$tokvar:-}"
-  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the doors step."
-  # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if` — the same reason step 14 does it, and pk19 is why it
-  # matters here too. This step answers 0 (every door opens), 1 (a door is shut) and 2 (IT COULD NOT ASK: no
-  # declaration for this tenant, or a credential that belongs to somebody else). An `if` folded 2 into 1 and
-  # printed "has SHUT doors" over a run that never opened one — a wrong sentence about the very failure this
-  # step was just taught to detect. ⛔ BOTH still exit the birth non-zero; nothing was demoted here.
-  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
-  case "$?" in
-    0) note "$t — every door opens" ;;
-    1)
-      SHUT="$SHUT $t"
-      note "⛔ $t has SHUT doors — the ✗ lines above name the store and the path." ;;
-    2)
-      DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
-      note "⛔ $t was never ASKED about its doors — the ⚑ line above says why. Nothing was learned." ;;
-    *)
-      DOORS_UNKNOWN="$DOORS_UNKNOWN $t"
-      note "⛔ the doors step ended with a status it does not define — nothing was learned about $t." ;;
-  esac
-done
+prove_every_tenant
 
 # ── 15 · ★★★ THE VERDICT OVER THE CONFIGURATION, which is the half a rebirth eats ───────────────────────────
 #

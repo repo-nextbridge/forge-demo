@@ -1,4 +1,4 @@
-# O ciclo agendado — a caixa renasce, é promovida e é aquecida, numa corrida só
+# O ciclo agendado — a caixa renasce, é promovida, é aquecida e **é julgada**, numa corrida só
 
 > **Operador.** O que o ciclo **é**, quando ele roda, **o que ele destrói**, o que ele **preserva**, e como
 > agendá-lo. É o passo 7 da ordem de deploy em `docs/operations/runbook-demo.md` (§2), e o degrau que precede
@@ -12,7 +12,7 @@ bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>
 
 ---
 
-## 1. Os quatro gestos, e a ordem é a decisão
+## 1. Os cinco gestos, e a ordem é a decisão
 
 | # | gesto | o que roda |
 |---|---|---|
@@ -20,6 +20,7 @@ bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>
 | 2 | a caixa nasce (sem aquecer) | `bash bin/box-up.sh --no-warm` |
 | 3 | a caixa é **promovida** | `bash bin/box-up.sh --promote <destino>` |
 | 4 | a caixa é **aquecida**, já no endereço promovido | `bash bin/box-up.sh --warm-only` |
+| 5 | ★ **o veredicto** — as duas perguntas do nascimento, feitas **de novo** | `bash bin/box-up.sh --verdict-only` |
 
 **UM script, UM agendamento.** ⛔ Não são quatro entradas de crontab. Três razões, todas medidas nesta árvore:
 
@@ -29,9 +30,26 @@ bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>
    dispara contra uma caixa ainda semeando, aquece nada e reporta verde.
 2. **Os passos já são um script só.** `bin/box-up.sh` são quinze passos que existem cada um porque o anterior
    produziu algo de que ele precisa. O ciclo **orquestra**; nada dessa lógica é reimplementado aqui.
-3. **O código de saída tem de ser decidido num lugar só.** `box-up.sh` sai 1 de propósito por sete razões
+3. **O código de saída tem de ser decidido num lugar só.** `box-up.sh` sai 1 de propósito por **oito** razões
    diferentes. Um agendamento que alerta em qualquer não-zero alerta toda noite; um que ignora não-zero não
    alerta nunca. Quem resolve isso é o ciclo — §4.
+
+### ★★★ Por que existe o gesto 5
+
+**Um veredicto tirado antes de o estado que ele julga estar pronto não é um veredicto.** Medido na **primeira
+corrida real** do ciclo (15/09/2026): o gesto 2 saiu 1 por **duas** razões — `cafe/` sem portaria (passo
+14-bis) e o admin publicado em `localhost` enquanto a caixa se publica no tailnet (passo 15) — e **as duas
+tinham deixado de ser verdade antes de o ciclo terminar**. Depois do gesto 3, o `prove-doors` respondeu
+`every door answers as it must (8)` e o `verify-config` respondeu `VERDICT: settled`.
+
+O nascimento é sondado **no endereço PROMOVIDO** de uma caixa que nasce em `localhost` por decisão (§0b do
+`box-up.sh`) e ainda não o reivindicou. Os dois passos estão **certos sobre a caixa daquele momento** e
+errados sobre a caixa que é entregue.
+
+⛔ **O conserto não é um gesto 2 mais frouxo — é uma PERGUNTA MAIS TARDE.** O gesto 2 continua dizendo tudo o
+que diz e continua voltando não-zero. O que mudou é que o ciclo não gradua mais só por ele. E a consequência
+é prática: do jeito anterior **o cron ficava vermelho toda noite**, e um vermelho que sempre acende é um
+vermelho que as pessoas aprendem a pular — que é exatamente por que o passo 14 deixou de ser portão.
 
 ### ⚠️ Por que o gesto 3 não é opcional
 
@@ -50,11 +68,18 @@ imagem — é destruído e recriado ali. Aquecer antes seria pagar ~1h10 por um 
 razão mais antiga continua valendo: numa primeira promoção o `FORGE_PUBLIC_ORIGIN` só está certo **depois**
 que ela o escreve, então aquecer antes aquece um endereço que ninguém digita.
 
-⚠️ **E o laço que aquece não é copiado para o `box-cycle.sh`.** Aquecer é uma vez **por tenant, com o token
+### ⚠️ Por que o gesto 5 vem por ÚLTIMO
+
+Tudo antes dele muda a resposta: o gesto 3 reivindica o endereço em que as portas são abertas, e o gesto 4
+enche o que o gesto 3 esvaziou (a promoção termina em `--force-recreate` de todo front). ⛔ E o **não-zero do
+próprio gesto 5 nunca é perdoado**: nada vem depois dele.
+
+⚠️ **E nem o laço que aquece nem o que abre as portas é copiado para o `box-cycle.sh`.** Aquecer é uma vez **por tenant, com o token
 daquele tenant** — a face de leitura resolve o tenant pela **credencial** — e a regra do nome do segredo de um
 tenant já tem dois autores. Por isso o gesto 4 pede `--warm-only` ao próprio `box-up.sh`, que dirige o mesmo
-`warm_every_tenant` do passo 14. Uma terceira cópia dessa regra aqui envelheceria no dia em que um tenant
-entrasse no `seed/box.json`.
+`warm_every_tenant` do passo 14, e o gesto 5 pede `--verdict-only`, que dirige o mesmo `prove_every_tenant`
+do passo 14-bis. Uma terceira cópia dessa regra aqui envelheceria no dia em que um tenant entrasse no
+`seed/box.json`.
 
 ---
 
@@ -101,31 +126,56 @@ destrói **pelo nome**. O ciclo o defaulta para o mesmo valor que o `box-down.sh
 
 ## 4. A política de saída — qual não-zero é aceitável
 
-**Hoje: nenhum.** `cycle_verdict` em `bin/box-cycle.sh` é *"qualquer não-zero é vermelho"*, e a lista de
-perdões (`CYCLE_TOLERATED`) está **vazia de propósito**.
+★ **A resposta não é um gesto, é uma RAZÃO**, e cabe numa frase:
 
-⛔ **Está vazia porque nada foi medido ainda.** Uma lista escrita por antecipação é a doença que o
-`bin/verify-config.mjs` já nomeia: *"the obvious answer is a checklist, and the checklist is the disease"*.
-⇒ Rode o ciclo de verdade, leia o log, e **só então** escreva a entrada — com a medição colada nela.
+> **Uma razão que um gesto deu só é perdoada onde um gesto POSTERIOR fez a MESMA pergunta e respondeu ✓.**
+> **Razão que ninguém re-pergunta continua vermelha.**
 
-★ **O candidato que já se espera**, dito para que a primeira corrida saiba o que está olhando: o gesto 2 é o
-nascimento de uma caixa que **estava promovida**, então ele pode terminar `MISCONFIGURED` — exatamente a
-des-promoção da §1, que o gesto 3 então conserta. ⚠️ Mesmo assim **não** está escrito: `box-up.sh` sai 1 por
-sete razões e o status sozinho não as distingue — um perdão para "2 saiu 1" perdoaria também uma caixa com
-portas que o comprador não abre. O que a primeira corrida tem de produzir é a **linha do log** que nomeia a
-razão. Se o perdão não puder ser estreitado a uma razão só, o conserto é um **código de saída próprio** no
-`box-up.sh` para o caso meio-promovido, não um perdão genérico aqui.
+⛔ **Por isso não existe mais perdão do tipo `<gesto>=<status>`.** O `box-up.sh` sai 1 por **oito** razões; um
+perdão para *"o gesto 2 saiu 1"* perdoaria junto uma loja em que o comprador não consegue entrar, um tenant
+com o catálogo de outra marca, um totem que não subiu e uma corrida que não presta contas dos próprios
+passos. Perdão cego não é regra mais frouxa — é **outra** regra: ela para de ler a razão.
 
-⚠️ **O ciclo não para no primeiro vermelho.** Ele roda os quatro gestos e gradua no fim, porque o único
-não-zero já esperado é consertado pelo gesto seguinte. Parar ali deixaria a caixa exatamente no estado que o
-ciclo existe para acabar.
+### Como a razão é lida — e por que é a SENTENÇA, não o status
+
+Duas saídas estavam na mesa: ensinar ao `box-up.sh` um **código de saída por família**, ou ler as **sentenças
+nomeadas** que ele já imprime. **A medição decidiu, e foi a própria primeira corrida:** o gesto 2 voltou com
+**duas razões ao mesmo tempo** (`SHUT` **e** `MISCONFIGURED`). Um status é **um** número e não carrega
+conjunto — e máscara de bits também não cabe: oito famílias pedem oito bits, os bits baixos já são dos **32
+`die`** e das recusas de argumento que saem 1, e status é limitado a 255. Um código por família teria de
+**descartar uma das duas razões** que a corrida que abriu esta questão produziu.
+
+⇒ As razões são lidas das sentenças, e a tabela é o `CYCLE_REASONS` do `bin/box-cycle.sh`: `token | sentença |
+quem re-pergunta | a medição`. ⚠️ **O custo disso é prosa, e ele é pago por guard:** o
+`bin/box-cycle.guard.mjs` **deriva as oito famílias do próprio `bin/box-up.sh`** e fica vermelho se uma
+sentença deixar de bater, se uma família nova aparecer lá e não aqui, ou se uma razão que ninguém re-pergunta
+ganhar perdão.
+
+### A tabela, hoje
+
+| razão | quem re-pergunta | por quê |
+|---|---|---|
+| `SHUT` | **gesto 5** | ✅ medido 15/09: o nascimento abre as portas no endereço **promovido** que a caixa ainda não reivindicou. O gesto 5 abre as mesmas portas depois da promoção |
+| `DOORS_UNKNOWN` | **gesto 5** | ✅ é a outra resposta do mesmo passo 14-bis, e o gesto 5 **é** esse passo de novo |
+| `MISCONFIGURED` | **gesto 5** | ✅ medido 15/09: entre o gesto 2 e o 3 a caixa está mesmo meio-promovida. O gesto 5 roda o mesmo `verify-config` depois da promoção |
+| `MISSING_STORE` | — | ⛔ o gesto 2 roda com `--no-warm` e nunca reporta isto; um perdão aqui seria regra que nada exercita |
+| `UNSETTLED` | — | ⛔ nenhum gesto semeia depois do nascimento: quem saiu com o catálogo errado continua com ele |
+| `UNSETTLED_EXTRA` | — | ⛔ nada depois sobe o totem |
+| `ONLINE_ONLY_FAILED` | — | ⛔ o passo 13 roda uma vez; nada re-purga a borda |
+| `ROTEIRO_INCOMPLETE` | — | ⛔ a pergunta é sobre **aquela** corrida, e ela acabou. É também a razão que diz que o próprio sumário não é confiável |
+
+⛔ **E um não-zero que não nomeia razão nenhuma é vermelho** — um `die` no meio do nascimento, uma promoção
+que recusou, um teardown que falhou. Não é *"ainda não"*: é o desconhecido, e o desconhecido não se perdoa.
+
+⚠️ **O ciclo não para no primeiro vermelho.** Ele roda os cinco gestos e gradua no fim — que é o mecanismo
+inteiro: as razões que o gesto 2 dá são respondidas por gestos que vêm **depois** dele.
 
 **Os códigos do ciclo:**
 
 | saída | significado |
 |---|---|
-| **0** | os quatro gestos rodaram e nenhum voltou sujo |
-| **1** | algum gesto voltou não-zero sem perdão (ou a corrida não consegue prestar contas de todos os gestos) |
+| **0** | toda razão que algum gesto deu foi re-perguntada por um gesto posterior e respondida ✓ |
+| **1** | alguma razão ficou sem resposta — ou um gesto voltou não-zero sem nomear razão (ou a corrida não presta contas de todos os gestos) |
 | **2** | recusou **antes de tocar em qualquer coisa** — sem node, destino não declarado, argumento desconhecido |
 | **3** | outra corrida está com o lock |
 
@@ -138,6 +188,9 @@ bash bin/box-cycle.sh --plan --promote demo.exemplo.com   # o roteiro; ⛔ não 
 bash bin/box-cycle.sh --dry-run --promote demo.exemplo.com # lock + log + roteiro + veredicto, sem executar gesto
 bash bin/test.sh                                           # bin/box-cycle.guard.mjs, entre os outros
 ```
+
+O `--plan` imprime os **cinco** gestos **e** as razões que têm resposta vindo (quem re-pergunta cada uma), de
+modo que a política de saída é legível sem rodar nada.
 
 O `--dry-run` marca **REHEARSAL** no log em três lugares: um ensaio nunca pode ser lido como um ciclo.
 
@@ -196,8 +249,18 @@ se não souber para onde promover. ✅ E *"sem destino"* é um modo legítimo e 
 deixa a caixa onde ela nasce (`localhost`) e o gesto 3 aparece no roteiro como **pulado, com a razão** — nunca
 silenciosamente ausente.
 
-⚠️ **Janela.** ~19 min de nascimento + a promoção + o aquecimento (teto histórico ~1h10, hoje limitado por
-**progresso** e não por relógio). Reserve ~2 h e meça a primeira corrida: o log traz o relógio de cada gesto.
+⚠️ **Janela — e agora ela está MEDIDA.** A primeira corrida real (15/09/2026, `--promote tailnet`) marcou:
+
+| gesto | relógio |
+|---|---|
+| 1 · derrubar | **14 s** |
+| 2 · nascer (`--no-warm`) | **1 273 s** (~21 min) |
+| 3 · promover | **37 s** |
+| 4 · aquecer | **2 409 s** (~40 min) |
+| 5 · o veredicto | ainda não medido — é o passo 14-bis + o 15 do nascimento, sem construir nada |
+
+⇒ ~62 min naquela corrida. Reserve ~2 h: o aquecimento é limitado por **progresso** e não por relógio, e o
+log traz o relógio de cada gesto.
 
 ---
 
@@ -208,4 +271,4 @@ silenciosamente ausente.
 | `docs/operations/runbook-demo.md` | a caixa online inteira: a ordem do deploy, o que preencher, o reset (§5) |
 | `README.md` (este repo) | subir a caixa na bancada, e o porquê de cada peça |
 | `bin/box-cycle.sh` | o script — a prosa dele é a versão longa desta página |
-| `bin/box-cycle.guard.mjs` | o que fica vermelho se um gesto sumir ou a ordem trocar |
+| `bin/box-cycle.guard.mjs` | o que fica vermelho se um gesto sumir, a ordem trocar, o perdão virar cego ou uma sentença do `box-up.sh` mudar |
