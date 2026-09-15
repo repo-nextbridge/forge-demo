@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# ★★★ THE SCHEDULED CYCLE — ONE SCRIPT, ONE SCHEDULE, FOUR GESTURES IN THE ONLY ORDER THAT WORKS.
+# ★★★ THE SCHEDULED CYCLE — ONE SCRIPT, ONE SCHEDULE, FIVE GESTURES IN THE ONLY ORDER THAT WORKS.
 #
-#   bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>   reborn, promoted, warmed
+#   bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>   reborn, promoted, warmed, JUDGED
 #   bash bin/box-cycle.sh --no-promote                             reborn and left where it is born (localhost)
 #   bash bin/box-cycle.sh --plan [--promote <where>]               print what it would do; touch NOTHING
 #   bash bin/box-cycle.sh --dry-run [--promote <where>]            the whole mechanism — lock, log, roteiro,
@@ -20,17 +20,32 @@
 #  2 · THE STEPS ARE ALREADY ONE SCRIPT. `bin/box-up.sh` is fifteen steps that each exist because the one
 #      before it produced something they need — including the purge (13), the warming (14) and the two
 #      verdicts (12, 15). This file does not re-derive any of that. It ORCHESTRATES: four calls, in order.
-#  3 · THE EXIT CODE HAS TO BE DECIDED IN ONE PLACE. `bin/box-up.sh` exits 1 on purpose for seven distinct
+#  3 · THE EXIT CODE HAS TO BE DECIDED IN ONE PLACE. `bin/box-up.sh` exits 1 on purpose for eight distinct
 #      reasons. A schedule that alerts on any non-zero alerts every night; one that ignores non-zero alerts
 #      never. See THE EXIT POLICY below — it is the question this file exists to answer.
 #
-# ── ★★ THE FOUR GESTURES, AND WHY THE WARMING IS LAST ───────────────────────────────────────────────────────
+# ── ★★ THE FIVE GESTURES, WHY THE WARMING IS LAST BUT ONE, AND WHY THE VERDICT IS LAST ──────────────────────
 #
 #   1 · bash bin/box-down.sh                    the STATE dies; the ~3.6 GB photo cache LIVES (`--all` would
 #                                               drop it too: ~40 minutes to re-pull, and it proves nothing)
 #   2 · bash bin/box-up.sh --no-warm            the birth: the fifteen steps, warming left for gesture 4
 #   3 · bash bin/box-up.sh --promote <where>    the box is pointed at the address it is really reached at
 #   4 · bash bin/box-up.sh --warm-only          the warming, now at the promoted address
+#   5 · bash bin/box-up.sh --verdict-only       ★ THE VERDICT: the birth's two questions asked AGAIN, of the
+#                                               box as it is handed over — and it is THIS one that grades
+#
+# ★★★ GESTURE 5 EXISTS BECAUSE A VERDICT TAKEN BEFORE THE STATE IT GRADES IS FINISHED IS NOT A VERDICT, and
+# that is a measurement rather than a principle. On the first real run of this cycle (2026-09-15) gesture 2
+# exited 1 for two reasons — `cafe/` with no gate on it (step 14-bis) and an admin published at `localhost`
+# while the box publishes itself on the tailnet (step 15) — and BOTH had stopped being true before the cycle
+# ended: after gesture 3, `prove-doors` answered `every door answers as it must (8)` and `verify-config`
+# answered `VERDICT: settled`. The birth was asked about the PROMOTED address of a box that is born on
+# `localhost` by decision and had not claimed it yet.
+#
+# ⛔ SO THE REPAIR IS NOT A SOFTER GESTURE 2 — IT IS A LATER ASKING. Gesture 2 still says everything it says
+# and still comes back non-zero; what changed is that the cycle no longer grades on it alone. See THE EXIT
+# POLICY below: a reason gesture 2 gave is forgiven ONLY where a later gesture put the SAME question and
+# answered ✓, and every reason nobody asks again stays red.
 #
 # ★★★ GESTURE 3 IS NOT OPTIONAL WHERE THERE IS A DESTINATION, AND THAT IS A MEASUREMENT RATHER THAN A TASTE.
 # A rebirth DE-PROMOTES the admin: the database dies, so the kernel's admin directory comes back holding only
@@ -46,36 +61,49 @@
 # first promotion `FORGE_PUBLIC_ORIGIN` is only right AFTER the promotion writes it, so a warm run before it
 # warms an address no shopper types.
 #
-# ⚠️ AND THE LOOP THAT WARMS IS NOT COPIED INTO THIS FILE. Warming is once per tenant with THAT TENANT'S own
+# ⚠️ AND NEITHER THE LOOP THAT WARMS NOR THE LOOP THAT OPENS THE DOORS IS COPIED INTO THIS FILE. Warming is once per tenant with THAT TENANT'S own
 # token, because the read face that lists a tenant's stores resolves the tenant from the credential — and the
 # rule for a tenant's secret name (the first keeps the unsuffixed one) already has two authors. So gesture 4
 # asks `bin/box-up.sh --warm-only`, which drives the same `warm_every_tenant` step 14 drives. A third copy of
-# that rule here would drift on the day a tenant is added to `seed/box.json`.
+# that rule here would drift on the day a tenant is added to `seed/box.json`. Gesture 5 asks
+# `bin/box-up.sh --verdict-only` for exactly the same reason, and it drives the same `prove_every_tenant`
+# step 14-bis drives.
 #
 # ── ⛔ THE EXIT POLICY, WHICH IS THE QUESTION THIS FILE EXISTS TO ANSWER ─────────────────────────────────────
 #
-# WHICH NON-ZERO IS ACCEPTABLE? Today: NONE. `cycle_verdict` below is "any non-zero is red", and
-# `CYCLE_TOLERATED` — the list of pardons — is EMPTY on purpose.
+# WHICH NON-ZERO IS ACCEPTABLE? ★ THE ANSWER IS NOT A GESTURE, IT IS A REASON, AND IT IS THIS ONE SENTENCE:
 #
-# ⛔ IT IS EMPTY BECAUSE NOTHING HAS BEEN MEASURED YET, AND A LIST WRITTEN IN ADVANCE IS THE DISEASE
-# `bin/verify-config.mjs` already names: *"the obvious answer is a checklist, and the checklist is the
-# disease"*. A pardon guessed today is a red this box will never see again, for a reason nobody will remember.
-# ⇒ Run the cycle for real, read the log, and only then add the entry — WITH THE MEASUREMENT GLUED TO IT:
+#       A REASON A GESTURE GAVE IS FORGIVEN ONLY WHERE A LATER GESTURE PUT THE SAME QUESTION AND ANSWERED ✓.
+#       A REASON NOBODY ASKS AGAIN STAYS RED.
 #
-#       CYCLE_TOLERATED='2=1|<what was measured, when, and why it is not a failure of the cycle>'
+# ⛔ AND THAT IS WHY THERE IS NO `<gesture>=<status>` PARDON HERE ANY MORE. `bin/box-up.sh` exits 1 for eight
+# distinct reasons; a pardon for "gesture 2 exited 1" would forgive a box whose shopper cannot sign in, a
+# tenant holding another brand's catalogue, a totem that never started and a run that cannot account for its
+# own steps — all four of them invisible behind the one reason that was measured. A blanket pardon is not a
+# looser rule, it is a DIFFERENT rule: it stops reading the reason at all.
 #
-# ★ THE ONE CANDIDATE THAT IS ALREADY EXPECTED, stated so the first real run knows what it is looking at:
-# gesture 2 is a birth of a box that WAS promoted, so it can end `MISCONFIGURED` — the de-promotion described
-# above, which gesture 3 then repairs. If the first real cycle shows exactly that and gesture 3 and 4 are
-# green, that is the entry to write. ⚠️ It is NOT written yet, because `bin/box-up.sh` exits 1 for seven
-# reasons and its status alone cannot tell them apart: a pardon for "2 exited 1" would also pardon a box with
-# doors a shopper cannot open. What the first run has to produce is the LINE from the log that names the
-# reason — and if the pardon cannot be narrowed to one reason, the repair belongs in `bin/box-up.sh` (a
-# distinct exit code for the half-promoted case), not in a blanket pardon here.
+# ★★ HOW THE REASON IS READ, AND WHY IT IS THE SENTENCE AND NOT THE STATUS. Two ways were on the table:
+# teach `bin/box-up.sh` a distinct exit CODE per family, or read the NAMED SENTENCES it already prints. The
+# measurement decided it, and it is the first real run itself: gesture 2 came back with TWO reasons at once
+# (`SHUT` and `MISCONFIGURED`). A status is ONE number and cannot carry a set — and a bitmask does not fit
+# either: eight families need eight bits, the low ones are already spoken for by the thirty-two `die` sites
+# and the argument refusals that all exit 1, and a status is capped at 255. A code per family would have had
+# to DROP one of the two reasons the very run that opened this question produced.
 #
-# ⚠️ AND THE CYCLE DOES NOT STOP AT THE FIRST RED. It runs all four gestures and grades at the end, because
-# the one non-zero already expected — gesture 2 coming back half promoted — is repaired by the gesture that
-# follows it. Stopping there would leave the box in exactly the state this cycle exists to end.
+# ⇒ So the reasons are read from the sentences, and `CYCLE_REASONS` below is that table — token, sentence,
+# who asks it again, and the measurement. ⚠️ THE COST OF THAT IS PROSE, AND IT IS PAID BY A GUARD:
+# `bin/box-cycle.guard.mjs` derives the eight red families out of `bin/box-up.sh` itself and reds if a
+# sentence here stops matching the one printed there, if a family is added there and not named here, or if a
+# reason nobody asks again is given a pardon.
+#
+# ⛔ AND AN UNRECOGNISED NON-ZERO IS RED, WHICH IS THE HALF THAT KEEPS THIS HONEST. A gesture that exits
+# non-zero and names no reason in this table — a `die` in the middle of the birth, a promotion that refused,
+# `bin/box-down.sh` failing — is graded red with its status, never forgiven for being unfamiliar.
+#
+# ⚠️ AND THE CYCLE DOES NOT STOP AT THE FIRST RED. It runs all five gestures and grades at the end, which is
+# the whole mechanism: the reasons gesture 2 gives are answered by gestures that come AFTER it. Stopping
+# there would leave the box in exactly the state this cycle exists to end — and would also leave the cycle
+# unable to tell "not yet" from "broken", which is the defect this file was rewritten to end.
 #
 # ── THE LOCK, THE LOG, AND THE ENVIRONMENT A SCHEDULER GIVES YOU ────────────────────────────────────────────
 #
@@ -113,7 +141,137 @@ TAG='[cycle]'
 CYCLE_STEPS='1|tear the box down (state dies, the photo cache lives)
 2|the birth, warming left for gesture 4 (bin/box-up.sh --no-warm)
 3|the promotion — the box points at the address it is reached at (bin/box-up.sh --promote)
-4|the re-warm, at the address this box publishes itself at (bin/box-up.sh --warm-only)'
+4|the re-warm, at the address this box publishes itself at (bin/box-up.sh --warm-only)
+5|THE VERDICT — the birth’s two questions asked again, of the box as it is handed over (bin/box-up.sh --verdict-only)'
+
+# >>> THE EXIT POLICY — sourced verbatim by bin/box-cycle.guard.mjs, which runs it over fabricated results
+#
+# ── ★★★ THE REASONS `bin/box-up.sh` CAN COME BACK WITH, AND WHO ASKS EACH ONE AGAIN ─────────────────────────
+#
+# `<token>|<the sentence bin/box-up.sh prints for it>|<the gesture that asks it AGAIN, empty if nobody>|<the
+# measurement that justifies the pardon>`. One row per red family `bin/box-up.sh` has — all eight of them,
+# including the six nobody asks again, because a family that is missing from this table would be read as an
+# UNRECOGNISED non-zero, which is red but says nothing useful at 3am.
+#
+# ⛔ THE THIRD COLUMN IS THE WHOLE POLICY. A row with an empty third column can never be forgiven, no matter
+# what the rest of the cycle did — which is the difference between this table and a list of pardons.
+#
+# ⚠️ THE SENTENCES ARE PINNED TO `bin/box-up.sh` BY `bin/box-cycle.guard.mjs`, in both directions. That guard
+# is not decoration here: reading prose is the price of being able to tell two reasons apart in one status,
+# and a pin that is not graded is a pin that rots.
+CYCLE_REASONS='SHUT|HAS DOORS A SHOPPER CANNOT OPEN|5|measured on the first real cycle, 2026-09-15: the birth opens every door at the address it is PROMOTED to, which a box born on localhost has not claimed yet — `cafe/` came back with no gate on it. Gesture 5 opens the same doors after the promotion and the re-warm, and answered `every door answers as it must (8)` with the gate ✓ on that same door.
+DOORS_UNKNOWN|NOTHING WAS LEARNED ABOUT|5|the other answer of the same step 14-bis, and gesture 5 IS that step asked again: a tenant whose doors could not be asked about during the birth is asked about again at the end, over the box as it is handed over. ⛔ Read it as UNPROVEN, and it is only forgiven where gesture 5 proved the doors open.
+MISCONFIGURED|THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES|5|measured on the first real cycle, 2026-09-15: a rebirth DE-PROMOTES the admin, so between gesture 2 and gesture 3 the box really is half promoted and step 15 is right to say so. Gesture 5 runs the same verify-config after the promotion, and answered `VERDICT: settled` with all 11 faces ✓.
+MISSING_STORE|IS MISSING A STORE THIS REPOSITORY DECLARES||a store seed/box.json declares and the box does not hold is not a state anything later in this cycle builds. Gesture 4 does ask the same question — it is the one red the warmer still carries — but gesture 2 runs with --no-warm and can never report this, so a pardon here would be a rule nothing exercises.
+UNSETTLED|DID NOT SETTLE. Everything above is standing||the verdict over the DATA (verify-seed, step 12). No gesture of this cycle seeds anything after the birth, so nothing asks it again: a tenant that came out holding the wrong catalogue is still holding it when the box is handed over.
+UNSETTLED_EXTRA|IS NOT. The summary above says so||the box is standing and something it declares is not — the totem. Nothing later starts it, so nothing re-asks it.
+ONLINE_ONLY_FAILED|A FACILITY THAT ONLY EXISTS ONLINE WAS CONFIGURED AND COULD NOT RUN||the edge and the bucket (step 13). It runs once, inside the birth, and no gesture after it re-runs the purge — a CDN that refused to be purged is still holding the dead box’s answers at the end of the cycle.
+ROTEIRO_INCOMPLETE|THIS RUN CANNOT ACCOUNT FOR EVERY STEP IT DECLARES||a birth that cannot account for its own steps is not a birth anything can re-ask ABOUT: the question is about that run, and that run is over. ⛔ It is also the one reason that says the summary itself is unreliable, which is the last thing to forgive.'
+
+#
+# ── ⛔ THE EXIT POLICY, AS FUNCTIONS SO THAT IT CAN BE GRADED WITHOUT A 90-MINUTE CYCLE ──────────────────────
+#
+# Everything below takes its whole subject from its arguments and from `CYCLE_REASONS`, which is what lets
+# `bin/box-cycle.guard.mjs` source this block out of this file and run it over fabricated results — every
+# direction, in milliseconds. The header states the rule these implement; this is the mechanism.
+
+# WHICH OF `bin/box-up.sh`'S NAMED REASONS ARE IN THIS GESTURE'S OUTPUT. Substring, fixed-string and
+# case-sensitive on purpose: the reasons are SHOUTED in upper case by the closing block of `bin/box-up.sh`,
+# and the same words in a step's own prose ("⛔ forgecafe has SHUT doors", "did NOT settle") are the report
+# rather than the verdict. Matching those too would read a step's running commentary as the run's answer.
+reasons_named_in() { # <file> → the tokens, space separated
+  local line token sentence found=''
+  [ -s "${1:-}" ] || { printf ''; return 0; }
+  while IFS='|' read -r token sentence _asker _why; do
+    [ -n "$token" ] || continue
+    grep -qF -- "$sentence" "$1" 2>/dev/null && found="$found $token"
+  done <<REASONS
+$CYCLE_REASONS
+REASONS
+  printf '%s' "${found# }"
+}
+
+reason_field() { # <token> <field number> → that column of the row, empty if there is no such row
+  local line token
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    token="${line%%|*}"
+    [ "$token" = "$1" ] || continue
+    printf '%s' "$(printf '%s' "$line" | cut -d'|' -f"$2")"
+    return 0
+  done <<REASONS
+$CYCLE_REASONS
+REASONS
+  printf ''
+}
+
+gesture_status() { # <gesture id> <results> → its exit status, empty if that gesture never ran
+  local line id
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    id="${line%%=*}"
+    [ "$id" = "$1" ] || continue
+    line="${line#*=}"
+    printf '%s' "${line%%=*}"
+    return 0
+  done <<RESULTS
+$2
+RESULTS
+  printf ''
+}
+
+# ★★★ THE VERDICT. One line per reason, and every one of them says WHY it was forgiven or why it was not —
+# a pardon nobody can read is a silenced red, and a red with no reason is a red people learn to skip.
+cycle_verdict() { # <results: "<id>=<status>=<seconds>=<reason tokens>" per line> → 0 green, 1 red
+  local tag="${TAG:-[cycle]}" line id status reasons token asker asker_status red=0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    id="${line%%=*}"
+    line="${line#*=}"
+    status="${line%%=*}"
+    line="${line#*=}"
+    reasons="${line#*=}"
+    [ "$reasons" = "$line" ] && reasons=''
+    [ "$status" = 0 ] && continue
+    # ⛔ AN UNRECOGNISED NON-ZERO IS RED. A `die` in the middle of the birth, a promotion that refused, a
+    # teardown that failed: none of them names a reason in the table, and none of them is forgivable by a
+    # gesture that asks a different question.
+    if [ -z "$reasons" ]; then
+      printf '%s ⛔ gesture %s exited %s and named NO reason this cycle knows how to re-ask. Unforgivable by\n' "$tag" "$id" "$status" >&2
+      printf '        construction: a pardon is a reason that was asked again, and this run named none.\n' >&2
+      red=1
+      continue
+    fi
+    for token in $reasons; do
+      asker="$(reason_field "$token" 3)"
+      if [ -z "$asker" ]; then
+        printf '%s ⛔ gesture %s · %s — NOBODY ASKS THIS AGAIN, so it stays red: %s\n' "$tag" "$id" "$token" "$(reason_field "$token" 4)" >&2
+        red=1
+        continue
+      fi
+      if [ "$asker" = "$id" ]; then
+        printf '%s ⛔ gesture %s · %s — this IS the gesture that asks it again, and nothing comes after it.\n' "$tag" "$id" "$token" >&2
+        red=1
+        continue
+      fi
+      asker_status="$(gesture_status "$asker" "$1")"
+      if [ -z "$asker_status" ]; then
+        printf '%s ⛔ gesture %s · %s — gesture %s was to ask it again and never ran.\n' "$tag" "$id" "$token" "$asker" >&2
+        red=1
+      elif [ "$asker_status" = 0 ]; then
+        printf '%s ⚠️  gesture %s · %s — PARDONED: gesture %s put the same question and answered ✓. %s\n' "$tag" "$id" "$token" "$asker" "$(reason_field "$token" 4)" >&2
+      else
+        printf '%s ⛔ gesture %s · %s — gesture %s was to ask it again and came back %s, so nothing answered it.\n' "$tag" "$id" "$token" "$asker" "$asker_status" >&2
+        red=1
+      fi
+    done
+  done <<RESULTS
+$1
+RESULTS
+  return "$red"
+}
+# <<< THE EXIT POLICY
+
 
 # ★ THE ONE REASON A GESTURE IS SKIPPED, WRITTEN ONCE. The plan and the run both print THIS string, so a plan
 # cannot promise a reason the run does not give.
@@ -212,7 +370,18 @@ if [ "$MODE" = plan ]; then
   else
     printf '     3   SKIPPED — see the reason above\n'
   fi
-  printf '     4   bash bin/box-up.sh --warm-only\n\n'
+  printf '     4   bash bin/box-up.sh --warm-only\n'
+  printf '     5   bash bin/box-up.sh --verdict-only        ← the gesture that decides the exit code\n\n'
+  printf '   the verdict grades REASONS, not gestures: a reason gesture 2 gave is forgiven only where a later\n'
+  printf '   gesture put the same question and answered ✓. These are the ones with an answer coming:\n'
+  while IFS='|' read -r token _sentence asker _why; do
+    [ -n "$token" ] || continue
+    [ -n "$asker" ] || continue
+    printf '     %-18s re-asked by gesture %s\n' "$token" "$asker"
+  done <<PLAN_REASONS
+$CYCLE_REASONS
+PLAN_REASONS
+  printf '   every other reason bin/box-up.sh can give is RED here, and so is a non-zero that names none.\n\n'
   printf '   nothing was read, started or written by this invocation.\n\n'
   exit 0
 fi
@@ -277,7 +446,15 @@ release_lock() {
   [ "$(sed -n 's/^pid=//p' "$LOCK" 2>/dev/null | head -1)" = "$$" ] && rm -f "$LOCK"
   return 0
 }
-trap 'release_lock' EXIT INT TERM
+# ★ AND EACH GESTURE'S OWN OUTPUT IS KEPT, SEPARATELY, FOR THE LENGTH OF THE RUN. The log holds everything
+# in one stream; the verdict needs to know WHICH gesture printed which reason, and a single stream cannot
+# answer that. These files are scratch and die with the run — the log is the record.
+GESTURE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/box-cycle-XXXXXX")" || {
+  printf '\n%s could not create a scratch directory for the gestures’ output.\n\n' "$TAG" >&2
+  release_lock
+  exit 2
+}
+trap 'release_lock; rm -rf "$GESTURE_DIR"' EXIT INT TERM
 
 # ── ★ THE LOG — ONE PER RUN, AND THE SCHEDULER IS TOLD WHERE IT IS ──────────────────────────────────────────
 #
@@ -309,10 +486,17 @@ RESULTS=''
 # sentences and a summary that prints the first while meaning the second is the shape this repository keeps
 # paying for. The duration is here for the same reason: the first real cycle is also the measurement of how
 # long the schedule has to allow for.
+#
+# ★★ AND ITS OUTPUT IS TEED TO A FILE OF ITS OWN so that the REASONS it named can be read back. A gesture
+# that comes back non-zero is not yet a fact about the box — `bin/box-up.sh` says which of its eight red
+# families fired, in a named sentence, and it is that sentence the verdict grades. ⛔ Nothing is swallowed:
+# the same bytes still go to the log, which is where a human reads them.
 run_gesture() { # <id> <title> <command…>
   local id="$1" title="$2"
   shift 2
-  local began ended status
+  local began ended status out reasons
+  out="$GESTURE_DIR/$id.out"
+  : > "$out"
   say "$id · $title"
   note "\$ $*"
   began="$(date +%s)"
@@ -320,14 +504,22 @@ run_gesture() { # <id> <title> <command…>
     note '⚑ REHEARSAL — not executed. The status below is the rehearsal’s, not the box’s.'
     status=0
   else
-    "$@"
-    status=$?
+    # ⚠️ THE STATUS IS STAMPED INSIDE THE PIPELINE, not read off it. `$?` after a pipe is the pipe's, and the
+    # first version of this read `tee`'s zero over a gesture that had exited 1 — measured while writing it.
+    { "$@" 2>&1; printf '%s' "$?" > "$GESTURE_DIR/$id.status"; } | tee -a "$out"
+    status="$(cat "$GESTURE_DIR/$id.status" 2>/dev/null)"
+    case "$status" in '' | *[!0-9]*) status=1 ;; esac
   fi
   ended="$(date +%s)"
+  reasons="$(reasons_named_in "$out")"
   RAN="$RAN $id"
-  RESULTS="$RESULTS$id=$status=$((ended - began))
+  RESULTS="$RESULTS$id=$status=$((ended - began))=$reasons
 "
-  note "$id · exit $status · $((ended - began))s"
+  if [ -n "$reasons" ]; then
+    note "$id · exit $status · $((ended - began))s · reason(s): $reasons"
+  else
+    note "$id · exit $status · $((ended - began))s"
+  fi
   return "$status"
 }
 
@@ -349,6 +541,14 @@ fi
 run_gesture 4 'the re-warm, at the address the box now publishes' \
   bash "$HERE/bin/box-up.sh" --warm-only
 
+# ★★★ AND THEN THE SAME TWO QUESTIONS AGAIN, OF THE BOX AS IT IS HANDED OVER — which is the gesture that
+# decides this cycle's exit code. It is LAST because everything before it changes the answer: gesture 3
+# claims the address the doors are opened at, and gesture 4 recreates nothing but fills what gesture 3
+# emptied. ⛔ Its own non-zero is nobody's "not yet": nothing comes after it, so no reason it reports is ever
+# pardoned below.
+run_gesture 5 'the verdict — the birth’s two questions, asked again' \
+  bash "$HERE/bin/box-up.sh" --verdict-only
+
 # ── ★★ WHAT THIS RUN DID, GRADED BY THE SAME TOOL THE BIRTH USES ────────────────────────────────────────────
 #
 # `bin/roteiro.mjs` is given the declaration and the ledger this run STAMPED. A gesture that neither ran nor
@@ -360,49 +560,16 @@ node "$HERE/bin/roteiro.mjs" --mode result --steps "$CYCLE_STEPS" --ran "$RAN" -
   || ROTEIRO_INCOMPLETE=1
 
 say 'the gestures, with their clocks'
-while IFS='=' read -r id status secs; do
+while IFS='=' read -r id status secs reasons; do
   [ -n "$id" ] || continue
-  if [ "$status" = 0 ]; then note "$id · ok      · ${secs}s"; else note "$id · EXIT $status · ${secs}s"; fi
+  if [ "$status" = 0 ]; then note "$id · ok      · ${secs}s"; else note "$id · EXIT $status · ${secs}s · ${reasons:-<named no reason this cycle knows>}"; fi
 done <<RESULTS_TABLE
 $RESULTS
 RESULTS_TABLE
 
-# ── ⛔ THE EXIT POLICY, AS A FUNCTION SO THAT IT CAN BE GRADED WITHOUT A 90-MINUTE CYCLE ─────────────────────
-#
-# It takes its whole subject from its argument and from `CYCLE_TOLERATED`, which is what lets
-# `bin/box-cycle.guard.mjs` source it out of this file and run it over fabricated results — both directions,
-# in milliseconds. ⛔ `CYCLE_TOLERATED` IS EMPTY AND MUST STAY EMPTY UNTIL A REAL RUN JUSTIFIES AN ENTRY: see
-# THE EXIT POLICY in this file's header for what the first measured entry is expected to be and why it is not
-# written yet. One line per pardon, `<gesture id>=<exit status>|<the measurement that justifies it>`.
-CYCLE_TOLERATED=''
-
-cycle_verdict() { # <results: "<id>=<status>=<seconds>" per line> → 0 green, 1 red; names every reason
-  local tag="${TAG:-[cycle]}" line id status why tol red=0
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    id="${line%%=*}"
-    line="${line#*=}"
-    status="${line%%=*}"
-    [ "$status" = 0 ] && continue
-    why=''
-    while IFS= read -r tol; do
-      [ -n "$tol" ] || continue
-      case "$tol" in "$id=$status|"*) why="${tol#*|}" ;; esac
-    done <<TOLERATED
-${CYCLE_TOLERATED:-}
-TOLERATED
-    if [ -n "$why" ]; then
-      printf '%s ⚠️  gesture %s exited %s and this cycle TOLERATES it: %s\n' "$tag" "$id" "$status" "$why" >&2
-    else
-      printf '%s ⛔ gesture %s exited %s, and no measurement in this file pardons that.\n' "$tag" "$id" "$status" >&2
-      red=1
-    fi
-  done <<RESULTS
-$1
-RESULTS
-  return "$red"
-}
-
+# ★ THE VERDICT IS GRADED OVER THE REASONS, AND GESTURE 5 IS WHERE THEY ARE ANSWERED. Read the lines this
+# prints as pairs: every ⚠️ names the gesture that asked a question again and answered it; every ⛔ names one
+# nobody did.
 say 'the verdict'
 VERDICT=0
 cycle_verdict "$RESULTS" || VERDICT=1
@@ -414,10 +581,10 @@ if [ "$MODE" = dry-run ]; then
   note '⚑ REHEARSAL: this verdict grades the MECHANISM of this script, not the box. No gesture was executed.'
 fi
 if [ "$VERDICT" = 0 ]; then
-  note "the cycle finished and every gesture it ran came back clean. log: $LOG"
+  note "the cycle finished. Every reason any gesture gave was asked again by a later one and answered ✓ — read the ⚠️ lines above for which. log: $LOG"
   brief "finished GREEN — log: $LOG"
 else
-  note "⛔ the cycle is RED. Read the gesture(s) named above, in $LOG."
+  note "⛔ the cycle is RED. Read the REASON(s) named above — each ⛔ line says which gesture gave it and why nothing answered it — in $LOG."
   brief "finished RED — read $LOG"
 fi
 exit "$VERDICT"

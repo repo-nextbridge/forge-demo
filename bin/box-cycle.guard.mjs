@@ -1,17 +1,17 @@
-// ★★★ THE SCHEDULED CYCLE IS FOUR GESTURES IN ONE ORDER, AND THE ORDER IS THE WHOLE DECISION.
+// ★★★ THE SCHEDULED CYCLE IS FIVE GESTURES IN ONE ORDER, AND THE ORDER IS THE WHOLE DECISION.
 //
 //   node --test bin/box-cycle.guard.mjs      (or: bash bin/test.sh)
 //
 // ── WHAT THIS GRADES, AND WHY IT CANNOT BE GRADED ANY OTHER WAY ───────────────────────────────────────────
 //
-// `bin/box-cycle.sh` tears the box down, births it, promotes it and warms it — ~90 minutes, on a machine
-// with docker, against a live box. Nothing about that can run here. What CAN run here is everything that
-// decides whether the run will be right:
+// `bin/box-cycle.sh` tears the box down, births it, promotes it, warms it and JUDGES it — ~90 minutes, on a
+// machine with docker, against a live box. Nothing about that can run here. What CAN run here is everything
+// that decides whether the run will be right:
 //
-//   1 · THE FOUR GESTURES AND THEIR ORDER, read from the script's own declaration and from the calls it
+//   1 · THE FIVE GESTURES AND THEIR ORDER, read from the script's own declaration and from the calls it
 //       makes. A gesture removed, renamed or reordered is red — which is the point: the order is the
 //       decision (`bin/reset-complete.guard.mjs` is the same sentence about the birth's own tail), and a
-//       wrapper of four calls is otherwise perfectly able to lose one in silence.
+//       wrapper of five calls is otherwise perfectly able to lose one in silence.
 //   2 · `--plan` AND `--dry-run`, RUN FOR REAL. The plan touches nothing and says what it would do; the
 //       rehearsal exercises the whole mechanism — lock, log, roteiro, verdict — with every gesture printed
 //       instead of executed. That is how this slice was reviewed without a box, and it is how it stays
@@ -19,13 +19,16 @@
 //   3 · THE LOCK, BOTH DIRECTIONS. A live holder must REFUSE (a second run tears down the box the first is
 //       seeding) and a dead holder must be TAKEN OVER (a lock that outlives its process turns one crash
 //       into a box that is never reset again). Both are staged here with a real lock file.
-//   4 · THE EXIT POLICY, run as a function over fabricated results. "Which non-zero is acceptable" is the
-//       question the cycle exists to answer, and the answer today is "none" — so this file proves the
-//       strictness AND proves the pardon mechanism works, so the first measured pardon does not have to be
-//       written blind.
-//   5 · THE GESTURE THE CYCLE DEPENDS ON AND DOES NOT OWN: `bash bin/box-up.sh --warm-only`. It is graded
-//       here, against a fake box, because it exists FOR this cycle — the warming has to happen after the
-//       promotion, and the loop that does it may not be copied into the script that schedules it.
+//   4 · ★★★ THE EXIT POLICY, run as functions over fabricated results — and it is graded by REASON, never by
+//       gesture. "Which non-zero is acceptable" is the question the cycle exists to answer, and the answer
+//       is: one that a LATER gesture asked again and answered ✓. So this file proves that a re-asked reason
+//       is forgiven, that a reason nobody re-asks is not, that a pardon dies when its re-asker comes back
+//       red, and that a non-zero naming no reason at all is red. ⛔ Plus the pin that makes it honest: the
+//       eight red families are DERIVED OUT OF `bin/box-up.sh` and compared with the table in the cycle, in
+//       both directions, so a sentence that changes there or a family added there is red here.
+//   5 · THE TWO GESTURES THE CYCLE DEPENDS ON AND DOES NOT OWN: `bash bin/box-up.sh --warm-only` and
+//       `--verdict-only`. Both are graded here, against a fake box, because both exist FOR this cycle — and
+//       the loops they drive may not be copied into the script that schedules it.
 //
 // ⚠️ THE CRON ENVIRONMENT IS A TEST AND NOT A NOTE. A scheduler hands a script a PATH with neither `node`
 // nor `jq`, so `env -i` is how this is asked. `bin/node-floor.guard.mjs` grades the same case for the birth;
@@ -90,15 +93,15 @@ function withTemp(body) {
 
 // ── 1 · THE FOUR GESTURES, AND THE ORDER ──────────────────────────────────────────────────────────────────
 
-test('★ the cycle declares four gestures, each with a title — anti-vacuity, first', () => {
+test('★ the cycle declares five gestures, each with a title — anti-vacuity, first', () => {
   // ⚠️ EVERY RULE BELOW COMPARES THE DECLARATION WITH SOMETHING. Two empty lists agree perfectly, and a
   //    guard that goes green over nothing is the failure this repository has measured more than once.
   const gestures = declaredGestures();
   assert.deepEqual(
     gestures.map((g) => g.id),
-    ['1', '2', '3', '4'],
-    'the cycle no longer declares exactly the four gestures 1..4 in order. It is four: the box dies, it is ' +
-      'born, it is promoted, it is warmed — and a fifth or a missing one is a decision, not a typo.',
+    ['1', '2', '3', '4', '5'],
+    'the cycle no longer declares exactly the five gestures 1..5 in order. It is five: the box dies, it is ' +
+      'born, it is promoted, it is warmed, and then it is JUDGED — and a missing one is a decision, not a typo.',
   );
   for (const g of gestures) assert.ok(g.title.trim().length > 10, `gesture ${g.id} has no title worth printing at somebody at 3am.`);
 });
@@ -114,6 +117,7 @@ test('★★★ the four commands are there, in the ONE order that works', () =>
   const birth = at('bin/box-up.sh" --no-warm');
   const promote = at('bin/box-up.sh" --promote "$PROMOTE_TO"');
   const warm = at('bin/box-up.sh" --warm-only');
+  const verdict = at('bin/box-up.sh" --verdict-only');
   assert.ok(down < birth, 'the box is born before it is torn down — the birth would then run against the box that is about to be destroyed.');
   assert.ok(
     birth < promote,
@@ -128,15 +132,28 @@ test('★★★ the four commands are there, in the ONE order that works', () =>
       'containers — ~1h10 paid for a cache deleted minutes later. And on a first promotion the address being ' +
       'warmed would not even be the one the box publishes.',
   );
+  assert.ok(
+    warm < verdict,
+    'the verdict is taken before the box is finished. It is LAST on purpose: it is the gesture that answers ' +
+      'the questions gesture 2 asked too early, and a verdict taken before the state it grades is finished ' +
+      'is not a verdict — which is the measurement (2026-09-15) that put it in this file.',
+  );
+  assert.ok(promote < verdict, 'the verdict runs before the promotion, so it would grade the same half-promoted box gesture 2 did.');
 });
 
 test('★★ every gesture goes through `run_gesture`, so each one is TIMED and its status RECORDED', () => {
   // A call added beside the others without going through it would run and be invisible to both the roteiro
   // and the verdict — the box would be reset by a step no summary mentions.
   const calls = [...CYCLE.matchAll(/^run_gesture (\d) /gm)].map((m) => m[1]);
-  assert.deepEqual(calls, ['1', '2', '4'], 'the gestures invoked through run_gesture are not 1, 2 and 4 (3 is inside the promotion branch).');
+  assert.deepEqual(calls, ['1', '2', '4', '5'], 'the gestures invoked through run_gesture are not 1, 2, 4 and 5 (3 is inside the promotion branch).');
   assert.match(CYCLE, /run_gesture 3 /, 'gesture 3 is not run through run_gesture either.');
-  assert.match(CYCLE, /RESULTS="\$RESULTS\$id=\$status=/, 'run_gesture does not RECORD each gesture\'s status; the verdict would then grade nothing.');
+  assert.match(
+    CYCLE,
+    /reasons="\$\(reasons_named_in "\$out"\)"/,
+    'run_gesture no longer reads back WHICH reasons the gesture named. The verdict grades reasons, so without ' +
+      'this every non-zero becomes an unrecognised one and the cycle is red every night again.',
+  );
+  assert.match(CYCLE, /RESULTS="\$RESULTS\$id=\$status=\$\(\(ended - began\)\)=\$reasons/, 'run_gesture does not RECORD each gesture\'s status and reasons; the verdict would then grade nothing.');
   assert.match(CYCLE, /RAN="\$RAN \$id"/, 'run_gesture does not stamp the gesture as having run, so the roteiro cannot account for it.');
 });
 
@@ -306,20 +323,118 @@ test('★★ …and with the pinned node on PATH and nothing else, the same envi
   assert.match(out, /PLAN: nothing has run yet/, `the cycle could not even plan in a minimal environment holding the pinned node:\n${out}`);
 });
 
-// ── 6 · THE EXIT POLICY, RUN RATHER THAN READ ────────────────────────────────────────────────────────────
+// ── 6 · THE EXIT POLICY, RUN RATHER THAN READ — AND IT IS GRADED BY REASON, NEVER BY GESTURE ─────────────
 //
-// `cycle_verdict` takes its whole subject from its argument and from `CYCLE_TOLERATED`, so it can be sourced
-// out of the script and run over fabricated results — which is the only way to grade "which non-zero is
-// acceptable" without a 90-minute cycle.
+// The whole policy is between two markers in `bin/box-cycle.sh` and takes its subject from its arguments and
+// from `CYCLE_REASONS`, so it can be sourced out of the script and run over fabricated results — which is
+// the only way to grade "which non-zero is acceptable" without a 90-minute cycle.
 
-function verdict(results, tolerated = '') {
+/** The table as the cycle declares it: token → { sentence, asker, why }. */
+function declaredReasons() {
+  const block = CYCLE.match(/\nCYCLE_REASONS='([\s\S]*?)'\n/);
+  assert.ok(
+    block,
+    "bin/box-cycle.sh no longer declares CYCLE_REASONS='…'. That table IS the exit policy: without it every " +
+      'non-zero is an unrecognised one, the cycle is red on every run, and a red that always fires is a red ' +
+      'people learn to skip.',
+  );
+  const rows = block[1]
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [token, sentence, asker, ...why] = line.split('|');
+      return { token, sentence, asker, why: why.join('|') };
+    });
+  assert.ok(rows.length > 0, 'CYCLE_REASONS is declared and empty — a table nobody can match is the same as no table.');
+  return rows;
+}
+
+/** The red families `bin/box-up.sh` really has, DERIVED from its own closing block.
+ *
+ * ⛔ THIS IS THE HALF THAT KEEPS READING PROSE HONEST. The cycle tells two reasons apart by the sentence the
+ * birth prints, and the prose of this repository changes. So the families are read out of `bin/box-up.sh`
+ * here — every `if [ -n "$VAR" ]` block of its closing section that prints a ⛔ — and compared with the
+ * table, in both directions. A sentence edited there, a family added there, a row deleted here: all red. */
+function redFamiliesOfTheBirth() {
+  const mark = '⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE';
+  const at = BOX_UP.indexOf(mark);
+  assert.ok(at > 0, `bin/box-up.sh no longer carries its closing block (${JSON.stringify(mark)}), so the reasons cannot be derived from it.`);
+  const tail = BOX_UP.slice(at);
+  const families = [];
+  for (const block of tail.matchAll(/^if \[ -n "\$\{?([A-Z_]+)(?::-\}|")[\s\S]*?\n^fi$/gm)) {
+    if (!block[0].includes("printf '[box-up] ⛔")) continue; // the reports say ⚠️; the final conjunction prints nothing
+    families.push({ name: block[1], block: block[0] });
+  }
+  assert.ok(families.length >= 6, `only ${families.length} red families were derived from bin/box-up.sh — the parse is broken, and a table compared against nothing is green over nothing.`);
+  return families;
+}
+
+test('★★★ every red family bin/box-up.sh has is NAMED in the cycle table, and no row invents one', () => {
+  const declared = declaredReasons().map((r) => r.token).sort();
+  const real = redFamiliesOfTheBirth().map((f) => f.name).sort();
+  assert.deepEqual(
+    declared,
+    real,
+    'the cycle table and the reasons bin/box-up.sh can really give have drifted. A family the birth has and ' +
+      'the table does not is read as an UNRECOGNISED non-zero — red, but saying nothing at 3am; a row the ' +
+      'birth does not have is a pardon for something that cannot happen.',
+  );
+});
+
+test('★★★ every sentence in the table is one bin/box-up.sh really PRINTS — the pin that pays for reading prose', () => {
+  const families = Object.fromEntries(redFamiliesOfTheBirth().map((f) => [f.name, f.block]));
+  for (const { token, sentence } of declaredReasons()) {
+    assert.ok(sentence.trim().length > 15, `the sentence for ${token} is too short to identify one reason among eight.`);
+    assert.ok(
+      families[token]?.includes(sentence),
+      `bin/box-up.sh no longer prints ${JSON.stringify(sentence)} for ${token}. The cycle matches that string to ` +
+        'tell this reason from the other seven, so an edit to the sentence there silently turns this reason ' +
+        'into an unrecognised non-zero here. Update the row with the new sentence.',
+    );
+  }
+});
+
+test('★★★ a pardon names a LATER gesture and a measurement — and a reason nobody re-asks carries neither', () => {
+  const ids = declaredGestures().map((g) => g.id);
+  for (const { token, asker, why } of declaredReasons()) {
+    assert.ok(why.trim().length > 40, `the row for ${token} carries no reason worth reading. A pardon nobody can read is a silenced red; a red with no reason is one people learn to skip.`);
+    if (!asker) continue;
+    assert.ok(ids.includes(asker), `${token} says gesture ${asker} asks it again, and this cycle has no gesture ${asker}.`);
+    assert.ok(
+      /gesture \d|asked again|asks it again|re-asked|same question|same doors|same verify-config/i.test(why),
+      `the pardon for ${token} does not say which later asking answers it.`,
+    );
+  }
+  // ⛔ ANTI-VACUITY, BOTH WAYS. A table where nothing is ever pardoned is a cycle red every night; a table
+  //    where everything is pardoned is no policy at all.
+  const rows = declaredReasons();
+  const pardonable = rows.filter((r) => r.asker);
+  assert.ok(pardonable.length > 0, 'no reason in the table has a re-asker, so the cycle is red on every run — which is the state this slice exists to end.');
+  assert.ok(pardonable.length < rows.length, 'EVERY reason in the table is pardonable, which is a blanket pardon wearing a table for a hat.');
+});
+
+test('★★★ the blanket pardon is GONE and may not come back — a pardon is a reason, never a gesture', () => {
+  // ⛔ THE SHAPE THIS FORBIDS. `CYCLE_TOLERATED='2=1|…'` forgave a gesture by its exit status, and
+  //    bin/box-up.sh exits 1 for eight reasons: that one line would also forgive a shop nobody can sign in
+  //    to, a tenant holding another brand's catalogue and a run that cannot account for its own steps.
+  assert.ok(
+    !/\bCYCLE_TOLERATED\b/.test(CYCLE),
+    'bin/box-cycle.sh declares CYCLE_TOLERATED again — a pardon by <gesture>=<status>. That is not a looser ' +
+      'rule, it is a different one: it stops reading the reason. Pardons belong in CYCLE_REASONS, one per ' +
+      'reason, each naming the later gesture that asks the same question.',
+  );
+});
+
+/** `cycle_verdict` with the real table, or with a fabricated one, over fabricated results. */
+function verdict(results, reasonTable = null) {
   // ⚠️ THE RESULTS REACH BASH THROUGH A HERE-DOC, not through a quoted literal: a `\n` inside double quotes
   //    is a backslash and an n, so the first version of this helper handed the verdict ONE line that happened
   //    to start with a zero — and every red below passed as green. Measured while writing this file.
   const script = `
 set -uo pipefail
-source <(sed -n '/^cycle_verdict()/,/^}/p' ${JSON.stringify(join(ROOT, 'bin/box-cycle.sh'))})
-CYCLE_TOLERATED=${JSON.stringify(tolerated)}
+source <(sed -n '/^# >>> THE EXIT POLICY/,/^# <<< THE EXIT POLICY/p' ${JSON.stringify(join(ROOT, 'bin/box-cycle.sh'))})
+${reasonTable === null ? '' : `CYCLE_REASONS=${JSON.stringify(reasonTable)}`}
 cycle_verdict "$(cat <<'GUARD_RESULTS'
 ${results}
 GUARD_RESULTS
@@ -329,49 +444,139 @@ GUARD_RESULTS
   return { status: r.status ?? -1, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
-test('★★ a cycle whose four gestures all exited 0 is green — the control, without which the reds prove nothing', () => {
-  const { status } = verdict('1=0=12\n2=0=1100\n3=0=40\n4=0=900');
+const CLEAN = '1=0=12=\n2=0=1100=\n3=0=40=\n4=0=900=\n5=0=120=';
+
+test('★★ a cycle whose five gestures all exited 0 is green — the control, without which the reds prove nothing', () => {
+  const { status } = verdict(CLEAN);
   assert.equal(status, 0, 'a clean cycle was graded red.');
 });
 
-test('★★★ ANY non-zero is red today, and the verdict NAMES the gesture', () => {
-  // ⛔ THE LIST OF PARDONS IS EMPTY ON PURPOSE. A pardon written in advance is the disease bin/verify-config.mjs
-  //    already names ("the obvious answer is a checklist, and the checklist is the disease"): it would be
-  //    forgiving a red nobody has measured, for a reason nobody will remember.
-  for (const [id, results] of [
-    ['1', '1=1=3\n2=0=1100\n4=0=900'],
-    ['2', '1=0=12\n2=1=1100\n4=0=900'],
-    ['4', '1=0=12\n2=0=1100\n4=3=900'],
-  ]) {
-    const { status, out } = verdict(results);
-    assert.equal(status, 1, `gesture ${id} failed and the cycle was graded green:\n${out}`);
-    assert.match(out, new RegExp(`gesture ${id} exited`), `the verdict does not name the gesture that failed:\n${out}`);
+test('★★★ THE MEASURED CASE: gesture 2 came back SHUT + MISCONFIGURED and gesture 5 answered both — green', () => {
+  // ⛔ THIS IS NOT A FABRICATION: these are the two reasons the first real run of this cycle produced
+  //    (2026-09-15), and the verdict over them is the whole point of the slice. Both were true of the box
+  //    between gesture 2 and gesture 3, and neither was true of the box that was handed over.
+  const { status, out } = verdict('1=0=14=\n2=1=1273=SHUT MISCONFIGURED\n3=0=37=\n4=0=2409=\n5=0=120=');
+  assert.equal(status, 0, `the two reasons a later gesture answered ✓ were still graded red:\n${out}`);
+  assert.match(out, /gesture 2 · SHUT — PARDONED: gesture 5/, `SHUT was not forgiven by the gesture that re-asked it:\n${out}`);
+  assert.match(out, /gesture 2 · MISCONFIGURED — PARDONED: gesture 5/, `MISCONFIGURED was not forgiven by the gesture that re-asked it:\n${out}`);
+  // ⚠️ AND THE PARDON IS NEVER SILENT. A forgiveness nobody can read in the log is a red deleted.
+  assert.match(out, /2026-09-15/, `the pardon does not carry the measurement that justifies it:\n${out}`);
+});
+
+test('★★★ a reason NOBODY asks again is red, even in a cycle whose every later gesture is green', () => {
+  // This is the line between this policy and a blanket pardon, and it is the one that has to hold: gesture 2
+  // exits 1 either way, and only the reason tells a box that will be repaired from one that will not.
+  for (const token of ['UNSETTLED', 'MISSING_STORE', 'ONLINE_ONLY_FAILED', 'ROTEIRO_INCOMPLETE', 'UNSETTLED_EXTRA']) {
+    const { status, out } = verdict(`1=0=12=\n2=1=1100=${token}\n3=0=40=\n4=0=900=\n5=0=120=`);
+    assert.equal(status, 1, `${token} was forgiven, and nothing in this cycle asks it again:\n${out}`);
+    assert.match(out, new RegExp(`${token} — NOBODY ASKS THIS AGAIN`), `the verdict does not say why ${token} stays red:\n${out}`);
   }
 });
 
-test('★★★ the pardon mechanism works and is NARROW — it forgives one status of one gesture, with its reason', () => {
-  // The first real run of this cycle is expected to produce a candidate (a birth that comes back half
-  // promoted, repaired by the promotion that follows it). This proves the mechanism that will carry it, in
-  // both directions, so that entry can be written from a measurement instead of from hope.
-  const tolerated = '2=1|staged by the guard: this is the mechanism, not a real pardon';
-  const forgiven = verdict('2=1=1100', tolerated);
-  assert.equal(forgiven.status, 0, `a tolerated status was still red:\n${forgiven.out}`);
-  assert.match(forgiven.out, /TOLERATES it: staged by the guard/, `a pardon is applied without printing the reason for it:\n${forgiven.out}`);
+test('★★★ a pardon DIES when its re-asker comes back red — and when its re-asker never ran', () => {
+  const red = verdict('1=0=12=\n2=1=1100=MISCONFIGURED\n3=0=40=\n4=0=900=\n5=1=120=MISCONFIGURED');
+  assert.equal(red.status, 1, `gesture 5 said the same thing again and gesture 2 was still forgiven:\n${red.out}`);
+  assert.match(red.out, /gesture 5 was to ask it again and came back 1/, red.out);
+  // ⛔ AND ITS OWN REASON IS NOT FORGIVABLE: nothing comes after the gesture that asks last.
+  assert.match(red.out, /gesture 5 · MISCONFIGURED — this IS the gesture that asks it again/, `gesture 5 forgave itself:\n${red.out}`);
 
-  const otherStatus = verdict('2=2=1100', tolerated);
-  assert.equal(otherStatus.status, 1, `a pardon for exit 1 also forgave exit 2:\n${otherStatus.out}`);
-  const otherGesture = verdict('4=1=900', tolerated);
-  assert.equal(otherGesture.status, 1, `a pardon for gesture 2 also forgave gesture 4:\n${otherGesture.out}`);
+  const absent = verdict('1=0=12=\n2=1=1100=SHUT');
+  assert.equal(absent.status, 1, `a reason was forgiven by a gesture that never ran:\n${absent.out}`);
+  assert.match(absent.out, /gesture 5 was to ask it again and never ran/, absent.out);
 });
 
-test('★★★ every pardon this file really carries names a MEASUREMENT — an entry with no reason is red here', () => {
-  // ⚠️ THIS IS THE RULE THAT SURVIVES THIS SLICE. The list is empty today; the day somebody adds to it, the
-  //    entry has to say what was measured. A pardon with an empty reason is a silenced red.
-  const declared = CYCLE.match(/\nCYCLE_TOLERATED='([\s\S]*?)'\n/);
-  assert.ok(declared, 'bin/box-cycle.sh no longer declares CYCLE_TOLERATED — the exit policy has no list, declared or otherwise.');
-  for (const line of declared[1].split('\n').map((l) => l.trim()).filter(Boolean)) {
-    assert.match(line, /^[^=]+=\d+\|.+/, `the pardon ${JSON.stringify(line)} is not \`<gesture>=<status>|<the measurement that justifies it>\`.`);
-    assert.ok(line.split('|').slice(1).join('|').trim().length > 20, `the pardon ${JSON.stringify(line)} carries no reason worth reading.`);
+test('★★★ a non-zero that names NO reason is red — a die() mid-birth is not "not yet"', () => {
+  const { status, out } = verdict('1=0=12=\n2=1=40=\n3=0=40=\n4=0=900=\n5=0=120=');
+  assert.equal(status, 1, `a gesture that failed for a reason this cycle cannot name was forgiven:\n${out}`);
+  assert.match(out, /named NO reason this cycle knows how to re-ask/, out);
+  // The other gestures too: a teardown or a promotion that fails names none of the birth's reasons.
+  for (const line of ['1=1=3=', '3=2=40=']) {
+    const r = verdict(`${line}\n5=0=120=`);
+    assert.equal(r.status, 1, `${line} was forgiven:\n${r.out}`);
+  }
+});
+
+test('★★ the pardon is per REASON, not per gesture — one forgiven reason does not carry the other', () => {
+  const { status, out } = verdict('2=1=1100=MISCONFIGURED UNSETTLED\n3=0=40=\n4=0=900=\n5=0=120=');
+  assert.equal(status, 1, `one pardonable reason carried an unpardonable one through:\n${out}`);
+  assert.match(out, /MISCONFIGURED — PARDONED/, out);
+  assert.match(out, /UNSETTLED — NOBODY ASKS THIS AGAIN/, out);
+});
+
+test('★★ the mechanism itself, over a fabricated table — both directions, so the real table proves a rule', () => {
+  const table = 'FAKE_A|A SENTENCE|5|staged by the guard: the measurement would go here\nFAKE_B|ANOTHER SENTENCE||staged by the guard: nothing asks this again';
+  assert.equal(verdict('2=1=10=FAKE_A\n5=0=1=', table).status, 0, 'a re-asked reason was red with a fabricated table too.');
+  assert.equal(verdict('2=1=10=FAKE_B\n5=0=1=', table).status, 1, 'a reason with no re-asker was forgiven with a fabricated table.');
+});
+
+test('★★★ the reasons are read from the birth\'s SHOUTED sentence, not from a step\'s running commentary', () => {
+  // ⛔ THE FAILURE THIS FORBIDS. `bin/box-up.sh` narrates each step too — "⛔ forgecafe has SHUT doors",
+  //    "⛔ forgeco did NOT settle" — and those lines are printed by steps that DO NOT decide the exit code.
+  //    Reading them as the run's answer would name reasons for a birth that ended green.
+  const script = `
+set -uo pipefail
+source <(sed -n '/^# >>> THE EXIT POLICY/,/^# <<< THE EXIT POLICY/p' ${JSON.stringify(join(ROOT, 'bin/box-cycle.sh'))})
+printf '%s\\n' '   ⛔ forgecafe has SHUT doors — the ✗ lines above name the store and the path.' '   ⛔ forgeco did NOT settle — the ✗ lines above say which check.' > "$1"
+printf 'commentary:[%s]\\n' "$(reasons_named_in "$1")"
+printf '[box-up] ⛔ THE BOX IS UP AND forgecafe HAS DOORS A SHOPPER CANNOT OPEN. Step 14-bis names it.\\n' >> "$1"
+printf 'verdict:[%s]\\n' "$(reasons_named_in "$1")"
+`;
+  const dir = mkdtempSync(join(tmpdir(), 'box-cycle-reasons-'));
+  try {
+    const r = spawnSync('bash', ['-c', script, 'bash', join(dir, 'out')], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    assert.match(out, /commentary:\[\]/, `a step's own commentary was read as the run's reason:\n${out}`);
+    assert.match(out, /verdict:\[SHUT\]/, `the sentence the birth's closing block prints was NOT read as a reason:\n${out}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('★★★ END TO END, with a fake box: a gesture that exits 1 printing the birth’s sentences is graded on them', () => {
+  // ⛔ THE GAP THIS CLOSES. Every test above hands `cycle_verdict` a ledger somebody typed. The step nobody
+  //    was grading is the one BETWEEN: `run_gesture` has to capture what the gesture printed, read the
+  //    reasons out of it, and stamp them into the ledger — and a rehearsal (`--dry-run`) executes no gesture,
+  //    so it can never exercise that. So the two are run together here, over a fake `bin/box-up.sh` that
+  //    prints the real sentences and exits 1.
+  const script = `
+set -uo pipefail
+TAG='[cycle]'
+MODE=run
+say() { printf '== %s\\n' "$*"; }
+note() { printf '   %s\\n' "$*"; }
+GESTURE_DIR="$1"
+RAN=''
+RESULTS=''
+source <(sed -n '/^# >>> THE EXIT POLICY/,/^# <<< THE EXIT POLICY/p' ${JSON.stringify(join(ROOT, 'bin/box-cycle.sh'))})
+source <(sed -n '/^run_gesture()/,/^}/p' ${JSON.stringify(join(ROOT, 'bin/box-cycle.sh'))})
+
+fake_birth() {
+  printf '   14-bis · opening every door of every store\\n'
+  printf '   ⛔ forgecafe has SHUT doors — the ✗ lines above name the store and the path.\\n'
+  printf '[box-up] ⛔ THE BOX IS UP AND forgecafe HAS DOORS A SHOPPER CANNOT OPEN. Step 14-bis names it.\\n' >&2
+  printf '[box-up] ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Step 15 names the face.\\n' >&2
+  return 1
+}
+fake_ok() { printf '   everything answered\\n'; return 0; }
+
+run_gesture 2 'the fake birth' fake_birth || true
+run_gesture 5 'the fake verdict' fake_ok || true
+printf 'LEDGER<%s>\\n' "$RESULTS"
+cycle_verdict "$RESULTS" && printf 'GREEN\\n' || printf 'RED\\n'
+`;
+  const dir = mkdtempSync(join(tmpdir(), 'box-cycle-e2e-'));
+  try {
+    const r = spawnSync('bash', ['-c', script, 'bash', dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    // ⛔ THE SENTENCES GO TO stderr AND THE STEP COMMENTARY TO stdout: a capture that took only one of them
+    //    would read half the birth. Both have to land in the gesture's own file.
+    assert.match(out, /LEDGER<2=1=\d+=SHUT MISCONFIGURED\n5=0=\d+=\n>/, `run_gesture did not stamp the reasons the gesture named into the ledger:\n${out}`);
+    assert.match(out, /2 · exit 1 · \d+s · reason\(s\): SHUT MISCONFIGURED/, `the log line for the failing gesture does not name its reasons:\n${out}`);
+    assert.match(out, /GREEN/, `a birth whose two reasons the last gesture answered ✓ was graded red end to end:\n${out}`);
+    // ⛔ AND NOTHING IS SWALLOWED: the bytes still reach the stream the log is made of.
+    assert.match(out, /14-bis · opening every door/, `the gesture's own output stopped reaching the log:\n${out}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 
@@ -456,11 +661,105 @@ test('★★ `--warm-only` is refused where the BIRTH\'s flags mean nothing, ins
   }
 });
 
+// ── 7b · GESTURE 5 ITSELF: `bash bin/box-up.sh --verdict-only`, AGAINST A FAKE BOX ──────────────────────
+//
+// It exists because a birth takes its two verdicts over a state that has not finished existing — measured on
+// the first real cycle, 2026-09-15 — and the repair is a LATER ASKING rather than a softer step. Same method
+// as the re-warm above: the mode block and the loop are lifted out of the script and given a fake box, so
+// the three answers it has to tell apart are tested rather than read.
+
+function runVerdictOnly({ tenants, doors, config }) {
+  const script = `
+set -uo pipefail
+HERE=/nowhere
+TENANTS=${JSON.stringify(tenants.join(' '))}
+FORGE_PUBLIC_ORIGIN='http://fake.invalid'
+MODE=verdict
+say() { printf '== %s\\n' "$*" >&2; }
+note() { printf '   %s\\n' "$*" >&2; }
+die() { printf 'DIE %s\\n' "$*" >&2; exit 9; }
+secret_name_for() { printf 'forge-operator-token-%s' "$1"; }
+host_node() {
+  local t='' prev='' arg script_var
+  for arg in "$@"; do [ "$prev" = '--tenant' ] && t="$arg"; prev="$arg"; done
+  case "$*" in
+    *verify-config.mjs*)
+      printf 'verify-config ran against %s\\n' "$FORGE_PUBLIC_ORIGIN" >&2
+      return ${config} ;;
+  esac
+  printf 'doors opened for %s with token %s\\n' "$t" "\${FORGE_OPERATOR_TOKEN:-<none>}" >&2
+  script_var="DOORS_$t"
+  return "\${!script_var}"
+}
+${tenants.map((t) => `export FORGE_OPERATOR_TOKEN_${t.toUpperCase()}='tok-${t}'\nDOORS_${t}=${doors[t]}`).join('\n')}
+source <(sed -n '/^prove_every_tenant()/,/^}/p' ${JSON.stringify(join(ROOT, 'bin/box-up.sh'))})
+source <(sed -n '/^if \\[ "\\$MODE" = verdict \\]; then/,/^fi$/p' ${JSON.stringify(join(ROOT, 'bin/box-up.sh'))})
+`;
+  const r = spawnSync('bash', ['-c', script], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return { status: r.status ?? -1, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+}
+
+test('★★★ `--verdict-only` asks BOTH questions, once per tenant with that tenant\'s OWN token', () => {
+  const { status, out } = runVerdictOnly({ tenants: ['forgeco', 'forgecafe'], doors: { forgeco: 0, forgecafe: 0 }, config: 0 });
+  assert.equal(status, 0, `a box whose doors open and whose configuration settles was graded red:\n${out}`);
+  assert.match(out, /doors opened for forgeco with token tok-forgeco/, `the first tenant's doors were not opened with its own token:\n${out}`);
+  assert.match(out, /doors opened for forgecafe with token tok-forgecafe/, `the second tenant's doors were not opened with its own token:\n${out}`);
+  assert.match(out, /verify-config ran/, `the configuration was not graded again — half a verdict is not a verdict:\n${out}`);
+  // ⛔ AND IT DOES NOT PRETEND TO BE A BIRTH: nothing is built, warmed or moved here.
+  assert.match(out, /nothing is built, nothing is warmed, no address is moved/, out);
+});
+
+test('★★★ …and each of its two questions makes it red ALONE, in the sentence the cycle reads', () => {
+  const shut = runVerdictOnly({ tenants: ['forgecafe'], doors: { forgecafe: 1 }, config: 0 });
+  assert.equal(shut.status, 1, `a shut door passed the verdict:\n${shut.out}`);
+  assert.match(shut.out, /HAS DOORS A SHOPPER CANNOT OPEN/, `the verdict does not print the sentence bin/box-cycle.sh matches on:\n${shut.out}`);
+
+  const unknown = runVerdictOnly({ tenants: ['forgecafe'], doors: { forgecafe: 2 }, config: 0 });
+  assert.equal(unknown.status, 1, `"nothing was learned" passed the verdict — it is UNPROVEN, never proven-open:\n${unknown.out}`);
+  assert.match(unknown.out, /NOTHING WAS LEARNED ABOUT/, unknown.out);
+
+  const misconfigured = runVerdictOnly({ tenants: ['forgeco'], doors: { forgeco: 0 }, config: 1 });
+  assert.equal(misconfigured.status, 1, `a box that is not what it declares passed the verdict:\n${misconfigured.out}`);
+  assert.match(misconfigured.out, /THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES/, misconfigured.out);
+});
+
+test('★★ the doors loop has ONE author: step 14-bis and `--verdict-only` drive the same function', () => {
+  // ⛔ A SECOND COPY WOULD DRIFT ON THE DAY A TENANT IS ADDED TO seed/box.json — which is the same reason
+  //    the warming loop has one copy. The rule for the name of a tenant's secret already has two authors.
+  assert.equal(
+    (BOX_UP.match(/^prove_every_tenant\(\) \{$/gm) ?? []).length,
+    1,
+    'bin/box-up.sh defines prove_every_tenant more than once, or not at all.',
+  );
+  assert.equal(
+    (BOX_UP.match(/^\s*prove_every_tenant$/gm) ?? []).length,
+    2,
+    'prove_every_tenant no longer has exactly two callers (step 14-bis and the --verdict-only block). A third ' +
+      'copy of the loop, or a caller lost, and the two stop asking the same question.',
+  );
+  assert.match(BOX_UP, /prove-doors\.mjs/, 'bin/box-up.sh no longer opens the doors at all.');
+});
+
+test('★★ `--verdict-only` is refused where the BIRTH\'s flags mean nothing, instead of being ignored', () => {
+  for (const args of [['--verdict-only', '--plan'], ['--verdict-only', '--no-warm']]) {
+    let status = 0;
+    let out = '';
+    try {
+      out = execFileSync('bash', [join(ROOT, 'bin/box-up.sh'), ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (error) {
+      status = error.status ?? -1;
+      out = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    }
+    assert.equal(status, 1, `\`box-up.sh ${args.join(' ')}\` was accepted; --verdict-only runs two steps and has no step list to plan:\n${out}`);
+    assert.match(out, /about the BIRTH/, `the refusal does not say why:\n${out}`);
+  }
+});
+
 // ── 8 · THE DOCUMENT, AND THE PROMISE THAT USED TO BE A LIE ──────────────────────────────────────────────
 
 test('★★★ the cycle has a page that says what it destroys, what it keeps, and how it is scheduled', () => {
   const doc = read('docs/operations/reset-cycle.md');
-  for (const needle of ['bin/box-cycle.sh', 'bin/box-down.sh', '--no-warm', '--promote', '--warm-only']) {
+  for (const needle of ['bin/box-cycle.sh', 'bin/box-down.sh', '--no-warm', '--promote', '--warm-only', '--verdict-only']) {
     assert.ok(doc.includes(needle), `docs/operations/reset-cycle.md never mentions ${needle} — it is the page about the cycle those make up.`);
   }
   assert.match(doc, /crontab|systemd/i, 'the page gives no example of the schedule entry, which is the one thing an operator copies out of it.');
