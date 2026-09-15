@@ -36,7 +36,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { COFFEE_PROMOTIONS } from './coffee.mjs';
-import { STORE_COUPONS } from './commerce.mjs';
+import { IDENTITY_CONDITION_KINDS, identityConditionsOf, STORE_COUPONS } from './commerce.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const totem = JSON.parse(readFileSync(join(SEED, 'totem.json'), 'utf8'));
@@ -82,6 +82,45 @@ test('⛔ no two sources claim one NAME — the key three seeds use for idempote
     );
     seen.set(name, from);
   }
+});
+
+// ── ⛔⛔ AND THE COUNTER'S HALF OF THE ROSTER HAS A SECOND RULE ──────────────────────────────────────────
+//
+// `ANONYMOUS_BUYER_STORE_HANDLES` in `seed/commerce.mjs` carries the argument: the till mints a synthetic
+// buyer per cart, so a promotion conditioned on WHO is buying means nothing there — `first_purchase` fires
+// on every single sale and the other three never fire at all. `seed/commerce.mjs` retires such a row when it
+// finds one on the box; this file is the other end, and it grades what this repository DECLARES, which is
+// the half a retirement pass can never reach: a row declared here would be created on every birth and
+// retired again on every birth, forever.
+test('★★ no promotion this repository DECLARES for the counter asks who is buying', () => {
+  const declaredForCounter = Object.entries(totem.promotions).map(([key, p]) => ({
+    key,
+    name: p.name,
+    // `seed/totem.mjs` is what turns this file into `promotion.create` input, and a `conditions` array is
+    // the only shape the kernel takes. `combo.contains` becomes `cart_contains`, which the cart answers.
+    conditions: Array.isArray(p.conditions) ? p.conditions : [],
+  }));
+  for (const promotion of declaredForCounter) {
+    const asks = identityConditionsOf(promotion);
+    assert.deepEqual(
+      asks,
+      [],
+      `seed/totem.json declares "${promotion.name}" for the counter with ${asks.join(', ')}`,
+    );
+  }
+  assert.equal(declaredForCounter.length, 2, 'a third counter promotion appeared and nobody graded it');
+});
+
+test('⛔ and no line of seed/totem.mjs writes an identity condition either', () => {
+  // The JSON above is not the whole declaration: `seed/totem.mjs` hardcodes the conditions it sends. A guard
+  // over the data alone would stay green while the code beside it re-introduced the row.
+  const src = readFileSync(join(SEED, 'totem.mjs'), 'utf8');
+  for (const kind of IDENTITY_CONDITION_KINDS)
+    assert.equal(
+      src.includes(`'${kind}'`),
+      false,
+      `seed/totem.mjs sends "${kind}" — the counter cannot honestly evaluate it`,
+    );
 });
 
 test('★ the counter’s coupon stays the counter’s — that scoping is the thing it PROVES', () => {
