@@ -16,7 +16,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
+  ANONYMOUS_BUYER_STORE_HANDLES,
+  assertNoAdvertisedCouponAtAnonymousStore,
   BUYER_ORDER_TYPES,
+  IDENTITY_CONDITION_KINDS,
+  planIdentityRetirements,
   SILENT_STORE_HANDLES,
   appsNotInstalled,
   assertCredentialTenant,
@@ -341,6 +345,148 @@ test('★ a missing config row is defaults, not death', async () => {
   assert.equal(configWrites.length, 2, 'on, then back off');
   assert.equal(configWrites[0][1].values.open_reviews, true);
   assert.equal(configWrites[1][1].values.open_reviews, false);
+});
+
+// ── ⛔ THE RETIREMENT, WHERE IT IS WIRED — the same rule the block above states about `assertCredentialTenant`
+//
+// The plan has unit tests; this is the part that could be right and never called, or called with a store map
+// the port never filled. It is also the only place the THREE reads are joined, and the join is the mistake
+// worth grading: the scope comes from one read and the conditions from another.
+async function driveCommerce({ promotions, scopes, sheets, stores }) {
+  const wrote = [];
+  const read = async (name, params = {}) => {
+    if (name === 'internal/stores') return stores;
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null;
+    if (name === 'internal/promotions_admin') return { items: promotions, total: promotions.length };
+    if (name === 'internal/promotion_stores')
+      return scopes.filter((s) => String(params.promotion_ids ?? '').split(',').includes(s.promotion_id));
+    if (name === 'internal/promotion_admin') return sheets[params.promotion_id] ?? null;
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+  await seedCommerce({
+    expect: stores.map((s) => s.handle),
+    read,
+    command: async (n, input) => {
+      wrote.push([n, input]);
+      return { promotion_id: input?.promotion_id ?? 'promo_new' };
+    },
+    log: () => {},
+    fail: (m) => {
+      throw new Error(m);
+    },
+    post: async () => ({}),
+  });
+  return wrote;
+}
+
+test('★★ the counter’s identity promotion is ARCHIVED through the port, and only that one', async () => {
+  const wrote = await driveCommerce({
+    stores: [
+      { handle: 'cafe', id: 'sto_cafe' },
+      { handle: 'balcao', id: 'sto_balcao' },
+    ],
+    promotions: [
+      { id: 'p_counter', name: '10% na primeira compra' },
+      { id: 'p_combo', name: 'Combo da manhã' },
+      { id: 'p_cafe', name: 'Primeira xícara 10%' },
+    ],
+    scopes: [
+      { promotion_id: 'p_counter', store_id: 'sto_balcao' },
+      { promotion_id: 'p_combo', store_id: 'sto_balcao' },
+      { promotion_id: 'p_cafe', store_id: 'sto_cafe' },
+    ],
+    sheets: {
+      p_counter: { conditions: [{ kind: 'first_purchase' }] },
+      p_combo: { conditions: [{ kind: 'cart_contains', product_ids: ['prod_a'] }] },
+      p_cafe: { conditions: [{ kind: 'first_purchase' }] },
+    },
+  });
+  const archived = wrote.filter(([n]) => n === 'promotion.archive').map(([, i]) => i.promotion_id);
+  assert.deepEqual(archived, ['p_counter']);
+});
+
+test('⛔ and the café’s sheet is never even READ — the scope is what narrows it, one call for the page', async () => {
+  const asked = [];
+  const read = async (name, params = {}) => {
+    if (name === 'internal/stores') return [{ handle: 'cafe', id: 'sto_cafe' }, { handle: 'balcao', id: 'sto_balcao' }];
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null;
+    if (name === 'internal/promotions_admin')
+      return { items: [{ id: 'p_counter', name: 'x' }, { id: 'p_cafe', name: 'y' }], total: 2 };
+    if (name === 'internal/promotion_stores') {
+      asked.push('scopes');
+      return [
+        { promotion_id: 'p_counter', store_id: 'sto_balcao' },
+        { promotion_id: 'p_cafe', store_id: 'sto_cafe' },
+      ];
+    }
+    if (name === 'internal/promotion_admin') {
+      asked.push(params.promotion_id);
+      return { conditions: [] };
+    }
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+  await seedCommerce({
+    expect: ['cafe', 'balcao'],
+    read,
+    command: async (_n, input) => ({ promotion_id: input?.promotion_id ?? 'promo_new' }),
+    log: () => {},
+    fail: (m) => {
+      throw new Error(m);
+    },
+    post: async () => ({}),
+  });
+  assert.deepEqual(asked, ['scopes', 'p_counter'], 'the sheet is read for the counter’s rows and no others');
+});
+
+test('⛔ ANTI-VACUUM · a port that cannot answer the SCOPE retires nothing and SAYS so', async () => {
+  const said = [];
+  const read = async (name) => {
+    if (name === 'internal/stores') return [{ handle: 'balcao', id: 'sto_balcao' }];
+    if (name === 'internal/installed_extensions') return [{ extension_id: 'reviews', status: 'active' }];
+    if (name === 'internal/extension_config') return null;
+    if (name === 'internal/promotions_admin')
+      return { items: [{ id: 'p_counter', name: '10% na primeira compra' }], total: 1 };
+    if (name === 'internal/promotion_stores') return null; // the 404 of a port without the read
+    if (name === 'products') return { items: [] };
+    return [];
+  };
+  const wrote = [];
+  await seedCommerce({
+    expect: ['balcao'],
+    read,
+    command: async (n, input) => {
+      wrote.push(n);
+      return { promotion_id: input?.promotion_id ?? 'promo_new' };
+    },
+    log: (m) => said.push(String(m)),
+    fail: (m) => {
+      throw new Error(m);
+    },
+    post: async () => ({}),
+  });
+  assert.equal(wrote.includes('promotion.archive'), false);
+  assert.equal(
+    said.some((m) => /promotion_stores answered nothing/.test(m)),
+    true,
+    'the unknown scope was absorbed in silence',
+  );
+});
+
+test('★ a tenant with NO counter answers nothing at all — the footwear brand is one', async () => {
+  const wrote = await driveCommerce({
+    stores: [
+      { handle: 'forge', id: 'sto_forge' },
+      { handle: 'outlet', id: 'sto_outlet' },
+    ],
+    promotions: [{ id: 'p_cluster', name: 'DEMO-CLUSTER-VIP-10' }],
+    scopes: [{ promotion_id: 'p_cluster', store_id: 'sto_forge' }],
+    sheets: { p_cluster: { conditions: [{ kind: 'customer_in_cluster', cluster_id: 'clu_1' }] } },
+  });
+  assert.deepEqual(wrote.filter(([n]) => n === 'promotion.archive'), []);
 });
 
 // ── ⏳ THE FENCE INCLUDES THE WAIT ───────────────────────────────────────────────────────────────────────
@@ -772,6 +918,118 @@ test('a row with no label to derive from keeps its name and SAYS so — inventin
   const { rename, blocked } = planPromotionRenames([{ id: 'p1', name: 'DEMO-HIST-99', label: '' }]);
   assert.deepEqual(rename, []);
   assert.match(blocked[0].why, /no shopper-facing label/);
+});
+
+// ── ⛔⛔ THE COUNTER CARRIES NO PROMOTION THAT ASKS WHO IS BUYING ─────────────────────────────────────────
+//
+// The till mints a synthetic buyer per cart (`totem/src/lib/buyer.ts`), so `first_purchase` is true on every
+// sale and the other identity conditions are false on every sale. Either way the row means something nobody
+// declared. Measured on the bench 2026-09-15: counter order #192 came out 11890 − 1189 = 10701.
+const COUNTER = new Map([['sto_balcao', 'balcao']]);
+
+test('★★ an identity promotion confined to the counter is RETIRED, and the kinds are named', () => {
+  const { retire, flagged } = planIdentityRetirements(
+    [
+      {
+        id: 'p1',
+        name: '10% na primeira compra',
+        store_id: 'sto_balcao',
+        conditions: [{ kind: 'first_purchase' }],
+      },
+    ],
+    COUNTER,
+  );
+  assert.deepEqual(flagged, []);
+  assert.deepEqual(retire, [
+    { id: 'p1', name: '10% na primeira compra', handle: 'balcao', kinds: ['first_purchase'] },
+  ]);
+});
+
+test('★★ the OTHER THREE STORES ARE UNTOUCHED — identity is legitimate where a buyer really signs in', () => {
+  const { retire, flagged } = planIdentityRetirements(
+    [
+      { id: 'p1', name: 'Primeira xícara 10%', store_id: 'sto_cafe', conditions: [{ kind: 'first_purchase' }] },
+      { id: 'p2', name: 'DEMO-CLUSTER-VIP-10', store_id: 'sto_forge', conditions: [{ kind: 'customer_in_cluster', cluster_id: 'clu_1' }] },
+      { id: 'p3', name: 'DEMO-CLUSTER-SP-FRETE', store_id: 'sto_outlet', conditions: [{ kind: 'customer_in_cluster', cluster_id: 'clu_2' }] },
+    ],
+    COUNTER,
+  );
+  assert.deepEqual(retire, []);
+  assert.deepEqual(flagged, []);
+});
+
+test('★ the counter KEEPS what the cart can answer by itself — the combo is exactly right there', () => {
+  const { retire } = planIdentityRetirements(
+    [
+      { id: 'p1', name: 'Combo da manhã', store_id: 'sto_balcao', conditions: [{ kind: 'cart_contains', product_ids: ['prod_a', 'prod_b'] }] },
+      { id: 'p2', name: 'Primeiro café 10%', store_id: 'sto_balcao', conditions: [] },
+      { id: 'p3', name: 'Frete grátis', store_id: 'sto_balcao', conditions: [{ kind: 'min_subtotal', amount: 29_900 }] },
+    ],
+    COUNTER,
+  );
+  assert.deepEqual(retire, []);
+});
+
+test('★ every identity kind the kernel owns is caught — not just the one that was measured', () => {
+  const kinds = [
+    { kind: 'first_purchase' },
+    { kind: 'customer_attribute', field: 'email', operator: 'eq', value: 'x@y.z' },
+    { kind: 'customer_field', field: 'tier', operator: 'eq', value: 'gold' },
+    { kind: 'customer_in_cluster', cluster_id: 'clu_1' },
+  ];
+  for (const condition of kinds) {
+    const { retire } = planIdentityRetirements(
+      [{ id: 'p1', name: 'x', store_id: 'sto_balcao', conditions: [condition] }],
+      COUNTER,
+    );
+    assert.equal(retire.length, 1, `${condition.kind} slipped through`);
+  }
+  assert.equal(IDENTITY_CONDITION_KINDS.length, kinds.length);
+});
+
+test('⛔ a TENANT-WIDE identity promotion is NAMED, never retired — it reaches three legitimate stores', () => {
+  const { retire, flagged } = planIdentityRetirements(
+    [{ id: 'p1', name: 'Aniversário', store_id: null, conditions: [{ kind: 'first_purchase' }] }],
+    COUNTER,
+  );
+  assert.deepEqual(retire, []);
+  assert.equal(flagged.length, 1);
+  assert.match(flagged[0].why, /tenant-wide/);
+});
+
+test('★ the decision reads the CONDITION, never the name — the same row wears two names on this box', () => {
+  for (const name of ['DEMO-HIST-02-BALCAO', '10% na primeira compra']) {
+    const { retire } = planIdentityRetirements(
+      [{ id: 'p1', name, store_id: 'sto_balcao', conditions: [{ kind: 'first_purchase' }] }],
+      COUNTER,
+    );
+    assert.equal(retire.length, 1, `${name} was judged by its name`);
+  }
+  // And a name that LOOKS like the offender, over a condition the cart answers alone, survives.
+  const { retire } = planIdentityRetirements(
+    [{ id: 'p1', name: '10% na primeira compra', store_id: 'sto_balcao', conditions: [{ kind: 'min_quantity', qty: 2 }] }],
+    COUNTER,
+  );
+  assert.deepEqual(retire, []);
+});
+
+test('⛔ the counter may not be added to STORE_COUPONS — every coupon there is born asking who is buying', () => {
+  assert.doesNotThrow(() => assertNoAdvertisedCouponAtAnonymousStore());
+  assert.throws(
+    () =>
+      assertNoAdvertisedCouponAtAnonymousStore({
+        ...STORE_COUPONS,
+        balcao: { name: 'x', label: 'x', code: 'XPTO', percent_bp: 1_000 },
+      }),
+    /refuses to advertise a coupon in balcao/,
+  );
+});
+
+test('★ the anonymous store is the counter, and it is the same store the mail rule already names', () => {
+  assert.deepEqual(ANONYMOUS_BUYER_STORE_HANDLES, ['balcao']);
+  // Two rules, one store, for two different reasons — a shopper with no address to mail and no identity to
+  // recognise. They are declared apart on purpose: inverting one must not silently invert the other.
+  assert.deepEqual(SILENT_STORE_HANDLES, ANONYMOUS_BUYER_STORE_HANDLES);
 });
 
 // ── ⛔ s7-11 · "PRE SEED" IN THE CUSTOMER COLUMN ─────────────────────────────────────────────────────────

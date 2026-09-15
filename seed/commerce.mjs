@@ -297,6 +297,121 @@ export const STORE_COUPONS = {
   },
 };
 
+/**
+ * ⛔⛔ THE RULE THIS BLOCK EXISTS FOR, AND IT IS WORTH MORE THAN THE ROW IT REMOVES.
+ *
+ * **A STORE WHERE NOBODY CAN BE RECOGNISED MUST NOT CARRY A PROMOTION THAT ASKS WHO IS BUYING.**
+ *
+ * The counter is a counter. A person at a kiosk types a name and has no e-mail to give, so the totem
+ * SYNTHESIZES one per cart — `balcao+<six chars of the cart id>@forge.demo`, frozen in
+ * `totem/src/lib/buyer.ts` — purely so `cart.set_buyer` has a field to fill. That address is unique to ONE
+ * ORDER, which is what makes every identity condition at that till a question about a person the shop has
+ * never seen and will never see again.
+ *
+ * ⚠️ AND THE FAILURE IS NOT "IT NEVER FIRES" — MEASURED ON THE BENCH 2026-09-15, ON A REAL COUNTER ORDER.
+ * `first_purchase` reads `paid_order_count = 0` for a buyer matched BY E-MAIL (packages/core/src/promo/
+ * context.ts, `loadCustomerFacts`), and a fresh address always counts zero. Counter order #192 came out
+ * `subtotal 11890` → `discount:… "10% na primeira compra" −1189` → `total 10701`: ten per cent off, at the
+ * till, for everybody, forever. It is not a first-purchase discount; it is a permanent unannounced markdown
+ * wearing a first-purchase label. The other three identity conditions fail the other way and are just as
+ * wrong — they fail CLOSED with nobody loaded, so they would be a promise the screen can never keep.
+ *
+ * ⛔ THIS IS ABOUT THE COUNTER AND NOTHING ELSE. `cafe`, `forge` and `outlet` take a buyer who really signs
+ * in or really types their own address, so an identity condition there means exactly what it says. The
+ * café's own `Primeira xícara 10%` above carries `first_purchase` deliberately and must keep it.
+ */
+export const ANONYMOUS_BUYER_STORE_HANDLES = ['balcao'];
+
+/**
+ * The conditions the kernel answers by looking at the BUYER rather than at the cart — copied by MEASUREMENT
+ * from `packages/core/src/promo/eligibility.ts`, which is the only place that decides it:
+ *   · `first_purchase`      — `ctx.customer?.paid_order_count === 0`
+ *   · `customer_attribute`  — a native field of the account; no customer, no match
+ *   · `customer_in_cluster` — materialized membership; no customer, no match
+ *   · `customer_field`      — a fact of the person too; the engine refuses it outright today
+ *     (`condition_unsupported`), and a condition that cannot fire anywhere has no business being seeded
+ *     where it would be least legible.
+ * The four the cart answers on its own (`min_subtotal`, `min_quantity`, `payment_method`, `cart_contains`)
+ * are deliberately absent: the counter's own `Combo da manhã` is one of them and is exactly right there.
+ *
+ * ⚠️ DERIVED FROM THE CONDITION, NEVER FROM A NAME. The row this rule was written for is called
+ * "10% na primeira compra" on this box and `DEMO-HIST-02-BALCAO` on the box before the rename pass ran; a
+ * list of names would have been right for one birth and silently wrong for the next.
+ */
+export const IDENTITY_CONDITION_KINDS = [
+  'first_purchase',
+  'customer_attribute',
+  'customer_field',
+  'customer_in_cluster',
+];
+
+/** Which identity conditions a promotion carries — `[]` for one the cart can answer by itself. */
+export function identityConditionsOf(promotion) {
+  const conditions = Array.isArray(promotion?.conditions) ? promotion.conditions : [];
+  return [
+    ...new Set(
+      conditions
+        .map((c) => String(c?.kind ?? ''))
+        .filter((kind) => IDENTITY_CONDITION_KINDS.includes(kind)),
+    ),
+  ];
+}
+
+/**
+ * WHICH PROMOTIONS THIS BOX RETIRES, and the shape is the same as `planPromotionRenames`: a pure decision,
+ * so the rule can be exercised without a box.
+ *
+ * A promotion enters `retire` only when BOTH halves are true — it carries an identity condition AND it is
+ * confined to a store where nobody can be identified. A TENANT-WIDE promotion (`store_id: null`) is left
+ * alone on purpose: it reaches three stores where it is legitimate and one where it is not, and silently
+ * deleting it for all four would be this file deciding something it was not asked to decide. It is NAMED
+ * instead, which is the same answer `planPromotionRenames` gives a collision.
+ */
+export function planIdentityRetirements(promotions, anonymousStoreIds) {
+  const anonymous = anonymousStoreIds instanceof Map ? anonymousStoreIds : new Map();
+  const retire = [];
+  const flagged = [];
+  for (const promotion of Array.isArray(promotions) ? promotions : []) {
+    const kinds = identityConditionsOf(promotion);
+    if (kinds.length === 0) continue;
+    const storeId = promotion?.store_id ?? null;
+    if (storeId === null) {
+      flagged.push({
+        name: promotion?.name,
+        why: 'it is tenant-wide, so retiring it would take it from the three stores where it is legitimate',
+      });
+      continue;
+    }
+    const handle = anonymous.get(storeId);
+    if (!handle) continue;
+    retire.push({ id: promotion.id, name: promotion.name, handle, kinds });
+  }
+  return { retire, flagged };
+}
+
+/**
+ * ⛔ THE SAME RULE, ONE STEP EARLIER — the coupons THIS FILE declares.
+ *
+ * `seedAdvertisedCoupons` gives every advertised coupon `conditions: [{ kind: 'first_purchase' }]`, because
+ * the sentence a shop window carries is "na primeira compra". So adding a counter to `STORE_COUPONS` would
+ * re-create exactly the row this rule exists to keep out — one line, in a file whose author is looking at a
+ * coupon and not at a till. The refusal is a function rather than a comment for that reason, and it is
+ * called where the coupons are written.
+ */
+export function assertNoAdvertisedCouponAtAnonymousStore(coupons = STORE_COUPONS) {
+  const offenders = Object.keys(coupons).filter((handle) =>
+    ANONYMOUS_BUYER_STORE_HANDLES.includes(handle),
+  );
+  if (offenders.length > 0)
+    throw new Error(
+      `the seed refuses to advertise a coupon in ${offenders.join(', ')}: every coupon here is born with ` +
+        'the `first_purchase` condition, and a till that mints a new synthetic buyer for every order makes ' +
+        'that condition true on every sale — a permanent discount nobody declared. The counter can carry a ' +
+        'coupon (see seed/totem.json), just not one that asks who is buying.',
+    );
+  return coupons;
+}
+
 /** The coupon a store advertises, or null. Absent is an ordinary answer here — most shops advertise none —
  *  which is why this does NOT throw the way `reviewDoorFor` does. */
 export function couponFor(handle) {
@@ -509,6 +624,7 @@ export async function seedCommerce({ expect, command, read, log, fail, post, sle
 
   try {
     await nameInternalPromotions({ command, read, log });
+    await retireIdentityPromotionsAtTheCounter({ stores, command, read, log });
     await seedAdvertisedCoupons({ stores, command, read, log });
     await seedReviews({ stores, command, read, log, post, action: appAction(post) });
     await placeLiveOrders({ stores, command, read, log });
@@ -860,6 +976,98 @@ async function nameInternalPromotions({ command, read, log }) {
 }
 
 /**
+ * ⛔ THE COUNTER GIVES BACK THE PROMOTIONS IT CANNOT HONESTLY EVALUATE — the rule is
+ * `ANONYMOUS_BUYER_STORE_HANDLES` and `planIdentityRetirements` above; this is the part that talks.
+ *
+ * ⚠️ IT RETIRES RATHER THAN PREVENTS, AND THAT IS A BOUNDARY AND NOT A SHORTCUT. The row is not this
+ * repository's: the kernel's history executor creates it, and WHICH promotion lands on WHICH shop is decided
+ * by the store's POSITION in the brand's list — `ACTIVE_PROMOTIONS[i % ACTIVE_PROMOTIONS.length]`, the
+ * pinned `packages/seed-dataset/src/history-plan.ts`. An instance cannot choose there, and it must not fork
+ * the kernel to; what it can do is what an operator would do with the same screen, through the same port.
+ * A counter that grows a third store, or a plan that reorders its three promotions, changes which row this
+ * finds — which is exactly why the decision is derived and not a name.
+ *
+ * ★ IT ASKS THE PORT THREE QUESTIONS AND JOINS THEM, because no single read answers this one. The list
+ * (`promotions_admin`) carries neither the conditions nor the store — that shape is frozen in /contracts —
+ * so the SCOPE comes from `promotion_stores` (a whole page in one call) and the CONDITIONS from the
+ * promotion's own sheet (`promotion_admin`). The scope is asked FIRST on purpose: it is one call for the
+ * tenant, and it is what reduces the per-row sheet reads from "every promotion this brand has" to "the
+ * handful the counter carries".
+ *
+ * ⚠️ IT RUNS AFTER THE RENAME AND THAT ORDER IS LOAD-BEARING. `promotion.update` refuses an ARCHIVED
+ * promotion, so retiring a row before the rename pass reached it would turn a later run's rename into a
+ * refusal. After it, the row has already taken its shopper-facing name and nothing wants to edit it again.
+ *
+ * ★ `promotion.archive` AND NOT `pause`, in the kernel's own words: "it is never deleted: closed orders
+ * reference it and the usage trail is a record". Orders on this bench DID take this discount, so deleting
+ * the row is not on the table even if the port offered it — and archived is the one state pricing does not
+ * load at all (`loadCandidatePromotions` reads `active` and `paused`). It is also what makes this pass
+ * converge for free: `promotions_admin` hides archived rows, so the second run does not even see them.
+ */
+async function retireIdentityPromotionsAtTheCounter({ stores, command, read, log }) {
+  const anonymous = new Map(
+    stores.filter((s) => ANONYMOUS_BUYER_STORE_HANDLES.includes(s.handle)).map((s) => [s.id, s.handle]),
+  );
+  // A brand with no such store — the footwear tenant is one — has nothing to answer for here.
+  if (anonymous.size === 0) return;
+
+  const listed = await allPromotions(read);
+  if (listed.length === 0) return;
+  const scoped = [];
+  // `promotion_stores` looks up at most a hundred ids per call, and it says so by refusing; this box is far
+  // under that today and the page is what keeps the sentence true if it ever is not.
+  for (let i = 0; i < listed.length; i += 100) {
+    const page = listed.slice(i, i + 100);
+    const answer = await read('internal/promotion_stores', {
+      promotion_ids: page.map((p) => p.id).join(','),
+    });
+    scoped.push(...(Array.isArray(answer) ? answer : (answer?.items ?? [])));
+  }
+  const storeOf = new Map(scoped.map((row) => [row.promotion_id, row.store_id ?? null]));
+  // ⛔ ANTI-VACUUM. A port with no `promotion_stores` answers 404, `commerceRead` turns that into `null`, and
+  // every promotion would then look TENANT-WIDE — which this pass deliberately leaves alone, so the counter
+  // would keep its row and the log would explain it with a reason that is not the true one. An empty answer
+  // over a non-empty list is the read not being there, and it is said rather than absorbed.
+  if (storeOf.size === 0) {
+    log(
+      'promotions — read.internal.promotion_stores answered nothing for ' +
+        `${listed.length} promotion(s), so the store scope is unknown and NOTHING was retired. The counter ` +
+        'may be carrying a promotion that asks who is buying; this box cannot tell from here.',
+    );
+    return;
+  }
+
+  const sheets = [];
+  for (const promotion of listed) {
+    const storeId = storeOf.get(promotion.id) ?? null;
+    // Only the counter's own rows, plus the tenant-wide ones the plan has to NAME rather than touch.
+    if (storeId !== null && !anonymous.has(storeId)) continue;
+    const sheet = await read('internal/promotion_admin', { promotion_id: promotion.id });
+    sheets.push({
+      id: promotion.id,
+      name: promotion.name,
+      store_id: storeId,
+      conditions: sheet?.conditions ?? [],
+    });
+  }
+
+  const { retire, flagged } = planIdentityRetirements(sheets, anonymous);
+  for (const row of retire) {
+    await command('promotion.archive', { promotion_id: row.id });
+    log(
+      `promotions — "${row.name}" retired from ${row.handle}: it is conditioned on ${row.kinds.join(', ')}, ` +
+        'and that counter mints a new synthetic buyer for every order',
+    );
+  }
+  for (const row of flagged)
+    log(`promotions — "${row.name}" asks who is buying and is NOT retired: ${row.why}`);
+  if (retire.length === 0 && flagged.length === 0)
+    log(
+      `promotions — no promotion that asks who is buying survives in ${[...anonymous.values()].join(', ')}`,
+    );
+}
+
+/**
  * The coupon each shop's own shop window advertises (see `STORE_COUPONS`).
  *
  * IDEMPOTENT BY NAME, the key every other seed in this repository uses, and the lookup is tenant-wide
@@ -871,6 +1079,9 @@ async function nameInternalPromotions({ command, read, log }) {
  * a code is unique tenant-wide and this seed does not steal one.
  */
 async function seedAdvertisedCoupons({ stores, command, read, log }) {
+  // ⛔ Every coupon below is born asking who is buying — see the function for why that is a refusal and not
+  // a filter, and `ANONYMOUS_BUYER_STORE_HANDLES` for the rule it serves.
+  assertNoAdvertisedCouponAtAnonymousStore();
   const existing = new Map((await allPromotions(read)).map((p) => [p.name, p]));
   for (const store of stores) {
     const coupon = couponFor(store.handle);

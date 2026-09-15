@@ -21,6 +21,9 @@
     "written by a data seeder is the thing that surprises somebody in three months looking for where it was",
     "turned on. Same reason the currency is declared even though it is already the default: the place a switch",
     "is declared should be the place a reader would look for it.",
+    "⇒ THE TWO TENANTS DISAGREE ABOUT IT ON PURPOSE — `forgeco` requires the document, `forgecafe` does not —",
+    "and both say so in words. See `_settings_why` on the coffee tenant for what the OFF side changes and what",
+    "was measured.",
     "",
     "\u2605\u2605 `dataset` \u2014 WHOSE CATALOGUE THE MOUNTED EXAMPLE DATA IS, AND IT IS THE FIELD THIS FILE EXISTS",
     "TO CARRY. A box mounts ONE example dataset (`FORGE_SEED_DATASET_DIR`), and a dataset is a BRAND's: this",
@@ -288,12 +291,40 @@
           "⚠️ TENANT-WIDE, no `store_id` — the same limitation `seed/totem.json` writes up for the counter's pickup:",
           "these commands have no store axis, so the counter's checkout sees these two as well."
         ],
+      "_settings_why": [
+        "★ `require_shipping_document` IS DECLARED `false` HERE, AND THE WORD `false` IS THE POINT — the key is",
+        "not simply dropped. The kernel's own default is already `false` (tenant/0086_shipment_lifecycle.sql),",
+        "so a newborn box would land on the same value with no line at all; a box that is RE-SEEDED rather than",
+        "reborn would not, because `bin/seed-box.mjs` sends exactly the keys this object carries and an absent",
+        "one leaves the column as it was found. Declaring the OFF state is also the rule the `_readme` above",
+        "states for the currency: the place a switch is declared should be the place a reader would look for it,",
+        "and a gate that is off by silence is a gate nobody can find.",
+        "",
+        "⚠️ WHAT IT CHANGES, MEASURED ON THE BENCH 2026-09-15. The gate is the only input of `awaiting_document`",
+        "in `deriveShipmentStage` (packages/core/src/order/shipment-stage.ts): with it off, a parcel in the queue",
+        "with no document attached is `preparing` instead, so the expedition widget's document bar reads zero",
+        "for this tenant. 86 parcels of this tenant sat in that bar — 68 of `cafe`, 18 of `balcao` — and they",
+        "are back in the ordinary queue.",
+        "",
+        "★ AND THE CAPABILITY IS STILL DEMONSTRATED BY THE BOX: `forgeco` keeps the gate ON, with 101 parcels",
+        "(75 of `forge`, 26 of `outlet`) in that same bar. One brand requires the paperwork and the other does",
+        "not, which is a better demonstration of a per-instance switch than two brands agreeing by accident.",
+        "",
+        "⛔ NOTHING IN THE SEED DEPENDS ON IT BEING ON. The history executor attaches a document only when the",
+        "plan says the parcel carries one and only ships parcels that do (`apps/api/src/seed-history.ts`), and",
+        "the gate can only ever REFUSE `order.shipment.mark_shipped` — turning it off relaxes and requires",
+        "nothing, so no step of this box can fail because of this line.",
+        "",
+        "📌 IT IS A TENANT SETTING AND THIS TENANT HAS TWO STORES. `instance_settings` has no store axis, so the",
+        "e-commerce and the counter cannot disagree about it. That is a known limitation of the kernel and not",
+        "something this file may work around."
+      ],
       "settings": {
         "tenant_name": "Forge Café",
         "default_locale": "pt-BR",
         "default_timezone": "America/Sao_Paulo",
         "default_currency": "BRL",
-        "require_shipping_document": true
+        "require_shipping_document": false
       },
       "stores": [
         {
