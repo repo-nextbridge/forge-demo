@@ -169,22 +169,21 @@ function ShopFace({
   const second = index % 2 === 1;
   return (
     <div className={`${styles.face} ${second ? styles.faceSecond : ''}`} data-face={face.key}>
-      <div className={styles.faceHead}>
-        {/* The wordmark is the shop's, and a face nobody wrote one for still draws its key — an unnamed card
-            is a card a reader can trace back to the declaration it came from. */}
-        <span className={styles.mark}>
-          {mark ? (
-            <>
-              {mark[0]}
-              <span className={styles.markDot}>{mark[1]}</span>
-              <span className={styles.markTail}>{mark[2]}</span>
-            </>
-          ) : (
-            face.key
-          )}
-        </span>
-        {copy ? <span className={styles.faceBadge}>{copy.badge}</span> : null}
-      </div>
+      {/* The wordmark is the shop's, and a face nobody wrote one for still draws its key — an unnamed card is
+          a card a reader can trace back to the declaration it came from.
+          ⛔ IT USED TO SHARE A ROW WITH A CHIP ("Referência", "Segunda loja", "Storefront forkado", "Totem"),
+          and the row went out with the chip rather than staying as a container of one thing. */}
+      <span className={styles.mark}>
+        {mark ? (
+          <>
+            {mark[0]}
+            <span className={styles.markDot}>{mark[1]}</span>
+            <span className={styles.markTail}>{mark[2]}</span>
+          </>
+        ) : (
+          face.key
+        )}
+      </span>
       {copy ? <p className={styles.faceBlurb}>{copy.blurb}</p> : null}
       {url === null ? (
         // ⛔ NAMED, NEVER HIDDEN. The box declares this destination and declares no address for it.

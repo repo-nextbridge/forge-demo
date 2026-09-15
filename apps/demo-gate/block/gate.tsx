@@ -5,10 +5,16 @@
 // `?lang=` on the URL can win over the server's Accept-Language guess, and so the two screens can trade places
 // without a navigation (`view` below). Responsive is pure CSS, with no breakpoint of the page's own.
 //
-// ★★★ THE FIRST SCREEN IS THE 10/09 LAYOUT (`design-base/gate.dc.html`) AND NOTHING ELSE. It is a HUB over
-// every face this box publishes (`./hub`), and this file is the page it sits on: the ground, the `forge.demo`
-// wordmark, the headline, the lede beside it, the notice and the language selector at the foot, the way back,
-// and the switch into the architecture screen.
+// ★★★ THE FIRST SCREEN IS THE LAYOUT IN `design-base/gate.dc.html` AND NOTHING ELSE. It is a HUB over every
+// face this box publishes (`./hub`), and this file is the page it sits on: the ground, the `forge.demo`
+// wordmark, the headline, the notice and the language selector at the foot, the way back, and the switch
+// into the architecture screen.
+//
+// ⛔ THE MASTHEAD NO LONGER CARRIES A LEDE, and the artboard was redrawn in the same slice that took it out.
+// A paragraph explaining what a tenant is sat opposite the headline and said, in thirteen words, what the
+// headline's fourth clause now says in two — "Mesmo kernel!", in the accent, on the last line of the title.
+// One claim, one place. Everything the pass took off this screen, and why, is listed at the head of the
+// `HUB` section of `../i18n`.
 //
 // ⛔ pk38/d7 — WHAT THIS SCREEN NO LONGER DRAWS, because "replaces" had been read as "as well as". A framed
 // hero stood above the hub — an eyebrow, `<h1>Loja demo.</h1>` and a paragraph — so the first screen said the
@@ -121,28 +127,28 @@ export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: Ga
     <div className={styles.backdrop} data-testid={GATE_MARK}>
       <div className={styles.shell}>
         <div className={styles.masthead}>
-          <div>
-            <div className={styles.brand}>
-              <span className={styles.brandName}>
-                forge<span className={styles.brandDot}>.</span>
-              </span>
-              <span className={styles.brandDemo}>demo</span>
-            </div>
-            {/* ★ THE HEADLINE IS THE DESIGN'S, word for word ("Dois tenants. Quatro lojas. Dois admins.").
-                One clause per LINE, declared rather than left to a character measure — see `.title`. */}
-            <h1 className={styles.title}>
-              {hub.headline.map((clause) => (
-                <span key={clause} className={styles.titleLine}>
-                  {clause}
-                </span>
-              ))}
-            </h1>
+          <div className={styles.brand}>
+            <span className={styles.brandName}>
+              forge<span className={styles.brandDot}>.</span>
+            </span>
+            <span className={styles.brandDemo}>demo</span>
           </div>
-          <p className={styles.lede}>
-            {hub.lede[0]}
-            <strong className={styles.ledeWord}>{hub.lede[1]}</strong>
-            {hub.lede[2]}
-          </p>
+          {/* ★ THE HEADLINE IS THE DESIGN'S, word for word ("Dois tenants. Quatro lojas. Dois admins. Mesmo
+              kernel!"). FOUR clauses on THREE lines: the fourth rides the last one, in the accent, and the
+              break is DECLARED rather than left to a character measure — see `.title`. */}
+          <h1 className={styles.title}>
+            {hub.headline.map((clause, i) => (
+              <span key={clause} className={styles.titleLine}>
+                {clause}
+                {i === hub.headline.length - 1 ? (
+                  <>
+                    {' '}
+                    <strong className={styles.titleAccent}>{hub.headlineAccent}</strong>
+                  </>
+                ) : null}
+              </span>
+            ))}
+          </h1>
         </div>
 
         <GateHub lang={lang} here={here} adminUrls={adminUrls} dismiss={dismiss} />

@@ -1,4 +1,4 @@
-// The gate block's PAGE — the header row (wordmark, headline, lede), the foot (notice, language selector),
+// The gate block's PAGE — the masthead (wordmark, headline), the foot (notice, language selector),
 // the way back, and the switch into the architecture screen. jsdom smoke test; the visual fidelity is the human
 // gate (screenshots vs design-base/gate.dc.html).
 //
@@ -27,8 +27,13 @@ const noop = async () => {};
 /** The tenant an admin override is handed to — read off the declaration, never a typed id. */
 const FIRST_TENANT = GATE_TENANTS[0]?.id ?? '';
 const tally = hubTally();
-/** The heading's accessible name: the three clauses, as the browser reads one block per line. */
-const headline = (lang: 'pt' | 'en' | 'es') => HUB[lang].headline.join(' ');
+/** The three LINES of the heading — the fourth clause rides the last one, in the accent. */
+const headlineLines = (lang: 'pt' | 'en' | 'es') => {
+  const [first, second, third] = HUB[lang].headline;
+  return [first, second, `${third} ${HUB[lang].headlineAccent}`] as const;
+};
+/** The heading's accessible name: those lines, as the browser reads one block per line. */
+const headline = (lang: 'pt' | 'en' | 'es') => headlineLines(lang).join(' ');
 
 test('★★★ the first screen IS the hub — the hero it replaced is not drawn anywhere', () => {
   const { container } = render(
@@ -39,7 +44,7 @@ test('★★★ the first screen IS the hub — the hero it replaced is not draw
       dismiss={noop}
     />,
   );
-  // What the design puts there: the wordmark, the count as the headline, the lede, the cards, the notice.
+  // What the design puts there: the wordmark, the count as the headline, the cards, the notice.
   expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
   expect(screen.getByText(HUB.pt.notice)).toBeTruthy();
   expect(screen.getByText('← voltar para forgecommerce.pro')).toBeTruthy();
@@ -108,16 +113,44 @@ test('the footer selector switches the copy live (PT → EN → ES)', () => {
   expect(screen.getByText(HUB.es.notice)).toBeTruthy();
 });
 
-test('★★ the headline is the DESIGN’s sentence, in three declared lines', () => {
+test('★★ the headline is the DESIGN’s sentence — four clauses, three declared lines', () => {
   render(<GateBlock siteUrl="https://x" initialLang="pt" dismiss={noop} />);
   const heading = screen.getByRole('heading', { level: 1 });
-  const clauses = HUB.pt.headline;
-  expect(heading.textContent).toBe(clauses.join(''));
-  // ⛔ ONE ELEMENT PER CLAUSE — the design's headline is three lines, and leaving that to a character measure
-  // is what broke it into "2 tenants. 4 / lojas. 2 admins." in a real render.
-  expect([...heading.children].map((line) => line.textContent)).toEqual([...clauses]);
-  // …and the words really are the artboard's — that rule lives in `hub.test.tsx`, over all four sentences.
+  const lines = headlineLines('pt');
+  expect(heading.textContent).toBe(lines.join(''));
+  // ⛔ ONE ELEMENT PER LINE — three, not four. Leaving the break to a character measure is what broke it into
+  // "2 tenants. 4 / lojas. 2 admins." in a real render, and the fourth clause makes the last line the longest
+  // of the three in every language, so a measure would cut THAT one now.
+  expect([...heading.children].map((line) => line.textContent)).toEqual([...lines]);
+  // …and the fourth clause is the accented one, inside the LAST line rather than a line of its own.
+  const accent = heading.querySelector('strong');
+  expect(accent?.textContent, 'the fourth clause is not drawn in the accent').toBe(
+    HUB.pt.headlineAccent,
+  );
+  expect(
+    [...heading.children].at(-1)?.contains(accent as Node),
+    'the accented clause is not on the last line',
+  ).toBe(true);
+  // …and the words really are the artboard's — that rule lives in `hub.test.tsx`, over every sentence.
   expect(tally.shops + tally.admins, 'the declaration carries no face at all').toBeGreaterThan(1);
+});
+
+test('⛔ the masthead carries NO lede — the headline says it, and says it once', () => {
+  // The screen was read as too crowded to scan, and the paragraph opposite the headline was the first thing
+  // out: thirteen words of "what a tenant is" against the four the headline now ends with. Held by TEXT in
+  // all three languages, because a copy edit that put it back would put it back as a sentence, not as a class.
+  const { container } = render(<GateBlock siteUrl="https://x" initialLang="pt" dismiss={noop} />);
+  for (const dead of [
+    /Cada tenant é uma conta isolada/i,
+    /Each tenant is an isolated account/i,
+    /Cada tenant es una cuenta aislada/i,
+  ]) {
+    expect(dead.test(container.textContent ?? ''), `the lede "${dead.source}" is back`).toBe(false);
+  }
+  // …and the masthead is one column now: the wordmark and the heading, nothing beside them.
+  const masthead = container.querySelector('[class*="masthead"]');
+  expect(masthead?.querySelector('p'), 'the masthead grew a paragraph again').toBeNull();
+  expect(masthead?.querySelector('h1'), 'the masthead lost its heading').toBeTruthy();
 });
 
 test('the admin origin this box was promoted to reaches the hub, and lands on /enter', () => {

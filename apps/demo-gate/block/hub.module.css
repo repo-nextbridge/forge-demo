@@ -7,16 +7,18 @@
  * third tenant declared tomorrow therefore gets a card that looks like one of these two, instead of falling
  * through a lookup keyed by an id somebody typed — the shape this repository keeps paying for.
  *
- * ★★ AND SO IS THE SECOND SHOP'S ACCENT, which is the rule pk38/d7 had to change rather than keep. This file
- * used to give every badge the tone of its CARD, with the reason that a colour keyed by store handle is a list
- * that rots the day a fifth shop is declared. That reason still stands — and the design does not need a lookup
- * to be honoured: within a card the SECOND shop is drawn in the card's counter-tone (rose on the dark card,
- * sand on the light one), which is exactly the same derivation as the card's own, one level in. So the fifth
- * shop still gets a card that looks like one of these, and `SEGUNDA LOJA` is the magenta the design draws.
+ * ★★ AND SO IS THE SECOND SHOP'S ACCENT: within a card the SECOND shop's wordmark is drawn in the card's
+ * counter-tone (rose on the dark card, sand on the light one) — the same derivation as the card's own, one
+ * level in, so a fifth shop is dressed by its position instead of by a lookup keyed by a handle somebody
+ * typed. ⛔ THE CHIP THAT CARRIED THAT ACCENT IS GONE: each shop card wore a two-word tag beside its wordmark
+ * ("Referência", "Segunda loja", "Storefront forkado", "Totem") repeating what its own sentence already said,
+ * and the screen was too busy to read at a glance. The magenta `SEGUNDA LOJA` was a fidelity rule of this
+ * file; a chip that does not exist has no colour to be faithful to, so the rule went with it and the accent
+ * lives on in the wordmark alone.
  *
  * ── THE SERIF, AND WHY IT IS A FILE THIS APP SHIPS ────────────────────────────────────────────────────────
  * The second tenant is a coffee brand and the design sets its headline and its two wordmarks in a serif
- * (`gate.dc.html:79,84,93`) — it is the one thing on the screen that says "another account, another skin"
+ * (`gate.dc.html:68,73,79`) — it is the one thing on the screen that says "another account, another skin"
  * before a word is read. The face is self-hosted beside this file: an instance may sit on a network that
  * cannot reach a font CDN, and the first screen of a demo is the worst possible place for a request to a
  * third party. `gate.font-guard.test.ts` holds that rule and is what refuses a CDN or a missing file.
@@ -92,18 +94,26 @@
   color: #7a6a55;
 }
 
+/* ★ THE TENANT CHIP IS A SOLID LIGHT GROUND WITH DARK INK — it was an orange outline, and the outline was
+ * the third framed thing in the top 200px of a screen that already carries the card's border and the button's.
+ * `#E7E4DE` is not a new colour: it is the light chip the artboard already used on this card.
+ *
+ * ⚠️ ONLY ON THE DARK CARD. The light card (`.tenantLight`, the second tenant) keeps its outline, because a
+ * near-white chip on `#F3EDE3` would be a chip nobody can see. Same derivation as everything else here: the
+ * rule follows the card's TONE, not a tenant's name, so a third tenant is dressed by its position. */
 .badge {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #c2410c;
-  border: 1px solid rgba(194, 65, 12, 0.4);
+  color: #0f1011;
+  background: #e7e4de;
   padding: 4px 9px;
 }
 .tenantLight .badge {
   color: #2f3b30;
-  border-color: rgba(47, 59, 48, 0.35);
+  background: none;
+  border: 1px solid rgba(47, 59, 48, 0.35);
 }
 
 .headline {
@@ -112,7 +122,7 @@
   font-weight: 600;
   color: #ffffff;
 }
-/* The serif, and 19px rather than 15px: the coffee brand's card is drawn in another voice (gate.dc.html:79). */
+/* The serif, and 19px rather than 15px: the coffee brand's card is drawn in another voice (gate.dc.html:68). */
 .tenantLight .headline {
   font-family: "Fraunces", Georgia, serif;
   font-size: 19px;
@@ -150,14 +160,8 @@
   border-bottom-color: rgba(43, 33, 24, 0.14);
 }
 
-.faceHead {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .mark {
+  align-self: flex-start;
   display: inline-flex;
   align-items: baseline;
   font-size: 19px;
@@ -194,28 +198,6 @@
 .tenantLight .faceSecond .markTail {
   font-weight: 600;
   color: #241c14;
-}
-
-.faceBadge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #0f1011;
-  background: #e7e4de;
-  padding: 3px 7px;
-}
-.faceSecond .faceBadge {
-  color: #ffffff;
-  background: #9f1239;
-}
-.tenantLight .faceBadge {
-  color: #f3ede3;
-  background: #2f3b30;
-}
-.tenantLight .faceSecond .faceBadge {
-  color: #2f3b30;
-  background: #dcd3c4;
 }
 
 .faceBlurb {

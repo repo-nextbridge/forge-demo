@@ -194,6 +194,16 @@ export const ARCH: Record<Lang, ArchStrings> = {
  * `seed/box.json` through `faces.generated.ts`. A translator editing this file cannot invent a shop, and a
  * fifth shop declared in the box makes `block/hub.test.tsx` red instead of making this screen quietly short.
  *
+ * ── ⛔ WHAT THE SECOND PASS OVER THIS SCREEN TOOK AWAY, AND IT IS NOT A REGRESSION ────────────────────────
+ *
+ * The layout was drawn first and read afterwards, and read slowly: too much ink for a door. Three things
+ * went, each named where it used to be declared so nobody rebuilds half of one — the masthead's `lede`
+ * ("Cada tenant é uma conta isolada… Mas o mesmo kernel."), whose job the headline now does in four words;
+ * the four shop CHIPS (`HubFaceStrings`); and the ORANGE OUTLINE of the tenant chip (`block/hub.module.css`).
+ * What replaced the lede is the headline's fourth clause, `headlineAccent` — the same claim, on the same
+ * line of sight, in the accent. The artboard was redrawn in the same slice: the design is still the truth
+ * this file is graded against, and a change that moved only one of the two would have made that a lie.
+ *
  * ── ★★★ THE NUMBERS, ON THE OTHER HAND, ARE TYPED — AND THAT IS THE DECISION, NOT AN OVERSIGHT ───────────
  *
  * "Derive, never list" exists to protect what a CUSTOMER is handed: an instance whose catalogue nobody here
@@ -234,7 +244,7 @@ export const HUB_MARKS: Record<string, readonly [string, string, string]> = {
 export type HubTenantStrings = {
   /** The small uppercase word over the card ("Sapatos"). */
   eyebrow: string;
-  /** The framed badge opposite it ("Tenant 1"). */
+  /** The chip opposite it ("Tenant 1") — a solid light ground, not an outline. */
   badge: string;
   /** The card's own sentence ("Duas lojas, um único banco."). */
   headline: string;
@@ -242,8 +252,12 @@ export type HubTenantStrings = {
 };
 
 export type HubFaceStrings = {
-  /** The tag beside the wordmark ("Referência", "Totem"). */
-  badge: string;
+  /* ⛔ THE TAG BESIDE THE WORDMARK IS GONE — "Referência", "Segunda loja", "Storefront forkado", "Totem".
+   * Four shop cards, each already carrying a wordmark, a sentence and a button, plus a chip repeating in two
+   * words what the sentence says in full: the screen was too crowded to read at a glance, and the chip is the
+   * piece that carried the least. It went from the artboard and from here in the same slice, so nothing is
+   * left half-said. ⚠️ AND THE COLOUR WENT WITH IT: the magenta `SEGUNDA LOJA` was a fidelity rule of its
+   * own (`block/hub.module.css`), and a badge that does not exist has no colour to be faithful to. */
   /**
    * ★★★ THE SENTENCE UNDER THE WORDMARK, AND IT CARRIES THE SHOP'S SIZE AS THE DESIGN WRITES IT — "Uma loja
    * completa com 2 777 produtos → 44 399 SKUs.", not a figure this process went and asked for. See the head
@@ -256,15 +270,17 @@ export type HubFaceStrings = {
 
 export type HubStrings = {
   /**
-   * The headline of the screen, as the design writes it: "Dois tenants. Quatro lojas. Dois admins."
+   * The headline of the screen, as the design writes it: "Dois tenants. Quatro lojas. Dois admins. Mesmo
+   * kernel!" — FOUR clauses on THREE lines, the fourth riding the third in the accent (`headlineAccent`).
    *
-   * ★ THREE CLAUSES, ONE PER LINE, and that is the type rather than a rendering detail. The design's
-   * headline is three lines because `max-width: 14ch` breaks it there; declaring the clauses makes that
-   * shape the screen's own, in all three languages, instead of a measure that happens to agree today.
+   * ★ THE LINES ARE DECLARED, NOT MEASURED, and that is the type rather than a rendering detail. A
+   * character measure breaks the same sentence in a different place in each of the three languages, and in
+   * a different place again the day a clause is added — which is what adding the fourth one did. Declaring
+   * the lines is what makes the shape the screen's own, identically in PT, EN and ES.
    */
   headline: readonly [string, string, string];
-  /** [before, the emphasised word, after] — the emphasised word is "kernel", in all three languages. */
-  lede: readonly [string, string, string];
+  /** The fourth clause, drawn in the accent at the end of the LAST line — "Mesmo kernel!". */
+  headlineAccent: string;
   /** The row at the foot of a tenant card. */
   adminRow: string;
   /**
@@ -289,11 +305,7 @@ export type HubStrings = {
 export const HUB: Record<Lang, HubStrings> = {
   pt: {
     headline: ['Dois tenants.', 'Quatro lojas.', 'Dois admins.'],
-    lede: [
-      'Cada tenant é uma conta isolada: banco, catálogo, pedidos e login próprios. Mas o mesmo ',
-      'kernel',
-      '.',
-    ],
+    headlineAccent: 'Mesmo kernel!',
     adminRow: 'Admin do tenant',
     hereNote: 'Esta janela está num endereço que esta demo não publica:',
     hereCta: 'entrar assim mesmo',
@@ -311,27 +323,23 @@ export const HUB: Record<Lang, HubStrings> = {
         eyebrow: 'Café',
         badge: 'Tenant 2',
         headline: 'Outra conta, outra casca.',
-        blurb: 'O mesmo kernel sem a nossa vitrine e, no limite, sem o nosso checkout.',
+        blurb: 'O mesmo kernel sem a nossa vitrine e, no totem, sem o nosso checkout.',
       },
     },
     faces: {
       'forgeco/forge': {
-        badge: 'Referência',
         blurb: 'Uma loja completa com 2 777 produtos → 44 399 SKUs.',
         cta: 'Abrir a loja',
       },
       'forgeco/outlet': {
-        badge: 'Segunda loja',
         blurb: 'Multi-loja: 55 produtos do mesmo catálogo, tema e preços próprios.',
         cta: 'Abrir o outlet',
       },
       'forgecafe/cafe': {
-        badge: 'Storefront forkado',
         blurb: 'Outro storefront mas o mesmo checkout, repositório e imagem próprios.',
         cta: 'Abrir a loja',
       },
       'forgecafe/balcao': {
-        badge: 'Totem',
         blurb: 'Totem de balcão: aplicação exclusiva própria falando direto com a porta.',
         cta: 'Abrir o totem',
       },
@@ -339,11 +347,7 @@ export const HUB: Record<Lang, HubStrings> = {
   },
   en: {
     headline: ['Two tenants.', 'Four shops.', 'Two admins.'],
-    lede: [
-      'Each tenant is an isolated account: its own database, catalogue, orders and sign-in. But the same ',
-      'kernel',
-      '.',
-    ],
+    headlineAccent: 'Same kernel!',
     adminRow: "The tenant's admin",
     hereNote: 'This window is on an address this demo does not publish:',
     hereCta: 'go in anyway',
@@ -361,28 +365,24 @@ export const HUB: Record<Lang, HubStrings> = {
         eyebrow: 'Coffee',
         badge: 'Tenant 2',
         headline: 'Another account, another skin.',
-        blurb: 'The same kernel without our storefront and, at the limit, without our checkout.',
+        blurb: 'The same kernel without our storefront and, on the totem, without our checkout.',
       },
     },
     faces: {
       'forgeco/forge': {
-        badge: 'Reference',
         blurb: 'A complete shop with 2,777 products → 44,399 SKUs.',
         cta: 'Open the store',
       },
       'forgeco/outlet': {
-        badge: 'Second shop',
         blurb: 'Multi-store: 55 products of the same catalogue, its own theme and its own prices.',
         cta: 'Open the outlet',
       },
       'forgecafe/cafe': {
-        badge: 'Forked storefront',
         blurb:
           'Another storefront but the same checkout, with a repository and an image of its own.',
         cta: 'Open the shop',
       },
       'forgecafe/balcao': {
-        badge: 'Totem',
         blurb: 'The counter totem: an application of its own, talking straight to the port.',
         cta: 'Open the totem',
       },
@@ -390,11 +390,7 @@ export const HUB: Record<Lang, HubStrings> = {
   },
   es: {
     headline: ['Dos tenants.', 'Cuatro tiendas.', 'Dos admins.'],
-    lede: [
-      'Cada tenant es una cuenta aislada: base de datos, catálogo, pedidos y acceso propios. Pero el mismo ',
-      'kernel',
-      '.',
-    ],
+    headlineAccent: '¡Mismo kernel!',
     adminRow: 'Admin del tenant',
     hereNote: 'Esta ventana está en una dirección que esta demo no publica:',
     hereCta: 'entrar de todos modos',
@@ -412,27 +408,23 @@ export const HUB: Record<Lang, HubStrings> = {
         eyebrow: 'Café',
         badge: 'Tenant 2',
         headline: 'Otra cuenta, otra piel.',
-        blurb: 'El mismo kernel sin nuestra tienda y, en el límite, sin nuestro checkout.',
+        blurb: 'El mismo kernel sin nuestra tienda y, en el totem, sin nuestro checkout.',
       },
     },
     faces: {
       'forgeco/forge': {
-        badge: 'Referencia',
         blurb: 'Una tienda completa con 2.777 productos → 44.399 SKUs.',
         cta: 'Abrir la tienda',
       },
       'forgeco/outlet': {
-        badge: 'Segunda tienda',
         blurb: 'Multi-tienda: 55 productos del mismo catálogo, tema y precios propios.',
         cta: 'Abrir el outlet',
       },
       'forgecafe/cafe': {
-        badge: 'Storefront forkeado',
         blurb: 'Otro storefront pero el mismo checkout, repositorio e imagen propios.',
         cta: 'Abrir la tienda',
       },
       'forgecafe/balcao': {
-        badge: 'Totem',
         blurb: 'Totem de mostrador: una aplicación propia hablando directo con la puerta.',
         cta: 'Abrir el totem',
       },

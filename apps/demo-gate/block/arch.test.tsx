@@ -117,3 +117,54 @@ for (const lang of LANGS) {
     expect(text).toContain(t.infraParts);
   });
 }
+
+// ★★★ THE ACCENT OF THE SHOE TENANT IS GRADED AGAINST THE ARTBOARD, exactly like this screen's words are
+// graded against `seed/box.json`. Everything else in this file asks "does the screen say what the box
+// declares"; nothing asked "does it look like the drawing", so a pass that recoloured one file and not the
+// other would have left the screen and its truth disagreeing in silence.
+const DESIGN_PATH = join(process.cwd(), 'design-base', 'gate.dc.html');
+const design = readFileSync(DESIGN_PATH, 'utf8');
+const css = readFileSync(join(process.cwd(), 'block', 'arch.module.css'), 'utf8');
+
+/** The declarations of one rule of a stylesheet, by selector — so a colour is asserted WHERE it is set rather
+ *  than anywhere in the file. A selector that is not there THROWS: an absent rule must never read as an
+ *  absent colour. ⚠️ Five lines carried twice (`hub.test.tsx` has the same) rather than imported from the
+ *  other suite: importing a test module re-registers its tests inside this one, measured at +24 duplicated
+ *  cases here, and a shared helper is not worth a source file this app would ship to say it. */
+function rule(sheet: string, selector: string): string {
+  const at = sheet.indexOf(`${selector} {`);
+  if (at < 0) throw new Error(`${selector} is not a rule of this stylesheet`);
+  return sheet.slice(at, sheet.indexOf('}', at));
+}
+
+test('⛔ the design this colour rule grades against is really the gate artboard', () => {
+  expect(design.length, `${DESIGN_PATH} is empty`).toBeGreaterThan(2000);
+  expect(design, 'this is not the gate artboard').toContain(ARCH.pt.title);
+});
+
+test('★★ the shoe tenant wears the artboard’s TERRACOTTA — border, label, admin block — on both sides', () => {
+  // The strong orange used three times around one card made the shoe tenant shout over the coffee tenant
+  // beside it, which is a false claim on a screen whose whole point is that the two are the same kernel.
+  expect(design, 'the artboard does not outline the shoe panel').toContain(
+    'border:1px solid rgba(232,161,114,.35)',
+  );
+  expect(design).toContain(`color:#E8A172">${ARCH.pt.tenantShoes}<`);
+  expect(design, 'the artboard does not fill the shoe admin block').toContain(
+    'background:rgba(232,161,114,.12)',
+  );
+  expect(design, 'the artboard’s admin glyph is not the accent').toContain('stroke="#E8A172"');
+  expect(rule(css, '.tenantShoes')).toContain('rgba(232, 161, 114, 0.35)');
+  expect(rule(css, '.labelShoes')).toContain('#e8a172');
+  expect(rule(css, '.adminShoes')).toContain('rgba(232, 161, 114, 0.12)');
+  expect(rule(css, '.iconShoes')).toContain('#e8a172');
+  // ⛔ AND THE STRONG ORANGE IS ON NEITHER SIDE — asserted WHERE it was, because `#C2410C` is still the
+  // port's dot on this same screen and the wordmark's dot on the other one.
+  for (const selector of ['.tenantShoes', '.labelShoes', '.adminShoes', '.iconShoes']) {
+    const declarations = rule(css, selector).toLowerCase();
+    expect(declarations, `${selector} is still the strong orange`).not.toContain('194, 65, 12');
+    expect(declarations, `${selector} is still the strong orange`).not.toContain('#c2410c');
+  }
+  expect(design.includes('rgba(194,65,12,'), 'the artboard still draws the strong orange').toBe(
+    false,
+  );
+});
