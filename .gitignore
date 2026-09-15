@@ -41,3 +41,8 @@ caddy/extra-local/coffee.caddy
 # ★★ WHAT A RED RUN LEFT BEHIND — container logs copied out by `capture_evidence` in bin/box-up.sh before
 # anything could recreate them. Never committed: a kernel log carries tokens, hostnames and buyer data.
 postmortem/
+
+# ★ ONE LOG PER RUN OF `bin/box-cycle.sh`, plus its lock. A ~90-minute cycle has no terminal, so its
+# whole transcript lands here — kernel addresses, hostnames and the tail of a seed included. Never committed,
+# for the same reason `postmortem/` is not.
+cycle-logs/

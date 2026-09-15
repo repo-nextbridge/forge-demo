@@ -204,7 +204,19 @@ test('★★★ the warm-less branch skips the WARMER and nothing else — the d
   assert.ok(closing > at, 'the warm branch never closes — re-read this guard before believing it.');
   const branch = BOX_UP.slice(at, closing + 4);
   assert.ok(branch.length > 200, 'the warm branch did not parse — re-read this guard before believing it.');
-  assert.match(branch, /warm-box\.mjs/, 'the branch this guard believes is the warming step does not run the warmer.');
+  // ★ pk40 — THE WARMER IS REACHED THROUGH `warm_every_tenant` NOW, not inline. The loop moved into a
+  //   function so that `--warm-only` (§0w of bin/box-up.sh) can drive the same one: the scheduled cycle warms
+  //   AFTER the promotion, because a promotion `--force-recreate`s every front and throws earlier warmth away
+  //   with the container. So the branch is graded on calling it, and the function is graded on being the only
+  //   thing that runs the warmer — that second half is bin/reset-complete.guard.mjs's.
+  // ⚠️ LINE-ANCHORED, AND THE COMMENT ABOVE THE CALL IS WHY: it names the function, so a loose match stayed
+  //   green with the call itself deleted (measured by sabotage while writing this).
+  assert.match(branch, /^warm_every_tenant$/m, 'the branch this guard believes is the warming step does not run the warmer.');
+  assert.match(
+    BOX_UP,
+    /warm_every_tenant\(\) \{[\s\S]*?warm-box\.mjs/,
+    'warm_every_tenant does not run bin/warm-box.mjs, so the branch above calls something that is not the warmer.',
+  );
   assert.match(branch, /skip 14 "\$WARM_SKIP_WHY"/, 'the skip is not DECLARED — a step dropped without `skip` is a step the roteiro cannot mention.');
   assert.ok(
     !branch.includes('prove-doors.mjs'),

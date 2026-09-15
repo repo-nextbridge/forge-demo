@@ -61,8 +61,28 @@ test('★★ each of the three is actually CALLED, through host_node, from the b
   }
 });
 
+// ★★ pk40 — THE WARMING LOOP IS A FUNCTION NOW, AND READING THE STEP'S REGION STOPPED BEING ENOUGH.
+// `bin/box-up.sh` gained `--warm-only` (§0w): the same warming, on a box that is already standing, so that
+// the scheduled cycle can warm AFTER the promotion — a promotion `--force-recreate`s every front, so warmth
+// taken before it dies with the container. The loop has ONE copy, `warm_every_tenant`, called by step 14 and
+// by that mode.
+//
+// ⚠️ AND RE-POINTING THIS FOUND THE TEST BELOW WAS ALREADY VACUOUS. It read the slice from `say '14 ·'` to
+// `say '15 ·'`, which CONTAINS 14-bis — whose loop is the same shape over the same variables. Measured while
+// making this change: with the whole of step 14 removed, every assertion in it still passed, because it was
+// reading the door prover. It reads the loop itself now, and a step that stops calling it is a separate red.
+const warmLoop = () => {
+  const start = SRC.indexOf('warm_every_tenant() {');
+  assert.ok(start > 0, 'bin/box-up.sh no longer defines warm_every_tenant — the warming loop had one copy and two callers, and this guard reads that copy.');
+  const end = SRC.indexOf('\n}\n', start);
+  assert.ok(end > start, 'warm_every_tenant never closes — re-read this guard before believing it.');
+  const body = SRC.slice(start, end);
+  assert.ok(body.length > 400, `warm_every_tenant parsed to ${body.length} characters — too short to be the loop this guard grades.`);
+  return body;
+};
+
 test('★★ warming is once per tenant, with that tenant\'s own token — the read face resolves it from the credential', () => {
-  const block = SRC.slice(at("say '14 ·"), at("say '15 ·"));
+  const block = warmLoop();
   assert.match(block, /for t in \$TENANTS/, 'the warming step does not loop over the tenants');
   assert.match(
     block,
@@ -72,8 +92,27 @@ test('★★ warming is once per tenant, with that tenant\'s own token — the r
   assert.match(block, /--api "\$FORGE_PUBLIC_ORIGIN"/, 'the warming step does not warm the address the box publishes itself at');
 });
 
+test('★★★ pk40 — and step 14 still CALLS it, with no second copy of the loop anywhere', () => {
+  // A function nobody invokes is decoration, and a function invoked from a copy of itself is the drift this
+  // extraction exists to make impossible: the rule for the name of a tenant's secret already has two authors.
+  const step = SRC.slice(at("say '14 ·"), at("say '14-bis ·"));
+  assert.match(step, /^warm_every_tenant$/m, 'step 14 no longer calls warm_every_tenant — the birth stopped warming, or it warms through a copy.');
+  const invocations = [...SRC.matchAll(/host_node "\$HERE\/bin\/warm-box\.mjs"/g)];
+  assert.equal(
+    invocations.length,
+    1,
+    `bin/box-up.sh runs bin/warm-box.mjs from ${invocations.length} places. There is one loop and two callers ` +
+      'of it on purpose; a second invocation means the loop was copied, and a copy is what drifts on the day ' +
+      'a tenant is added to seed/box.json.',
+  );
+  // And the mode that exists to drive it drives THE SAME ONE.
+  const mode = SRC.slice(SRC.indexOf('if [ "$MODE" = warm ]; then'));
+  assert.ok(mode.length > 100, 'bin/box-up.sh has no `--warm-only` mode — the scheduled cycle has no way to warm a box after promoting it.');
+  assert.match(mode.split('\nfi\n')[0], /^  warm_every_tenant$/m, '`--warm-only` does not call warm_every_tenant.');
+});
+
 test('★★★ warming stopped being a GATE and did not stop RUNNING — the three ways that could have gone wrong', () => {
-  const block = SRC.slice(at("say '14 ·"), at("say '14-bis ·"));
+  const block = warmLoop();
   // 1 · not deleted, not silenced, not `|| true`d. What was asked for is a report, not the step going away.
   assert.doesNotMatch(
     block,

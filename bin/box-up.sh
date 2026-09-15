@@ -2,7 +2,8 @@
 # ★★ THE ONE COMMAND — a virgin box becomes this demo's bench. EXECUTE it; do not source it.
 #
 #   bash bin/box-up.sh                     birth: the fifteen steps below, on `localhost`
-#   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14 (see below — a cron warms later)
+#   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14 (see below; --warm-only warms later)
+#   bash bin/box-up.sh --warm-only         ONLY step 14, on a box that is already standing (§0w)
 #   bash bin/box-up.sh --plan [--no-warm]  print the roteiro this invocation would run, and do nothing
 #   bash bin/box-up.sh --promote <where>   PROMOTION: point the born box at an address (A15, §B5)
 #                                          <where> = `tailnet` · `localhost` (the way back) · a hostname
@@ -15,11 +16,13 @@
 # tailnet promotes with `--promote demo.example.com`, and the tailnet is one DESTINATION among them.
 #
 # ★★ pk24/§B1 — AND THE BIRTH CAN BE ASKED NOT TO WARM. Step 14 used to run unconditionally, so a birth in a
-# pipeline burned ~1h10 of warming it did not ask for, while the online run belongs on an overnight cron.
-# `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
+# pipeline burned ~1h10 of warming it did not ask for, while a scheduled reset wants the warming AFTER the
+# promotion (§0w). `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
 # proving the box is standing is not warmth (it exists because sign-in was dead on three of four shops while
 # every other step was green). The warmer stays callable on its own, exactly as it always was:
-# `FORGE_OPERATOR_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>`.
+# `FORGE_OPERATOR_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>` — and `--warm-only` is that
+# same loop driven by THIS script, which is what `bin/box-cycle.sh` uses so that nothing outside this file has
+# to know how a tenant's token is named.
 #
 # ★ AND THE RUN SAYS WHICH STEPS IT RAN AND WHICH IT SKIPPED, BY NAME AND WITH THE REASON — see `BIRTH_STEPS`
 # below and `bin/roteiro.mjs`. A step that is skipped and not mentioned is a new lie in the summary; a step
@@ -108,7 +111,8 @@ cd "$HERE" || exit 1
 # destination is a refusal that NAMES the destinations, not a fall-through to a default.
 USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan]
          bash bin/box-up.sh --promote <tailnet|localhost|hostname>
-         bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)'
+         bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)
+         bash bin/box-up.sh --warm-only                  step 14 alone, on a box already standing'
 MODE=birth
 PROMOTE_TO=''
 WARM=1
@@ -127,14 +131,20 @@ while [ $# -gt 0 ]; do
     --tailnet)   MODE=promote; PROMOTE_TO=tailnet;   shift ;;
     --localhost) MODE=promote; PROMOTE_TO=localhost; shift ;;
     --no-warm)   WARM=0; shift ;;
+    # ★★ pk40 — THE COMPLEMENT OF `--no-warm`, AND IT IS A MODE RATHER THAN A FLAG for the same reason
+    # `--promote` is: it runs one block and leaves. See §0w, just below the promotion, for why the scheduled
+    # cycle needs it and why the loop it drives may not be copied into the script that schedules it.
+    --warm-only) MODE=warm; shift ;;
     --plan)      PLAN_ONLY=1; shift ;;
     *) printf '\n[box-up] unknown argument "%s".\n  %s\n\n' "$1" "$USAGE" >&2; exit 1 ;;
   esac
 done
-if [ "$MODE" = promote ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
-  # Both flags are about the BIRTH's step list, and the promotion has no step list. Accepting them silently
+if [ "$MODE" != birth ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
+  # Both flags are about the BIRTH's step list, and neither other mode has one. Accepting them silently
   # would answer a question nobody asked — the operator asked for something this invocation cannot do.
-  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote runs the promotion and nothing else.\n  %s\n\n' "$USAGE" >&2
+  # ⚠️ `--warm-only` is covered by the same line and not by a second one: it is the step list reduced to a
+  # single step, so "do not warm" and "plan the birth" are exactly as meaningless there as in a promotion.
+  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote and --warm-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
   exit 1
 fi
 
@@ -172,7 +182,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 
 # ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
 # string, so a plan cannot promise a reason the run does not give.
-WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later with `bash bin/box-up.sh --warm-only`, which is this same step on a box that is already standing (and the fourth gesture of bin/box-cycle.sh, after the promotion — a promotion recreates every front, so warmth taken before it is thrown away with the container). The warmer stays callable on its own too, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
 #
 # ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
 # a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
@@ -1342,6 +1352,85 @@ EOF
   exit $?
 fi
 
+# ── 0w · ★★★ `--warm-only` · THE WARMING STEP ALONE, ON A BOX THAT IS ALREADY STANDING (pk40) ───────────────
+#
+# ★ WHY THIS IS A MODE OF THIS SCRIPT AND NOT A LOOP IN THE SCRIPT THAT SCHEDULES IT. The scheduled cycle
+# (`bin/box-cycle.sh`) is four gestures — tear down, be born, be promoted, be warmed — and the fourth one has
+# to warm ONCE PER TENANT WITH THAT TENANT'S OWN TOKEN, because the read face that lists a tenant's stores
+# resolves the tenant from the CREDENTIAL. Two things are needed for that and both live here: the tenant list
+# (`$TENANTS`, read from `seed/box.json`) and the RULE FOR THE NAME OF A TENANT'S SECRET (`secret_name_for` —
+# the first tenant keeps the unsuffixed name, the others are suffixed, which is a rule with two authors
+# already). A wrapper that re-implemented either would be a third author of a rule that drifts in silence,
+# and it would drift on the day a tenant is added to `seed/box.json`.
+#
+# ⇒ So the wrapper asks for `--warm-only`, and everything it would have had to know stays in this file. The
+# loop itself has ONE copy — `warm_every_tenant` below — called from here and from step 14.
+#
+# ★★ AND WHY THE CYCLE WARMS *AFTER* THE PROMOTION, WHICH IS THE WHOLE REASON THIS MODE EXISTS.
+# Read the promotion block above, at `recreating the services that read the environment`: it ends with
+# `dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem`. Every front
+# that HOLDS the warmth — the route cache, the ISR entries, the image derivatives — is a container that is
+# destroyed and replaced there. So warmth acquired before a promotion is thrown away BY the promotion, and a
+# cycle that warmed at step 14 and promoted afterwards would hand over a box as cold as one that never warmed
+# at all, having paid ~1h10 for it. The second reason is the older one and it is still true: on the first
+# promotion `FORGE_PUBLIC_ORIGIN` is only correct AFTER the promotion has written it, so warming before it
+# warms an address no shopper types.
+#
+# ⚠️ THIS MODE IS NOT A BIRTH AND DOES NOT PRETEND TO BE ONE. It runs one step, it stamps no roteiro, and its
+# exit code carries exactly what step 14's carries and nothing else: warmth is a REPORT (see step 14 for the
+# three measurements that took it out of the birth's exit code), and a store `seed/box.json` DECLARES that
+# the box does not hold is still red. It does not open the doors (14-bis), it does not grade the
+# configuration (15) and it does not say the box is standing — the birth that ran before it says all three.
+warm_every_tenant() {
+  local t tokvar tokval
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    [ -n "$tokval" ] || die "no \$$tokvar in the environment for the warming step."
+    # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if`: this step answers 0 (warm), 1 (a report — not fully warm),
+    # 2 (it could not ask) and 3 (a store this repository declares was never built), and an `if` can only tell
+    # zero from non-zero — which would fold "the birth did not build a store" into "the box is a bit cold" and
+    # lose the one red that is left.
+    FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+    case "$?" in
+      0) note "$t warm" ;;
+      1)
+        COLD="$COLD $t"
+        note "⚠ $t did NOT come out fully warm. REPORTED, NOT FATAL — the ⚠ lines above name every url that did
+     not answer and every one that was never visited. Read them before you believe either." ;;
+      2)
+        WARM_UNKNOWN="$WARM_UNKNOWN $t"
+        note "⚠ $t could not be ASKED about warmth — nothing was learned; the ⚑ line above says why." ;;
+      3)
+        MISSING_STORE="$MISSING_STORE $t"
+        note "⛔ $t is MISSING a store this repository declares — the ✗ line above names it." ;;
+      *)
+        WARM_UNKNOWN="$WARM_UNKNOWN $t"
+        note "⚠ the warming step itself ended with a status it does not define — nothing was learned about $t." ;;
+    esac
+  done
+}
+
+if [ "$MODE" = warm ]; then
+  COLD=''
+  WARM_UNKNOWN=''
+  MISSING_STORE=''
+  say 'the re-warm · warming every store the port says has a public page, on a box that is already standing'
+  note "origin    $FORGE_PUBLIC_ORIGIN"
+  note 'this is step 14 and nothing else — no door is opened and no configuration is graded here.'
+  warm_every_tenant
+  # ⚠️ THE SAME THREE SENTENCES THE BIRTH PRINTS, AND THE SAME SPLIT: two of them are reports and one is a
+  # red. Kept short here on purpose — the long form is in the birth's closing block, and two long copies of
+  # one paragraph is how the reasoning in this repository goes out of date.
+  [ -z "$COLD" ] || printf '\n[box-up] ⚠️  REPORT — THE RE-WARM DID NOT LEAVE%s FULLY WARM. Not a failure: warmth reports, it\n         does not grade (step 14 says why). The ⚠ lines above name every url.\n\n' "$COLD" >&2
+  [ -z "$WARM_UNKNOWN" ] || printf '\n[box-up] ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: the warmer could not ASK. That is a different\n         sentence from "they are cold", and nothing above claims either.\n\n' "$WARM_UNKNOWN" >&2
+  if [ -n "$MISSING_STORE" ]; then
+    printf '\n[box-up] ⛔ %s IS MISSING A STORE THIS REPOSITORY DECLARES. That is not warmth — the birth did not\n         build it, and this run only noticed. The ✗ line above names the store.\n\n' "$MISSING_STORE" >&2
+    exit 1
+  fi
+  exit 0
+fi
+
 # ── 0c · ★★ THE DATASET THIS BOX WOULD SEED FROM IS THE ONE ITS IMAGES WERE BUILT WITH (pk7·D2) ────────────
 #
 # ⛔ MEASURED ON THE BIRTH OF 2026-09-03. `.env` pointed at `…/wt-v03/t-forno/instances/demo/dataset`, a
@@ -2278,7 +2367,8 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # keeps the two sentences from drifting apart again.
 #
 # ONCE PER TENANT, with that tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face
-# that lists a tenant's stores resolves the tenant from the CREDENTIAL.
+# that lists a tenant's stores resolves the tenant from the CREDENTIAL. The loop that does it is
+# `warm_every_tenant` (§0w), because `--warm-only` drives the same one.
 #
 # ★ pk21 — WHICH STORES HAVE A PAGE IS THE PORT'S ANSWER, NOT A LIST IN THIS REPOSITORY. The same read
 # already carries `storefront_enabled` (derived from the store's `status`), and `seed/box.json` used to
@@ -2290,40 +2380,25 @@ COLD=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
 # ★★ pk24/§B1 — AND THIS IS THE ONE STEP THE BIRTH CAN BE ASKED TO LEAVE OUT, for the reason the header gives:
-# it costs ~1h10 and it grades nothing — it reports — so a pipeline that is
-# born at 03:00 and warmed by a cron at 04:00 should not pay for it twice. ⛔ THE SKIP IS DECLARED, NOT
+# it costs ~1h10 and it grades nothing — it reports — so a run that is going to be warmed LATER, by
+# `--warm-only`, should not pay for it twice.
+# ⚠️ "LATER" MEANS LATER IN THE SAME RUN, AND THIS LINE USED TO SAY A CLOCK INSTEAD ("born at 03:00 and
+# warmed at 04:00"). A second schedule is not a dependency: on a night the seed runs long, the warming fires
+# against a box that is still being born, warms nothing and reports green. The scheduled cycle is therefore
+# ONE run with four gestures in order (`bin/box-cycle.sh`), and the fourth of them is `--warm-only`.
+# ⛔ THE SKIP IS DECLARED, NOT
 # SILENT: `skip` puts it in the roteiro with its reason, and the roteiro reds on a step that simply vanishes.
 # ⛔ AND 14-bis IS NOT SKIPPED WITH IT — proving the doors open is a fact about the box, not about heat.
 if [ "$WARM" != 1 ]; then
   skip 14 "$WARM_SKIP_WHY"
 else
 say '14 · warming every store the port says has a public page, and REPORTING what came back (warmth does not grade the birth)'
-for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-  eval "tokval=\${$tokvar:-}"
-  [ -n "$tokval" ] || die "no \$$tokvar in the environment for the warming step."
-  # ⚠️ THE STATUS IS CAPTURED, NOT TESTED WITH `if`: this step answers 0 (warm), 1 (a report — not fully warm),
-  # 2 (it could not ask) and 3 (a store this repository declares was never built), and an `if` can only tell
-  # zero from non-zero — which would fold "the birth did not build a store" into "the box is a bit cold" and
-  # lose the one red that is left.
-  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
-  case "$?" in
-    0) note "$t warm" ;;
-    1)
-      COLD="$COLD $t"
-      note "⚠ $t did NOT come out fully warm. REPORTED, NOT FATAL — the ⚠ lines above name every url that did
-     not answer and every one that was never visited. Read them before you believe either." ;;
-    2)
-      WARM_UNKNOWN="$WARM_UNKNOWN $t"
-      note "⚠ $t could not be ASKED about warmth — nothing was learned; the ⚑ line above says why." ;;
-    3)
-      MISSING_STORE="$MISSING_STORE $t"
-      note "⛔ $t is MISSING a store this repository declares — the ✗ line above names it." ;;
-    *)
-      WARM_UNKNOWN="$WARM_UNKNOWN $t"
-      note "⚠ the warming step itself ended with a status it does not define — nothing was learned about $t." ;;
-  esac
-done
+# ★ THE LOOP ITSELF IS `warm_every_tenant`, DEFINED IN §0w — one copy, two callers (this step and
+# `--warm-only`, which is how the scheduled cycle warms a box AFTER promoting it). Once per tenant with that
+# tenant's own token, for the same reason steps 3, 6, 8 and 11 are: the read face that lists a tenant's
+# stores resolves the tenant from the CREDENTIAL. ⛔ Copying it into a second place — here or in the script
+# that schedules the cycle — is how the rule for a tenant's secret name gets a third author.
+warm_every_tenant
 fi
 
 # ── 14-bis · ★★★ EVERY DOOR OF EVERY STORE, OPENED ──────────────────────────────────────────────────────────
