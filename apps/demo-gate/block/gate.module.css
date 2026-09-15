@@ -12,16 +12,20 @@
  * ── WHERE EACH VALUE COMES FROM (`design-base/gate.dc.html`) ───────────────────────────────────────────────
  *   :24  the ground                 `#0F1011`, padding `clamp(24px,4vw,56px) clamp(16px,3vw,32px)`
  *   :25  the column                 `max-width: 1080px`, the `dmIn` entrance
- *   :27  the masthead               `flex-end` + `space-between`: the lede's LAST line sits on the headline's
- *   :29  the wordmark               20px, the dot in `#C2410C`
- *   :30  the headline               `clamp(26px,3.6vw,40px)`, three lines, `max-width: 14ch` as the measure
- *   :31  the lede                   13.5px, `max-width: 330px`
- *   :107 the notice + the selector  12px, `#6E6A63`
- *   :117 the way back               13px, `#8A8478`
+ *   :27  the masthead               the wordmark over the headline, and nothing beside them
+ *   :28  the wordmark               20px, the dot in `#C2410C`
+ *   :29  the headline               `clamp(26px,3.6vw,40px)`, three declared lines, the 4th clause accented
+ *   :92  the notice + the selector  12px, `#6E6A63`
+ *   :103 the way back               13px, `#8A8478`
  *
- * Responsive with no breakpoint of its own: the masthead and the foot are `flex-wrap`, the cards are an
- * `auto-fit` grid, and both come straight from the design. Measured at 400px in a headless render — the cards
- * stack, nothing overflows. The `@media 760px` this file used to carry styled the hero that is gone. */
+ * ⛔ THE LEDE IS GONE FROM THIS FILE BECAUSE IT IS GONE FROM THE SCREEN. A 13.5px paragraph explaining what a
+ * tenant is stood opposite the headline, which is why the masthead was a `space-between` row at all; the
+ * headline's fourth clause says it now. The row went with the second thing it held, rather than staying as a
+ * one-child flex container that reads like an unfinished layout.
+ *
+ * Responsive with no breakpoint of its own: the foot is `flex-wrap`, the cards are an `auto-fit` grid, and
+ * both come straight from the design. Measured at 400px in a headless render — the cards stack, the title
+ * keeps its three declared lines, nothing overflows. */
 
 .backdrop {
   min-height: 100vh;
@@ -53,18 +57,13 @@
   }
 }
 
-/* ── the masthead: the wordmark and the headline on the left, the lede on the right ──────────────────────
+/* ── the masthead: the wordmark, and the headline under it ───────────────────────────────────────────────
  * ⚠️ NOT `.head`. The tenant CARD's header is `.head` in `hub.module.css`, and while two CSS modules cannot
  * collide in a build, one name meaning two things in one screen is how a reader — and a harness that renders
  * both sheets together to compare against the design — ends up drawing the card's border under the page's
  * title. Measured exactly that way. */
 
 .masthead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
   margin-bottom: clamp(20px, 3vw, 30px);
 }
 
@@ -86,12 +85,17 @@
   color: #8a8478;
 }
 
-/* ★ THE HEADLINE IS THE COUNT, AND IT IS THREE LINES BECAUSE IT IS THREE CLAUSES — one per line, each a span.
- * The design gets its three lines from `max-width: 14ch` over a sentence whose numbers are spelled out
- * ("Dois tenants. Quatro lojas. Dois admins."). This screen DERIVES those numbers and prints them as
- * numerals, so the same sentence is shorter and the same measure broke it mid-clause ("2 tenants. 4 / lojas.
- * 2 admins.") — measured in a headless render, which is the only place it shows. Declaring the clauses is
- * what makes the shape survive any count and any of the three languages. The measure stays as a ceiling.
+/* ★ THE HEADLINE IS THE COUNT, AND ITS THREE LINES ARE DECLARED — one `span` per line, the fourth clause
+ * riding the third in the accent. Each line is a block, so the break is the screen's own in all three
+ * languages instead of wherever a character measure happens to land: the last line is the longest of the
+ * three in every language ("Dois admins. Mesmo kernel!", 26 chars; "¡Mismo kernel!" makes the Spanish one
+ * 26 too), and a measure narrow enough to break the short lines nicely cuts that one mid-clause.
+ *
+ * ⚠️ WHICH IS WHY THE CEILING IS 28ch AND NOT THE ARTBOARD'S 14. The artboard got its lines from
+ * `max-width: 14ch` over spelled-out numbers; declared lines do not need that measure, and leaving it there
+ * would re-break the last line under the screen itself. 28ch is a guard against a runaway clause, not the
+ * shape — measured at 400px in a headless render, where the last line still fits on one row.
+ *
  * Theme typography (Urbanist), inherited from the storefront body — the design sets no display face here. */
 .title {
   margin: 14px 0 0;
@@ -100,22 +104,15 @@
   letter-spacing: -0.03em;
   font-weight: 700;
   color: #ffffff;
-  max-width: 14ch;
+  max-width: 28ch;
 }
 .titleLine {
   display: block;
 }
-
-.lede {
-  margin: 0;
-  max-width: 330px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: #8a8478;
-  text-wrap: pretty;
-}
-.ledeWord {
-  color: #ffffff;
+/* The one clause of the headline that is not white — the brand orange, the same `#C2410C` as the wordmark's
+ * dot and the tenant chip's word. AA for large text on this ground (measured 3.72:1, floor 3.0). */
+.titleAccent {
+  color: #c2410c;
   font-weight: 700;
 }
 

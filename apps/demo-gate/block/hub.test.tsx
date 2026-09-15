@@ -271,8 +271,104 @@ test('★★★ every PT sentence on a shop card is the DESIGN’s, word for wor
   ).toBe(true);
 });
 
-test('★★ the headline is the design’s sentence too, split into its three lines', () => {
-  expect(design).toContain(HUB.pt.headline.join(' '));
+// ★ THE TENANT CARD'S OWN TWO SENTENCES ARE THE ARTBOARD'S TOO, and this rule was the half that was missing:
+// only the shop cards were held against the file, so the card's headline and the sentence under it could be
+// rewritten on either side alone. They are what says what a tenant IS, now that the masthead's lede is gone.
+test('★★★ and so is every PT sentence on a TENANT card', () => {
+  for (const tenant of GATE_TENANTS) {
+    const copy = must(HUB.pt.tenants[tenant.id], `copy for the declared tenant ${tenant.id}`);
+    for (const said of [copy.eyebrow, copy.badge, copy.headline, copy.blurb]) {
+      expect(
+        design.includes(said),
+        `the design does not carry "${said}" — the card for ${tenant.id} drifted from the artboard`,
+      ).toBe(true);
+    }
+  }
+});
+
+/** The declarations of one rule of a stylesheet, by selector — so a colour is asserted WHERE it is set rather
+ *  than anywhere in the file. A selector that is not there THROWS: an absent rule must never read as an absent
+ *  colour. ⚠️ `arch.test.tsx` carries the same five lines rather than importing them: importing a test module
+ *  re-registers its tests inside the importer, which is a suite counting the same cases twice. */
+function rule(sheet: string, selector: string): string {
+  const at = sheet.indexOf(`${selector} {`);
+  if (at < 0) throw new Error(`${selector} is not a rule of this stylesheet`);
+  return sheet.slice(at, sheet.indexOf('}', at));
+}
+
+// ★★★ AND THE COLOURS ARE GRADED THE SAME WAY THE WORDS ARE. Every rule above holds a SENTENCE against the
+// artboard, which is why a pass that recoloured the screen could change one side alone and stay green. The
+// tenant chip is the piece this one moved: an orange outline became a solid light ground.
+test('★★ the tenant chip is the artboard’s chip, on BOTH sides — and the outline it replaced is on neither', () => {
+  const css = readFileSync(join(process.cwd(), 'block', 'hub.module.css'), 'utf8');
+  expect(design, 'the artboard does not draw the first tenant’s chip').toContain(
+    'color:#0F1011;background:#E7E4DE;padding:4px 9px">Tenant 1<',
+  );
+  const badge = rule(css, '.badge');
+  expect(badge).toContain('color: #0f1011;');
+  expect(badge).toContain('background: #e7e4de;');
+  expect(badge, 'the chip is an outline again').not.toContain('border');
+  expect(css.includes('rgba(194, 65, 12, 0.4)'), 'the stylesheet still draws the outline').toBe(
+    false,
+  );
+  expect(design.includes('rgba(194,65,12,.4)'), 'the artboard still draws the outline').toBe(false);
+  // ⚠️ THE LIGHT CARD KEEPS ITS OUTLINE, and that is not an oversight: a near-white chip on `#F3EDE3` would
+  // be a chip nobody can see. The rule follows the card's TONE, exactly like every other rule in this sheet.
+  expect(rule(css, '.tenantLight .badge')).toContain('border: 1px solid rgba(47, 59, 48, 0.35);');
+  expect(design).toContain('border:1px solid rgba(47,59,48,.35);padding:4px 9px">Tenant 2<');
+});
+
+test('★★ the headline is the design’s sentence too — four clauses, three declared lines', () => {
+  // ⚠️ LINE BY LINE, not as one joined string: the artboard draws the break the screen declares (three
+  // `display:block` spans), so a join would only match a drawing that had left the break to a measure.
+  for (const line of HUB.pt.headline) expect(design).toContain(line);
+  expect(design).toContain(HUB.pt.headlineAccent);
+  // …and the fourth clause is the accented one THERE as well, not merely present somewhere on the artboard.
+  expect(
+    design.includes(
+      `<strong style="color:#C2410C;font-weight:700">${HUB.pt.headlineAccent}</strong>`,
+    ),
+    'the design does not draw the fourth clause in the accent',
+  ).toBe(true);
+});
+
+test('⛔ what the second pass took off this screen is gone from BOTH sides, in all three languages', () => {
+  // The screen was read as too crowded, and three things went: the masthead's lede, the four shop chips, and
+  // the orange outline of the tenant chip. A slice that changed the code and left the artboard — or the other
+  // way round — would leave this screen and its truth disagreeing in silence, which is the whole reason the
+  // rules above grade one against the other. So each of the three is named on BOTH sides here.
+  const dead = [
+    'Cada tenant é uma conta isolada',
+    'Each tenant is an isolated account',
+    'Cada tenant es una cuenta aislada',
+    'Referência',
+    'Segunda loja',
+    'Storefront forkado',
+    'Reference',
+    'Second shop',
+    'Forked storefront',
+    'Referencia',
+    'Segunda tienda',
+    'Storefront forkeado',
+  ];
+  for (const line of dead) {
+    expect(design.includes(line), `the artboard still draws "${line}"`).toBe(false);
+  }
+  const { container } = render(<GateHub lang="pt" here="x" dismiss={noop} />);
+  expect(
+    container.querySelector('[class*="faceBadge"]'),
+    'a shop card grew its chip back',
+  ).toBeNull();
+  // ⚠️ AND THE CHIP IS GONE FROM THE COPY, not merely unrendered: a key nobody prints is a key somebody puts
+  // back on a screen. The type no longer has one, so this walks what the copy really carries.
+  for (const lang of LANGS) {
+    for (const [key, copy] of Object.entries(HUB[lang].faces)) {
+      expect(
+        Object.keys(copy).sort(),
+        `[${lang}] ${key} carries more than the sentence and the button`,
+      ).toEqual(['blurb', 'cta']);
+    }
+  }
 });
 
 test('★ the card prints that sentence, and asks nothing to get it', () => {

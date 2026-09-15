@@ -5,7 +5,7 @@
 // It used to be «no `@font-face` at all», and under it the H1 rode the theme's Urbanist and the design's serif
 // simply did not exist here. That was the right rule while the gate's first screen was a hero in one voice.
 // It stopped being the right rule when that screen became the 10/09 hub: there the SECOND tenant is a coffee
-// brand whose card — its headline and its two wordmarks (`design-base/gate.dc.html:79,84,93`) — is drawn in a
+// brand whose card — its headline and its two wordmarks (`design-base/gate.dc.html:68,73,79`) — is drawn in a
 // serif, and that contrast is the card's whole argument. A rule that forbids a font forbids the design.
 //
 // ⚠️ SO WHAT THE RULE PROTECTS HAD TO BE SAID PROPERLY, because «no @font-face» was never the point — the
