@@ -83,7 +83,7 @@ em "a caixa nunca mais é resetada", sem nada dizendo por quê.
 **LOG.** Uma corrida de ~90 min não tem terminal. Cada corrida escreve **um** log carimbado em `cycle-logs/`,
 e o caminho é impresso **antes** de o trabalho começar e de novo com o veredicto. Quando a saída padrão não é
 um terminal — que é o caso de um agendador — o corpo vai para o arquivo e só o cabeçalho e o veredicto chegam
-à saída do agendador: o e-mail que ele manda é curto e diz onde está o resto. `cycle-logs/` é gitignored (o
+à saída do agendador: o aviso que um agendador emite por conta própria fica curto e diz onde está o resto. `cycle-logs/` é gitignored (o
 log carrega endereços, hostnames e a cauda do seed).
 
 **NODE.** Um cron ou uma systemd unit herda um `PATH` mínimo e **não tem `node` nem `jq`**. `bin/require-node.sh`
