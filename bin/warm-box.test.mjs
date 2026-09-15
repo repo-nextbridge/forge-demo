@@ -533,7 +533,7 @@ async function runStep({
     encoding: 'utf8',
     env: {
       ...process.env,
-      FORGE_SEED_TOKEN: token,
+      FORGE_OPERATOR_TOKEN: token,
       FORGE_REVALIDATE_SECRET: secret,
       ...env,
     },

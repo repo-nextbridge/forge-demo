@@ -66,7 +66,7 @@ test('★★ warming is once per tenant, with that tenant\'s own token — the r
   assert.match(block, /for t in \$TENANTS/, 'the warming step does not loop over the tenants');
   assert.match(
     block,
-    /FORGE_SEED_TOKEN="\$tokval"/,
+    /FORGE_OPERATOR_TOKEN="\$tokval"/,
     'the warming step does not hand each tenant its own token — one token cannot speak for two tenants',
   );
   assert.match(block, /--api "\$FORGE_PUBLIC_ORIGIN"/, 'the warming step does not warm the address the box publishes itself at');

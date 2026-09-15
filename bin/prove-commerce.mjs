@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // THE COMMERCE PASS, RUN AGAINST ONE BOX — a harness, not a second seeder.
 //
-//   FORGE_SEED_TOKEN=… node bin/prove-commerce.mjs --api http://localhost:8100 --tenant forgeco
-//   FORGE_SEED_TOKEN=… node bin/prove-commerce.mjs --api http://localhost:8200 --tenant forgecafe
+//   FORGE_OPERATOR_TOKEN=… node bin/prove-commerce.mjs --api http://localhost:8100 --tenant forgeco
+//   FORGE_OPERATOR_TOKEN=… node bin/prove-commerce.mjs --api http://localhost:8200 --tenant forgecafe
 //
 // ⚠️ IT ADDS NO SEEDING LOGIC OF ITS OWN. Every decision and every write lives in `seed/commerce.mjs`, which
 // `bin/seed.mjs` will call in the ordinary run; this file only builds the port helpers and points them at a
@@ -34,9 +34,9 @@ const tenant = argOf('--tenant') ?? 'forgeco';
 // credential guard: if the token belongs to the other tenant, the read cannot show these handles and the run
 // stops. Deriving it from the same read would make the guard compare a list against itself.
 const expect = (argOf('--expect') ?? '').split(',').map((h) => h.trim()).filter(Boolean);
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 if (!token) {
-  process.stderr.write('[prove] FORGE_SEED_TOKEN is required\n');
+  process.stderr.write('[prove] FORGE_OPERATOR_TOKEN is required\n');
   process.exit(1);
 }
 

@@ -695,7 +695,7 @@ driver for `none`, o passo 13 imprime um no-op que **diz** que é no-op — e o 
 ★ **pk24/§B1 — e o nascimento agendado não precisa mais pagar o aquecimento.** `bash bin/box-up.sh --no-warm`
 tira o **passo 14** e **só** ele: o 14-bis (abrir toda porta de toda loja) continua rodando, porque provar que
 a caixa está de pé não é calor. O aquecedor continua chamável sozinho, que é exatamente o que um segundo cron
-faz: `FORGE_SEED_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> --api <origem>`.
+faz: `FORGE_OPERATOR_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> --api <origem>`.
 ⚠️ **O que se perde ao pular:** o passo 14 é o **único** que enxerga uma loja que `seed/box.json` declara e a
 caixa não tem (12 e 14-bis andam pelas lojas que a **porta** reporta). A corrida diz isso no roteiro dela.
 

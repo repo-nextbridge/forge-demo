@@ -19,7 +19,7 @@
 # `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
 # proving the box is standing is not warmth (it exists because sign-in was dead on three of four shops while
 # every other step was green). The warmer stays callable on its own, exactly as it always was:
-# `FORGE_SEED_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>`.
+# `FORGE_OPERATOR_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>`.
 #
 # ★ AND THE RUN SAYS WHICH STEPS IT RAN AND WHICH IT SKIPPED, BY NAME AND WITH THE REASON — see `BIRTH_STEPS`
 # below and `bin/roteiro.mjs`. A step that is skipped and not mentioned is a new lie in the summary; a step
@@ -168,7 +168,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 
 # ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
 # string, so a plan cannot promise a reason the run does not give.
-WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later, unchanged: `FORGE_SEED_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
 #
 # ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
 # a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
@@ -1292,7 +1292,7 @@ EOF
       continue
     fi
     # stdout carries the countable word; stderr is the reasoning, and it flows straight to the operator.
-    claim="$(FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" --tenant "$t" --api "$origin")"
+    claim="$(FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" --tenant "$t" --api "$origin")"
     case $? in
       2) note "⚑ \"$t\" could not be asked — see the [store-host] line above"; continue ;;
     esac
@@ -1306,7 +1306,7 @@ EOF
     address_state=unasked
     note "⚑ nothing could ask whether $origin is claimed in the directory — that is a fact about THIS RUN,"
     note "   not about the box, so it does not change the status. Ask it directly once the tokens are there:"
-    note "   FORGE_SEED_TOKEN=<seed token> node bin/store-host.mjs --tenant <tenant> --api $origin"
+    note "   FORGE_OPERATOR_TOKEN=<seed token> node bin/store-host.mjs --tenant <tenant> --api $origin"
   else
     address_state=absent
     say "⚠️ INCOMPLETE — the shop's address is not in the kernel's directory"
@@ -1705,7 +1705,7 @@ for t in $TENANTS; do
     continue
   fi
   out="$(mktemp)"
-  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/admin-access-key.mjs" \
+  if FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/admin-access-key.mjs" \
        --tenant "$t" --api "${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}" > "$out"; then
     if put_secret "$(secret_name_for "$t" access)" "$(tail -1 "$out" | tr -d '\r\n')"; then
       keys_filed=$((keys_filed + 1))
@@ -1730,10 +1730,10 @@ dc up -d --force-recreate admin >/dev/null 2>&1 || note '⚠️ the admin did no
 # ── 6 · the terrain, once per tenant ────────────────────────────────────────────────────────────────────────
 say '6 · seed-box (stores + settings, plus apps and freight for a non-dataset tenant, once per tenant)'
 for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-operator-token → FORGE_SEED_TOKEN
+  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"   # forge-operator-token → FORGE_OPERATOR_TOKEN
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment — step 3 filed it into .secrets; re-source env-source.sh."
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed-box.mjs" --tenant "$t" || die "seed-box failed for $t."
+  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/seed-box.mjs" --tenant "$t" || die "seed-box failed for $t."
 done
 
 # The counter's store id is only knowable now, and `compose.override.yml` refuses to interpolate without it.
@@ -1784,7 +1784,7 @@ for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment — step 3 filed it into .secrets; re-source env-source.sh."
-  claim="$(FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" \
+  claim="$(FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/store-host.mjs" \
              --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN")" \
     || die "the root store could not claim $FORGE_PUBLIC_ORIGIN through \"$t\" — the reason is printed above.
      Until it does, read.store.by_host answers 404 for this box's own address: the warmer fills /s/<id>/…
@@ -1856,7 +1856,7 @@ for t in $TENANTS; do
   # `FORGE_SEED_DATASET_DIR=/app/seed-dataset does not exist`: one variable name serving two filesystems.
   # The host's copy of the same directory is `FORGE_SEED_DATASET_HOST_DIR`, and that is what a host process
   # must be given.
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
+  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
     || die "the curated seed failed for \"$t\". Its own output is above; nothing further has run."
 done
 
@@ -2150,7 +2150,7 @@ for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment for the window phase."
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
+  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase window \
     || die "the window phase failed for \"$t\". Its own output is above; the box and its catalogue are standing."
 done
 
@@ -2176,7 +2176,7 @@ for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
   [ -n "$tokval" ] || die "no \$$tokvar in the environment for the verdict."
-  if FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/verify-seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+  if FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/verify-seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
     note "$t settled"
   else
     UNSETTLED="$UNSETTLED $t"
@@ -2277,7 +2277,7 @@ for t in $TENANTS; do
   # 2 (it could not ask) and 3 (a store this repository declares was never built), and an `if` can only tell
   # zero from non-zero — which would fold "the birth did not build a store" into "the box is a bit cold" and
   # lose the one red that is left.
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
   case "$?" in
     0) note "$t warm" ;;
     1)
@@ -2324,7 +2324,7 @@ for t in $TENANTS; do
   # declaration for this tenant, or a credential that belongs to somebody else). An `if` folded 2 into 1 and
   # printed "has SHUT doors" over a run that never opened one — a wrong sentence about the very failure this
   # step was just taught to detect. ⛔ BOTH still exit the birth non-zero; nothing was demoted here.
-  FORGE_SEED_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
   case "$?" in
     0) note "$t — every door opens" ;;
     1)

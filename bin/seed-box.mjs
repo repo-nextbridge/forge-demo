@@ -50,13 +50,13 @@ const log = (message) => process.stderr.write(`[box] ${message}\n`);
 
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env.FORGE_REF_TENANT ?? '';
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 
 if (!api) fail('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIGIN (see .env.example).');
 if (!tenant) fail('no tenant. Pass --tenant <id> (this box has two: forgeco and forgecafe).');
 if (!token) {
   fail(
-    'no FORGE_SEED_TOKEN. Capture the "Reference Operator" token `provision-ref` prints at bootstrap into\n' +
+    'no FORGE_OPERATOR_TOKEN. Capture the "Reference Operator" token `provision-ref` prints at bootstrap into\n' +
       '  `.secrets` as `forge-operator-token` and re-source env-source.sh.\n' +
       '  ⚠️ EACH TENANT HAS ITS OWN. A token minted for one tenant is refused for the other by the\n' +
       '     cross-tenant guard — that refusal is the boundary working, not a misconfiguration.',
@@ -96,9 +96,9 @@ async function call(path, init) {
         ? ' — the write face takes the tenant as the `x-forge-tenant` header; this script sends it, so seeing ' +
           'this means the header never arrived'
         : res.status === 403
-          ? `\n  ⚠️ The token in FORGE_SEED_TOKEN almost certainly belongs to a DIFFERENT tenant than ` +
+          ? `\n  ⚠️ The token in FORGE_OPERATOR_TOKEN almost certainly belongs to a DIFFERENT tenant than ` +
             `"${tenant}".\n     Each tenant has its own: forgeco → forge-operator-token, forgecafe → ` +
-            `forge-operator-token-forgecafe.\n     Run the second one as: FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" ` +
+            `forge-operator-token-forgecafe.\n     Run the second one as: FORGE_OPERATOR_TOKEN="$FORGE_OPERATOR_TOKEN_FORGECAFE" ` +
             `node bin/seed-box.mjs --tenant forgecafe`
           : '';
     fail(`${path} → HTTP ${res.status} ${JSON.stringify(body)}${hint}`);
@@ -385,7 +385,7 @@ async function assertCredentialTenant() {
         '  IGNORES the `x-forge-tenant` header, so without this check the run would have read the other\n' +
         "  tenant's stores, found this tenant's bootstrap store missing, and blamed the bootstrap.\n" +
         '  Each tenant has its own token: forgeco → forge-operator-token, forgecafe → forge-operator-token-forgecafe.\n' +
-        '    FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe',
+        '    FORGE_OPERATOR_TOKEN="$FORGE_OPERATOR_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe',
     );
   }
   log(`credential → ${actual} ✓`);

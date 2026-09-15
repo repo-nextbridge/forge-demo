@@ -316,7 +316,7 @@ function fakeBox({
 
 const step = (api, tenant = TENANT, script = STEP) =>
   run('node', [script, '--tenant', tenant, '--api', api], {
-    env: { ...process.env, FORGE_SEED_TOKEN: TOKEN },
+    env: { ...process.env, FORGE_OPERATOR_TOKEN: TOKEN },
   }).then(
     (r) => ({ code: 0, out: r.stdout }),
     (e) => ({ code: e.code ?? 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` }),
@@ -413,7 +413,7 @@ test('★ the right code from the WRONG front is still red', async () => {
 test('no token ⇒ the run REFUSES; it never grades a smaller set', async () => {
   const box = await fakeBox();
   const r = await run('node', [STEP, '--tenant', TENANT, '--api', box.api], {
-    env: { ...process.env, FORGE_SEED_TOKEN: '' },
+    env: { ...process.env, FORGE_OPERATOR_TOKEN: '' },
   }).then(
     (x) => ({ code: 0, out: x.stdout }),
     (e) => ({ code: e.code ?? 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` }),
@@ -426,7 +426,7 @@ test('no token ⇒ the run REFUSES; it never grades a smaller set', async () => 
 test('the port refusing the credential is NOT a green and NOT a red', async () => {
   const box = await fakeBox();
   const r = await run('node', [STEP, '--tenant', TENANT, '--api', box.api], {
-    env: { ...process.env, FORGE_SEED_TOKEN: 'wrong-token' },
+    env: { ...process.env, FORGE_OPERATOR_TOKEN: 'wrong-token' },
   }).then(
     (x) => ({ code: 0, out: x.stdout }),
     (e) => ({ code: e.code ?? 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` }),

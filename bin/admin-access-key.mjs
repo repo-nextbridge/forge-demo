@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ★★★ THE FRONT DOOR OF ONE TENANT'S ADMIN, MINTED BY THE BIRTH — one operator access key per tenant.
 //
-//   FORGE_SEED_TOKEN=<that tenant's credential> node bin/admin-access-key.mjs --tenant <id> --api <origin>
+//   FORGE_OPERATOR_TOKEN=<that tenant's credential> node bin/admin-access-key.mjs --tenant <id> --api <origin>
 //   node bin/admin-access-key.mjs --declare      the map `env-source.sh` exports, built from the secret store
 //
 // Writes the RAW KEY to stdout and nothing else; every word for a human goes to stderr. `bin/box-up.sh`
@@ -197,13 +197,13 @@ const fail = (message) => {
 async function main() {
   const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
   const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? '';
-  const token = process.env.FORGE_SEED_TOKEN ?? '';
+  const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 
   if (!api) fail('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIGIN (see .env.example).');
   if (!tenant) fail('no tenant. Pass --tenant <id>.');
   if (!token) {
     fail(
-      'no FORGE_SEED_TOKEN. Each tenant has its own credential and step 3 of the birth files both into\n' +
+      'no FORGE_OPERATOR_TOKEN. Each tenant has its own credential and step 3 of the birth files both into\n' +
         '  `.secrets`; re-source env-source.sh. A credential of the OTHER tenant is refused by the ' +
         'cross-tenant guard, which is the boundary working.',
     );

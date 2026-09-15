@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ★★★ THE SHOP'S ADDRESS, DECLARED WHERE THE KERNEL CAN SEE IT — the birth's half of `read.store.by_host`.
 //
-//   FORGE_SEED_TOKEN=… node bin/store-host.mjs --tenant forgeco --api http://localhost:8200
+//   FORGE_OPERATOR_TOKEN=… node bin/store-host.mjs --tenant forgeco --api http://localhost:8200
 //     [--origin <url>]   the address to DECLARE, when it is not the one being talked to. The PROMOTION passes
 //                        the new address here: it drives the command through the door that is already
 //                        answering and writes the address the box is about to publish itself at.
@@ -128,7 +128,7 @@ const refuse = (message) => {
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const origin = (argOf('--origin') ?? api).replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? '';
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 const settleMs = intArg('--settle-ms', 60_000);
 const pollMs = intArg('--poll-ms', 500);
 
@@ -136,7 +136,7 @@ if (!api) cannotAsk('no API base. Pass --api http://… or set FORGE_PUBLIC_ORIG
 if (!tenant) cannotAsk('no tenant. Pass --tenant <id> (this box has two: forgeco and forgecafe).');
 if (!token) {
   cannotAsk(
-    'no FORGE_SEED_TOKEN. Each tenant has its own — forgeco → forge-operator-token, forgecafe → ' +
+    'no FORGE_OPERATOR_TOKEN. Each tenant has its own — forgeco → forge-operator-token, forgecafe → ' +
       'forge-operator-token-forgecafe — and step 3 of the birth files both into `.secrets`.',
   );
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // THE DEMO'S BIRTH DATA, DRIVEN THROUGH THE PORT.
 //
-//   FORGE_SEED_TOKEN=… node bin/seed.mjs                      # against FORGE_PUBLIC_ORIGIN
-//   FORGE_SEED_TOKEN=… node bin/seed.mjs --api http://localhost:8080
+//   FORGE_OPERATOR_TOKEN=… node bin/seed.mjs                      # against FORGE_PUBLIC_ORIGIN
+//   FORGE_OPERATOR_TOKEN=… node bin/seed.mjs --api http://localhost:8080
 //
 // ⚠️ THIS IS NOT A SEEDER AND IT IS NOT TRYING TO BE. Forge ships one (`node dist/seed-demo.js`, the
 // `demo-data` app) that fills a store with a rich generated catalogue. This is not that: it is the MINIMUM
@@ -110,7 +110,7 @@ const argOf = (name) => {
   return i > -1 ? process.argv[i + 1] : undefined;
 };
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 // ★ WHICH TENANT, and it is a HEADER rather than something the credential carries on its own.
 //
 // ⚠️ MEASURED THE HARD WAY, and it cost this slice an evening of believing the door was shut. A tenant
@@ -173,7 +173,7 @@ if (!tenant) {
 }
 if (!token) {
   fail(
-    'no FORGE_SEED_TOKEN. Any TENANT credential holding the scopes below will do, and this box already has\n' +
+    'no FORGE_OPERATOR_TOKEN. Any TENANT credential holding the scopes below will do, and this box already has\n' +
       '  one: the "Reference Operator" token `provision-ref` prints at bootstrap. A narrower API key minted\n' +
       '  with `iam.api_key.create` is the better long-term answer, and that command is reachable through the\n' +
       '  door too. Scopes needed: tenant.store.write, catalog.product.write, catalog.sku.write,\n' +
@@ -231,7 +231,7 @@ async function assertCredentialTenant() {
   if (seen.length > 0 && !seen.some((handle) => mine.includes(handle))) {
     fail(
       `WRONG CREDENTIAL. This run says --tenant ${tenant}, whose stores are [${mine.join(', ')}], but the\n` +
-        `  token in FORGE_SEED_TOKEN can only see [${seen.join(', ')}] — so it belongs to another tenant.\n` +
+        `  token in FORGE_OPERATOR_TOKEN can only see [${seen.join(', ')}] — so it belongs to another tenant.\n` +
         '  ⚠️ The internal READ face resolves the tenant from the CREDENTIAL and ignores `x-forge-tenant`, so\n' +
         '  without this check every "does it already exist?" below would have answered about the wrong tenant,\n' +
         '  with a 200 and real data, and this run would have exited 0 having written nothing.\n' +

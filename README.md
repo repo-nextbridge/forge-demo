@@ -1101,7 +1101,7 @@ Everything below runs with the **`Reference Operator`** credential that `provisi
 bootstrap. No admin, no browser, no second secret to mint.
 
 ```bash
-source ./env-source.sh                       # exports FORGE_SEED_TOKEN from your secret store
+source ./env-source.sh                       # exports FORGE_OPERATOR_TOKEN from your secret store
 node bin/seed.mjs --api http://localhost:8200 --tenant forgeco
 node bin/seed.mjs --api http://localhost:8200 --tenant forgecafe   # with THAT tenant's credential
 ```
@@ -1180,8 +1180,8 @@ the bind). Without it, it writes one line saying no dataset is mounted and does 
 ### Proving what the seed left behind
 
 ```bash
-FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
-FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
+FORGE_OPERATOR_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
+FORGE_OPERATOR_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
 ```
 
 One tenant per run, like the seed, and for the same reason. **`bin/box-up.sh` runs it as step 12**, so the
@@ -1319,7 +1319,7 @@ Installing the app is one call on the same credential:
 
 ```bash
 curl -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/extension.install" \
-  -H "authorization: Bearer $FORGE_SEED_TOKEN" -H "x-forge-tenant: $FORGE_REF_TENANT" \
+  -H "authorization: Bearer $FORGE_OPERATOR_TOKEN" -H "x-forge-tenant: $FORGE_REF_TENANT" \
   -H 'content-type: application/json' -d '{"extension_id":"demo-gate"}'
 ```
 

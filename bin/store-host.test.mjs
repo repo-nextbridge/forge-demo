@@ -145,7 +145,7 @@ async function runStep({ box, tenant = 'forgeco', token = TOKEN, storeHosts, ext
   try {
     const { stdout, stderr } = await run_('node', args, {
       encoding: 'utf8',
-      env: { ...process.env, FORGE_SEED_TOKEN: token },
+      env: { ...process.env, FORGE_OPERATOR_TOKEN: token },
     });
     return { out: `${stdout}${stderr}`, stdout, status: 0 };
   } catch (error) {
@@ -315,7 +315,7 @@ test('★★ "I could not ask" is EXIT 2 and never a claim about the box', async
   try {
     const noToken = await runStep({ box, token: '' });
     assert.equal(noToken.status, 2, noToken.out);
-    assert.match(noToken.out, /FORGE_SEED_TOKEN/, noToken.out);
+    assert.match(noToken.out, /FORGE_OPERATOR_TOKEN/, noToken.out);
     assert.match(noToken.out, /nothing above is a claim about this box/, noToken.out);
 
     const noEnv = await runStep({ box, noDeclaration: true, extra: ['--env', join(tmpdir(), 'forge-absent.env')] });

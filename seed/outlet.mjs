@@ -200,7 +200,7 @@ async function declareFields({ command, read, rows, log }) {
         '  demo-data install WILL collide with them (its check is by source; the unique index is not).',
         '  Retire each one, ONCE, and then run the one-shot:',
         '    curl -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/custom_field.archive" \\',
-        '      -H "authorization: Bearer $FORGE_SEED_TOKEN" -H "x-forge-tenant: <tenant>" \\',
+        '      -H "authorization: Bearer $FORGE_OPERATOR_TOKEN" -H "x-forge-tenant: <tenant>" \\',
         '      -H "content-type: application/json" -d \'{"owner_entity":"product","key":"<key>"}\'',
         '  A box that never ran the older version has nothing to do here.',
       ].join('\n'),

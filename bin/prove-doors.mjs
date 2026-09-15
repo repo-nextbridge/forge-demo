@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ★★ EVERY DOOR OF EVERY STORE, OPENED — because a 404 behind a link nobody clicked is invisible.
 //
-//   FORGE_SEED_TOKEN=… node bin/prove-doors.mjs --tenant forgeco --api http://localhost:8200
+//   FORGE_OPERATOR_TOKEN=… node bin/prove-doors.mjs --tenant forgeco --api http://localhost:8200
 //
 // ⛔ WHY IT EXISTS, MEASURED 2026-09-04 ON A BOX THAT HAD JUST COME UP GREEN. Three of this box's four
 // stores answered **404 at `/s/<id>/account/login`** — the shopper's sign-in page — while every other step
@@ -38,7 +38,7 @@
 // from the CALLER's identity»; the trap is written up at `bin/seed-box.mjs:340`). So `--tenant` was never a
 // filter — it was a LABEL printed over whatever list the token owned. The birth hands each tenant its own
 // token, so the birth was reading the right list; a step whose NAME and whose DATA come from two independent
-// places is one stale `FORGE_SEED_TOKEN` in a shell away from lying, and that is how it was found.
+// places is one stale `FORGE_OPERATOR_TOKEN` in a shell away from lying, and that is how it was found.
 //
 // ★ SO THIS STEP NOW ASKS THREE QUESTIONS BEFORE IT OPENS ANYTHING, and refuses on any of them:
 //   1. does `seed/box.json` DECLARE this tenant?   (no declaration ⇒ nothing to grade against)
@@ -119,7 +119,7 @@ const argOf = (name) => {
 
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? '';
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 
 const out = [];
 let failures = 0;
@@ -149,7 +149,7 @@ const wrongQuestion = (why) => {
 
 if (!api) wrongQuestion('no --api and no FORGE_PUBLIC_ORIGIN: this step has no box to open.');
 if (!tenant) wrongQuestion('no --tenant: the store list is per tenant and this run does not know which.');
-if (!token) wrongQuestion('no FORGE_SEED_TOKEN: `read.internal.stores` is the operator face and needs this tenant\'s own token.');
+if (!token) wrongQuestion('no FORGE_OPERATOR_TOKEN: `read.internal.stores` is the operator face and needs this tenant\'s own token.');
 
 let BOX = {};
 try {
@@ -204,8 +204,8 @@ if (credentialTenant !== tenant) {
       'The internal read face resolves the tenant from the CREDENTIAL and IGNORES `x-forge-tenant`, so ' +
       `continuing would open "${credentialTenant ?? 'another tenant'}"'s doors and sign "${tenant}" under ` +
       'them — which is exactly what this step did until 2026-09-07. Each tenant has its own token: ' +
-      'forgeco → forge-operator-token ($FORGE_SEED_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
-      '($FORGE_SEED_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the ' +
+      'forgeco → forge-operator-token ($FORGE_OPERATOR_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
+      '($FORGE_OPERATOR_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the ' +
       'unsuffixed one, which is the shell this defect was found in.',
   );
 }

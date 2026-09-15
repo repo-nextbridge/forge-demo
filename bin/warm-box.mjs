@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ★★ THE LAST STEP OF A BIRTH: THE BOX IS NOT DONE UNTIL IT IS WARM, AND IT SAYS SO WITH NUMBERS.
 //
-//   FORGE_SEED_TOKEN=… FORGE_REVALIDATE_SECRET=… node bin/warm-box.mjs --tenant forgeco --api http://localhost:8200
+//   FORGE_OPERATOR_TOKEN=… FORGE_REVALIDATE_SECRET=… node bin/warm-box.mjs --tenant forgeco --api http://localhost:8200
 //     [--env ./.env]            the declaration this box is reborn from — how the run learns which store it
 //                               serves at the ROOT of that origin (§2b). Default: this repository's `.env`.
 //     [--root-store sto_…]      the same answer, named by hand, for a box whose `.env` is not readable here.
@@ -141,7 +141,7 @@ const intArg = (name, fallback) => {
 
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? '';
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 const secret = process.env.FORGE_REVALIDATE_SECRET ?? '';
 const WARM = BOX.warm ?? {};
 // ★ THE CEILING IS DECLARED, NEVER DEFAULTED. `WarmOptions.thresholdMs` upstream says why in the same words:
@@ -213,7 +213,7 @@ const finish = () => {
 
 if (!api) wrongQuestion('no --api and no FORGE_PUBLIC_ORIGIN: this step has no address to warm.');
 if (!tenant) wrongQuestion('no --tenant: the read face resolves the tenant from the credential, so a run speaks about exactly one.');
-if (!token) wrongQuestion('no FORGE_SEED_TOKEN: `read.internal.stores` is the operator face and needs this tenant\'s own token.');
+if (!token) wrongQuestion('no FORGE_OPERATOR_TOKEN: `read.internal.stores` is the operator face and needs this tenant\'s own token.');
 if (!secret) {
   wrongQuestion(
     'no FORGE_REVALIDATE_SECRET: the vitrine\'s warmer refuses everything when the secret is unset (never open ' +
@@ -267,8 +267,8 @@ if (credentialTenant !== tenant) {
       `continuing would read "${credentialTenant ?? 'another tenant'}"'s stores, find none of the stores ` +
       `seed/box.json declares for "${tenant}", and report that the birth never built them — an innocent ` +
       'tenant accused, which is what this step did until 2026-09-07. Each tenant has its own token: ' +
-      'forgeco → forge-operator-token ($FORGE_SEED_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
-      '($FORGE_SEED_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the unsuffixed ' +
+      'forgeco → forge-operator-token ($FORGE_OPERATOR_TOKEN), forgecafe → forge-operator-token-forgecafe ' +
+      '($FORGE_OPERATOR_TOKEN_FORGECAFE). `source env-source.sh` exports the FIRST tenant\'s as the unsuffixed ' +
       'one, which is the shell this defect was found in.',
   );
 }

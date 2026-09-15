@@ -2,8 +2,8 @@
 // WHAT THE SEED ACTUALLY LEFT BEHIND — the measurement, parameterised, so proving the bench is a command
 // and not an improvisation at eleven at night.
 //
-//   FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
-//   FORGE_SEED_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
+//   FORGE_OPERATOR_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgeco
+//   FORGE_OPERATOR_TOKEN=… node bin/verify-seed.mjs --api http://localhost:8200 --tenant forgecafe
 //
 // One tenant per run, exactly like `bin/seed.mjs` and for the same reason: the internal read face resolves
 // the tenant from the CREDENTIAL, so a run can only honestly speak about the tenant whose token it holds.
@@ -82,7 +82,7 @@ const argOf = (name) => {
 };
 const api = (argOf('--api') ?? process.env.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? '';
-const token = process.env.FORGE_SEED_TOKEN ?? '';
+const token = process.env.FORGE_OPERATOR_TOKEN ?? '';
 
 const out = [];
 const say = (line = '') => out.push(line);
@@ -195,7 +195,7 @@ const foundation = (fn) => {
 
 if (!api) fail('no API base. Pass --api http://… (or set FORGE_PUBLIC_ORIGIN).');
 if (!tenant) fail('no tenant. Pass --tenant forgeco | forgecafe.');
-if (!token) fail('no FORGE_SEED_TOKEN. Export the credential OF THAT TENANT — the read face resolves the\n  tenant from the credential, so the wrong one answers about the wrong tenant, with a 200.');
+if (!token) fail('no FORGE_OPERATOR_TOKEN. Export the credential OF THAT TENANT — the read face resolves the\n  tenant from the credential, so the wrong one answers about the wrong tenant, with a 200.');
 
 /** An internal read. A transport failure is FATAL and never an empty answer: "the box is not up" and "the box
  *  is up and empty" are opposite facts, and only one of them is a result. */

@@ -207,17 +207,17 @@ fi
 #
 # With the header, this credential drives the whole first day: the seed, `iam.api_key.create` (so a narrower
 # key needs no admin either) and `extension.install`.
-export FORGE_SEED_TOKEN="$(optional_secret forge-operator-token)"
+export FORGE_OPERATOR_TOKEN="$(optional_secret forge-operator-token)"
 
 # ★★ AND THE SECOND TENANT'S (PRE-SEED · P-A). A credential belongs to ONE tenant and the cross-tenant guard
 # refuses it against any other — that refusal is the boundary working, not a misconfiguration. So a box with
 # two tenants has two seed credentials, and a seeding run names which it is:
 #
 #   node bin/seed-box.mjs --tenant forgeco
-#   FORGE_SEED_TOKEN="$FORGE_SEED_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe
+#   FORGE_OPERATOR_TOKEN="$FORGE_OPERATOR_TOKEN_FORGECAFE" node bin/seed-box.mjs --tenant forgecafe
 #
 # Both are printed once by their own `provision-ref` run and captured into `.secrets`; neither is ever echoed.
-export FORGE_SEED_TOKEN_FORGECAFE="$(optional_secret forge-operator-token-forgecafe)"
+export FORGE_OPERATOR_TOKEN_FORGECAFE="$(optional_secret forge-operator-token-forgecafe)"
 
 # ★★★ THE TWO ADMINS' FRONT DOOR — ONE REDEEMABLE KEY PER TENANT (pk38/d8).
 #

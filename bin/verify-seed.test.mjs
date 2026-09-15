@@ -511,7 +511,7 @@ async function verify(script, api, tenant = 'forgecafe', env = {}) {
       // ⚠️ `FORGE_SEED_DATASET_DIR` IS CLEARED UNLESS A TEST SETS IT. The verifier reads the mounted
       // dataset's own `storefront.json` to grade the shoe shop's window; a developer who happens to export
       // that variable would otherwise have every run of this suite graded against the dataset on THEIR disk.
-      env: { ...process.env, FORGE_SEED_DATASET_DIR: '', FORGE_SEED_TOKEN: 'tok_fake', ...env },
+      env: { ...process.env, FORGE_SEED_DATASET_DIR: '', FORGE_OPERATOR_TOKEN: 'tok_fake', ...env },
       maxBuffer: 8 * 1024 * 1024,
     });
     return { code: 0, stdout };

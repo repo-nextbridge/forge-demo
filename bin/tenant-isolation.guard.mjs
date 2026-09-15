@@ -107,7 +107,7 @@ async function drive(script, args, api, extraEnv = {}, cwd = ROOT) {
     const { stdout, stderr } = await run(
       process.execPath,
       [join(cwd, 'bin', script), '--api', api, ...args],
-      { env: { ...process.env, FORGE_SEED_TOKEN: 'stub-token', ...extraEnv }, encoding: 'utf8' },
+      { env: { ...process.env, FORGE_OPERATOR_TOKEN: 'stub-token', ...extraEnv }, encoding: 'utf8' },
     );
     return { code: 0, out: `${stdout}${stderr}` };
   } catch (err) {
