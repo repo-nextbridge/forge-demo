@@ -60,7 +60,7 @@ Ditada pelo dono do produto e conferida contra `docs/conventions/deploy-lifecycl
 | 4 | a Demo assa o que é **dela**: a vitrine do café, o totem, os apps | esta caixa | `bin/build-coffee.sh`, `bin/build-totem.sh`, `bin/pack-apps.sh` |
 | 5 | a Demo **nasce** | esta caixa | `bash bin/box-up.sh` — §3 |
 | 6 | **reset + reseed** | esta caixa | `bin/box-down.sh` + `bin/box-up.sh` — §5 |
-| 7 | o **cron semanal** é configurado | a máquina | §5.1 |
+| 7 | o **ciclo agendado** é configurado | a máquina | §5.1 e `docs/operations/reset-cycle.md` |
 
 > ⏳ O degrau que falta cai **entre o 3 e o 5** — veja o bloco acima.
 
@@ -557,9 +557,16 @@ depender de **quando** alguém pergunta. Aí esta espera é jogada fora sem dor.
 
 ```bash
 bash bin/box-down.sh                    # estado morre, o cache de 3,6 GB de fotos vive
-bash bin/box-up.sh                      # o nascimento (localhost) — `--no-warm` se um cron for aquecer
+bash bin/box-up.sh --no-warm            # o nascimento (localhost), sem o passo 14
 bash bin/box-up.sh --promote tailnet    # ← a PROMOÇÃO, e a §5 inteira é sobre ela
+bash bin/box-up.sh --warm-only          # o aquecimento, já no endereço promovido
 ```
+
+★ **Os quatro acima, em ordem, são UM comando: `bash bin/box-cycle.sh --promote <destino>`** — com lock, log
+por corrida e política de saída. É o passo 7, e a página dele é `docs/operations/reset-cycle.md`. Ele existe
+porque **a ordem é a decisão**: as duas linhas do meio são obrigatórias (um nascimento des-promove o admin) e
+a última só vale depois da promoção (a promoção recria todo front, então calor tomado antes morre com o
+contêiner).
 
 ★ **pk24/§B5 — a promoção deixou de ser um modo da bancada e virou um PASSO NOMEADO, com destino.** Até aqui
 a única promoção que este repositório implementava era a do **tailnet**: o argumento se chamava `--tailnet`,
@@ -688,14 +695,22 @@ passada **ficam** — pagos, e apontados por nada. Nada quebra; só cresce. A fa
 `seed/box.json` → `online_only` → `media-store`, com o driver em `FORGE_MEDIA_STORE_DRIVER`; enquanto esse
 driver for `none`, o passo 13 imprime um no-op que **diz** que é no-op — e o lixo continua lá.
 
-### 5.1 O cron semanal (passo 7) — as pré-condições são **medidas**, não supostas
+### 5.1 O ciclo agendado (passo 7) — as pré-condições são **medidas**, não supostas
+
+📄 **A página é `docs/operations/reset-cycle.md`**: o que o ciclo é, o que destrói, o que preserva, a política
+de saída e os exemplos de crontab/systemd. O que fica aqui são as pré-condições da **máquina**.
 
 ⛔ **`0 4 * * 0 bash bin/box-up.sh` ingênuo destrói o banco e morre em seguida.**
+⛔ **E dois agendamentos — "03:00 reseta, 04:00 aquece" — são piores que um.** Relógio não é dependência: numa
+noite em que o seed demorar mais, o segundo dispara contra uma caixa ainda semeando, aquece nada e reporta
+verde. É **um** script e **um** agendamento: `bash bin/box-cycle.sh --promote <destino>`.
 
-★ **pk24/§B1 — e o nascimento agendado não precisa mais pagar o aquecimento.** `bash bin/box-up.sh --no-warm`
-tira o **passo 14** e **só** ele: o 14-bis (abrir toda porta de toda loja) continua rodando, porque provar que
-a caixa está de pé não é calor. O aquecedor continua chamável sozinho, que é exatamente o que um segundo cron
-faz: `FORGE_OPERATOR_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> --api <origem>`.
+★ **pk24/§B1 — e o nascimento agendado não precisa mais pagar o aquecimento no meio.** `bash bin/box-up.sh
+--no-warm` tira o **passo 14** e **só** ele: o 14-bis (abrir toda porta de toda loja) continua rodando, porque
+provar que a caixa está de pé não é calor. O aquecimento vem depois, **já promovido**, por
+`bash bin/box-up.sh --warm-only` — que é o mesmo laço por tenant do passo 14, e não uma segunda cópia dele. O
+aquecedor também continua chamável sozinho:
+`FORGE_OPERATOR_TOKEN=<token de seed> node bin/warm-box.mjs --tenant <tenant> --api <origem>`.
 ⚠️ **O que se perde ao pular:** o passo 14 é o **único** que enxerga uma loja que `seed/box.json` declara e a
 caixa não tem (12 e 14-bis andam pelas lojas que a **porta** reporta). A corrida diz isso no roteiro dela.
 
@@ -712,13 +727,14 @@ sabe qual árvore o visitante alcança pode ter aquecido páginas que ninguém a
    recusa por versão de Node existe por causa desse caso: sem ela, a unidade morreria **depois** de o
    `box-down` já ter destruído o banco.
 2. **Promova depois de nascer.** `bash bin/box-up.sh --promote <tailnet|localhost|hostname>` — a linha do
-   cron carrega o destino, não a memória de quem escreveu o cron. Ver §5.
+   agendador carrega o destino, não a memória de quem a escreveu; o ciclo **recusa dizendo** se não souber
+   para onde promover, e *"sem destino"* é um modo declarado (`--no-promote`), não uma omissão. Ver §5.
 3. **`jq` também.** `bin/box-up.sh:344` exige — e note que `bin/require-node.sh` roda **antes** desse check e
    já depende de `jq`: numa máquina sem ele, a recusa fala de node nomeando jq.
 4. **Sourceie os segredos.** A unidade precisa do mesmo `env-source.sh` (ou do backend real) exportado antes
    do `box-up`; sem `DATABASE_URL` o passo 0 morre pelo nome, que é o comportamento certo.
-5. **Janela.** ~19 min de nascimento + o teto de 15 min do aquecimento — ou ~19 min secos com `--no-warm`,
-   e o aquecimento numa segunda entrada de cron. Madrugada, por decisão do dono do produto.
+5. **Janela.** ~19 min de nascimento + a promoção + o aquecimento, **na mesma corrida**. Reserve ~2 h e meça
+   a primeira: o log do ciclo traz o relógio de cada gesto. Madrugada de domingo, por decisão de produto.
 
 ---
 

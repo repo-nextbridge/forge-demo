@@ -161,9 +161,10 @@ found precisely so you do not go and install a different one:
                ^ found, and NOT what refused you: the floor was never graded, this stopped first
 ```
 
-⚠️ **A cron or a systemd unit has no node at all.** `env -i` with a minimal `PATH` finds neither `node` nor
-`pnpm`; only the nvm directory holds the compatible pair. The scheduled reset of this box runs in exactly that
-environment, so give the unit that directory before it runs any of this.
+⚠️ **Um agendador — cron ou systemd — não tem `node` nenhum.** `env -i` com um `PATH` mínimo não acha `node`
+nem `pnpm`; só o diretório do nvm tem o par compatível. O **ciclo agendado** (`bin/box-cycle.sh`, veja
+`docs/operations/reset-cycle.md`) roda exatamente nesse ambiente, e é a primeira coisa que ele confere — antes
+de destruir o banco. Dê esse diretório à unidade antes de ela rodar qualquer coisa daqui.
 
 **The number is not this repository's.** It travels in `forge.lock`, the file this box pins the product with,
 as `node.minMajor` — the floor already resolved to a whole major, because everything that acts on it is a shell
@@ -188,9 +189,15 @@ the map of how the box is born:
 
 ```bash
 bash bin/box-up.sh                     # the birth, on localhost
-bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14 (a cron warms later)
+bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14 (`--warm-only` warms it later)
+bash bin/box-up.sh --warm-only         # step 14 alone, on a box that is already standing
 bash bin/box-up.sh --plan [--no-warm]  # print the roteiro this invocation would run, and do nothing
 ```
+
+★ **Os quatro juntos, em ordem, são o ciclo agendado** — derrubar, nascer, promover, aquecer:
+`bash bin/box-cycle.sh --promote <destino>`. A ordem é a decisão (um nascimento **des-promove** o admin; e a
+promoção recria todo front, então calor tomado antes dela morre junto com o contêiner). Um script, um
+agendamento, e **este repositório não instala agendamento nenhum** — veja `docs/operations/reset-cycle.md`.
 
 ★ **The run says which steps it RAN and which it SKIPPED, with the reason** — `BIRTH_STEPS` declares them,
 each step's own `say` stamps itself as it happens, and `bin/roteiro.mjs` prints and grades the ledger at the
