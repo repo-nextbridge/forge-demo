@@ -248,6 +248,9 @@ services:
       PORT: 3000
       FORGE_READ_BASE_URL: http://kernel:3000
       FORGE_COMMAND_BASE_URL: http://kernel:3000
+      # ★ The checkout renders SERVER-SIDE too, so what it builds on the box's own behalf pays from the same
+      # budget the storefront's documents do — a front that forwards no reader spends the SHOPPER's ceiling.
+      FORGE_BULK_READ_TOKEN: ${FORGE_BULK_READ_TOKEN:-}
       FORGE_STORE_HOSTS: ${FORGE_STORE_HOSTS:-}
       # The same base, for the same reason, on the other front: it renders the cart's product photos and
       # its own theme's banners through the same door. See DIFFERENCE 4 on the storefront above.

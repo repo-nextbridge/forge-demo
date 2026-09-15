@@ -34,6 +34,9 @@
 #   2. migrate                   system schema first; tenants have none yet, and that is not an error
 #   3. provision-ref  × TENANT   tenant + its FIRST store + FIRST operator + login driver + admin-host claim
 #   4. admin-platform-token      the ONE box credential that lets one admin container serve both tenants
+#  4b. bulk-read-token         the box's OWN reader: the feed, the sitemap and the warm run are built by
+#                              the INSTANCE, not by a shopper, so they stop drawing from the shopper's
+#                              ceiling. Platform-scoped because one front serves two tenants
 #   5. kernel + edge + fronts    now that a tenant exists for them to serve (INCLUDING the coffee fork)
 #  5b. admin-access-key × TENANT  the REDEEMABLE key each tenant's `/enter` route trades for a session, so
 #                                the gate's "abrir o admin" lands signed in. Minted here because a box that
@@ -150,6 +153,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 3c|the coffee fork edge rule
 3d|the admin sibling switcher and the gate’s per-tenant admin links
 4|admin-platform-token (the box credential that serves every tenant)
+4b|bulk-read-token (the reader this box owns, so its own documents stop spending the shopper ceiling)
 5|kernel + edge + fronts
 5b|the gate’s /enter key, once per tenant
 6|seed-box (stores + settings), once per tenant
@@ -1659,6 +1663,31 @@ dc run --rm kernel node dist/admin-platform-token.js > "$out" 2>/dev/null
 tok="$(grep -oE '^fo[a-z]{2}_[A-Za-z0-9_-]+' "$out" | tail -1)"
 put_secret forge-admin-platform-token "$tok" && note 'forge-admin-platform-token: filed' \
   || note '⚠️ forge-admin-platform-token: ABSENT — host mode will answer not_configured on every login'
+shred -u "$out" 2>/dev/null || rm -f "$out"
+
+# ── 4b · the box's own reader ───────────────────────────────────────────────────────────────────────────────
+#
+# ★★ THE DOCUMENTS THIS BOX BUILDS ON ITS OWN BEHALF STOP DRAWING FROM THE SHOPPER'S CEILING.
+#
+# The feed, the sitemap and the cache warm run are built BY the instance, not by a visitor, and until this
+# step they went out on the anonymous read face — so the box's own housekeeping spent the budget of every
+# shopper of every store it serves. Measured on a birth from zero: the storefront said so itself, out loud,
+# on boot (`FORGE_BULK_READ_TOKEN is PRESENT AND BLANK, which is not a declaration`), because
+# `env-source.sh` already reads the secret and the compose already forwards it — nobody minted it.
+#
+# ⚠️ IT IS A PLATFORM CREDENTIAL AND IT HAS TO BE. The storefront is ONE process resolving host → store →
+# tenant per request, and this box serves TWO tenants: a tenant key answers 200 on its own stores and 403 on
+# the other's. An environment variable is singular, so the credential it names must be singular too, and the
+# only singular credential a box has is the BOX's.
+#
+# ⚠️ ABSENT IS A DEGRADED BOX, NEVER A DEAD ONE. Without it the documents still build — they just pay from
+# the wrong budget — so this step NOTES and never dies. ⛔ The value is not printed, here or anywhere.
+say '4b · bulk-read-token (the reader this box owns, so its own documents stop spending the shopper ceiling)'
+out="$(mktemp)"
+dc run --rm kernel node dist/bulk-read-token.js > "$out" 2>/dev/null
+tok="$(grep -oE '^fo[a-z]{2}_[A-Za-z0-9_-]+' "$out" | tail -1)"
+put_secret forge-bulk-read-token "$tok" && note 'forge-bulk-read-token: filed' \
+  || note '⚠️ forge-bulk-read-token: ABSENT — the feed, the sitemap and the warm run will spend the shopper ceiling'
 shred -u "$out" 2>/dev/null || rm -f "$out"
 
 # ── 5 · the rest of the tier ────────────────────────────────────────────────────────────────────────────────
