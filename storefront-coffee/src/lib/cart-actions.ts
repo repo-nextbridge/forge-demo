@@ -43,7 +43,7 @@ import {
 import { buildProductIndex, enrichLines } from '@forgecommerce/storefront-kit/checkout/enrich';
 import { quotedOptions } from '@forgecommerce/storefront-kit/checkout/quote-result';
 import { readClient } from '@forgecommerce/storefront-kit/config';
-import { commandClient } from '@forgecommerce/storefront-kit/kernel-write-clients';
+import { commandClient, customerClient } from '@forgecommerce/storefront-kit/kernel-write-clients';
 import {
   EMPTY_SNAPSHOT,
   type MinicartSnapshot,
@@ -51,6 +51,7 @@ import {
 import { couponFailureOf, giftFailureOf } from '@forgecommerce/storefront-kit/promo/coupon-error';
 import { giftCatalogOf, skuIdsForCart } from '@forgecommerce/storefront-kit/promo/gifts';
 import type { ShippingOption } from '@forgecommerce/storefront-kit/read-client';
+import { readCustomerSession } from '@forgecommerce/storefront-kit/session';
 import { storeRedirect } from '@forgecommerce/storefront-kit/store-navigation';
 import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
 import { cookies } from 'next/headers';
@@ -66,12 +67,46 @@ async function serverCookieStore(): Promise<CookieStore> {
   };
 }
 
+/**
+ * ★★ THIS FORK ANSWERS "WHO IS BUYING?" WITH THE SESSION IT ALREADY READS — not with `null`.
+ *
+ * The kit's `CheckoutDeps.session` is a REQUIRED field (`CartSessionLink | null`), so every front that drives
+ * the cart flow has to state which of the two it is. The answer is not a matter of taste here, it was
+ * measured in this tree:
+ *
+ *   · `src/app/api/account/status/route.ts` calls `readCustomerSession()` and answers a boolean — the header's
+ *     `AccountLink` renders the signed-in badge off it;
+ *   · `src/app/api/my-prices/route.ts` already takes that same token to the port (`customerClient().myPrices`).
+ *
+ * ⇒ a shopper IS signed in while browsing this vitrine, and this deployable can already prove it. Answering
+ * `null` would not be "this fork has no accounts", it would be a cart that belongs to nobody while the header
+ * is showing a name — the exact silence the required field exists to forbid.
+ *
+ * ⚠️ WHERE THE LOGIN ITSELF LIVES, since the absence of a login route here is what makes `null` tempting. This
+ * fork has none on purpose: `AccountLink` links to `/account/login`, which the edge routes to the CHECKOUT
+ * container on the same host. One login, one deployable — and the session cookie is the same cookie, exactly
+ * as `forge_cart` is. Reading a session is all this side may do; it cannot mint one.
+ *
+ * ★ WHAT IT BUYS THE COFFEE SHOP. A cart linked from the first "Comprar" is a cart the promotion engine can
+ * price BY PERSON: `first_purchase` and `customer_in_cluster` load customer facts only when the cart names a
+ * buyer, so before this they failed closed for every basket filled on the vitrine. It also makes an abandoned
+ * basket findable by identity, which a cart belonging to nobody never was.
+ *
+ * ⚠️ AND IT IS WHY THIS FILE IS NOT A COPY THAT DRIFTS. The one other time the kit's signature moved under
+ * this fork (`my_prices` gaining a store, above) nothing here noticed until an image build failed four minutes
+ * in. The required field is that oven-shaped discovery turned into a compile error.
+ */
 async function deps(store: string): Promise<CheckoutDeps> {
+  const token = await readCustomerSession();
   return {
     store,
     commands: commandClient(),
     reads: readClient(),
     cookies: await serverCookieStore(),
+    // `null` is the guest, stated rather than omitted.
+    session: token
+      ? { token, linkCart: (s, t, cartId) => customerClient().linkCart(s, t, cartId) }
+      : null,
   };
 }
 
