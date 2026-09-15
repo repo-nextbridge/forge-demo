@@ -14,7 +14,7 @@
 
 import {
   PENDING_IDENTITY_HINT,
-  pendingIdentityLead,
+  PENDING_IDENTITY_LEAD,
 } from '@forgecommerce/storefront-kit/promo/PendingIdentityNotice';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -1004,9 +1004,10 @@ export function Totem({
                       line is "is this the price?", and this is the answer to it. */}
                   {bag.pendingIdentity.length > 0 ? (
                     <div className={styles.pendingNotice} data-testid="pending-identity">
-                      <p className={styles.pendingLead}>
-                        {pendingIdentityLead(bag.pendingIdentity.length)}
-                      </p>
+                      {/* ★ THE SENTENCE IS THE KIT'S, RELAYED. It stopped agreeing with a count upstream —
+                          one unevaluated rule already makes the number provisional and ten are not more so —
+                          so this screen carries the constant instead of calling a function with a length. */}
+                      <p className={styles.pendingLead}>{PENDING_IDENTITY_LEAD}</p>
                       <ul className={styles.pendingList}>
                         {bag.pendingIdentity.map((p) => (
                           <li

@@ -1,6 +1,6 @@
 // ★★ THE CART SURVIVES THE WINDOW THAT OPENED IT — and what comes back is TODAY'S basket, not last week's.
 //
-// Two halves, and the second is the one that matters commercially.
+// Three parts, and the last two are the ones that matter commercially.
 //
 // ① THE POINTER PERSISTS. `forge_cart` used to be written with no expiry at all, which is a SESSION cookie:
 //    the QA measured `expires=-1` and lost the cart to every window close (s2b-5). All THREE writers are
@@ -15,28 +15,37 @@
 //    the kernel's CURRENT verdicts. A cart that came back showing the price of the sitting that filled it
 //    would be the defect this slice would have introduced.
 //
-// The cart the sweeper already destroyed is the third case, and it is proven next door
+// ③ THE POINTER IS NOT AN IDENTITY, so the cart has to be told who is holding it. The cookie says WHICH cart
+//    and deliberately nothing else (see the PII assertion below), and a cart the kernel does not know an owner
+//    for is priced as a stranger's. The kit's cart flow takes a required `session` for exactly that reason and
+//    this fork answers it with the session it already reads; the two branches are graded at the bottom.
+//
+// The cart the sweeper already destroyed is the fourth case, and it is proven next door
 // (checkout-flow.test.ts, "ensureCart reuses an ACTIVE cart, mints fresh on a CONVERTED/unknown one"): a
 // pointer that outlives its cart mints a new one instead of resurrecting anything.
 
 import { enrichLine } from '@forgecommerce/storefront-kit/checkout/enrich';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
-const { jarSet, jarGet, createCart, addLine, readCart, readCheckout } = vi.hoisted(() => ({
-  jarSet: vi.fn(),
-  jarGet: vi.fn((_name: string): { value: string } | undefined => undefined),
-  createCart: vi.fn(async () => ({ cart_id: 'cart_01M1' })),
-  addLine: vi.fn(async () => {}),
-  readCart: vi.fn(async (_store: string, _cartId: string): Promise<unknown> => null),
-  readCheckout: vi.fn(async (_store: string, _cartId: string): Promise<unknown> => null),
-}));
+const { jarSet, jarGet, createCart, addLine, readCart, readCheckout, linkCart } = vi.hoisted(
+  () => ({
+    jarSet: vi.fn(),
+    jarGet: vi.fn((_name: string): { value: string } | undefined => undefined),
+    createCart: vi.fn(async () => ({ cart_id: 'cart_01M1' })),
+    addLine: vi.fn(async () => {}),
+    readCart: vi.fn(async (_store: string, _cartId: string): Promise<unknown> => null),
+    readCheckout: vi.fn(async (_store: string, _cartId: string): Promise<unknown> => null),
+    linkCart: vi.fn(async (_store: string, _token: string, _cartId: string) => ({})),
+  }),
+);
 
 vi.mock('next/headers', () => ({
   cookies: async () => ({ get: jarGet, set: jarSet, delete: vi.fn() }),
 }));
 vi.mock('@forgecommerce/storefront-kit/kernel-write-clients', () => ({
   commandClient: () => ({ createCart, addLine }),
-  customerClient: () => ({}),
+  // ③ — `customer.link_cart`, which this fork now drives on every cart write of a signed-in shopper.
+  customerClient: () => ({ linkCart }),
 }));
 vi.mock('@forgecommerce/storefront-kit/config', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -186,6 +195,8 @@ test('★★ A CART REOPENED A WEEK LATER shows the kernel’s prices of TODAY, 
     commands: {} as never,
     reads: { checkout: (s: string, c: string) => readCheckout(s, c) } as never,
     cookies: { get: () => 'cart_01OLD', set: () => {}, delete: () => {} },
+    // Required by the kit: this fixture is the anonymous re-open, so the answer is the guest.
+    session: null,
   });
 
   expect(state.phase).toBe('cart');
@@ -203,4 +214,51 @@ test('★★ A CART REOPENED A WEEK LATER shows the kernel’s prices of TODAY, 
   const index = new Map();
   expect(enrichLine(pulled, index).unavailable).toBe(true);
   expect(enrichLine(risen, index).unavailable).toBeUndefined();
+});
+
+// ── ③ the cart knows WHO is filling it ───────────────────────────────────────────────────────────────────
+//
+// The kit made `CheckoutDeps.session` a REQUIRED field so a fork cannot inherit "anonymous" by omission, and
+// the three tests below are this fork's answer, graded. The vitrine has no login of its own — that screen is the
+// checkout's, one path away on the same host — but it READS the session (`/api/account/status` renders the
+// header's signed-in badge off exactly this cookie), so `null` here would mean a cart belonging to nobody
+// while the header shows an account. The link is what lets the promotion engine price BY PERSON.
+
+test('★★ a SIGNED-IN shopper adding from the vitrine gets the cart attached to the account, on the first click', async () => {
+  const { CUSTOMER_SESSION_COOKIE } = await import('@forgecommerce/storefront-kit/cookies');
+  const { addToCartAction } = await import('@/lib/cart-actions');
+
+  jarGet.mockImplementation((name: string) =>
+    name === CUSTOMER_SESSION_COOKIE ? { value: 'cst_tok' } : undefined,
+  );
+  createCart.mockResolvedValueOnce({ cart_id: 'cart_01MINE' });
+
+  await addToCartAction('demo', 'sku_1');
+
+  // The store rides along (the kernel compares it against the session's own) and so does the cart just minted.
+  expect(linkCart).toHaveBeenCalledWith('demo', 'cst_tok', 'cart_01MINE');
+});
+
+test('★ A GUEST PAYS NOTHING — no session cookie, no port call, byte-identical to the path before this', async () => {
+  const { addToCartAction } = await import('@/lib/cart-actions');
+
+  // jarGet answers `undefined` to everything (beforeEach), which is the anonymous visit.
+  await addToCartAction('demo', 'sku_1');
+
+  expect(linkCart).not.toHaveBeenCalled();
+  // And the cart was still born: refusing to identify a shopper must never cost the shopper the basket.
+  expect(createCart).toHaveBeenCalledTimes(1);
+});
+
+test('★ the link is BEST-EFFORT — a port that refuses it must not cost the shopper the item', async () => {
+  const { CUSTOMER_SESSION_COOKIE } = await import('@forgecommerce/storefront-kit/cookies');
+  const { addToCartAction } = await import('@/lib/cart-actions');
+
+  jarGet.mockImplementation((name: string) =>
+    name === CUSTOMER_SESSION_COOKIE ? { value: 'cst_tok' } : undefined,
+  );
+  linkCart.mockRejectedValueOnce(new Error('the account face is down'));
+
+  await expect(addToCartAction('demo', 'sku_1')).resolves.toBeUndefined();
+  expect(addLine).toHaveBeenCalledTimes(1);
 });
