@@ -46,6 +46,11 @@
 //    would not either. ⇒ THE VOCABULARY DERIVES IT: **an owner OF something is a role; an owner who ACTS is a
 //    person.** `o dono da tag`, `the owner of the record`, `the owner's own files` — role, green. `o dono
 //    abriu`, `the owner decided` — a human being did a human thing, red.
+//    ⛔ AND THE POSSESSION CUTS BOTH WAYS, which is the half that was missing until 2026-09-15: a record, a
+//    tag or an order has MANY holders, so the phrase names a role — but the PRODUCT, the platform, the
+//    company, the repository have exactly one, so `o dono do produto` names the individual and no verb is
+//    needed for it to. That shape survived four sweeps of this repository and stood six times in one
+//    delivered runbook; see `OWNER_OF_THE_PRODUCT`.
 // C. A DATE OF MEASUREMENT (`medido na bancada 2026-09-01`, `the birth of 13/09`). It is a durable record and
 //    this repository is built out of them. A date is never evidence by itself here; it is only ever the
 //    company a finding keeps.
@@ -272,8 +277,37 @@ const ACTING_OWNER = new RegExp(
 );
 
 /**
- * A decision NAMED AS A PERSON'S — `Decision of the tech lead`, `por decisão do dono do produto`,
- * `approved by the tech lead`, `achado dele`.
+ * ★★★ THE ONE POSSESSION THAT IS NOT A DOMAIN OBJECT: THE PRODUCT ITSELF. This is the refinement rule B was
+ * missing, and it is the hole six occurrences walked through.
+ *
+ * ⛔ MEASURED ON THIS TREE 2026-09-15: `do dono do produto`, six times in one delivered runbook, after four
+ * clean-up passes over this repository. Rule B derives a ROLE from the possession — `o dono da tag`, `the
+ * owner of the record`, `o dono do pedido`, whoever holds that object — and the `of`-exemption in
+ * `ACTING_OWNER` is what keeps those green. But that exemption only ever asked for a PREPOSITION, and `do
+ * produto` is one. ⇒ the exemption written for domain objects swallowed the possession that is not one.
+ *
+ * ★ THE POSSESSION DECIDES, AND IT CUTS BOTH WAYS. A record, a tag, an order, a row: many holders, so the
+ * phrase names a role. The product, the platform, the company, the repository: exactly ONE holder, and the
+ * title identifies that individual as surely as spelling the name would.
+ *
+ * ⚠️ AND IT NEEDS NO VERB, which is the other half of why nothing saw it: `a estação de trabalho do dono do
+ * produto` and `o roadmap do dono do produto` attribute a workstation and a private board to a person with
+ * nobody doing anything, so `ACTING_OWNER` — which waits for a human act — never looked.
+ *
+ * ✅ `the tech lead`, `o arquiteto` STAY GREEN and must: a function a team fills, with no possession in it.
+ * See the negative controls — reddening the roles this repository attributes design decisions to is how this
+ * rule would get switched off.
+ */
+const SOLE_POSSESSION =
+  'produto|product|plataforma|platform|empresa|company|neg[óo]cio|business|reposit[óo]rio|repository';
+const OWNER_OF_THE_PRODUCT = new RegExp(
+  `${EDGE_L}(?:don[oa]s?|owner)${EDGE_R}\\s+(?:d[oa]s?|of(?:\\s+the)?)\\s+(?:${SOLE_POSSESSION})${EDGE_R}` +
+    `|${EDGE_L}(?:product|platform|company)\\s+owner${EDGE_R}`,
+  'giu',
+);
+
+/**
+ * A decision NAMED AS A PERSON'S — `Decision of the tech lead`, `approved by the tech lead`, `achado dele`.
  *
  * ✅ ON ITS OWN THIS IS NOT A FINDING. A role without a name is allowed to carry a decision; that is how a
  * decision stays attributable without a private record. It is here because it is what turns a QUOTE beside it
@@ -281,11 +315,17 @@ const ACTING_OWNER = new RegExp(
  *
  * ⚠️ AND THE TARGET MUST BE A PERSON OR A PERSON'S ROLE. Without that, `ordem de recriação` (the order the
  * steps run in) and `Decision of 2026-08-31` are attributions, which they are not.
+ *
+ * ⛔ AND THE NOUN MAY BE QUALIFIED, which is the second thing the runbook proved. `Veredicto ANTERIOR do dono
+ * do produto: *"…"*` carried a transcript past this rule because one adjective stood between the noun and the
+ * preposition, and the citation next to it went green for want of an attribution. ⇒ up to two words are
+ * allowed to stand there; the tail still has to end on a person's role, so nothing looser gets in.
  */
 const PERSON_ROLE = 'dono|dona|owner|tech lead|arquiteto|architect|product owner|dono do produto';
+const QUALIFIER = '(?:\\s+\\p{L}+){0,2}?';
 const ATTRIBUTED_DECISION = new RegExp(
   `${EDGE_L}(?:decision|decis[ãa]o|verdict|veredicto|approval|aprova[çc][ãa]o|ordem|achado|palavra|sentença)` +
-    `${EDGE_R}\\s+(?:(?:of|do|da|de|by|from)\\s+(?:the\\s+|o\\s+|a\\s+)?(?:${PERSON_ROLE})${EDGE_R}|` +
+    `${EDGE_R}${QUALIFIER}\\s+(?:(?:of|do|da|de|by|from)\\s+(?:the\\s+|o\\s+|a\\s+)?(?:${PERSON_ROLE})${EDGE_R}|` +
     `${EDGE_L}(?:dele|dela)${EDGE_R})|` +
     `${EDGE_L}(?:approved|decided|asked|settled|ordered|aprovado|decidido|autorizado)${EDGE_R}` +
     `\\s+(?:by|por)\\s+(?:the\\s+|o\\s+|a\\s+)?(?:${PERSON_ROLE})${EDGE_R}`,
@@ -339,6 +379,8 @@ function attributions(flat, names) {
   for (const m of flat.matchAll(PT_PRONOUN_ACT)) push('pronoun', m, 'a pronoun doing something only a person does');
   for (const m of flat.matchAll(PT_POSSESSED_DECISION)) push('pronoun', m, 'a decision owned by a pronoun');
   for (const m of flat.matchAll(ACTING_OWNER)) push('owner', m, 'an owner who ACTS is a person; an owner OF something is a role');
+  for (const m of flat.matchAll(OWNER_OF_THE_PRODUCT))
+    push('owner', m, 'the owner OF THE PRODUCT is one individual — a record, a tag or an order has many holders, this has one');
   for (const m of flat.matchAll(ATTRIBUTED_DECISION)) push('decision', m, 'a decision hung on a person or a person\'s role');
   return found.sort((a, b) => a.start - b.start);
 }

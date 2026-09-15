@@ -103,11 +103,12 @@ export const urlOf = (face: GateFace): string | null => (face.host ? `https://${
  * operator access key SERVER-SIDE and lands signed in; the key never touches the browser. A link to the bare
  * origin would be a link to a login form the visitor has no password for.
  *
- * ⚠️ `override` IS THE FIRST TENANT'S DOOR AS THE BOX REALLY PUBLISHES IT — `FORGE_GATE_ADMIN_URL`, which
- * `bin/box-up.sh` derives from what the admin directory ACCEPTED at promotion (see the comment at its «THE
- * GATE'S LINK TO THE ADMIN IS THE FIRST TENANT'S DOOR»). It wins over the declaration for exactly one face,
- * because a bench and a tailnet answer at an address this box does not declare, and an operator meeting a
- * dead admin link on every birth is how a feature stops being trusted.
+ * ⚠️ `override` IS THIS TENANT'S OWN DOOR AS THE BOX REALLY PUBLISHES IT — its entry in
+ * `FORGE_GATE_ADMIN_URLS`, which `bin/box-up.sh` derives from the same `admin_host` the sibling switcher is
+ * derived from (see the comment at its «THE GATE'S ADMIN LINKS, ONE PER TENANT, WRITTEN AT BIRTH AND NOT
+ * ONLY AT PROMOTION»). It wins over the declaration for every tenant the map carries, because a bench and a
+ * tailnet answer at an address this box does not declare, and an operator meeting a dead admin link on every
+ * birth is how a feature stops being trusted. A tenant absent from the map keeps its declared address.
  */
 export const adminHrefOf = (face: GateFace, override?: string): string | null => {
   const origin = override?.replace(/\/+$/, '') || urlOf(face);
@@ -315,9 +316,9 @@ export function GateHub({ lang, here, adminUrls, dismiss }: HubProps) {
             index={index}
             lang={lang}
             here={here}
-            // ⚠️ ONLY THE FIRST TENANT'S. `FORGE_GATE_ADMIN_URL` is one value and `bin/box-up.sh` fills it
-            // from the FIRST admin door the directory accepted; handing it to both cards would point the
-            // café's admin row at the shoe brand's.
+            // ⚠️ KEYED BY TENANT, AND THAT IS THE WHOLE REASON THE MAP EXISTS. `FORGE_GATE_ADMIN_URLS`
+            // carries one origin per tenant id; a single value handed to both cards is what used to point
+            // the café's admin row at the shoe brand's door.
             adminUrl={adminUrls?.[tenant.id]}
             dismiss={dismiss}
           />

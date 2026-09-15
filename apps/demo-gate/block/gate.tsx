@@ -70,9 +70,9 @@ import { GATE_MARK } from './marks';
 export type GateBlockProps = {
   /** The "← back" target (the marketing site). */
   siteUrl: string;
-  /** The FIRST tenant's admin origin as this box really publishes it (`FORGE_GATE_ADMIN_URL`); its row opens
-   *  `${origin}/enter`, the server-side redeem handoff — one origin PER TENANT, keyed by tenant id. Every
-   *  face whose tenant is absent from the map keeps the address the declaration gives it. */
+  /** The admin origins this box really publishes (`FORGE_GATE_ADMIN_URLS`), one PER TENANT and keyed by
+   *  tenant id; a tenant's row opens `${origin}/enter`, the server-side redeem handoff. Every face whose
+   *  tenant is absent from the map keeps the address the declaration gives it. */
   adminUrls?: Readonly<Record<string, string>>;
   /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
   here?: string;

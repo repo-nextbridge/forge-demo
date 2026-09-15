@@ -989,13 +989,16 @@ source-available: the customer, the partner and the product team read these file
 message carried in as evidence, an attribution by pronoun — the pronoun glued to a verb only a person
 conjugates — or a personal address is **published** the moment the box is handed over. A name in a test title
 or an `assert` message is published twice, because every run prints it. `bin/private-trace.mjs` is the scanner and
-`bin/private-trace.guard.mjs` is the verdict over every tracked file, 879 of them.
+`bin/private-trace.guard.mjs` is the verdict over every tracked file, 886 of them (measured 2026-09-15).
 
 ★ **It never spells the name it forbids** — that would be the leak — it derives the register of humans from
 this repository's own commit graph at run time. And it is deliberately narrow where narrowness is the whole
 value: a **PT-BR screen string in quotes** (`«Compra Segura»`) is a VALUE and stays; `o dono`/`the owner` **of**
-something is a domain role and stays, while an owner who **acts** is a person; a **measurement** date stays and
-an attributed one does not. A finding that cannot be rewritten because the value is FUNCTIONAL is declared
+a domain object — a record, a tag, an order — is a role and stays, while an owner who **acts** is a person; a
+**measurement** date stays and an attributed one does not. ⚠️ **And the possession cuts both ways**, which is
+the half this rule was missing until 2026-09-15: a record has many holders, but this product has exactly one,
+so the title alone identifies the individual — and it needs no verb, which is why six of them stood in a
+delivered runbook through four sweeps. A finding that cannot be rewritten because the value is FUNCTIONAL is declared
 beside itself with `forge-private-ok: <reason>` — never as a path in an ignore list, and the guard goes red if
 the reason disappears. This tree declares none.
 

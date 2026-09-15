@@ -27,8 +27,9 @@ defeito que este arco inteiro passou o mês pagando.
 Hoje a Demo é **uma** caixa: ela pina um release e nasce. A sequência da §2 descreve esse mundo, e **esse
 mundo vai acabar**.
 
-Quando a Demo ganhar o **staging dela** (card no roadmap do dono do produto, no vault — ainda **não** existe como card
-no `docs/roadmap/kanban.md` do produto), a sequência ganha **um degrau novo entre o passo 3 e o passo 5**: o
+Quando a Demo ganhar o **staging dela** (previsto no roadmap do produto, que vive fora deste repositório —
+ainda **não** existe como card no `docs/roadmap/kanban.md` do produto), a sequência ganha **um degrau novo
+entre o passo 3 e o passo 5**: o
 release desce primeiro para o **staging da Demo**, é conferido lá, e só então desce para a caixa que o
 cliente vê. O passo 4 (assar o que é da Demo) passa a acontecer duas vezes, ou uma vez e ser promovido — é
 exatamente a decisão que aquele card tem de tomar, e ela **não está tomada aqui**.
@@ -50,7 +51,8 @@ Nenhuma linha de kernel. `README.md` abre com essa tabela e ela continua valendo
 
 ## 2. A ORDEM DO DEPLOY
 
-Ditada pelo dono do produto e conferida contra `docs/conventions/deploy-lifecycle.md` (produto).
+**Doutrina do produto**, conferida linha a linha contra `docs/conventions/deploy-lifecycle.md` (produto) —
+esta tabela não a inventa, ela a espelha.
 
 | # | o quê | onde | portão |
 |---|---|---|---|
@@ -66,8 +68,9 @@ Ditada pelo dono do produto e conferida contra `docs/conventions/deploy-lifecycl
 
 ### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
 
-Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas na estação
-de trabalho do dono do produto a partir de uma **branch**. `bin/build-local.sh:22` carrega a obrigação por escrito:
+Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas **numa
+estação de trabalho**, a partir de uma **branch** — nunca por um registry. `bin/build-local.sh:22` carrega a
+obrigação por escrito:
 
 > *"THE FIRST REAL DEPLOY **RE-STAMPS IT** with registry digests. That is not a reminder, it is **part of
 > that deploy's definition of done**"*
@@ -376,7 +379,7 @@ Medido em 03/09, antes disso: o diretório tinha reivindicação para `<tailnet>
 `unknown_admin_host`. **Ler nunca é configurar**: o script jamais roda `tailscale up` ou `serve`; entrar na
 rede continua sendo gesto do operador.
 
-**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão — por decisão do dono do produto.** Ele **não**
+**⚠️ O passo 14 (aquecimento) é um RELATÓRIO, não um portão, e isso é desenho.** Ele **não**
 faz mais o `box-up` sair 1, e a razão é que ele saía vermelho **em todo nascimento**, por construção. Medido em 04/09, duas corridas completas pelo tailnet, mesmo resultado: o plano
 do aquecedor não é feito de páginas — são ~420 páginas e ~20 400 **imagens**, descobertas do `srcset` de cada
 HTML — `planned=20822`, `warmed=4964`, `15865 urls nunca visitadas`. O teto que cortava é o **default** da
@@ -406,8 +409,9 @@ páginas declarariam). Então o teto que sobrevive **folga uma ordem de grandeza
 ★ E `stoppedBecause` tem **quatro** leituras, não três: **ausente** é *"esta corrida não pode dizer"* — nunca
 `finished`. É a mesma régua que a coluna `busy` já obedece.
 
-**★★ A derivação da pk21 (história, e ainda viva na exceção acima): o teto DERIVA DO PLANO, por decisão do
-dono do produto.** A prosa antiga dizia que a caixa "não sobrescreve" o teto da vitrine; era **falso**, e
+**★★ A derivação da pk21 (história, e ainda viva na exceção acima): o teto DERIVA DO PLANO, e essa derivação
+é deliberada — não é efeito colateral de implementação.** A prosa antiga dizia que a caixa "não sobrescreve"
+o teto da vitrine; era **falso**, e
 bastou abrir a rota para ver: `/api/warm?max_duration_ms=` sobrescrevia o default (`apps/storefront/src/app/api/warm/route.ts`,
 no bloco `parse`). O que
 faltava era um **número para mandar**, e o único honesto é derivado:
@@ -457,8 +461,8 @@ tem** (`bin/warm-box.mjs` sai **3** → `⛔ … IS MISSING A STORE THIS REPOSIT
 aquecimento, é *"o nascimento não construiu"* — e o passo 14 é o **único** que enxerga: o 12 e o 14-bis
 percorrem as lojas que a **porta reporta**, então uma loja que nunca nasceu é uma loja sobre a qual nenhum
 dos dois pergunta.
-⇒ **Veredicto anterior do dono do produto sobre a LENTIDÃO (outro assunto):** *"nascer caixa ou aquecer será feito de
-madrugada. Então nada a corrigir"*. ⛔ Não abra fatia para isso.
+⇒ **A LENTIDÃO já tem veredicto, e é outro assunto:** nascer caixa e aquecer são trabalho de **madrugada**, e
+sendo de madrugada não há o que corrigir. ⛔ Não abra fatia para isso.
 ⚠️ E enquanto o passo 14 roda, a caixa **cobra o preço**: 41% de CPU na vitrine servindo o próprio
 aquecedor, e páginas a ~1,9 s pela rede (contra ~90 ms com a caixa parada). **Antes de acusar código de
 lentidão, pergunte se a caixa estava nascendo.**
@@ -547,7 +551,8 @@ existe: se ela apareceu, **houve exposição** e ela está nomeada. Numa bancada
 é inofensivo; numa caixa com e-mail real de alguém, não é, e a resposta é **parar e avisar**, não subir o teto.
 
 📌 **E isto é rede de segurança, não o conserto.** O conserto é o kernel saber **REGISTRAR** um pedido em vez de
-**colocar** um (caderno pk32 §13, decisão do dono em 10/09): os pedidos do passado são colocações de verdade —
+**colocar** um — conserto de **produto**, já decidido e ainda não feito: os pedidos do passado são
+colocações de verdade —
 `apps/api/src/seed-history.ts` dirige a porta (`checkout.place_order`, `order.mark_paid`, …) e só as **datas**
 são ficção — então eles realmente merecem confirmação. Quando o **ato** carregar o fato *"isto já aconteceu,
 noutro sistema, noutro mês"*, cada consumidor deriva a própria resposta **do evento** e a resposta deixa de
@@ -922,8 +927,25 @@ a cada corrida e fica **vermelho no dia em que o kit publicar o subcaminho** —
 
 ### 6.2 ★★★ A PORTARIA — o que o operador vê quando ela está de pé, e o que mudou no 14-bis
 
+**O que a portaria É, para quem opera.** Uma tela cheia que **cobre** a rota pedida (nunca redireciona), em
+**PT/EN/ES** com seletor no rodapé, e ela tem **duas telas**, não uma:
+
+1. **O hub** — a primeira. Manchete em quatro orações (*"Dois tenants. Quatro lojas. Dois admins."* + *"Mesmo
+   kernel!"* no acento), **dois cartões de tenant** com as lojas de cada um e, no pé de cada cartão, a linha
+   *"Admin do tenant"*. Fecha com o aviso *"Tudo fictício: nada é cobrado, nada é enviado…"*.
+2. **A arquitetura** — *"A arquitetura da demo"*, aberta pelo botão *"Entenda a arquitetura"* e fechada por
+   *"Voltar para as demos"*. Ela **substitui** o hub em tela cheia; não há navegação, então a URL não muda e
+   o idioma escolhido viaja junto.
+
+⚠️ **Não procure um `<h1>` dizendo que é uma loja demo:** o herói que ficava acima do hub **saiu na pk38/d7**,
+com a segunda moldura e com o botão *"seguir nesta janela"*. ⇒ **o hub É a escolha**, e a única porta que
+sobrou fora dos cartões é a linha de rodapé desenhada só quando o host não casa com nenhum destino declarado
+(*"Esta janela está num endereço que esta demo não publica:"* + *"entrar assim mesmo"*) — que é **sempre** o
+caso na bancada. 📌 Para gradar *"a portaria apareceu"* numa sonda, o handle é o corpo, não o texto:
+`data-testid` de `apps/demo-gate/block/marks.ts` (e `data-hub-faces=<n>` conta os cartões).
+
 ⛔ **Até 11/09 NADA verificava que a portaria APARECE, e foi assim que ela ficou desinstalada por dias.** O app
-`apps/demo-gate` — a tela cheia *"Loja demo."* que todo visitante encontra antes da loja — não era instalado por
+`apps/demo-gate` — a tela cheia que todo visitante encontra antes da loja — não era instalado por
 **passo nenhum** do nascimento: nem `bin/seed-box.mjs`, nem `seed/vitrine.mjs`, nem `seed/coffee.mjs`, nem
 `seed/outlet.mjs`. O README do próprio app dizia *"Install the app for the tenant"*, ou seja: **um gesto de
 mão** que alguém tinha de lembrar. Ninguém lembrou, e **toda corrida de nascimento ficou verde** durante todo
@@ -939,7 +961,8 @@ visitante encontre a portaria, quer entre direto na loja: **a portaria responde 
 | `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão, e essa recusa é **acima** da portaria | **404**, idêntico |
 | `/s/<cafe>/…` | a **portaria** — desde a pk36/d1 o café é gradado como as outras três (§6.1 acima) | a **loja**, com a **faixa** no rodapé |
 
-★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout dele de 10/09): dois cartões de tenant,
+★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout é o do artboard,
+`apps/demo-gate/design-base/gate.dc.html`, e `block/hub.test.tsx` segura os dois juntos): dois cartões de tenant,
 cada um com as suas lojas e, no pé, a linha que abre o admin daquele tenant. ⛔ **Nenhum endereço está escrito no
 app** — quem os declara é `seed/box.json` (`domain` por loja, `admin_domain` por tenant), `bin/gate-faces.mjs`
 renderiza essa declaração em `apps/demo-gate/faces.generated.ts` e `bin/gate-faces.guard.mjs` impede as duas
@@ -1047,7 +1070,7 @@ fatia nomeia um repo só. O que foi consertado aqui é o **silêncio**. 📌 **E
 TRÊS lojas de vitrine** — `forge`, `outlet` e agora o `cafe`, que deixou de ser a única a aquecer de verdade.
 O passo 14 deriva a lista do `read.extensions`, então ele já nomeia o café sozinho: nenhuma lista a atualizar.
 
-⇒ **Na prática, para quem opera:** se a demo aparecer **sem** a tela *"Loja demo."*, o nascimento já vai ter
+⇒ **Na prática, para quem opera:** se a demo aparecer **sem** a portaria, o nascimento já vai ter
 dito qual loja e por quê, antes de a caixa ser entregue. E se você precisar ver a loja **sem** a portaria para
 conferir alguma coisa, é um cookie: `curl -H 'Cookie: forge_gate_dismissed=1' <url>` — é exatamente o que o
 passo 14-bis faz no segundo lado.

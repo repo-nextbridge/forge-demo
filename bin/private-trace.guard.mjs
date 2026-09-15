@@ -194,8 +194,10 @@ test('★★★ SABOTAGE — an ATTRIBUTED «…» citation is red, and the attr
   // ★ THE ONE THAT PROVES THE AXIS EXISTS SEPARATELY. There is no name here and no pronoun: only a decision
   //   hung on a role and a sentence somebody typed beside it. A role may carry a decision (see the negative
   //   controls); the transcript of the conversation is not the decision.
+  // ⚠️ THE ROLE HERE IS `o tech lead` ON PURPOSE. It used to be `o dono do produto`, which is now a person by
+  //   itself, and a fixture carrying two findings could not prove that THIS axis is the one that fired.
   const src =
-    '// Por decisão do dono do produto: «nascer caixa ou aquecer será feito de madrugada, nada a corrigir».\n';
+    '// Por decisão do tech lead: «nascer caixa ou aquecer será feito de madrugada, nada a corrigir».\n';
   const found = scan(src);
   assert.deepEqual(found.map((f) => f.axis), [AXIS.QUOTE], `an attributed conversation quote was not found:\n${shown(src)}`);
   assert.ok(found[0].evidence.includes('madrugada'), 'the finding does not quote the sentence it refuses');
@@ -221,6 +223,47 @@ test('★★★ SABOTAGE — `o dono decidiu` is red, and it is the OWNER WHO AC
   const found = scan(src);
   assert.deepEqual(found.map((f) => f.axis), [AXIS.PRONOUN], `an acting owner was not found:\n${shown(src)}`);
   assert.ok(found[0].evidence.includes('dono'), 'the finding does not quote the attribution');
+});
+
+test('★★★ SABOTAGE — `o dono do produto` is red WITH NO VERB IN SIGHT, and this is the hole the rule had', () => {
+  // ⛔ THE SHAPE THAT SURVIVED FOUR CLEAN-UP PASSES OVER THIS REPOSITORY and stood SIX times in one delivered
+  //    runbook (measured 2026-09-15). Rule B exempts `o dono DE algo` because a record, a tag and an order
+  //    have many holders — but that exemption only asked for a PREPOSITION, and the product has exactly one
+  //    holder. Nobody acts in either line below, so the acting-owner rule never looked at them.
+  for (const src of [
+    '// os quatro digests são de imagens construídas na estação de trabalho do dono do produto.\n',
+    '// Quando a Demo ganhar o staging dela (card no roadmap do dono do produto, no vault), a sequência muda.\n',
+    '// Ditada pelo dono do produto e conferida contra a doutrina do ciclo de vida.\n',
+  ]) {
+    assert.deepEqual(axes(src), [AXIS.PRONOUN], `an owner OF THE PRODUCT was read as a domain role:\n${shown(src)}`);
+  }
+});
+
+test('★★★ SABOTAGE — the same possession in English: `the owner of the product`, `the product owner`', () => {
+  for (const src of [
+    '// The ceiling derives from the plan, as the owner of the product settled it.\n',
+    '// Baked on the product owner’s workstation from a branch, never from a registry.\n',
+    '// O roadmap da plataforma é do dono da plataforma e não mora neste repositório.\n',
+  ]) {
+    assert.ok(
+      axes(src).includes(AXIS.PRONOUN),
+      `an owner of the product/platform was read as a domain role:\n${shown(src)}`,
+    );
+  }
+});
+
+test('★★★ SABOTAGE — a QUALIFIED decision noun still attributes the citation beside it', () => {
+  // ⛔ ONE ADJECTIVE WAS ENOUGH TO LOSE A TRANSCRIPT. `Veredicto ANTERIOR do …` put a word between the noun
+  //    and the preposition, the attribution rule stopped matching, and the sentence somebody typed next to it
+  //    went green for want of anything attributing it. The tail still has to end on a role, so nothing
+  //    looser gets in with it.
+  const src =
+    '⇒ **Veredicto anterior do tech lead sobre a LENTIDÃO:** *"nascer caixa ou aquecer será feito de\n' +
+    'madrugada. Então nada a corrigir"*.\n';
+  assert.ok(
+    scan(src).some((f) => f.axis === AXIS.QUOTE),
+    `a citation hung on a QUALIFIED decision noun was not found:\n${shown(src)}`,
+  );
 });
 
 test('★★ SABOTAGE — `ele pediu` / `ele decidiu` are red, and a THING doing something is not', () => {
@@ -314,12 +357,28 @@ test('★★★ CONTROL — a DATE OF MEASUREMENT stays. This repository is buil
 });
 
 test('★★★ CONTROL — a ROLE may carry a decision. `the tech lead` is a role, and it has no name in it.', () => {
+  // ⚠️ THE THIRD LINE HERE USED TO READ `por decisão do dono do produto`, and it is a SABOTAGE now, not a
+  //    control: a role is a function a team fills, and the product has exactly one owner. The line that
+  //    replaces it is the same sentence hung on a role that stays one. See `OWNER_OF_THE_PRODUCT`.
   for (const src of [
     '// (Decision of the tech lead, pre-seed wave.)\n',
     '// survives a restart, which was the defect. (Approved by the tech lead, 2026-09-01.)\n',
-    '// O passo 14 é um RELATÓRIO, não um portão — por decisão do dono do produto.\n',
+    '// O passo 14 é um RELATÓRIO, não um portão — por decisão do arquiteto.\n',
   ]) {
     assert.deepEqual(scan(src), [], `an attribution to a role without a name was refused:\n${shown(src)}`);
+  }
+});
+
+test('★★★ CONTROL — and the possession is what tells them apart: a RECORD, a TAG, an ORDER keep their role', () => {
+  // ⛔ BEING WRONG HERE UNDOES THE RULE ABOVE. This repository is full of owners of things, and the sentence
+  //    that makes `dono do produto` a person has to leave every one of them alone.
+  for (const src of [
+    '| `forge.lock` com imagem por tag | o dono da tag repontar os bytes debaixo da sua instância |\n',
+    '// the owner of the record is the phase, not the shop; `o dono do pedido` is the shopper.\n',
+    '// o dono da loja subiu o arquivo, e `ownerAssets` é onde ele fica.\n',
+    '// the owner of the row that the projection writes is the tenant, never the request.\n',
+  ]) {
+    assert.deepEqual(scan(src), [], `an owner OF A DOMAIN OBJECT was read as a person:\n${shown(src)}`);
   }
 });
 
