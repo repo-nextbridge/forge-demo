@@ -2,7 +2,7 @@
 //
 // Until pk33 NOTHING anywhere verified that the gate APPEARS. `bin/prove-doors.mjs` opened every door of every
 // store and graded the status code and the container that answered; both are identical whether the visitor
-// meets the "Loja demo." screen or walks straight into the shop, because the gate answers 200 and so does the
+// meets the gate's full-screen hub or walks straight into the shop, because the gate answers 200 and so does the
 // shop. That silence is measured, not hypothetical: the app sat UNINSTALLED on this box for days and the
 // birth stayed green through all of them.
 //
