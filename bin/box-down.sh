@@ -14,6 +14,27 @@
 #   CACHE  is what the box FETCHED and could fetch again — the 3.6 GB photo payload pulled from a bucket.
 #          Destroying it proves nothing: the claim is "the box is born from nothing", not "the network is
 #          re-read from nothing". It costs ~40 minutes and buys no evidence.
+#   IDENTITY is what the box IS at an address — the edge's TLS certificates and its ACME account key. Same
+#          species as an SSH host key: not derived, not fetched, and re-minting it on every birth is not
+#          hygiene, it is a new machine wearing the old name.
+#
+# ★★ THE THIRD CATEGORY WAS ADDED 2026-09-16, AND THE MEASUREMENT THAT PUT IT HERE IS NOT ABOUT TIDINESS.
+# `caddy_data` and `caddy_config` sat in STATE, so every rebirth destroyed the six certificates AND the ACME
+# account. On this bench that is free — `caddy/Caddyfile.local` carries `auto_https off` and no certificate is
+# ever issued. ONLINE it is not: `caddy/Caddyfile` declares `tls { load /etc/caddy/certs }` and its own comment
+# says an EMPTY folder is the normal state, i.e. Caddy issues its own from Let's Encrypt and keeps them in
+# /data — which is this volume.
+#
+# ⇒ A box reborn WEEKLY BY CRON would re-issue six certificates and re-register an ACME account every week.
+# In steady state that fits the allowances. The danger is not steady state: the DUPLICATE CERTIFICATE limit is
+# 5 per week for the same exact set of names, so a rebirth that fails and is retried three or four times in
+# one day burns it — and the box comes back with NO TLS and stays that way until the week rolls over. A limit
+# that only bites once something else has already gone wrong is the worst kind to discover in production.
+# ⚠️ It also puts an EXTERNAL dependency inside the unattended 90-minute window: the birth gains a way to fail
+# that has nothing to do with this box.
+#
+# ⛔ DO NOT "fix" this by moving them back and adding a flag. A flag is a paragraph, and the header above
+# already explains why a paragraph loses to a habit. The certificates survive because they are not state.
 #
 # ⚠️ AND THIS IS A MECHANISM RATHER THAN A RULE ON PURPOSE. The distinction above was explained to me, I wrote
 # it down in a report, and one minute later my hand typed `down -v` anyway and re-pulled the whole payload —
@@ -49,11 +70,23 @@ note 'containers and network removed'
 # ★ THE STATE VOLUMES, BY NAME. Named explicitly rather than swept, so that adding a volume to `compose.yml`
 # without deciding which kind it is shows up here as a leftover instead of being silently destroyed — or
 # silently kept.
-STATE='pgdata redisdata media caddy_data caddy_config'
+STATE='pgdata redisdata media'
 for v in $STATE; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
     $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "state    $v — destroyed"
+  fi
+done
+
+# ★ IDENTITY — kept unconditionally, and NOT even by `--all`. `--all` means "re-fetch what you could
+# re-fetch"; a certificate is not fetched, it is ISSUED to this box at this name, and re-issuing has a cost
+# that is paid to somebody else's rate limiter. A box that must truly start over deletes these by hand, which
+# is the friction this line is for.
+IDENTITY='caddy_data caddy_config'
+for v in $IDENTITY; do
+  full="${COMPOSE_PROJECT_NAME}_${v}"
+  if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
+    note "identity $v — KEPT; TLS certificates and the ACME account are not state. Remove by hand to start over"
   fi
 done
 
@@ -74,9 +107,9 @@ done
 left=$($DOCKER_SH "docker volume ls --format '{{.Name}}'" 2>/dev/null | grep "^${COMPOSE_PROJECT_NAME}_" || true)
 for v in $left; do
   short="${v#"${COMPOSE_PROJECT_NAME}_"}"
-  case " $STATE $CACHE " in
+  case " $STATE $IDENTITY $CACHE " in
     *" $short "*) ;;
-    *) note "⚠️ $short — UNCLASSIFIED: not in this script's state or cache list. Decide which it is and add it." ;;
+    *) note "⚠️ $short — UNCLASSIFIED: not in this script's state, identity or cache list. Decide which it is and add it." ;;
   esac
 done
 

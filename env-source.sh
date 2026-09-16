@@ -298,4 +298,81 @@ unset _forge_revalidate_env _forge_revalidate_store
 # The private half that signs the social login's factor assertion. ONLY the checkout container gets it.
 export FORGE_CUSTOMER_ASSERTION_PRIVATE_KEY="$(optional_secret forge-customer-assertion-private-key)"
 
+# ── SOCIAL LOGIN — GOOGLE (operator and shopper) AND APPLE (shopper) ────────────────────────────────────────
+#
+# ★★ WHY THIS BLOCK DID NOT EXIST UNTIL 16/09, MEASURED. `compose.yml:258-266` and `:311` already hand all nine
+# variables to the checkout and the admin — the wiring was complete. What was missing was anybody FILLING them:
+# this file mentioned neither provider, so every container got the empty string and `config.ts` hid both
+# buttons. Nothing was red, because an incomplete set hiding a button is the DESIGNED behaviour, not a fault.
+# ⇒ A box can be wired end to end for a capability and simply never be told the capability exists.
+#
+# ⚠️ ALL-OR-NOTHING, PER PROVIDER, AND THAT IS THE POINT. `packages/storefront-kit/src/config.ts` returns
+# `undefined` unless the whole set is present, and the front hides the button rather than offering one that
+# fails. So a half-filled group is SILENT — which is kind to the shopper and cruel to whoever is configuring.
+# The `[env-source]` lines below are the only thing that tells you which half you have.
+#
+# ⛔ THE REDIRECT URIs ARE NOT SET HERE, AND MUST NOT BE. The product derives them from the request's host and
+# refuses a host its own directory does not claim (pk43/s3). A value written here would either be ignored or
+# disagree with what the route actually serves — the same reason `infra/env-source.sh` derives rather than
+# stores them. What you register with the provider is the list of hosts this box serves; nothing more.
+#
+# ⚠️ AND THEY ONLY WORK OVER https, ON A HOST THE PROVIDER KNOWS. On this bench (a tailnet hostname nobody
+# registered) the handshake would come back `redirect_uri_mismatch`, so leaving the secret store EMPTY here is
+# the right state for a bench: no values, no group, no button, nothing broken.
+
+_forge_social_google() {
+  local id secret
+  id="$(optional_secret forge-storefront-google-client-id)"
+  secret="$(optional_secret forge-storefront-google-client-secret)"
+  if [ -n "$id" ] && [ -n "$secret" ]; then
+    export FORGE_GOOGLE_CLIENT_ID="$id" FORGE_GOOGLE_CLIENT_SECRET="$secret"
+    echo "[env-source] shopper Google login: ON" >&2
+  else
+    unset FORGE_GOOGLE_CLIENT_ID FORGE_GOOGLE_CLIENT_SECRET
+    [ -n "$id$secret" ] && echo "[env-source] ⚠️  shopper Google login: HALF configured — the button stays hidden." >&2
+  fi
+}
+_forge_social_google; unset -f _forge_social_google
+
+_forge_admin_google() {
+  local id secret
+  id="$(optional_secret forge-google-client-id)"
+  secret="$(optional_secret forge-google-client-secret)"
+  if [ -n "$id" ] && [ -n "$secret" ]; then
+    export GOOGLE_CLIENT_ID="$id" GOOGLE_CLIENT_SECRET="$secret"
+    echo "[env-source] operator Google login: ON" >&2
+  else
+    unset GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+    [ -n "$id$secret" ] && echo "[env-source] ⚠️  operator Google login: HALF configured — the button stays hidden." >&2
+  fi
+}
+_forge_admin_google; unset -f _forge_admin_google
+
+# Apple needs FOUR to mint the client secret at login time (the .p8 plus the two ids that name it), and the
+# domain association is a FIFTH that is optional-on-top: without it `/.well-known/apple-developer-domain-
+# association.txt` answers 404 and Apple never trusts the Services ID — a button that asks for the password
+# and comes back without signing anybody in. ⚠️ The .p8 may carry `\n`-encoded newlines; config.ts:45 undoes
+# that, so paste it either way.
+_forge_social_apple() {
+  local svc team key pem
+  svc="$(optional_secret forge-apple-service-id)"
+  team="$(optional_secret forge-apple-team-id)"
+  key="$(optional_secret forge-apple-key-id)"
+  pem="$(optional_secret forge-apple-private-key)"
+  if [ -n "$svc" ] && [ -n "$team" ] && [ -n "$key" ] && [ -n "$pem" ]; then
+    export FORGE_APPLE_SERVICE_ID="$svc" FORGE_APPLE_TEAM_ID="$team"
+    export FORGE_APPLE_KEY_ID="$key" FORGE_APPLE_PRIVATE_KEY="$pem"
+    export FORGE_APPLE_DOMAIN_ASSOCIATION="$(optional_secret forge-apple-domain-association)"
+    [ -n "${FORGE_APPLE_DOMAIN_ASSOCIATION:-}" ] \
+      || echo "[env-source] ⚠️  Sign in with Apple: ON, but NO domain association — Apple will not trust this Services ID." >&2
+    echo "[env-source] Sign in with Apple: ON" >&2
+  else
+    unset FORGE_APPLE_SERVICE_ID FORGE_APPLE_TEAM_ID FORGE_APPLE_KEY_ID \
+      FORGE_APPLE_PRIVATE_KEY FORGE_APPLE_DOMAIN_ASSOCIATION
+    [ -n "$svc$team$key$pem" ] \
+      && echo "[env-source] ⚠️  Sign in with Apple: INCOMPLETE — all four are required; the button stays hidden." >&2
+  fi
+}
+_forge_social_apple; unset -f _forge_social_apple
+
 echo "[env-source] secrets exported into this shell. Now: source bin/images-from-lock.sh && docker compose up -d" >&2
