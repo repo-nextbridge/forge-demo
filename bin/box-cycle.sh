@@ -86,9 +86,12 @@
 # teach `bin/box-up.sh` a distinct exit CODE per family, or read the NAMED SENTENCES it already prints. The
 # measurement decided it, and it is the first real run itself: gesture 2 came back with TWO reasons at once
 # (`SHUT` and `MISCONFIGURED`). A status is ONE number and cannot carry a set — and a bitmask does not fit
-# either: eight families need eight bits, the low ones are already spoken for by the thirty-two `die` sites
-# and the argument refusals that all exit 1, and a status is capped at 255. A code per family would have had
-# to DROP one of the two reasons the very run that opened this question produced.
+# either. RE-MEASURED 2026-09-16, because the arithmetic is the whole answer: eight families have 2^8 − 1 =
+# 255 non-empty subsets, and a shell status carries 125 usable values (0 is green, 126 is "not executable",
+# 127 is "not found", 128+N is "killed by signal N" and nothing downstream can tell a deliberate 137 from a
+# SIGKILL) — short by a factor of two. The low numbers are spoken for besides: `bin/box-up.sh` has 41 `die`
+# call sites and 11 direct `exit 1` lines, all of them leaving status 1. And a code per family, without the
+# set, would have had to DROP one of the two reasons the very run that opened this question produced.
 #
 # ⇒ So the reasons are read from the sentences, and `CYCLE_REASONS` below is that table — token, sentence,
 # who asks it again, and the measurement. ⚠️ THE COST OF THAT IS PROSE, AND IT IS PAID BY A GUARD:

@@ -23,7 +23,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,6 +100,101 @@ function uncommitted(base) {
 }
 
 /**
+ * ★★★ WHY THERE IS NO TREE — AND IT IS TWO DIFFERENT SENTENCES, NOT ONE (pk42/s2).
+ *
+ * ⛔ THE DEFECT, MEASURED THREE WAYS ON THIS TREE, 2026-09-16. `releaseTree` answered a machine with no tree
+ * at the pin with `… @ <other sha> — a different commit`, and every caller turned that into ONE NOT CHECKED.
+ * But the same words cover two states that call for opposite reactions:
+ *
+ *   · THE LOCK AGED. The pin is an ANCESTOR of the product's branch next door — the images were baked, the
+ *     product moved on, and nothing about the installed kit is in question. Measured here: the lock pins
+ *     `a8bef5f5a`, the clone holds it, and `v03/integra` is 34 commits ahead of it. 37 of the 45 tests this
+ *     repository reported NOT CHECKED were that, and the repair is a rebake, not an investigation.
+ *   · THE KIT IS NOT THE RELEASE'S. No clone on this machine holds the commit at all, so nothing can be said
+ *     about what is installed. That is the state provenance was built for, and it stays as strict as it was:
+ *     a fork once ran 174 lines behind the release, green and silent, and this is the question that catches
+ *     it.
+ *
+ * ⇒ THE RIGOUR IS UNCHANGED — both still say NOT CHECKED, and nothing is graded against a tree that is not
+ * the release's. What changes is the DIAGNOSIS: git can answer which of the two it is, and it is asked.
+ *
+ * @returns {{ kind: string, sentence: string, ahead?: number, clone?: string }}
+ *   `lock-behind`     the pin is an ancestor of a tip in a clone here — the product moved on
+ *   `pin-orphaned`    the clone holds the pin and no branch contains it — it was rewritten or dropped
+ *   `pin-here-no-tree` a clone is AT the pin and is not a checkout this resolver accepts
+ *   `pin-unreachable` no clone on this machine holds the commit — the grave one
+ *   `no-clone`        there is no Forge clone here at all, so the question cannot be put
+ *   `unpinned`        the lock names registry digests and there is no commit to diagnose
+ */
+export function pinDiagnosis(pinned, env = process.env) {
+  if (!pinned?.sha) {
+    return {
+      kind: 'unpinned',
+      sentence: 'VERDICT — forge.lock names registry digests and not a branch@sha, so there is no commit to diagnose.',
+    };
+  }
+  const short = pinned.sha.slice(0, 9);
+  /** Every candidate that git will answer questions about — a clone, whether or not it is a Forge checkout. */
+  const clones = candidates(env).filter((base) => base && existsSync(base) && gitOut(base, ['rev-parse', '--git-dir']) !== null);
+  if (clones.length === 0) {
+    return {
+      kind: 'no-clone',
+      sentence:
+        `VERDICT — THE QUESTION COULD NOT BE PUT: no git clone of the product was found here, so "the product ` +
+        `moved on" and "the installed kit is not the release's" cannot be told apart. Set FORGE_MONOREPO=<a Forge clone>.`,
+    };
+  }
+  // ⚠️ `cat-file -e` PRINTS NOTHING AND SUCCEEDS, so the answer is `!== null` and never a truthy string.
+  const holder = clones.find((base) => gitOut(base, ['cat-file', '-e', `${pinned.sha}^{commit}`]) !== null);
+  if (!holder) {
+    return {
+      kind: 'pin-unreachable',
+      sentence:
+        `⛔ VERDICT — NO CLONE ON THIS MACHINE HOLDS ${short}. The release these images name cannot be read here at ` +
+        `all, so nothing can show that the installed kit IS the release's — which is the state this gate exists for. ` +
+        `Fetch the branch in a clone, or point FORGE_MONOREPO at one that has the commit. ⛔ This is NOT "the product moved on".`,
+    };
+  }
+  // The pin's own branch first — the clone next door is usually parked on something else — then its remote,
+  // then whatever is checked out. The first tip that CONTAINS the pin answers the question.
+  const at = pinned.ref?.lastIndexOf('@') ?? -1;
+  const branch = at > 0 ? pinned.ref.slice(0, at) : null;
+  for (const tip of [branch, branch ? `origin/${branch}` : null, 'HEAD'].filter(Boolean)) {
+    if (gitOut(holder, ['rev-parse', '--verify', `${tip}^{commit}`]) === null) continue;
+    const ahead = gitOut(holder, ['rev-list', '--count', `${pinned.sha}..${tip}`]);
+    const behind = gitOut(holder, ['rev-list', '--count', `${tip}..${pinned.sha}`]);
+    if (ahead === null || behind === null || behind !== '0') continue;
+    if (ahead === '0') {
+      return {
+        kind: 'pin-here-no-tree',
+        clone: holder,
+        sentence:
+          `VERDICT — ${holder} IS at ${short} and was still refused, so what is missing is a working tree this ` +
+          `resolver accepts (packages/storefront-kit/package.json, and a commit git can name). The kit is not in question.`,
+      };
+    }
+    return {
+      kind: 'lock-behind',
+      clone: holder,
+      ahead: Number(ahead),
+      sentence:
+        `VERDICT — THE LOCK AGED, THE KIT DID NOT: ${holder} holds ${short} and \`${tip}\` is ${ahead} commit(s) AHEAD ` +
+        `of it, so the pin is an ANCESTOR of the product next door. These images were baked before those ${ahead} ` +
+        `commits; nothing here says the installed kit is wrong. Park a tree at the pin ` +
+        `(git -C ${holder} worktree add <dir> ${short}) to grade this run, or rebake to move the pin ` +
+        `(bash bin/build-local.sh ${holder}, which rewrites forge.lock).`,
+    };
+  }
+  return {
+    kind: 'pin-orphaned',
+    clone: holder,
+    sentence:
+      `⛔ VERDICT — THE PIN IS ON NO BRANCH: ${holder} holds ${short} and no tip of it contains that commit, so the ` +
+      `branch it was baked from was rewritten or dropped. A rebake is the only thing that makes this lock honest again.`,
+  };
+}
+
+/**
  * The checkout whose HEAD is the pinned commit, and the sentence that says how it was found. Returns
  * `{ path, head, how, clean }` when one exists and `{ tried }` — the list of what was looked at and why each
  * was rejected — when none does.
@@ -163,7 +258,13 @@ export function releaseTree(pinned, env = process.env) {
     }
   }
   if (dirty.length > 0) return dirty[0];
-  return { tried };
+  // ★★ AND THE LIST ENDS WITH A VERDICT. Every caller of this function already prints `tried` line by line
+  // (`for (const line of TREE.tried) say(...)`), so the diagnosis reaches all fourteen of them by being the
+  // last thing in that list — one mechanism rather than fourteen edited call sites, the same shape
+  // `bin/test.sh`'s strict mode took for the same reason.
+  const diagnosis = pinDiagnosis(pinned, env);
+  tried.push(diagnosis.sentence);
+  return { tried, diagnosis };
 }
 
 /**
@@ -201,5 +302,33 @@ export function fileAtPinned(pinned, relPath) {
     }
     return { text, from: `${base} @ ${pinned.sha}` };
   }
+  // ★ THE SAME VERDICT AS `releaseTree`'s, for the same reason: this door fails for two different causes too
+  // — a clone that does not hold the commit (grave) and a commit whose branch simply moved on with the path
+  // still present (a rebake). Its callers print `tried` the same way, so the diagnosis reaches them the
+  // same way.
+  tried.push(pinDiagnosis(pinned).sentence);
   return { tried };
+}
+
+// ── ★ THE SAME ANSWER, FOR A HUMAN AND FOR A SHELL ──────────────────────────────────────────────────────────
+//
+//   node bin/release-tree.mjs
+//
+// ⚠️ IT IS A REPORT AND NEVER A GATE — it exits 0 on every verdict, including the grave one. What grades the
+// provenance is the guards that import this file; this door exists because "why did 37 of my tests not run?"
+// was a question whose answer was scattered across thirty `tried:` lines in a 900-line run, and
+// `bin/test.sh` now closes every run with it.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const pinned = pinnedCommit();
+  const tree = pinned ? releaseTree(pinned) : null;
+  process.stdout.write(`pin       ${pinned?.ref ?? '<none: forge.lock names registry digests>'}\n`);
+  if (tree?.path) {
+    process.stdout.write(`tree      ${tree.path}  (${tree.how})\n`);
+    process.stdout.write('verdict   the release these images were baked from is HERE — the guards that need it will grade.\n');
+  } else {
+    const diagnosis = tree?.diagnosis ?? pinDiagnosis(pinned);
+    process.stdout.write(`tree      <none on this machine>\n`);
+    for (const line of tree?.tried ?? []) process.stdout.write(`looked at ${line}\n`);
+    process.stdout.write(`kind      ${diagnosis.kind}\n`);
+  }
 }
