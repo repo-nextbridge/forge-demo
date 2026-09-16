@@ -74,8 +74,29 @@ remote_box_load() { # <env> <root> <die-fn>
   # than refuses makes every gesture wait the full timeout, and how long that is worth waiting is a fact about
   # where the box lives. Default 20 s — long enough for a VM that is cold, short enough that a wrong address
   # is a wrong address within half a minute.
+  #
+  # ── ⛔⛔ AND IT KEEPS THE CONNECTION AWAKE, WHICH THE BIRTH IS WHAT TAUGHT THIS FILE ────────────────────
+  #
+  # MEASURED ON THE STAGING BOX, 2026-09-16, TWICE WITH THE SAME SHAPE. The massive seed is a one-shot that
+  # prints nothing for ten to thirty minutes while it writes the catalogue. Both times it FINISHED on the box
+  # — its own summary line came through, the container was gone and no `docker compose` process remained —
+  # and the local `ssh` stayed open afterwards, forever, with the caller waiting on an EOF that never came.
+  # A three-second one-shot through this same function returns in three seconds, so it is not the vehicle
+  # being wrong about compose: it is a TCP session that nothing spoke on for a quarter of an hour.
+  #
+  # ⇒ `ServerAliveInterval` is traffic, and that is both halves of the repair: it keeps a NAT or a stateful
+  # firewall from dropping an idle session, and when a session IS dead it makes `ssh` say so with an exit code
+  # instead of blocking. ⚠️ A hang is the worst possible ending for a birth — every refusal in
+  # `bin/birth-remote.sh` is written so that a step which fails STOPS the run, and a step that neither fails
+  # nor returns escapes that discipline entirely.
+  #
+  # THE NUMBERS ARE DERIVED: 15 s × 40 = ten minutes of unanswered probes before giving up, which is longer
+  # than any pause a loaded one-vCPU box has shown here and far shorter than "forever".
   REMOTE_SSH=(ssh -C -i "$REMOTE_BOX_KEY" -o StrictHostKeyChecking=accept-new \
-    -o "ConnectTimeout=${FORGE_DEPLOY_SSH_TIMEOUT:-20}" "$REMOTE_BOX_TARGET")
+    -o "ConnectTimeout=${FORGE_DEPLOY_SSH_TIMEOUT:-20}" \
+    -o "ServerAliveInterval=${FORGE_DEPLOY_SSH_KEEPALIVE:-15}" \
+    -o "ServerAliveCountMax=${FORGE_DEPLOY_SSH_KEEPALIVE_TRIES:-40}" \
+    "$REMOTE_BOX_TARGET")
   return 0
 }
 

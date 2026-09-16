@@ -596,6 +596,57 @@ test('every remote_compose caller passes arguments, not one pre-flattened string
   }
 });
 
+// ── ⟂ §5c · THE VEHICLE KEEPS THE CONNECTION AWAKE ────────────────────────────────────────────────────────
+//
+// ⛔ MEASURED ON THE STAGING BOX, 2026-09-16, TWICE. The massive seed prints nothing for ten to thirty minutes
+// while it writes; both times the one-shot FINISHED on the box and the local ssh never returned. A hang is
+// the one ending a birth's discipline cannot cover — every refusal in `bin/birth-remote.sh` is written so a
+// failing step STOPS the run, and a step that neither fails nor returns escapes all of it.
+//
+// ⚠️ IT IS GRADED ON THE COMMAND THE VEHICLE BUILDS, not by waiting fifteen minutes for a VM to go quiet.
+// The option either reaches `ssh` or it does not.
+test('every remote gesture travels with a keepalive, so a silent quarter of an hour cannot hang the birth', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'forge-remote-keepalive-'));
+  try {
+    mkdirSync(join(dir, 'stub'), { recursive: true });
+    mkdirSync(join(dir, 'deploy'), { recursive: true });
+    // The far side prints the ARGUMENTS it was given, which is the whole subject here.
+    writeFileSync(join(dir, 'stub/ssh'), '#!/usr/bin/env bash\nprintf "%s\\n" "$@"\n', { mode: 0o755 });
+    writeFileSync(join(dir, 'deploy/box.env'), '');
+    writeFileSync(
+      join(dir, 'deploy/probe.env'),
+      [
+        'FORGE_DEPLOY_HOST=probe.invalid',
+        'FORGE_DEPLOY_USER=root',
+        'FORGE_DEPLOY_DIR=/opt/probe',
+        'FORGE_DOMAIN=probe.example',
+        'FORGE_ADMIN_DOMAIN=admin.probe.example',
+        'FORGE_PUBLIC_ORIGIN=https://probe.example',
+        '',
+      ].join('\n'),
+    );
+    const r = spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -uo pipefail
+. ${JSON.stringify(join(ROOT, 'bin/remote-box.sh'))}
+remote_box_load probe ${JSON.stringify(dir)} remote_box_die || exit 1
+remote_run true`,
+      ],
+      { env: { ...process.env, PATH: `${join(dir, 'stub')}:${process.env.PATH}` }, encoding: 'utf8' },
+    );
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /ServerAliveInterval=\d+/, 'no keepalive interval: a silent command can hang forever');
+    assert.match(r.stdout, /ServerAliveCountMax=\d+/, 'no keepalive ceiling: a dead session would never be declared dead');
+    // ⟂ the control — the option that was already there still is, so this is not a test that passes on any
+    //   string containing "ServerAlive".
+    assert.match(r.stdout, /ConnectTimeout=\d+/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ── ⟂ §6 · THE BOX'S `.env` IS WRITTEN VERBATIM, AND THE VALUE REALLY ARRIVES ──────────────────────────────
 //
 // ⛔ THE BUG THIS EXISTS FOR, CAUGHT BEFORE THE FUNCTION HAD EVER RUN AGAINST A REAL BOX. `remote_env_put`
