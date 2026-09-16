@@ -15,6 +15,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { clusterCondition, unresolvedClusters, unresolvedStores } from './audience.mjs';
+import { ANONYMOUS_BUYER_STORE_HANDLES } from './commerce.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(readFileSync(join(SEED, 'audience.json'), 'utf8'));
@@ -143,6 +144,37 @@ test('★ the coupon has a CODE and the automatics do not — the trigger follow
   const coded = DATA.promotions.filter((p) => p.code);
   assert.equal(coded.length, 1, 'expected exactly one coupon among the cluster promotions');
   assert.match(coded[0].code, /^[A-Z0-9]+$/, 'a code a person types out loud is upper-case and unspaced');
+});
+
+// ── ★★★ THE SUBJECT OF `pending_identity`, AND IT IS THESE PROMOTIONS ───────────────────────────────────
+//
+// A cart with nobody on it is priced with nobody on it, so a promotion the kernel can only judge once it
+// knows WHO is buying comes back REJECTED — and the port publishes exactly that set as `pending_identity`,
+// which the minicart and the checkout summary draw as "Este total ainda pode mudar". The reasons that
+// qualify are the identity ones; a COUPON never does — with no code the engine stops at `coupon_required`
+// one step earlier, and with the code applied the field excludes it by construction.
+//
+// ⇒ SO THE SUBJECT IS AN *AUTOMATIC* IDENTITY-CONDITIONED PROMOTION ON A STORE WHERE SOMEBODY CAN REALLY
+// IDENTIFY, and the ones this repository declares are here. MEASURED ON THE BENCH 2026-09-16 — one anonymous
+// cart with one line per store, read back through `read.checkout`:
+//
+//     forgeco/forge    → "Clientes VIP · 10% OFF"        condition_customer_in_cluster
+//     forgeco/outlet   → "10% na primeira compra"        condition_first_purchase  (the mounted dataset's)
+//                        "Frete grátis para São Paulo"   condition_customer_in_cluster
+//     forgecafe/cafe   → nothing: its one identity promotion is a COUPON
+//     forgecafe/balcao → nothing: retired on purpose, because nobody can be recognised at a till
+//
+// Turning the automatics below into coupons would empty the field on the whole box and take that sentence
+// off the checkout without breaking anything — which is what this rule exists to make loud instead.
+test('★★★ this box keeps a live subject for `pending_identity` — an AUTOMATIC identity promotion on a store where a shopper can identify', () => {
+  const automatic = DATA.promotions.filter(
+    (promo) => !promo.code && !ANONYMOUS_BUYER_STORE_HANDLES.includes(promo.store),
+  );
+  assert.ok(
+    automatic.length > 0,
+    'every cluster promotion here became a coupon or moved to a store where nobody can be recognised, so an ' +
+      'anonymous cart is priced with nothing pending and the checkout stops saying the total may still change',
+  );
 });
 
 test('the condition is the kernel’s own vocabulary, spelled once', () => {
