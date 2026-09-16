@@ -38,6 +38,26 @@ services:
   postgres:
     image: postgres:18
     restart: unless-stopped
+    # ── ⛔⛔ /dev/shm, AND DOCKER'S 64 MB DEFAULT IS TOO SMALL FOR THIS BOX'S OWN SEED ─────────────────────
+    #
+    # MEASURED ON THE STAGING VM, 2026-09-16. The massive seed's one-shot died with the database's own words:
+    #
+    #     could not resize shared memory segment "/PostgreSQL.3914999898" to 8388608 bytes:
+    #     No space left on device
+    #
+    # ⚠️ THAT SENTENCE NAMES THE WRONG THING TO ANYONE READING IT IN A HURRY. It is not the disk (26 GB free)
+    # and not the host's `/dev/shm` (981 MB free): it is the CONTAINER's, which Docker gives 64 MB by default
+    # — measured inside `forge-demo-postgres-1`, `shm 64M`. Postgres puts a parallel query's shared tuple
+    # store there, so the failure arrives on a big read in the middle of a write nobody is watching, and the
+    # catalogue comes out half filled.
+    #
+    # ⚠️ AND THE BENCH NEVER SHOWED IT, WHICH IS WHY IT IS WRITTEN HERE RATHER THAN REMEMBERED: the same 64 MB
+    # is the default on a laptop too, and there the planner never had to spill. A limit that only bites where
+    # the machine is smaller is a limit that is discovered in production.
+    #
+    # 256 MB is four times the default and a rounding error beside this box's 2 GB of RAM (`/dev/shm` is
+    # tmpfs: it costs what it holds, not what it declares).
+    shm_size: 256m
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-forge}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD (env-source.sh) — the demo's database is still a database}

@@ -31,7 +31,7 @@
 // would grade a bench — and would ssh to a real VM.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -80,12 +80,16 @@ case "$cmd" in
   *'.secrets'*grep*|*grep*'.secrets'*)
     # "has this box been born?" and "does it carry the two minted secrets?" — one answer, PROBE_BORN.
     [ "\${PROBE_BORN:-no}" = yes ] && exit 0 || { printf '' ; exit 1; } ;;
+  # ⚠️ THE WRITE COMES BEFORE THE READ, and the order is the whole of it: \`cat > '/opt/probe/.env'\` matches
+  # the READ pattern too, so with the read first the far side answered a write by printing the old file and
+  # never touching stdin — and the assertion below read an empty string and blamed the deploy.
+  *'cat >'*'/.env'*) cat > "\${PROBE_ENV_WRITTEN:-/dev/null}"; exit 0 ;;
+  *'cat >'*) cat > /dev/null; exit 0 ;;
   *'cat '*'/.env'*)
     cat "$PROBE_BOX_ENV" 2>/dev/null; exit 0 ;;
   *'docker image inspect'*) exit 0 ;;
   *'install -d'*) exit 0 ;;
   *'tar -C'*) cat > /dev/null; exit 0 ;;
-  *'cat >'*) cat > /dev/null; exit 0 ;;
   *python3*) cat > /dev/null; exit 0 ;;
   *'command -v node'*) exit 1 ;;
   *'provision-ref.js'*)
@@ -228,7 +232,12 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
   mkdirSync(join(dir, 'themes'), { recursive: true });
   cpSync(join(ROOT, 'bin/verify-composition.sh'), join(dir, 'bin/verify-composition.sh'));
 
-  writeFileSync(join(dir, 'deploy/box.env'), 'FORGE_ADMIN_TENANT=\nFORGE_SEED_DATASET_HOST_DIR=./seed/dataset\n');
+  // ⚠️ AND IT DECLARES THE SENTINEL, exactly as the real `deploy/box.env` does. Without that line §1 was
+  // blind to the one key a deploy really could undo — see the test that follows it.
+  writeFileSync(
+    join(dir, 'deploy/box.env'),
+    'FORGE_ADMIN_TENANT=\nFORGE_SEED_DATASET_HOST_DIR=./seed/dataset\nFORGE_TOTEM_STORE_ID=sto_PENDING_SEED\n',
+  );
   const faces = [
     `FORGE_DOMAIN=${bench ? 'localhost' : 'probe.example'}`,
     missingFace ? '' : 'FORGE_CAFE_DOMAIN=cafe.probe.example',
@@ -251,6 +260,9 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
 
   // ★ THE BOX'S OWN STATE, AND IT IS WHAT §1 MEASURES. A `.env` carrying keys only a birth can write is a box
   // that HOLDS DATA: those values exist because a seed minted them. §1 asserts they come back untouched.
+  // ★ WHAT THE DEPLOY REALLY ASSEMBLED. The `.env` travels on the ssh session's STDIN, never in a command
+  // line, so the recorded command log cannot answer «what did it write?». This file can.
+  const envWritten = join(dir, 'env-written.txt');
   const boxEnv = join(dir, 'box-side.env');
   writeFileSync(
     boxEnv,
@@ -271,6 +283,7 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
     PATH: `${join(dir, 'stub')}:${process.env.PATH}`,
     PROBE_LOG: log,
     PROBE_BOX_ENV: boxEnv,
+    PROBE_ENV_WRITTEN: envWritten,
     PROBE_BORN: born ? 'yes' : 'no',
     PROBE_FAIL_AT: failAt,
     FORGE_LOCK: join(dir, 'forge.lock'),
@@ -289,6 +302,8 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
     dir,
     log,
     boxEnv,
+    envWritten,
+    written: () => (existsSync(envWritten) ? readFileSync(envWritten, 'utf8') : ''),
     env,
     read: () => readFileSync(log, 'utf8'),
     boxState: () => readFileSync(boxEnv, 'utf8'),
@@ -390,6 +405,53 @@ test('a deploy refuses a birth-only flag when there is no birth', () => {
     assert.equal(s.read(), '', 'it touched the host before refusing');
   } finally {
     s.cleanup();
+  }
+});
+
+// ── ⟂ §2b · THE SENTINEL MAY NOT OVERWRITE WHAT A BIRTH MINTED ────────────────────────────────────────────
+//
+// ⛔ MEASURED ON THE STAGING BOX, 2026-09-16, AND IT IS THE HOLE §1 COULD NOT SEE. `deploy/box.env` declares
+// `FORGE_TOTEM_STORE_ID=sto_PENDING_SEED` because `compose.override.yml` refuses to interpolate without a
+// value and only a seed can mint the real one. Its own comment claimed «a deploy never replaces a real id
+// with this» — false: a declared key wins over a carried one, so a deploy against a box that HAD been born
+// wrote the sentinel back and brought the box up with `--scale totem=0`. Nothing was deleted and the shop
+// still lost a front on a pin bump.
+//
+// ⟂ THE CONTROL IS IN THE SAME TEST: on a box that has NOT been born, the sentinel must still be written —
+// without it compose cannot parse the file at all, and the box does not come up.
+test('a deploy keeps the counter id a birth minted, and still writes the sentinel on a box that has none', (t) => {
+  if (!FENCE) {
+    t.skip('NOT CHECKED: no surface-provenance fence on this machine (see §1).');
+    return;
+  }
+  const born = scratch({ born: true });
+  try {
+    born.run('deploy.sh', ['probe']);
+    assert.match(
+      born.written(),
+      /^FORGE_TOTEM_STORE_ID=sto_01LIVEDATA$/m,
+      `the deploy wrote the sentinel over the counter id a birth had minted:\n${born.written()}`,
+    );
+    assert.ok(
+      !born.written().includes('FORGE_TOTEM_STORE_ID=sto_PENDING_SEED'),
+      'the sentinel went up beside the real id — compose would take whichever came last',
+    );
+  } finally {
+    born.cleanup();
+  }
+
+  // ⟂ and the other half: a box with nothing there gets the sentinel, because compose demands a value.
+  const virgin = scratch({ born: false });
+  try {
+    writeFileSync(virgin.boxEnv, '');
+    virgin.run('deploy.sh', ['probe']);
+    assert.match(
+      virgin.written(),
+      /^FORGE_TOTEM_STORE_ID=sto_PENDING_SEED$/m,
+      `a box with no counter id got no sentinel either, and compose cannot parse the file without one:\n${virgin.written()}`,
+    );
+  } finally {
+    virgin.cleanup();
   }
 });
 

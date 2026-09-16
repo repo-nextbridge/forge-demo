@@ -309,9 +309,42 @@ declared_keys="$(grep -hoE '^[A-Z_][A-Z0-9_]*=' "$COMMON_ENV" "$BOX_ENV" | tr -d
 existing_env=''
 [ "$HOST_REACHED" = 'yes' ] && existing_env="$("${SSH[@]}" "cat '${FORGE_DEPLOY_DIR}/.env' 2>/dev/null" || true)"
 
+# ── ⛔⛔ THE ONE EXCEPTION TO "DECLARED WINS", AND THE BOX PROVED IT WAS NEEDED ──────────────────────────────
+#
+# `deploy/box.env` declares `FORGE_TOTEM_STORE_ID=sto_PENDING_SEED` because `compose.override.yml` REFUSES to
+# interpolate without a value and only a seed can mint the real one. Its comment claimed «a deploy never
+# replaces a real id with this»; MEASURED ON THE STAGING BOX 2026-09-16, THAT WAS FALSE. A declared key wins
+# over a carried one, so a deploy against a box that HAD been born wrote the sentinel back over the counter's
+# real store id and brought the box up with `--scale totem=0` — «its store id is still the sentinel», on a box
+# whose counter had been serving. Nothing was deleted and the shop still lost a front on a pin bump, which is
+# the whole reason a deploy is not allowed to undo a birth.
+#
+# ⇒ A DECLARED KEY WHOSE VALUE **IS** THE SENTINEL IS A PLACEHOLDER, NOT A DECISION. It loses to a real
+# carried value, and the rule is about the VALUE rather than about a list of key names — so the day a second
+# key needs the same treatment it gets it by declaring the same sentinel, and nothing here has to be edited.
+NOT_PROVISIONED_SENTINEL='sto_PENDING_SEED'
+adopted=''
+for placeholder in $(grep -hoE "^[A-Z_][A-Z0-9_]*=${NOT_PROVISIONED_SENTINEL}\$" "$COMMON_ENV" "$BOX_ENV" | cut -d= -f1 | sort -u); do
+  have="$(printf '%s\n' "$existing_env" | grep -m1 "^${placeholder}=" | cut -d= -f2-)"
+  [ -n "$have" ] && [ "$have" != "$NOT_PROVISIONED_SENTINEL" ] || continue
+  declared_keys="$(printf '%s\n' "$declared_keys" | grep -vx "$placeholder" || true)"
+  adopted="$adopted $placeholder"
+done
+[ -z "${adopted// /}" ] || note "kept      $adopted — declared as \`${NOT_PROVISIONED_SENTINEL}\`, and this box has been born since"
+
 carried="$(printf '%s\n' "$existing_env" \
   | grep -E '^[A-Z_][A-Z0-9_]*=' \
   | grep -vE "^($(printf '%s' "$declared_keys" | paste -sd'|' -))=" || true)"
+
+# The declared half is written from the two files, MINUS whatever the box answered for real above.
+declared_lines() { # <file>
+  if [ -z "${adopted// /}" ]; then
+    grep -vE '^\s*#' "$1" | grep -E '^[A-Z_][A-Z0-9_]*=' || true
+  else
+    grep -vE '^\s*#' "$1" | grep -E '^[A-Z_][A-Z0-9_]*=' \
+      | grep -vE "^($(printf '%s' "${adopted# }" | tr ' ' '|'))=" || true
+  fi
+}
 
 carried_names="$(printf '%s\n' "$carried" | grep -oE '^[A-Z_][A-Z0-9_]*' | paste -sd' ' - || true)"
 if [ -n "${carried_names// /}" ]; then
@@ -327,9 +360,9 @@ trap 'rm -f "$assembled"' EXIT
   printf '#   declared half : deploy/box.env + deploy/%s.env of this repository\n' "$ENV_NAME"
   printf '#   derived half  : whatever the birth on THIS host wrote and this deploy did not declare\n'
   printf '# A key you add by hand here survives exactly until it collides with a declared one.\n\n'
-  grep -vE '^\s*#' "$COMMON_ENV" | grep -E '^[A-Z_][A-Z0-9_]*=' || true
+  declared_lines "$COMMON_ENV"
   printf '\n'
-  grep -vE '^\s*#' "$BOX_ENV" | grep -E '^[A-Z_][A-Z0-9_]*=' || true
+  declared_lines "$BOX_ENV"
   if [ -n "${carried_names// /}" ]; then
     printf '\n# ── carried across from the box (written by a birth, not by this deploy) ──\n'
     printf '%s\n' "$carried"
