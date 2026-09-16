@@ -395,6 +395,91 @@ test('★★★ every sentence in the table is one bin/box-up.sh really PRINTS �
   }
 });
 
+/** The names the birth's closing block really GRADES — every variable an `exit 1` there depends on.
+ *
+ * ⛔ THE HOLE THIS CLOSES. `redFamiliesOfTheBirth` derives the families from the blocks that PRINT a ⛔, and
+ * the table in the cycle is compared against that list — but printing is not grading. A family added to the
+ * closing block and forgotten in the conjunction at the bottom would shout its sentence and leave the birth
+ * exiting 0; the cycle's verdict skips every gesture whose status is 0, so that reason would be invisible to
+ * the one thing that reads it. `-n` tests only: a `-z` is a guard against double-reporting, not a grade. */
+function gradedByTheBirth() {
+  const mark = '⛔ LAST LINE, AND IT IS NON-ZERO ON PURPOSE';
+  const tail = BOX_UP.slice(BOX_UP.indexOf(mark));
+  const graded = new Set();
+  for (const block of tail.matchAll(/^if [\s\S]*?\n^fi$/gm)) {
+    if (!block[0].includes('exit 1')) continue;
+    for (const named of block[0].matchAll(/\[ -n "\$\{?([A-Z_]+)(?::-\}|")/g)) graded.add(named[1]);
+  }
+  return graded;
+}
+
+// ── ★★★ C5 · ONE EXIT CODE PER FAMILY — THE VERDICT, WITH THE ARITHMETIC (pk42/s2) ────────────────────────
+//
+// The question put to this slice was whether each of the eight red families should leave its own exit code,
+// so that a wrapper could tell them apart without reading prose. MEASURED ON THIS TREE, 2026-09-16: IT DOES
+// NOT FIT, and the reasons are arithmetic rather than taste.
+//
+//   · THE FAMILIES CO-OCCUR. The first real cycle came back with SHUT and MISCONFIGURED at once — the case
+//     the pardon table below is written around. A status is ONE NUMBER and cannot carry a set, so encoding
+//     them means a bitmask: 2^8 − 1 = 255 distinct values for the non-empty subsets of eight.
+//   · THE STATUS SPACE IS 125 WIDE, NOT 255. 0 is green; 126 is "found and not executable"; 127 is "not
+//     found"; 128+N is "killed by signal N" and nothing downstream can tell a deliberate 137 from a SIGKILL.
+//     That leaves 1–125. 255 > 125: the mask misses by a factor of two, and it is not close.
+//   · ONE CODE PER FAMILY (eight codes, no set) fits the range and LOSES THE SECOND REASON of every run that
+//     has two — exactly the run that motivated the table.
+//   · AND THE LOW NUMBERS ARE ALREADY SPOKEN FOR. `bin/box-up.sh` has 41 `die` call sites and 11 direct
+//     `exit 1` lines of its own (argument handling, the node floor, `--plan`, `--warm-only`, `--verdict-only`,
+//     the closing block); all 52 leave status 1 today. Renumbering them buys a number that carries less than
+//     the sentence already does.
+//
+// ⇒ THE SENTENCES STAY THE CARRIER. What this slice adds is that they cannot drift without a red: the count
+// is declared here, and every family is proven to really REACH a non-zero exit rather than only print one.
+
+test('★★★ there are EIGHT red families, and the number is DECLARED — a family dropped from both sides is a red deleted', () => {
+  const real = redFamiliesOfTheBirth().map((f) => f.name).sort();
+  // ⛔ THE FLOOR IN `redFamiliesOfTheBirth` (>= 6) CATCHES A BROKEN PARSE AND NOT A DELETION, and the
+  // two-way comparison with the table cannot help either: a family deleted from `bin/box-up.sh` AND from
+  // `CYCLE_REASONS` leaves both lists agreeing about seven. The count is written down so that stops being
+  // silent. ★ A NINTH FAMILY IS ALLOWED — it is simply not allowed to arrive without this line being read.
+  assert.equal(
+    real.length,
+    8,
+    `bin/box-up.sh now has ${real.length} red families and this file declares 8: ${real.join(', ')}. If one was ` +
+      'added, add its row to CYCLE_REASONS and update this number. If one is GONE, say here why the birth no ' +
+      'longer grades it — the doc of this repository said SEVEN for weeks while there were eight, which is how ' +
+      'a reason stops being re-asked without anybody deciding to stop re-asking it.',
+  );
+});
+
+test('★★★ every red family really REACHES a non-zero exit — a ⛔ that exits 0 is a red the cycle cannot see', () => {
+  const graded = gradedByTheBirth();
+  assert.ok(graded.size > 0, 'no `exit 1` in the closing block of bin/box-up.sh depends on any reason — the parse is broken.');
+  for (const { name } of redFamiliesOfTheBirth()) {
+    assert.ok(
+      graded.has(name),
+      `bin/box-up.sh prints a ⛔ for ${name} and no exit in its closing block depends on it. The birth would ` +
+        'shout that sentence and still exit 0 — and `cycle_verdict` skips every gesture whose status is 0, so ' +
+        'the cycle would never even look at the reason. Add it to the conjunction at the bottom of that block.',
+    );
+  }
+});
+
+test('★★★ …and warmth is NOT in it — the three reports may not become grades by accident', () => {
+  const graded = gradedByTheBirth();
+  // The decision is written at both ends of bin/box-up.sh: warmth races the tail of the seed and invents red
+  // (`failed=198` on a birth against `failed=0` for the same urls minutes later), so it REPORTS. A step that
+  // is always red is a step people learn to skip. `MISSING_STORE` is the half that still grades, and it is a
+  // separate variable precisely so this line cannot lose it.
+  for (const report of ['COLD', 'WARM_UNKNOWN', 'PROMOTION_OWED']) {
+    assert.ok(
+      !graded.has(report),
+      `${report} now decides the birth's exit code. It is a REPORT by decision: read step 14 before making it ` +
+        'a gate again, and if the decision really changed, give it a row in CYCLE_REASONS and a gesture that ' +
+        're-asks it — otherwise every cycle is red on a box that is merely young.',
+    );
+  }
+});
+
 test('★★★ a pardon names a LATER gesture and a measurement — and a reason nobody re-asks carries neither', () => {
   const ids = declaredGestures().map((g) => g.id);
   for (const { token, asker, why } of declaredReasons()) {
