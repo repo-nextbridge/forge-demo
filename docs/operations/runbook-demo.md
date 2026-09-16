@@ -22,28 +22,29 @@ defeito que este arco inteiro passou o mês pagando.
 ---
 
 <!-- BEGIN staging-gap -->
-## ⏳ Este documento está incompleto DE PROPÓSITO — leia isto antes da §2
+## ⏳ O degrau entre o passo 3 e o passo 5 — o que já existe e o que ainda não
 
-**Atualizado em 16/09 (pk43/d1): metade do degrau que faltava existe agora, e a metade que falta mudou de
-assunto.** Leia os dois parágrafos abaixo antes da tabela da §2.
+**Atualizado em 16/09 (pk43/d2): o degrau FECHOU.** Leia os três parágrafos abaixo antes da tabela da §2.
 
 A Demo deixou de ser **uma** caixa. Ela tem duas — `stag` e `prod`, declaradas em `deploy/stag.env` e
-`deploy/prod.env` — e `bin/deploy.sh <env>` entrega a caixa numa delas. O degrau que esta seção prometia
-**entre o passo 3 e o passo 5** é esse: o pin desce primeiro para o **stag da Demo**, é conferido lá, e o
-**mesmo lock** desce para o prod. O passo 4 (assar o que é dela) acontece **uma vez**: as imagens viajam por
-digest, e é o mesmo byte que sobe nas duas.
+`deploy/prod.env`. `bin/deploy.sh <env>` **entrega** a caixa numa delas e `bin/birth-remote.sh <env>` a faz
+**nascer** lá. O pin desce primeiro para o **stag da Demo**, é conferido lá, e o **mesmo lock** desce para o
+prod. O passo 4 (assar o que é dela) acontece **uma vez**: as imagens viajam por digest, e é o mesmo byte que
+sobe nas duas.
 
-⛔ **O QUE AINDA NÃO EXISTE, E É O QUE SOBROU DO DEGRAU: o NASCIMENTO de uma caixa REMOTA.** Medido em 16/09:
-`bin/deploy.sh stag` entrega, migra e sobe a caixa — cinco das seis faces respondem do próprio container com
-certificado Let's Encrypt de verdade —, e a caixa fica **sem nenhuma loja**, porque `bin/box-up.sh` roda os
-seeders na máquina do operador contra um projeto compose **LOCAL**. O passo 5 desta tabela, portanto, só
-sabe nascer na bancada. Enquanto for assim, a caixa implantada responde 404 nas vitrines e o balcão fica
-parado no sentinela `sto_PENDING_SEED` — o que é a verdade sobre um host que ninguém semeou, e não um
-defeito do deploy. Esse é o card seguinte.
+⛔⛔ **E SÃO DOIS GESTOS PORQUE NASCER É DESTRUTIVO E UM DEPLOY NÃO PODE NASCER.** `bin/deploy.sh` roda a cada
+adoção de pin. Semear é reset+seed por natureza — `bin/seed.mjs` reescreve os ajustes que toda tela herda,
+`dist/seed-history.js` refaz um passado ou recusa um, `seed-box.mjs` reaplica o que `seed/box.json` declara
+por cima do que a caixa viva virou. ⇒ **se o deploy semeasse, toda subida de versão apagaria a loja.** Por
+isso o nascimento tem arquivo próprio, e `bash bin/deploy.sh <env> --birth` é a única passagem de um para o
+outro — uma bandeira que se digita, nunca uma inferência de "a caixa parece vazia".
+`bin/birth-remote.guard.mjs` prova o negativo: um deploy sem a bandeira, contra uma caixa que TEM dado, não
+alcança nenhum gesto que escreva.
 
-⇒ Se você está lendo isto depois que o nascimento remoto foi feito e a §2 ainda diz que o passo 5 é da
-bancada, **a §2 está desatualizada**, não a sua memória. `bin/runbook.guard.mjs` mantém esta seção viva:
-apagá-la deixa a suíte vermelha.
+⚠️ **O que continua sendo verdade:** `bin/box-up.sh` é o nascimento da **bancada** e não mudou uma linha. Os
+dois nascimentos declaram a **mesma lista de passos** e um guard os prende um ao outro — um passo que a
+bancada ganhar e a caixa remota não é um passo que a caixa implantada nunca receberia, e nada mais neste
+repositório diria isso, porque os dois nunca rodam na mesma máquina.
 <!-- END staging-gap -->
 
 ---
@@ -68,12 +69,12 @@ esta tabela não a inventa, ela a espelha.
 | 3 | a Demo **PINA** esse release — ⚠️ **e é aqui que o modo pré-release morre** | esta caixa | §2.1 |
 | 4 | a Demo assa o que é **dela**: a vitrine do café, o totem, os apps | esta caixa | `bin/build-coffee.sh`, `bin/build-totem.sh`, `bin/pack-apps.sh` |
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
-| 5 | a Demo **nasce** | esta caixa | `bash bin/box-up.sh` — §3 · ⛔ só sabe nascer na BANCADA (veja o bloco ⏳) |
+| 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
 | 6 | **reset + reseed** | esta caixa | `bin/box-down.sh` + `bin/box-up.sh` — §5 |
 | 7 | o **ciclo agendado** é configurado | a máquina | §5.1 e `docs/operations/reset-cycle.md` |
 
-> ⏳ O degrau que falta cai **entre o 3 e o 5** — veja o bloco acima. Metade dele é o passo 4b; a outra
-> metade (nascer uma caixa REMOTA) ainda não existe.
+> ⏳ O degrau que faltava caía **entre o 3 e o 5** — veja o bloco acima. Uma metade é o passo 4b (o deploy);
+> a outra é o passo 5 numa VM, que agora é `bin/birth-remote.sh`. ⛔ São dois gestos de propósito.
 
 ### 2.2 O deploy — `bin/deploy.sh <env>`
 
@@ -98,6 +99,44 @@ lista digitada é a lista à qual falta a chave que a próxima fatia acrescenta.
 composição desta instância com a procedência que o `forge.lock` declara por imagem; uma superfície pinada
 como `release` que precise compilar um app desta caixa é uma RECUSA — e não existe jeito de pular.
 Detalhe em `README.md` §7.
+
+### 2.3 O nascimento remoto — `bin/birth-remote.sh <env>`
+
+```bash
+bash bin/birth-remote.sh stag --plan      # o roteiro dos passos; não toca na caixa
+bash bin/birth-remote.sh stag             # nasce
+bash bin/birth-remote.sh stag --no-warm   # o mesmo sem o passo 14 (aquecer é RELATO, nunca portão)
+bash bin/birth-remote.sh stag --again     # uma caixa que JÁ nasceu aqui — leia a recusa antes
+bash bin/deploy.sh stag --birth           # entrega, sobe E nasce, num gesto só
+```
+
+**Ele atravessa os mesmos quinze passos do `bin/box-up.sh`, por dois veículos.** Os one-shots que são
+entrypoints da IMAGEM do kernel (`migrate`, `provision-ref`, `admin-platform-token`, `bulk-read-token`,
+`seed-demo`, `seed-history`) cruzam por `remote_compose` — o `ssh` que `bin/deploy.sh` já usava, agora com um
+autor só em `bin/remote-box.sh`. Todo o resto é um `bin/*.mjs` deste repositório que recebe `--api <origem>`
+e uma credencial, e roda **aqui**, no node do operador, contra a origem pública da caixa por https. Não é
+postura nova: é o que `--api` sempre quis dizer — e é por isso que **a caixa não precisa de node** (medido
+16/09: `forge-demo-stag` não tem nenhum).
+
+⚠️ **Duas coisas diferem da bancada, e as duas são medição e não gosto:**
+
+- **O espaço de endereços.** A bancada é UM host (`localhost`) com seis PORTAS; uma caixa implantada são
+  SEIS HOSTNAMES. `bin/deployed-faces.mjs` junta as duas metades — `seed/box.json` diz qual VARIÁVEL carrega
+  cada face (`domain.env`, `admin_domain.env`), `deploy/<env>.env` diz quanto essa variável vale nesta caixa
+  — e **cada loja reivindica o próprio hostname** no diretório do kernel (passo 6b), em vez de uma loja
+  reivindicar a caixa. Uma face sem endereço neste ambiente é uma **RECUSA** antes de qualquer escrita: o
+  site block dela em `caddy/Caddyfile` ficaria no sentinela `.unset.localhost`, cinco faces serviriam e uma
+  loja simplesmente não estaria na internet, sem nada em log nenhum.
+- **O passo 3c é PULADO, declarado, com a razão.** Numa caixa implantada o café é roteado por HOSTNAME:
+  `caddy/Caddyfile` já tem site block para `{$FORGE_CAFE_DOMAIN}`. O fragmento que o 3c escreve na bancada só
+  é lido por `caddy/Caddyfile.local`, e o `Caddyfile` de produção importa `extra/*.caddy` em nível TOP, onde
+  um arquivo tem de ser um SITE BLOCK — foi assim que `caddy validate` respondeu `parsed 'handle' as a site
+  address` uma vez, o que não é um host extra quebrado e sim uma **BORDA MORTA**. A metade do passo que é
+  sobre a caixa (o `FORGE_COFFEE_STORE_ID`) continua rodando.
+
+⛔ **Um passo que falha INTERROMPE o nascimento.** Não há "avisa e segue": a caixa não é entregue
+meio-semeada. Medido na primeira corrida contra o stag — o passo 5 recusou e a corrida parou ali, sem migrar
+nada além do que já estava feito.
 
 ### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
 

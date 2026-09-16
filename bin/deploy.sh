@@ -4,6 +4,7 @@
 #   bash bin/deploy.sh stag            deliver and bring up the staging box
 #   bash bin/deploy.sh prod            the same, for production
 #   bash bin/deploy.sh stag --plan     say everything it would do; touch NOTHING on the host
+#   bash bin/deploy.sh stag --birth    deliver, bring up — AND THEN BE BORN (bin/birth-remote.sh)
 #
 # ── ★ WHAT THIS SCRIPT IS, IN ONE SENTENCE ──────────────────────────────────────────────────────────────────
 #
@@ -55,9 +56,26 @@ die()  { printf '\n%s ⛔ %s\n\n' "$TAG" "$*" >&2; exit 1; }
 # customer, which is the shape this whole repository exists to disprove.
 ENV_NAME=''
 PLAN=no
+BIRTH=no
+BIRTH_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan) PLAN=yes ;;
+    # ── ⛔⛔ THE ONLY WAY A DEPLOY REACHES A BIRTH, AND IT HAS TO BE TYPED ──────────────────────────────────
+    #
+    # A deploy runs on every adoption of a pin. Seeding is reset+seed by nature, so a deploy that seeded would
+    # OVERWRITE THE SHOP on every version bump — the settings, the assortments, the promotions, and a past
+    # rebuilt or refused. ⇒ the birth is a gesture with its own name (`bin/birth-remote.sh`) and this flag is
+    # a hand-off to it, never an inference: there is no "seed if the box looks empty" here, because a box that
+    # looks empty to a deploy is a box whose database did not come up.
+    # ⟂ `bin/birth-remote.guard.mjs` proves the negative: without this flag, against a box that HOLDS data,
+    # nothing in this script reaches a seeding entrypoint.
+    --birth) BIRTH=yes ;;
+    # Passed straight through to the birth, and meaningless without it: warmth is step 14's and nothing in a
+    # deploy warms anything. A flag accepted and silently ignored is a flag that answers a question nobody
+    # asked, so it refuses below when `--birth` was not given.
+    --no-warm) BIRTH_ARGS+=(--no-warm) ;;
+    --again)   BIRTH_ARGS+=(--again) ;;
     -h|--help)
       sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
@@ -71,8 +89,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+if [ "$BIRTH" = 'no' ] && [ "${#BIRTH_ARGS[@]}" -gt 0 ]; then
+  die "${BIRTH_ARGS[*]} is an argument of the BIRTH, and this invocation has none. A deploy does not seed,
+     does not warm and does not re-apply anything — see this file's header. Add --birth, or drop the flag."
+fi
+
 [ -n "$ENV_NAME" ] || {
-  printf '%s usage: bash bin/deploy.sh <env> [--plan]\n' "$TAG" >&2
+  printf '%s usage: bash bin/deploy.sh <env> [--plan] [--birth [--no-warm] [--again]]\n' "$TAG" >&2
   printf '%s   environments this repository declares:' "$TAG" >&2
   for f in "$HERE"/deploy/*.env; do
     b="$(basename "$f" .env)"
@@ -84,31 +107,21 @@ done
 
 COMMON_ENV="$HERE/deploy/box.env"
 BOX_ENV="$HERE/deploy/$ENV_NAME.env"
-[ -f "$COMMON_ENV" ] || die "no deploy/box.env — the half every deployed box of this instance shares is missing."
-[ -f "$BOX_ENV" ] || die "no deploy/$ENV_NAME.env. An environment IS that file; there is nothing here called '$ENV_NAME'."
 
-# Read the two declarations into this shell so the script can use the host, the key and the hostnames.
-# ⚠️ `set -a` and not `source` alone: these are `.env` lines, and the values have to reach `ssh`/`docker` as
-# variables of this process rather than as shell locals.
-set -a
-# shellcheck disable=SC1090
-. "$COMMON_ENV"
-# shellcheck disable=SC1090
-. "$BOX_ENV"
-set +a
+# ── ★ THE VEHICLE HAS ONE AUTHOR, AND IT IS NOT THIS FILE ANY MORE ────────────────────────────────────────
+#
+# The environment loader, the ssh command and `remote_compose` were all born here, because a deploy was the
+# first gesture this repository had that touched a machine which is not the operator's. `bin/birth-remote.sh`
+# is the second and needs exactly the same four things — so they moved into `bin/remote-box.sh` rather than
+# being copied. The copy is the one that ages: the day the box's directory moves, the deploy would learn it
+# and the birth would not, and the birth is the gesture that writes data.
+# shellcheck source=bin/remote-box.sh
+. "$HERE/bin/remote-box.sh"
+remote_box_load "$ENV_NAME" "$HERE" die || exit 1
 
-for required in FORGE_DEPLOY_HOST FORGE_DEPLOY_USER FORGE_DEPLOY_DIR FORGE_DOMAIN FORGE_ADMIN_DOMAIN FORGE_PUBLIC_ORIGIN; do
-  eval "v=\${$required:-}"
-  [ -n "$v" ] || die "deploy/$ENV_NAME.env does not declare $required. An environment is a host plus its faces; this one is missing one of them."
-done
-
-SSH_KEY="$(eval echo "${FORGE_DEPLOY_KEY:-~/.ssh/forge-demo-deploy}")"
-SSH_TARGET="${FORGE_DEPLOY_USER}@${FORGE_DEPLOY_HOST}"
-# ⚠️ THE CONNECT TIMEOUT IS THE ENVIRONMENT'S, NOT THIS SCRIPT'S. A box behind a firewall that DROPS rather
-# than refuses makes every gesture wait the full timeout, and how long that is worth waiting is a fact about
-# where the box lives. Default 20 s — long enough for a VM that is cold, short enough that a wrong address is
-# a wrong address within half a minute.
-SSH=(ssh -C -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new -o "ConnectTimeout=${FORGE_DEPLOY_SSH_TIMEOUT:-20}" "$SSH_TARGET")
+SSH_KEY="$REMOTE_BOX_KEY"
+SSH_TARGET="$REMOTE_BOX_TARGET"
+SSH=("${REMOTE_SSH[@]}")
 
 REHEARSAL=''
 [ "$PLAN" = 'yes' ] && REHEARSAL='PLAN · '
@@ -464,32 +477,46 @@ say '6 · migrate, then up'
 # deploys into a differently-named directory the box comes up BESIDE the old one — two stacks, two Postgres
 # volumes, one port. It is the same rule `bin/box-up.sh` keeps on the bench (`COMPOSE_PROJECT_NAME`, line 205).
 #
-# ⚠️ AND `env-source.sh` IS SOURCED ON THE BOX, PER COMMAND. It exports the secrets into that shell and never
-# writes them anywhere; a variable exported here would have to travel over the wire in a command line, where
-# `ps` on the host would show it.
-remote_compose() { # <args…>
-  "${SSH[@]}" "cd '${FORGE_DEPLOY_DIR}' \
-    && export COMPOSE_PROJECT_NAME=forge-demo \
-    && set -a && . ./env-source.sh >/dev/null && . ./bin/images-from-lock.sh >/dev/null && set +a \
-    && docker compose $*"
-}
-
-remote_compose "${COMPOSE_FILES[*]} up -d postgres redis" >/dev/null \
+# ⚠️ AND `env-source.sh` IS SOURCED ON THE BOX, PER COMMAND — see `remote_compose` in `bin/remote-box.sh`.
+#
+# ⚠️⚠️ AND THE ARGUMENTS ARE AN ARRAY NOW, NOT ONE STRING. The old shape flattened them with `$*`, which held
+# for exactly as long as no caller needed a value with a space in it — the defect `bin/box-up.sh::dc` paid for
+# on the bench of 2026-09-03 (`-e FORGE_REF_STORE_NAME=Forge Café` → `no such service: Café`). The birth sends
+# precisely that value, so the shared vehicle re-quotes every argument and callers stop pre-flattening.
+# shellcheck disable=SC2086 -- $UP_ARGS is deliberately unquoted: empty means "no extra argument".
+remote_compose "${COMPOSE_FILES[@]}" up -d postgres redis >/dev/null \
   || die 'the database and cache did not come up. `docker compose ps` on the host says more.'
 note 'up        postgres, redis'
 
-remote_compose "${COMPOSE_FILES[*]} run --rm kernel node dist/migrate.js" \
+remote_compose "${COMPOSE_FILES[@]}" run --rm kernel node dist/migrate.js \
   || die 'the migration failed. The stack was NOT brought up — a box whose schema is half-applied must not serve.'
 note 'migrated'
 
-remote_compose "${COMPOSE_FILES[*]} up -d --remove-orphans $UP_ARGS" \
+# shellcheck disable=SC2086 -- deliberately unquoted: empty means "no extra argument", not an empty one.
+remote_compose "${COMPOSE_FILES[@]}" up -d --remove-orphans $UP_ARGS >/dev/null \
   || die 'the stack did not come up. `docker compose ps` on the host says which container.'
 note "up        $BRINGING"
+
+# ── 6b · ⛔⛔ THE BIRTH, AND ONLY WHEN IT WAS ASKED FOR BY NAME ────────────────────────────────────────────
+#
+# ★ IT IS A HAND-OFF AND NOT A SECOND IMPLEMENTATION. `bin/birth-remote.sh` is the birth; this is the deploy
+# saying «and now do that too», with the environment it just delivered. Everything above has already run, so
+# the box the birth is handed is a box whose images, compose files and `.env` are the ones this deploy chose.
+#
+# ⚠️ AND IT EXITS WITH THE BIRTH'S STATUS, deliberately: a deploy that reported success over a birth that
+# refused would be the exact shape this house keeps paying for — a summary derived from what was ASKED FOR
+# instead of from what was DONE.
+if [ "$BIRTH" = 'yes' ]; then
+  say '6b · the birth — asked for with --birth, and it is a DIFFERENT gesture'
+  note "handing over to bin/birth-remote.sh ${ENV_NAME}"
+  bash "$HERE/bin/birth-remote.sh" "$ENV_NAME" "${BIRTH_ARGS[@]+"${BIRTH_ARGS[@]}"}"
+  exit $?
+fi
 
 # ── 7 · THE VERDICT ─────────────────────────────────────────────────────────────────────────────────────────
 say '7 · the verdict'
 
-remote_compose "${COMPOSE_FILES[*]} ps" || true
+remote_compose "${COMPOSE_FILES[@]}" ps || true
 
 # ★ THE FACES ARE ASKED FROM HERE AND NOT FROM THE BOX, because what is being graded is what the internet
 # gets: DNS, the certificate, and the edge choosing the right container. A curl from inside the host proves

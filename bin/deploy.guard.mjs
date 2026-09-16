@@ -100,6 +100,10 @@ function scratch({ adminOrigin, blocks }) {
   // ⚠️ AND THE NODE FLOOR, because `bin/deploy.sh` reads it before it starts the fence — the scratch tree has
   // to carry every piece the driver sources or the scenario measures a missing file instead of a provenance.
   cpSync(join(ROOT, 'bin/require-node.sh'), join(dir, 'bin/require-node.sh'));
+  // ★ AND THE VEHICLE, since pk43/d2: the environment loader, the ssh command and `remote_compose` moved out
+  // of this script into `bin/remote-box.sh` so that the birth and the deploy cannot hold two opinions about
+  // where the box is. A scratch tree without it measures a missing file instead of a provenance.
+  cpSync(join(ROOT, 'bin/remote-box.sh'), join(dir, 'bin/remote-box.sh'));
 
   writeFileSync(
     join(dir, 'composition.json'),

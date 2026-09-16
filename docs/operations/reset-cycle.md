@@ -10,6 +10,13 @@
 bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>
 ```
 
+> ⚠️ **Este ciclo é o da BANCADA, e desde 16/09 (pk43/d2) existe um irmão para as caixas implantadas:**
+> `bash bin/birth-remote.sh <env>` nasce uma caixa remota pelos mesmos quinze passos (runbook §2.3). Ele
+> **não** está agendado, e isso é decisão e não pendência — o `stag` renasce **à mão**, antes de um pin ser
+> ensaiado e depois de uma rodada de testes (`deploy/stag.env` carrega a razão). ⛔ E a promoção não entra
+> ali: uma caixa implantada já nasce nos endereços que ela publica, um por face, em vez de nascer em
+> `localhost` e ser apontada depois.
+
 ---
 
 ## 1. Os cinco gestos, e a ordem é a decisão

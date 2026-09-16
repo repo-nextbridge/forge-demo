@@ -1818,13 +1818,75 @@ the list that is missing the key the next slice adds.
 7. **The verdict.** The six faces, probed from OUTSIDE the box — DNS, certificate and the edge's choice of
    container are three things a `curl` on the host proves none of.
 
-### ⛔ A deploy is not a birth
+### ⛔⛔ A deploy is not a birth — and that is why they are two files
 
 A box that has never been seeded has no stores, and `compose.override.yml` **demands** the counter's store id
 (`FORGE_TOTEM_STORE_ID:?`) — a ULID that only the seed can mint. So on a virgin host the deploy brings up the
 PRODUCT stack and says so, and the café and the counter answer `502` until a birth gives them their stores.
-Driving a birth against a remote box is not something this repository can do today: `bin/box-up.sh` runs its
-seeders on the operator's machine against a LOCAL compose project.
+
+**The separation is not tidiness, it is the shop.** A deploy runs on every adoption of a pin, and seeding is
+reset+seed by nature: `bin/seed.mjs` rewrites the settings every screen inherits, `dist/seed-history.js`
+either rebuilds a past or refuses one, `seed-box.mjs` re-applies what `seed/box.json` declares over whatever
+the live box has since become. ⇒ **if a deploy seeded, every version bump would overwrite the shop.** So the
+birth has a file of its own, and `--birth` is the only path from one to the other — a flag that has to be
+typed, never an inference from "the box looks empty". `bin/birth-remote.guard.mjs` proves the negative: a
+deploy without the flag, against a box that HOLDS data, reaches no gesture that writes.
+
+## 7b. Being born on a box that is not this laptop
+
+```bash
+bash bin/birth-remote.sh stag --plan      # the roteiro of the steps; touches nothing
+bash bin/birth-remote.sh stag             # be born
+bash bin/birth-remote.sh stag --no-warm   # the same without step 14 (warmth REPORTS, it never grades)
+bash bin/birth-remote.sh stag --again     # a box that has ALREADY been born here — read the refusal first
+bash bin/deploy.sh stag --birth           # deliver, bring up AND be born, in one gesture
+```
+
+It crosses **the same fifteen steps** `bin/box-up.sh` does, by two vehicles:
+
+- the one-shots that are entrypoints of the kernel **image** (`migrate`, `provision-ref`,
+  `admin-platform-token`, `bulk-read-token`, `seed-demo`, `seed-history`) cross by `remote_compose` — the ssh
+  `bin/deploy.sh` already used, which now has one author in `bin/remote-box.sh`;
+- everything else is a `bin/*.mjs` of this repository that takes `--api <origin>` and a credential, so it runs
+  **here**, on the operator's node, against the box's public origin over https. That is not a new posture — it
+  is what `--api` has always meant — and it is why **the box needs no node of its own** (measured 2026-09-16:
+  `forge-demo-stag` has none).
+
+A guard pins the two step lists to each other. A step the bench birth gains and this one does not is a step a
+deployed box silently never gets, and nothing else in this repository would say so, because the two never run
+on the same machine.
+
+### ★★ Six hostnames instead of one, and where each half comes from
+
+The bench is ONE host with six PORTS; a deployed box is SIX HOSTNAMES. `bin/deployed-faces.mjs` joins the two
+halves that already exist: `seed/box.json` says which **variable** carries each face (`domain.env` on a store,
+`admin_domain.env` on a tenant) and `deploy/<env>.env` says what that variable is **worth** on this box. So a
+fifth store that grows a `domain` block arrives with no edit, and a third environment is one more file.
+
+⇒ **Each shop claims its OWN hostname** in the kernel's directory (step 6b), rather than one store claiming
+the box. A face this environment has no address for is a **refusal before any write**: its site block in
+`caddy/Caddyfile` would stay on its `.unset.localhost` sentinel, five faces would serve, and one shop would
+simply not be on the internet with nothing in any log.
+
+⚠️ **The counter is the exception and the declaration is what says so.** `seed/box.json` carries
+`directory: false` on it: the edge serves `totem.…`, and the store's `host` column stays null — because that
+column is also what mints the «Acompanhar o pedido» button on every counter receipt, and pointing it at the
+totem's own 404 is the defect `bin/prove-doors.mjs` asserts the negative of.
+
+### ⛔ Step 3c is SKIPPED here, declared, with the reason
+
+On a deployed box the café is routed by **hostname**: `caddy/Caddyfile` already has a site block for
+`{$FORGE_CAFE_DOMAIN}` that falls through to `storefront-coffee`. The fragment step 3c writes on the bench is
+read only by `caddy/Caddyfile.local`, and the production Caddyfile imports `extra/*.caddy` at TOP level where
+a file must be a SITE BLOCK — which is how `caddy validate` once answered `parsed 'handle' as a site address`,
+not a broken extra host but a **dead edge**. The half of that step that is about the box (writing
+`FORGE_COFFEE_STORE_ID`, which the fork keys its own institutional pages on) still runs.
+
+### ⛔ A step that fails INTERRUPTS the birth
+
+There is no warn-and-continue: a box is never handed over half seeded. Measured on the first run against the
+staging VM — step 5 refused (`no such service: totem: disabled`) and the run stopped there, with nothing
+after it attempted.
 
 ### The host first
 
