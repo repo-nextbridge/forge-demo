@@ -1499,11 +1499,12 @@ than laying a second past on top. Wipe and re-run to rebuild it.
 
 ---
 
-## 4. The gate — this box's own app, with a screen
+## 4. The gate — this box's own app, with two screens
 
 `demo-gate` is this box's own app: the first one, and the reason the species exists. It fills
-`storefront:gate` with the full-screen "Demo store" interstitial and the ribbon under it, and it renders on
-**the reference storefront — the one the Outlet runs unforked.**
+`storefront:gate` with the full-screen interstitial — a HUB over the faces this box publishes — and the
+ribbon under it. It renders on **the reference storefront the Outlet runs unforked, and since pk36/d1 on the
+coffee shop's FORK too**, which regenerates a gate registry of its own.
 
 **It has TWO screens since pk30.** The first says what to open; the second — *"A arquitetura da demo"*, opened
 by the affordance at its foot and closed by the one at its own — says **why that is hard**, for a visitor who

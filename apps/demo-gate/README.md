@@ -1,12 +1,18 @@
 # @forge/ext-demo-gate
 
-The public **demo's** gate app: a full-screen interstitial ("Demo store" — nothing here is real) that
-covers every storefront route until the visitor chooses a way in, plus the persistent ribbon that says it
-again while they browse. PT/EN/ES embedded.
+The public **demo's** gate app: a full-screen interstitial that covers every storefront route until the
+visitor chooses a way in, plus the persistent ribbon that says the store is a demo while they browse.
+PT/EN/ES embedded, on the one selector at the foot.
 
-Its first screen **is** a HUB over every face this box publishes — one card per shop, one row per tenant
-admin — and nothing sits above it: the screen is the 10/09 layout in `design-base/gate.dc.html`, whose
-headline is that layout's own sentence and whose only frame is the tenant card's own.
+It has **two views**, one at a time. The first **is** a HUB over every face this box publishes — one tenant
+card per brand, its shops inside it, one admin row at the card's foot — and nothing sits above it: the screen
+is the layout in `design-base/gate.dc.html`, whose headline is that layout's own sentence ("Dois tenants.
+Quatro lojas. Dois admins. Mesmo kernel!") and whose only frame is the tenant card's own; the notice that
+nothing here is real is the line at its foot. The second — *"A arquitetura da demo"*, opened by the
+affordance at the foot of the first and closed by the one at its own — says **why** that is hard for a
+visitor who has never heard the word multi-tenant: the two tenants with their two shops each, one admin under
+both, and the stack they stand on (API · CLI · MCP · SDK · Docs → the single command port → the kernel →
+PostgreSQL/Redis → infra). Both are embedded copy — `config_schema` stays `[]`.
 
 ⛔ **No address is written in this app.** `seed/box.json` declares them and `bin/gate-faces.mjs`
 renders that declaration into `faces.generated.ts`, which the screen imports; `bin/gate-faces.guard.mjs`

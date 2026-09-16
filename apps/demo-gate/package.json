@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
-  "description": "Forge extension (DEMO-GATE): the public demo's gate app. Fills the neutral theme slot `storefront:gate` with a full-screen interstitial (\"Demo store\" — a fictional-environment notice + the two paths, store and admin). \"Open the store\" sets the dismissal cookie and continues (deep link preserved); \"Open the admin\" hands off to the admin's /enter route, which redeems an operator access key server-side (the key never reaches the browser). PT/EN/ES embedded. The theme owns the slot; this app is its first consumer.",
+  "description": "Forge extension (DEMO-GATE): the public demo's gate app. Fills the neutral theme slot `storefront:gate` with a full-screen interstitial of two views — a HUB over the faces this box publishes (one card per tenant, its shops inside it, and a row at the card's foot for that tenant's admin) and a second screen explaining the demo's architecture — plus the ribbon that stays under the store once the visitor is through. The card the visitor is already on sets the dismissal cookie and continues (deep link preserved); every other face is a link to its own origin, and an admin row goes to that admin's /enter route, which redeems an operator access key server-side (the key never reaches the browser). The addresses come from `seed/box.json` through `faces.generated.ts`, never from this package. PT/EN/ES embedded. The theme owns the slot; this app is its first consumer.",
   "forge": {
     "origin": "instance",
     "wiring": {
