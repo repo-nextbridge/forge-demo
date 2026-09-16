@@ -1770,3 +1770,67 @@ The database is everything, and `FORGE_VAULT_KEY` is what makes a restore readab
 box has payment and ERP credentials it cannot decrypt. On this bench the database is a compose volume and
 the demo is rebuildable on purpose; the day it holds something real, the `postgres` service comes out of
 `compose.yml` and `DATABASE_URL` points at a managed instance. That is eleven lines and one variable.
+
+## 7. Deploying it to a box that is not this laptop
+
+Everything above brings this instance up **on a bench**. `bin/deploy.sh <env>` brings the same instance up on
+a **host** — one of the two VMs this demo owns — and the point of it is that almost nothing is different.
+
+```bash
+bash bin/deploy.sh stag --plan     # say everything it would do, touch nothing
+bash bin/deploy.sh stag            # do it
+bash bin/deploy.sh prod            # the same lock, after staging has proved it
+```
+
+### ★ There is no second compose, and that is the whole claim
+
+`compose.yml` and `compose.override.yml` ARE the deployment stack. Every bench-ism in them is a **variable**
+rather than a line: `FORGE_CADDYFILE` chooses the edge (the production one is the default), `FORGE_BENCH_BIND`
+chooses the interface, and the mail collector carries `profiles: ['bench-mailbox']` so a deployment never
+creates it. What a deployment changes is the `.env`, which is why `deploy/` holds `.env` fragments and not a
+compose file:
+
+| file | what it states |
+|---|---|
+| `deploy/box.env` | true of every deployed box of this instance — the edge, the interface, the mounts, the shut doors |
+| `deploy/stag.env` · `deploy/prod.env` | what differs — the host, the six hostnames, the bucket |
+| the box's own `.env` | **carried across untouched**: whatever a birth wrote there (store ids, host maps, sibling lists) |
+
+That third row is the rule and it is mechanical: a key the two `deploy/` files **declare** is written by the
+deploy; a key only the box has is left alone. Nothing types a list of "derived keys", because a typed list is
+the list that is missing the key the next slice adds.
+
+### What the deploy does, in order
+
+1. **The fence.** `forge-lock-provenance` (the product's) compares this box's composition list against the
+   provenance `forge.lock` states per image. A surface pinned as `release` that has to compile an app of this
+   box is a refusal — **before anything reaches the host**, because a deploy that asked afterwards would leave
+   that host half one version and half another. There is no way to skip it.
+2. **The pin.** `bin/images-from-lock.sh`, which refuses a tag.
+3. **The host.** ssh, `docker compose`, and `.secrets` — by NAME. Secrets are minted on the box and never
+   travel; this script does not read, send or print one.
+4. **The box.** The compose files, the lock, `env-source.sh`, the production Caddyfile, the mounts. The
+   bench's edge (`Caddyfile.local`), its extra folder and its mail certificates deliberately do not travel.
+5. **The images.** A ref that names a **registry** is pulled by the host; a ref that names none — which is
+   what this instance's pre-release lock carries — is carried over the same ssh connection. The digest is
+   asserted on both ends, so the tag is only ever a handle for finding the bytes.
+6. **Migrate, then up.** One-shot, never a boot hook, exactly as the model says.
+7. **The verdict.** The six faces, probed from OUTSIDE the box — DNS, certificate and the edge's choice of
+   container are three things a `curl` on the host proves none of.
+
+### ⛔ A deploy is not a birth
+
+A box that has never been seeded has no stores, and `compose.override.yml` **demands** the counter's store id
+(`FORGE_TOTEM_STORE_ID:?`) — a ULID that only the seed can mint. So on a virgin host the deploy brings up the
+PRODUCT stack and says so, and the café and the counter answer `502` until a birth gives them their stores.
+Driving a birth against a remote box is not something this repository can do today: `bin/box-up.sh` runs its
+seeders on the operator's machine against a LOCAL compose project.
+
+### The host first
+
+```bash
+ssh root@<host> 'bash -s' < bin/provision-host.sh
+```
+
+Docker from Docker's own repository, log rotation, swap, key-only ssh, unattended security patches — and
+nothing about this box. It is idempotent and it refuses rather than half-succeeds.

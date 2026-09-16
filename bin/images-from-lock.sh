@@ -11,6 +11,25 @@
 # runs, and not only in the platform's CI: a tag is a label whose owner can repoint it, so `:v0.4.2` would let
 # the bytes under your instance change without a single file of yours changing. A pin names the artifact.
 
+# ★★ pk43/d1 — AN `images` ENTRY HAS TWO FORMS, AND THIS BOX IS THE REASON THE SECOND ONE EXISTS. A box can
+# have TWO PROVENANCES at once: this instance PULLS from the Forge release what does not differentiate it and
+# BAKES what carries an app of its own (INFRA-EXEMPLAR, decision 9 — five baked, one pulled), so one entry
+# says `"release"` and its neighbour says `"own build"`:
+#
+#     "kernel":     "reg.example/forge-kernel@sha256:…"                                  ← the ref alone
+#     "storefront": { "ref": "ghcr.io/you/shop-storefront@sha256:…", "origin": "own build" }
+#
+# The bare string is NOT legacy and needs no migration: it means this lock's own provenance, which is the one
+# provenance a box has before it owns an oven — and it is what `forge.lock` here carries today.
+#
+# ⛔ MEASURED 2026-09-16, AND IT WAS A BOX THAT COULD NOT START. Before this line, the reader took the entry
+# verbatim, so an object arrived as its own JSON text and the digest check refused it:
+#   «the kernel image's digest is malformed: 'sha256:…", "origin": "own build" }'»
+# The product's own copy of this file (`templates/instance/bin/images-from-lock.sh`) learned both forms in the
+# slice that added the provenance; this one is a COPY of that file and had not. The day this instance pins its
+# admin from a release — which is the whole point of decision 9 — the box would have stopped booting, on a
+# message about a malformed digest that names nothing about provenance.
+
 : "${FORGE_LOCK:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/forge.lock}"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -30,9 +49,11 @@ jq -e . "$FORGE_LOCK" >/dev/null 2>&1 || {
 }
 
 # One reader, used four times: read the ref, and prove it is a pin before letting it reach the compose.
+# The jq expression takes the ref out of EITHER form — a string is the ref, an object carries it under `ref` —
+# so a lock that starts saying where each image comes from keeps booting the same box it booted yesterday.
 _forge_lock_ref() { # <kernel|storefront|checkout|admin>
   local key="$1" ref digest
-  ref="$(jq -r --arg k "$key" '.images[$k] // ""' "$FORGE_LOCK")"
+  ref="$(jq -r --arg k "$key" '.images[$k] | if type == "object" then (.ref // "") else (. // "") end' "$FORGE_LOCK")"
   [ -n "$ref" ] || {
     echo "[forge-lock] ${FORGE_LOCK} does not pin the ${key} image. The images are released as one set —" >&2
     echo "[forge-lock]   running a mix that no release ever shipped is not a supported configuration." >&2

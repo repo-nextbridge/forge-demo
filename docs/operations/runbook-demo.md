@@ -24,19 +24,26 @@ defeito que este arco inteiro passou o mês pagando.
 <!-- BEGIN staging-gap -->
 ## ⏳ Este documento está incompleto DE PROPÓSITO — leia isto antes da §2
 
-Hoje a Demo é **uma** caixa: ela pina um release e nasce. A sequência da §2 descreve esse mundo, e **esse
-mundo vai acabar**.
+**Atualizado em 16/09 (pk43/d1): metade do degrau que faltava existe agora, e a metade que falta mudou de
+assunto.** Leia os dois parágrafos abaixo antes da tabela da §2.
 
-Quando a Demo ganhar o **staging dela** (previsto no roadmap do produto, que vive fora deste repositório —
-ainda **não** existe como card no `docs/roadmap/kanban.md` do produto), a sequência ganha **um degrau novo
-entre o passo 3 e o passo 5**: o
-release desce primeiro para o **staging da Demo**, é conferido lá, e só então desce para a caixa que o
-cliente vê. O passo 4 (assar o que é da Demo) passa a acontecer duas vezes, ou uma vez e ser promovido — é
-exatamente a decisão que aquele card tem de tomar, e ela **não está tomada aqui**.
+A Demo deixou de ser **uma** caixa. Ela tem duas — `stag` e `prod`, declaradas em `deploy/stag.env` e
+`deploy/prod.env` — e `bin/deploy.sh <env>` entrega a caixa numa delas. O degrau que esta seção prometia
+**entre o passo 3 e o passo 5** é esse: o pin desce primeiro para o **stag da Demo**, é conferido lá, e o
+**mesmo lock** desce para o prod. O passo 4 (assar o que é dela) acontece **uma vez**: as imagens viajam por
+digest, e é o mesmo byte que sobe nas duas.
 
-⇒ Se você está lendo isto depois que aquele card foi feito e a §2 ainda tem sete passos, **a §2 está
-desatualizada**, não a sua memória. `bin/runbook.guard.mjs` mantém esta seção viva: apagá-la deixa a suíte
-vermelha.
+⛔ **O QUE AINDA NÃO EXISTE, E É O QUE SOBROU DO DEGRAU: o NASCIMENTO de uma caixa REMOTA.** Medido em 16/09:
+`bin/deploy.sh stag` entrega, migra e sobe a caixa — cinco das seis faces respondem do próprio container com
+certificado Let's Encrypt de verdade —, e a caixa fica **sem nenhuma loja**, porque `bin/box-up.sh` roda os
+seeders na máquina do operador contra um projeto compose **LOCAL**. O passo 5 desta tabela, portanto, só
+sabe nascer na bancada. Enquanto for assim, a caixa implantada responde 404 nas vitrines e o balcão fica
+parado no sentinela `sto_PENDING_SEED` — o que é a verdade sobre um host que ninguém semeou, e não um
+defeito do deploy. Esse é o card seguinte.
+
+⇒ Se você está lendo isto depois que o nascimento remoto foi feito e a §2 ainda diz que o passo 5 é da
+bancada, **a §2 está desatualizada**, não a sua memória. `bin/runbook.guard.mjs` mantém esta seção viva:
+apagá-la deixa a suíte vermelha.
 <!-- END staging-gap -->
 
 ---
@@ -60,11 +67,37 @@ esta tabela não a inventa, ela a espelha.
 | 2 | **corta o release**: tag `vX.Y.Z` + deploy na **Referência/Prod** | produto | **Portão 3** |
 | 3 | a Demo **PINA** esse release — ⚠️ **e é aqui que o modo pré-release morre** | esta caixa | §2.1 |
 | 4 | a Demo assa o que é **dela**: a vitrine do café, o totem, os apps | esta caixa | `bin/build-coffee.sh`, `bin/build-totem.sh`, `bin/pack-apps.sh` |
-| 5 | a Demo **nasce** | esta caixa | `bash bin/box-up.sh` — §3 |
+| 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
+| 5 | a Demo **nasce** | esta caixa | `bash bin/box-up.sh` — §3 · ⛔ só sabe nascer na BANCADA (veja o bloco ⏳) |
 | 6 | **reset + reseed** | esta caixa | `bin/box-down.sh` + `bin/box-up.sh` — §5 |
 | 7 | o **ciclo agendado** é configurado | a máquina | §5.1 e `docs/operations/reset-cycle.md` |
 
-> ⏳ O degrau que falta cai **entre o 3 e o 5** — veja o bloco acima.
+> ⏳ O degrau que falta cai **entre o 3 e o 5** — veja o bloco acima. Metade dele é o passo 4b; a outra
+> metade (nascer uma caixa REMOTA) ainda não existe.
+
+### 2.2 O deploy — `bin/deploy.sh <env>`
+
+```bash
+bash bin/deploy.sh stag --plan     # diz tudo o que faria; não toca em nada no host
+bash bin/deploy.sh stag            # faz
+bash bin/deploy.sh prod            # o mesmo lock, depois que o stag provou
+```
+
+**Não há um segundo compose.** `compose.yml` + `compose.override.yml` **são** a pilha de implantação: cada
+coisa de bancada neles é uma VARIÁVEL e não uma linha (`FORGE_CADDYFILE` escolhe a borda — a de produção é o
+default —, `FORGE_BENCH_BIND` escolhe a interface, e o coletor de e-mail está atrás de `profiles:`). O que
+muda é o `.env`, e é por isso que `deploy/` guarda pedaços de `.env` e não um compose.
+
+O `.env` da caixa tem **dois autores**: `deploy/box.env` + `deploy/<env>.env` dizem o que o DEPLOY decide, e
+o que só a caixa sabe (ids de loja, mapa de host, lista de irmãos — o que um nascimento escreve) é
+**carregado intacto**. A regra é mecânica: chave que os dois arquivos de `deploy/` DECLARAM é escrita pelo
+deploy; chave que só a caixa tem fica como está. Nada digita uma lista de "chaves derivadas", porque uma
+lista digitada é a lista à qual falta a chave que a próxima fatia acrescenta.
+
+⚠️ **A cerca roda ANTES de qualquer gesto remoto.** `forge-lock-provenance` (do produto) compara a lista de
+composição desta instância com a procedência que o `forge.lock` declara por imagem; uma superfície pinada
+como `release` que precise compilar um app desta caixa é uma RECUSA — e não existe jeito de pular.
+Detalhe em `README.md` §7.
 
 ### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
 
