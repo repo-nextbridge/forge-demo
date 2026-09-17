@@ -1888,6 +1888,25 @@ There is no warn-and-continue: a box is never handed over half seeded. Measured 
 staging VM — step 5 refused (`no such service: totem: disabled`) and the run stopped there, with nothing
 after it attempted.
 
+### ⛔ And a box that has already been born refuses a second birth
+
+The signal is the birth's own record rather than a guess: step 3 files `forge-operator-token` into the box's
+`.secrets`, so its presence means this exact script has run against this exact box. `--again` is the way past
+it, and the refusal says what it costs — every step converges rather than wipes, so it is not a deletion to
+confirm; what it IS, is the settings, the assortments, the promotions and the freight this repository
+DECLARES being re-applied over whatever the live box has since become.
+
+### ⛔ What is NOT here: a remote `box-down`
+
+`bin/box-down.sh` tears the BENCH down so it can be born from zero; a deployed box has no equivalent, and
+that is the next card rather than an oversight. It matters because the steps converge in ONE direction: step
+9 sets stock to what the dataset declares and step 10 then reserves some of it against a past, so a birth
+re-run from step 9 on a box that already has that past is refused by the kernel — `inventory.adjust … on_hand
+below reserved or below zero`, measured. That refusal is CORRECT (nothing guesses its way past reserved
+stock); what is missing is the gesture that gives the box a clean start, which on the bench is `box-down.sh`.
+Until it exists, a deployed box is reborn from zero by destroying its `pgdata` volume on the host by hand —
+which is exactly the kind of thing that ought to be a reviewable script and is not one yet.
+
 ### The host first
 
 ```bash

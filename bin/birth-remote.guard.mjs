@@ -31,7 +31,7 @@
 // would grade a bench — and would ssh to a real VM.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -236,7 +236,13 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
   // blind to the one key a deploy really could undo — see the test that follows it.
   writeFileSync(
     join(dir, 'deploy/box.env'),
-    'FORGE_ADMIN_TENANT=\nFORGE_SEED_DATASET_HOST_DIR=./seed/dataset\nFORGE_TOTEM_STORE_ID=sto_PENDING_SEED\n',
+    [
+      'FORGE_ADMIN_TENANT=',
+      'FORGE_SEED_DATASET_HOST_DIR=./seed/dataset',
+      'FORGE_TOTEM_STORE_ID=sto_PENDING_SEED',
+      'FORGE_COFFEE_STORE_ID=sto_PENDING_SEED',
+      '',
+    ].join('\n'),
   );
   const faces = [
     `FORGE_DOMAIN=${bench ? 'localhost' : 'probe.example'}`,
@@ -268,6 +274,7 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
     boxEnv,
     [
       'FORGE_TOTEM_STORE_ID=sto_01LIVEDATA',
+      'FORGE_COFFEE_STORE_ID=sto_01LIVECAFE',
       "FORGE_STORE_HOSTS='{\"probe.example\":\"sto_01LIVEROOT\"}'",
       'FORGE_REVALIDATE_SECRET=deadbeefdeadbeef',
       '',
@@ -436,6 +443,14 @@ test('a deploy keeps the counter id a birth minted, and still writes the sentine
       !born.written().includes('FORGE_TOTEM_STORE_ID=sto_PENDING_SEED'),
       'the sentinel went up beside the real id — compose would take whichever came last',
     );
+    // ⟂ AND THE SOFT ONE, which is the half the live box caught and this guard originally could not see: the
+    //   café's store id is read by the fork alone, its absence is SILENT (every page still answers 200), so a
+    //   deploy blanking it took the café's institutional pages off the air with nothing saying so.
+    assert.match(
+      born.written(),
+      /^FORGE_COFFEE_STORE_ID=sto_01LIVECAFE$/m,
+      `the deploy blanked the café store id a birth had written:\n${born.written()}`,
+    );
   } finally {
     born.cleanup();
   }
@@ -447,11 +462,55 @@ test('a deploy keeps the counter id a birth minted, and still writes the sentine
     virgin.run('deploy.sh', ['probe']);
     assert.match(
       virgin.written(),
+      /^FORGE_COFFEE_STORE_ID=sto_PENDING_SEED$/m,
+      `a virgin box did not receive the café placeholder:\n${virgin.written()}`,
+    );
+    assert.match(
+      virgin.written(),
       /^FORGE_TOTEM_STORE_ID=sto_PENDING_SEED$/m,
       `a box with no counter id got no sentinel either, and compose cannot parse the file without one:\n${virgin.written()}`,
     );
   } finally {
     virgin.cleanup();
+  }
+});
+
+// ── ⟂ §2c · A KEY THE BIRTH WRITES AND `deploy/` ALSO DECLARES MUST DECLARE THE **SENTINEL** ──────────────
+//
+// ⛔ THE TEST ABOVE FABRICATES ITS OWN `deploy/box.env`, so it grades the RULE and not this repository's own
+// declaration — and that blind spot is exactly what the staging box found twice. `FORGE_COFFEE_STORE_ID` was
+// declared EMPTY, which is still a declaration, so a deploy blanked the id a birth had written and the café's
+// institutional pages fell back to the shared body with every page still answering 200.
+//
+// ⚠️ AND EMPTY COULD NOT BE READ AS "PLACEHOLDER" IN GENERAL, which is why the repair had to be in the
+// declaration rather than in the rule: empty is a real DECISION in that same file — `FORGE_ADMIN_TENANT=` is
+// host mode, `FORGE_BENCH_BIND=` is every interface, `FORGE_STORAGE_DRIVER=` is the local driver. So the key
+// has to SAY it is a placeholder, and this is what makes a later slice say it too.
+//
+// ★ THE LIST OF KEYS IS DERIVED FROM THE BIRTH ITSELF (`remote_env_put <KEY>`), never typed here: the day the
+// birth writes an eighth key, this rule already covers it.
+test('every key the birth writes that `deploy/` also declares is declared as the sentinel', () => {
+  const birth = readFileSync(join(ROOT, 'bin/birth-remote.sh'), 'utf8');
+  const written = [...birth.matchAll(/^\s*remote_env_put\s+([A-Z_][A-Z0-9_]*)/gm)].map((m) => m[1]);
+  assert.ok(written.length >= 4, `only ${written.length} key(s) found — this rule is grading nothing`);
+
+  const sentinel = 'sto_PENDING_SEED';
+  const files = readdirSync(join(ROOT, 'deploy')).filter((f) => f.endsWith('.env'));
+  assert.ok(files.length >= 2, 'no deploy/*.env to grade');
+
+  for (const file of files) {
+    const text = readFileSync(join(ROOT, 'deploy', file), 'utf8');
+    for (const key of new Set(written)) {
+      const line = text.split('\n').find((l) => l.startsWith(`${key}=`));
+      if (line === undefined) continue;
+      assert.equal(
+        line,
+        `${key}=${sentinel}`,
+        `deploy/${file} declares ${key}, and a declared key wins over a carried one — so a deploy would ` +
+          `overwrite what the birth mints there. Declare it as \`${sentinel}\` (the vocabulary this box ` +
+          `already has for "not provisioned yet") or take it out of the file. Found: ${JSON.stringify(line)}`,
+      );
+    }
   }
 });
 
