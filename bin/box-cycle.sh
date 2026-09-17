@@ -6,6 +6,30 @@
 #   bash bin/box-cycle.sh --plan [--promote <where>]               print what it would do; touch NOTHING
 #   bash bin/box-cycle.sh --dry-run [--promote <where>]            the whole mechanism — lock, log, roteiro,
 #                                                                  verdict — with every gesture PRINTED, not run
+#   bash bin/box-cycle.sh --env <stag|prod>                        THE SAME CYCLE, on a box that is not this
+#                                                                  laptop — see THE REMOTE CYCLE below
+#
+# ── ★★★ THE REMOTE CYCLE (`--env`), AND WHY IT IS THIS FILE AND NOT A SECOND SCRIPT ─────────────────────────
+#
+# Everything above — the lock, the log, the roteiro, and above all THE EXIT POLICY — is about a CYCLE, not
+# about a laptop. A `bin/box-cycle-remote.sh` would have had to carry a second copy of `CYCLE_REASONS`, and
+# that table is prose pinned to another file's prose: two copies of it would disagree the first time a
+# sentence in `bin/box-up.sh` was reworded, and they would disagree SILENTLY, at 3am, on the box nobody is
+# watching. ⇒ So the destination is a PARAMETER of the cycle, exactly as it became a parameter of the
+# teardown (`bin/box-down.sh --env`), and there is one author of what a cycle means.
+#
+# ⛔⛔ AND THE REMOTE CYCLE HAS FOUR GESTURES, NOT FIVE — GESTURE 3 DOES NOT EXIST THERE, and the reason is
+# not a shortcut. The promotion exists because a BENCH is born on `localhost` by decision and has to be
+# pointed afterwards at the address it is really reached at. A deployed box is born AT its own addresses:
+# `bin/deployed-faces.mjs` reads the six hostnames out of `deploy/<env>.env` BEFORE anything is written, and
+# every store claims its own in the kernel's directory during the birth itself. There is nothing left to
+# point at, and a promotion invented for it would rewrite the directory the birth just built.
+#
+# ⚠️ WHAT DOES NOT CHANGE IS WHY GESTURES 4 AND 5 COME LAST, and it is worth saying because the bench's
+# reason (`the promotion destroys the fronts`) is not the remote one. The remote birth ends by recreating the
+# fronts too, so warmth acquired mid-birth is thrown away just the same; and a verdict taken before the box
+# has finished settling is still not a verdict. The ORDER is the decision on both sides — only the gesture
+# that sits in the middle of it differs.
 #
 # ── ★ WHY ONE SCRIPT AND ONE SCHEDULE, AND NOT FOUR ENTRIES IN A CRONTAB ────────────────────────────────────
 #
@@ -141,11 +165,15 @@ TAG='[cycle]'
 # a gesture that neither ran nor was declared skipped is a red there, which is the shape a wrapper of four
 # calls is otherwise perfectly able to hide. `bin/box-cycle.guard.mjs` reads this list and the commands below
 # and reds if a gesture is removed or the order changes.
+# ⚠️ THE TITLES NAME THE GESTURE AND NOT THE SCRIPT, since `--env` runs each of them through a different one
+# (`bin/birth-remote.sh` instead of `bin/box-up.sh`). WHICH command each becomes is printed right below, by
+# the plan and by the run — derived from the destination rather than typed into a title that would be a lie
+# on one of the two paths.
 CYCLE_STEPS='1|tear the box down (state dies, the photo cache lives)
-2|the birth, warming left for gesture 4 (bin/box-up.sh --no-warm)
-3|the promotion — the box points at the address it is reached at (bin/box-up.sh --promote)
-4|the re-warm, at the address this box publishes itself at (bin/box-up.sh --warm-only)
-5|THE VERDICT — the birth’s two questions asked again, of the box as it is handed over (bin/box-up.sh --verdict-only)'
+2|the birth, warming left for gesture 4
+3|the promotion — the box points at the address it is reached at (BENCH only; a deployed box is born at its own)
+4|the re-warm, at the address this box publishes itself at
+5|THE VERDICT — the birth’s two questions asked again, of the box as it is handed over'
 
 # >>> THE EXIT POLICY — sourced verbatim by bin/box-cycle.guard.mjs, which runs it over fabricated results
 #
@@ -278,18 +306,38 @@ RESULTS
 
 # ★ THE ONE REASON A GESTURE IS SKIPPED, WRITTEN ONCE. The plan and the run both print THIS string, so a plan
 # cannot promise a reason the run does not give.
+# ★ AND THE OTHER REASON GESTURE 3 IS SKIPPED — it is a MEASUREMENT of the topology, never a request.
+SKIP_WHY_DEPLOYED='a DEPLOYED box is born AT its own addresses, so there is nothing to point it at. `bin/deployed-faces.mjs` reads the six hostnames out of deploy/<env>.env and REFUSES the birth before a byte is written if one is missing, and every store claims its own hostname in the kernel'"'"'s directory during the birth itself. ⛔ A promotion here would not be redundant, it would be WRONG: it rewrites the admin directory that the birth has just built correctly, pointing it at a destination typed on a laptop. The gesture exists for the BENCH, which is born on localhost by decision.'
 SKIP_WHY_PROMOTE='asked with --no-promote: this box has no address beyond the one it is born on, so there is nothing to point it at. A promotion to a guessed destination would claim a hostname that routes nowhere and leave every admin answering `unknown_admin_host`. ⚠️ The box is therefore handed over ON LOCALHOST — correct for a bench, wrong for anything a browser reaches from another machine.'
 
 USAGE='usage: bash bin/box-cycle.sh --promote <tailnet|localhost|hostname>
        bash bin/box-cycle.sh --no-promote                 reborn, and left on localhost (declared)
        bash bin/box-cycle.sh --plan    [--promote <where>|--no-promote]
-       bash bin/box-cycle.sh --dry-run [--promote <where>|--no-promote]'
+       bash bin/box-cycle.sh --dry-run [--promote <where>|--no-promote]
+       bash bin/box-cycle.sh --env <stag|prod> [--plan|--dry-run]   the same cycle, on a deployed box
+       …any of the above, plus --mail-to <address>                  one message at the end, over the box’s relay'
 
 MODE=run
 PROMOTE_TO=''
 PROMOTION_DECLARED=0
+ENV_NAME=''
+MAIL_TO=''
 while [ $# -gt 0 ]; do
   case "$1" in
+    --env)
+      ENV_NAME="${2:-}"
+      case "$ENV_NAME" in
+        '' | --*)
+          printf '\n%s --env needs the NAME of an environment this repository declares, and it will not guess one.\n' "$TAG" >&2
+          printf '%s   declared here:' "$TAG" >&2
+          for f in "$HERE"/deploy/*.env; do b="$(basename "$f" .env)"; [ "$b" = 'box' ] || printf ' %s' "$b" >&2; done
+          printf '\n\n%s\n\n' "$USAGE" >&2
+          exit 2 ;;
+      esac
+      [ -f "$HERE/deploy/$ENV_NAME.env" ] || {
+        printf '\n%s there is no deploy/%s.env in this repository — a cycle cannot be run against an\n        environment nothing declares.\n\n' "$TAG" "$ENV_NAME" >&2
+        exit 2 ; }
+      shift 2 ;;
     --promote)
       PROMOTE_TO="${2:-}"
       case "$PROMOTE_TO" in
@@ -300,11 +348,30 @@ while [ $# -gt 0 ]; do
       PROMOTION_DECLARED=1
       shift 2 ;;
     --no-promote) PROMOTION_DECLARED=1; PROMOTE_TO=''; shift ;;
+    --mail-to)
+      MAIL_TO="${2:-}"
+      case "$MAIL_TO" in
+        '' | --*) printf '\n%s --mail-to needs an address.\n\n%s\n\n' "$TAG" "$USAGE" >&2; exit 2 ;;
+      esac
+      shift 2 ;;
     --plan)       MODE=plan; shift ;;
     --dry-run)    MODE=dry-run; shift ;;
     *) printf '\n%s unknown argument "%s".\n%s\n\n' "$TAG" "$1" "$USAGE" >&2; exit 2 ;;
   esac
 done
+
+# ── ⛔ THE ONE COMBINATION THAT CANNOT MEAN ANYTHING ────────────────────────────────────────────────────────
+# `--env` and a promotion are not merely redundant together, they contradict: the deployed birth claims the
+# six hostnames `deploy/<env>.env` names, and a promotion would then point the box somewhere else — at a
+# destination typed on a laptop, over a directory the birth had just built correctly. Refused by name rather
+# than ignored, because a flag that is silently dropped is a flag somebody believes worked.
+if [ -n "$ENV_NAME" ] && [ "$PROMOTION_DECLARED" = 1 ]; then
+  printf '\n%s --env and --promote/--no-promote cannot be asked together.\n' "$TAG" >&2
+  printf '%s   A deployed box is BORN at its own six addresses (deploy/%s.env, read by bin/deployed-faces.mjs\n' "$TAG" "$ENV_NAME" >&2
+  printf '%s   before anything is written), so there is nothing left to point it at. The promotion is the gesture\n' "$TAG" >&2
+  printf '%s   that exists because a BENCH is born on localhost — see THE REMOTE CYCLE in this file'"'"'s header.\n\n' "$TAG" >&2
+  exit 2
+fi
 
 # ── ⚠️ THE NODE FLOOR, AND IT IS THE FIRST THING THIS SCRIPT DOES ───────────────────────────────────────────
 # Both gestures that matter run node processes on the HOST. A unit with no node would die AFTER
@@ -331,6 +398,27 @@ if [ "$PROMOTION_DECLARED" = 0 ] && [ -n "${FORGE_CYCLE_PROMOTE_TO:-}" ]; then
   PROMOTE_TO="$FORGE_CYCLE_PROMOTE_TO"
   PROMOTION_DECLARED=1
 fi
+# ★★ AND `--env` ANSWERS THIS QUESTION BY TOPOLOGY, WHICH IS WHY IT IS NOT A FOURTH WAY OF TELLING IT.
+# The refusal above exists because a BENCH can be handed over half promoted and nothing in the box would say
+# so — the operator has to have MEANT localhost. A deployed box cannot be in that state: it is born at the
+# six hostnames `deploy/<env>.env` names, and `bin/deployed-faces.mjs` refuses the birth before a byte is
+# written if one of them is missing. ⇒ The declaration is the environment file itself, and demanding a second
+# one on the command line would be asking the operator to repeat what the repository already states.
+# ⚠️ IT IS NOT SILENT: gesture 3 is still SKIPPED WITH ITS REASON in the roteiro (`$SKIP_WHY_DEPLOYED`), which
+# is the same treatment `--no-promote` gets, and for the same reason — a gesture that is quietly absent is
+# indistinguishable from one that was forgotten.
+if [ -n "$ENV_NAME" ]; then PROMOTION_DECLARED=1; PROMOTE_TO=''; fi
+
+# ── ★ THE VEHICLE, WHEN THERE IS A DESTINATION BEYOND THIS MACHINE ─────────────────────────────────────────
+# The four gestures reach the box through their own scripts, which load this themselves; the cycle needs it
+# for exactly two things of its own — the box's relay and its secret, for `--mail-to`. ⚠️ IT IS A LOCAL READ:
+# `remote_box_load` parses `deploy/<env>.env` and BUILDS the ssh command; it opens no connection, which is
+# what lets it sit above `--plan` without breaking that mode's promise that nothing is touched.
+if [ -n "$ENV_NAME" ]; then
+  # shellcheck source=bin/remote-box.sh
+  . "$HERE/bin/remote-box.sh"
+  remote_box_load "$ENV_NAME" "$HERE" || exit 2
+fi
 if [ "$PROMOTION_DECLARED" = 0 ]; then
   printf '\n%s refusing to start: this cycle has not been told where to promote the box to, and it will not\n' "$TAG" >&2
   printf '        guess. A rebirth DE-PROMOTES the admin, so a cycle that skips the promotion by accident\n' >&2
@@ -346,7 +434,14 @@ fi
 PROMOTES=1
 [ -n "$PROMOTE_TO" ] || PROMOTES=0
 PLANNED_SKIPS=''
-[ "$PROMOTES" = 1 ] || PLANNED_SKIPS="3=$SKIP_WHY_PROMOTE"
+# ⛔ THE PLAN AND THE RUN READ THE SAME STRING. Two reasons for one skip — one promised, one given — is the
+# defect this repository keeps naming: a plan that can disagree with its run is worse than no plan.
+if [ -n "$ENV_NAME" ]; then
+  PROMOTES=0
+  PLANNED_SKIPS="3=$SKIP_WHY_DEPLOYED"
+elif [ "$PROMOTES" = 0 ]; then
+  PLANNED_SKIPS="3=$SKIP_WHY_PROMOTE"
+fi
 
 LOG_DIR="${FORGE_CYCLE_LOG_DIR:-$HERE/cycle-logs}"
 LOCK="$LOG_DIR/cycle.lock"
@@ -361,20 +456,33 @@ LOG="$LOG_DIR/$STAMP.log"
 # spoken to. It is also how this slice is reviewed without a box: see `bin/box-cycle.guard.mjs`.
 if [ "$MODE" = plan ]; then
   node "$HERE/bin/roteiro.mjs" --mode plan --steps "$CYCLE_STEPS" --skipped "$PLANNED_SKIPS" || exit 2
-  printf '\n   destination   %s\n' "${PROMOTE_TO:-<none: --no-promote, gesture 3 is skipped above>}"
-  printf '   project       %s   (COMPOSE_PROJECT_NAME)\n' "$COMPOSE_PROJECT_NAME"
+  if [ -n "$ENV_NAME" ]; then
+    printf '\n   destination   deploy/%s.env — a DEPLOYED box, born at its own six hostnames\n' "$ENV_NAME"
+    printf '   project       the box'"'"'s own (bin/remote-box.sh names it there; this laptop'"'"'s is not used)\n'
+  else
+    printf '\n   destination   %s\n' "${PROMOTE_TO:-<none: --no-promote, gesture 3 is skipped above>}"
+    printf '   project       %s   (COMPOSE_PROJECT_NAME)\n' "$COMPOSE_PROJECT_NAME"
+  fi
   printf '   log would be  %s\n' "$LOG"
   printf '   lock          %s\n' "$LOCK"
   printf '\n   the commands, in order:\n'
-  printf '     1   bash bin/box-down.sh\n'
-  printf '     2   bash bin/box-up.sh --no-warm\n'
-  if [ "$PROMOTES" = 1 ]; then
-    printf '     3   bash bin/box-up.sh --promote %s\n' "$PROMOTE_TO"
-  else
+  if [ -n "$ENV_NAME" ]; then
+    printf '     1   bash bin/box-down.sh --env %s\n' "$ENV_NAME"
+    printf '     2   bash bin/birth-remote.sh %s --no-warm\n' "$ENV_NAME"
     printf '     3   SKIPPED — see the reason above\n'
+    printf '     4   bash bin/birth-remote.sh %s --warm-only\n' "$ENV_NAME"
+    printf '     5   bash bin/birth-remote.sh %s --verdict-only    ← the gesture that decides the exit code\n\n' "$ENV_NAME"
+  else
+    printf '     1   bash bin/box-down.sh\n'
+    printf '     2   bash bin/box-up.sh --no-warm\n'
+    if [ "$PROMOTES" = 1 ]; then
+      printf '     3   bash bin/box-up.sh --promote %s\n' "$PROMOTE_TO"
+    else
+      printf '     3   SKIPPED — see the reason above\n'
+    fi
+    printf '     4   bash bin/box-up.sh --warm-only\n'
+    printf '     5   bash bin/box-up.sh --verdict-only        ← the gesture that decides the exit code\n\n'
   fi
-  printf '     4   bash bin/box-up.sh --warm-only\n'
-  printf '     5   bash bin/box-up.sh --verdict-only        ← the gesture that decides the exit code\n\n'
   printf '   the verdict grades REASONS, not gestures: a reason gesture 2 gave is forgiven only where a later\n'
   printf '   gesture put the same question and answered ✓. These are the ones with an answer coming:\n'
   while IFS='|' read -r token _sentence asker _why; do
@@ -479,7 +587,15 @@ REHEARSAL=''
 [ "$MODE" = dry-run ] && REHEARSAL='⚑ REHEARSAL (--dry-run): no gesture below was executed. '
 
 say "the cycle · $STAMP"
-note "${REHEARSAL}project $COMPOSE_PROJECT_NAME · destination ${PROMOTE_TO:-<none: --no-promote>} · log $LOG"
+# ⚠️ THE HEADER SAYS WHICH BOX, AND IT WAS THE LAST LINE STILL SPEAKING THE BENCH'S LANGUAGE — a remote run
+# announced `project forge-preseed · destination <none: --no-promote>`, which is this laptop's project name
+# and a bench's reason, printed over a cycle about to destroy a deployed box. It is the FIRST line of the
+# log and of the mail a scheduler sends, so it is the one line most likely to be the only one read.
+if [ -n "$ENV_NAME" ]; then
+  note "${REHEARSAL}deployed box · deploy/$ENV_NAME.env · ${REMOTE_HINT:-born at its own hostnames, no promotion} · log $LOG"
+else
+  note "${REHEARSAL}project $COMPOSE_PROJECT_NAME · destination ${PROMOTE_TO:-<none: --no-promote>} · log $LOG"
+fi
 brief "started $STAMP — ${REHEARSAL}log: $LOG"
 
 RAN=''
@@ -526,31 +642,51 @@ run_gesture() { # <id> <title> <command…>
   return "$status"
 }
 
-run_gesture 1 'tear the box down (state dies, the photo cache lives)' \
-  bash "$HERE/bin/box-down.sh"
+if [ -n "$ENV_NAME" ]; then
+  run_gesture 1 'tear the box down (state dies, the photo cache lives)' \
+    bash "$HERE/bin/box-down.sh" --env "$ENV_NAME"
 
-run_gesture 2 'the birth, warming left for gesture 4' \
-  bash "$HERE/bin/box-up.sh" --no-warm
+  run_gesture 2 'the birth, warming left for gesture 4' \
+    bash "$HERE/bin/birth-remote.sh" "$ENV_NAME" --no-warm
 
-if [ "$PROMOTES" = 1 ]; then
-  run_gesture 3 "the promotion — $PROMOTE_TO" \
-    bash "$HERE/bin/box-up.sh" --promote "$PROMOTE_TO"
-else
   say '3 · SKIPPED'
-  note "why: $SKIP_WHY_PROMOTE"
-  SKIPPED="3=$SKIP_WHY_PROMOTE"
-fi
+  note "why: $SKIP_WHY_DEPLOYED"
+  SKIPPED="3=$SKIP_WHY_DEPLOYED"
 
-run_gesture 4 'the re-warm, at the address the box now publishes' \
-  bash "$HERE/bin/box-up.sh" --warm-only
+  run_gesture 4 'the re-warm, at the addresses this box publishes itself at' \
+    bash "$HERE/bin/birth-remote.sh" "$ENV_NAME" --warm-only
+else
+  run_gesture 1 'tear the box down (state dies, the photo cache lives)' \
+    bash "$HERE/bin/box-down.sh"
+
+  run_gesture 2 'the birth, warming left for gesture 4' \
+    bash "$HERE/bin/box-up.sh" --no-warm
+
+  if [ "$PROMOTES" = 1 ]; then
+    run_gesture 3 "the promotion — $PROMOTE_TO" \
+      bash "$HERE/bin/box-up.sh" --promote "$PROMOTE_TO"
+  else
+    say '3 · SKIPPED'
+    note "why: $SKIP_WHY_PROMOTE"
+    SKIPPED="3=$SKIP_WHY_PROMOTE"
+  fi
+
+  run_gesture 4 'the re-warm, at the address the box now publishes' \
+    bash "$HERE/bin/box-up.sh" --warm-only
+fi
 
 # ★★★ AND THEN THE SAME TWO QUESTIONS AGAIN, OF THE BOX AS IT IS HANDED OVER — which is the gesture that
 # decides this cycle's exit code. It is LAST because everything before it changes the answer: gesture 3
 # claims the address the doors are opened at, and gesture 4 recreates nothing but fills what gesture 3
 # emptied. ⛔ Its own non-zero is nobody's "not yet": nothing comes after it, so no reason it reports is ever
 # pardoned below.
-run_gesture 5 'the verdict — the birth’s two questions, asked again' \
-  bash "$HERE/bin/box-up.sh" --verdict-only
+if [ -n "$ENV_NAME" ]; then
+  run_gesture 5 'the verdict — the birth’s two questions, asked again' \
+    bash "$HERE/bin/birth-remote.sh" "$ENV_NAME" --verdict-only
+else
+  run_gesture 5 'the verdict — the birth’s two questions, asked again' \
+    bash "$HERE/bin/box-up.sh" --verdict-only
+fi
 
 # ── ★★ WHAT THIS RUN DID, GRADED BY THE SAME TOOL THE BIRTH USES ────────────────────────────────────────────
 #
@@ -590,4 +726,46 @@ else
   note "⛔ the cycle is RED. Read the REASON(s) named above — each ⛔ line says which gesture gave it and why nothing answered it — in $LOG."
   brief "finished RED — read $LOG"
 fi
+
+# ── ★★ ONE MESSAGE, ON BOTH ANSWERS — because SILENCE IS NOT GREEN ─────────────────────────────────────────
+#
+# ⛔ THE OBVIOUS ARRANGEMENT IS «MAIL ONLY WHEN IT BREAKS», AND IT IS WRONG FOR THE SAME REASON A CRON THAT
+# ONLY MAILS ON FAILURE IS: a schedule that has stopped firing, a unit that died before the lock, a machine
+# that was rebuilt without the timer — all three look exactly like a green week. A weekly message that says
+# GREEN is what makes its absence mean something.
+#
+# ⚠️ AND THE MAIL IS THE LAST THING, AFTER THE EXIT CODE IS DECIDED AND NEVER INSTEAD OF IT. A relay that
+# refuses does not change the cycle's verdict: `bin/cycle-mail.mjs` says so on stderr, the scheduler's own
+# mail carries that line, and the box is still whatever the verdict said it was.
+if [ -n "$MAIL_TO" ] && [ "$MODE" != plan ]; then
+  [ "$VERDICT" = 0 ] && mail_verdict=GREEN || mail_verdict=RED
+  mail_where="${ENV_NAME:-bench}"
+  # ⛔ THE RELAY IS THE BOX'S OWN, ASSEMBLED BY THE BOX. `env-source.sh` is the single author of the four
+  # `FORGE_SMTP_*` (three carry defaults it applies, one is a secret), so asking the box is the only reading
+  # that cannot drift from what the kernel itself boots with. The password crosses into this shell and stops
+  # there — same custody as the operator tokens, and it never reaches a command line or a log.
+  if [ -n "$ENV_NAME" ]; then
+    eval "$("${REMOTE_SSH[@]}" "cd $(printf '%q' "$REMOTE_BOX_DIR") && set -a && . ./env-source.sh >/dev/null 2>&1; set +a
+      printf 'export FORGE_SMTP_HOST=%s\nexport FORGE_SMTP_USER=%s\nexport FORGE_SMTP_FROM=%s\n' \"\${FORGE_SMTP_HOST:-}\" \"\${FORGE_SMTP_USER:-}\" \"\${FORGE_SMTP_FROM:-}\"" </dev/null)" || true
+    FORGE_SMTP_PASS="$(remote_secret_get forge-smtp-pass)"
+    export FORGE_SMTP_PASS
+  fi
+  {
+    printf 'the cycle finished %s — %s\n\n' "$mail_verdict" "$mail_where"
+    printf 'log on the machine that ran it: %s\n\n' "$LOG"
+    printf 'the gestures, with their clocks:\n'
+    while IFS='=' read -r id status secs reasons; do
+      [ -n "$id" ] || continue
+      if [ "$status" = 0 ]; then printf '  %s · ok      · %ss\n' "$id" "$secs"
+      else printf '  %s · EXIT %s · %ss · %s\n' "$id" "$status" "$secs" "${reasons:-<named no reason this cycle knows>}"; fi
+    done <<MAIL_RESULTS
+$RESULTS
+MAIL_RESULTS
+    printf '\n%s\n' "$([ "$VERDICT" = 0 ] \
+      && printf 'Every reason any gesture gave was asked again by a later one and answered ✓.' \
+      || printf 'RED. A reason above was given and nothing after it answered the same question. Read the log.')"
+  } | node "$HERE/bin/cycle-mail.mjs" --to "$MAIL_TO" \
+        --subject "forge cycle · ${mail_where} · ${mail_verdict}" || true
+fi
+
 exit "$VERDICT"

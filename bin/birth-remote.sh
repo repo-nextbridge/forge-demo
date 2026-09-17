@@ -5,6 +5,8 @@
 #   bash bin/birth-remote.sh stag --no-warm      the same WITHOUT step 14 (it is a report, never a gate)
 #   bash bin/birth-remote.sh stag --plan         print the roteiro this invocation would run, touch nothing
 #   bash bin/birth-remote.sh stag --again        a box that has ALREADY been born here — see THE REFUSAL
+#   bash bin/birth-remote.sh stag --warm-only    ONLY step 14, on a deployed box already standing (§0w)
+#   bash bin/birth-remote.sh stag --verdict-only ONLY steps 14-bis and 15, on a box already standing (§0v)
 #
 # ── ⛔⛔ WHAT THIS IS, AND WHAT `bin/deploy.sh` IS NOT ──────────────────────────────────────────────────────
 #
@@ -101,17 +103,24 @@ STEPS_RAN=''
 PLANNED_SKIPS=''
 
 # ── THE ARGUMENTS ──────────────────────────────────────────────────────────────────────────────────────────
-USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again]'
+USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again] [--warm-only] [--verdict-only]'
 ENV_NAME=''
 WARM=1
 PLAN_ONLY=0
 AGAIN=0
+# ★★ THE TWO PHASES, ASKED ALONE — and they are modes for the reason `bin/box-up.sh` states at its own §0w:
+# a scheduled CYCLE has to warm AFTER everything that destroys warmth, and grade AFTER everything that could
+# repair a red. On this side of the fence the ordering argument is the same and the mechanism is the same;
+# what differs is where the credential comes from (§0t), because nothing was minted in this run.
+MODE=birth
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-warm) WARM=0 ;;
     --plan)    PLAN_ONLY=1 ;;
     --again)   AGAIN=1 ;;
-    -h|--help) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --warm-only)    MODE=warm ;;
+    --verdict-only) MODE=verdict ;;
+    -h|--help) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) printf '%s unknown option "%s".\n  %s\n' "$TAG" "$1" "$USAGE" >&2; exit 1 ;;
     *)
       [ -z "$ENV_NAME" ] || { printf '%s two environments named ("%s" and "%s"). One birth, one box.\n' "$TAG" "$ENV_NAME" "$1" >&2; exit 1; }
@@ -219,6 +228,137 @@ admin_origin_of() { # <tenant>  → https://<that tenant's admin face>
   local h; h="$(face_value_of admin "$1" -)"
   [ -n "$h" ] && printf 'https://%s' "$h"
 }
+
+# ── 0f · ★★ THE THREE PHASES THAT HAVE TWO CALLERS, AS FUNCTIONS ──────────────────────────────────────────
+#
+# ⚠️ THEY ARE FUNCTIONS RATHER THAN COPIES BECAUSE OF WHAT THEY KNOW, not to be tidy. Each one needs the
+# tenant list (`$TENANTS`, out of `seed/box.json`) AND the rule for the name of a tenant's secret
+# (`secret_name_for` — the first tenant keeps the unsuffixed name), and that rule already has three authors
+# (`bin/box-up.sh`, this file, `bin/admin-access-key.mjs::accessKeySecretName`). A fourth, written inside a
+# `--warm-only` block, would drift on the day a tenant is added to `seed/box.json` — and it would drift
+# SILENTLY, because a tenant nobody warms is a tenant nobody reports on.
+#
+# ⛔ THEY SET THE SAME VARIABLES THE BIRTH'S CLOSING BLOCK READS, and that is deliberate: the modes below and
+# the birth grade through ONE set of names, so a sentence can never mean one thing in a birth and another in
+# a cycle. `bin/box-cycle.guard.mjs` pins those sentences across the fence.
+warm_every_tenant() {
+  local t tokvar tokval
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    FORGE_OPERATOR_TOKEN="$tokval" FORGE_REVALIDATE_SECRET="$BOX_REVALIDATE" \
+      node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+    case $? in
+      0) ;;
+      2) WARM_UNKNOWN="$WARM_UNKNOWN $t" ;;
+      3) MISSING_STORE="$MISSING_STORE $t" ;;
+      *) COLD="$COLD $t" ;;
+    esac
+  done
+}
+prove_every_tenant() {
+  local t tokvar tokval
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+    case $? in
+      0) note "$t · every door opened" ;;
+      2) DOORS_UNKNOWN="$DOORS_UNKNOWN $t" ;;
+      *) SHUT="$SHUT $t" ;;
+    esac
+  done
+}
+# ⚠️ AND IT IS ASKED OF THE BOX'S OWN `.env`, fetched for the length of this call — the file on this laptop
+# describes the bench, and grading a deployed box against a bench's declaration answers a question nobody
+# asked. The copy is removed on the way out, in the same function that made it.
+verify_the_configuration() {
+  local boxenv; boxenv="$(mktemp)"
+  if "${REMOTE_SSH[@]}" "cat $(printf '%q' "$REMOTE_BOX_DIR/.env")" </dev/null > "$boxenv" 2>/dev/null; then
+    node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" --env "$boxenv" || MISCONFIGURED=1
+  else
+    MISCONFIGURED=1
+    note '⛔ the box’s own .env could not be read, so the configuration was NOT graded.'
+  fi
+  rm -f "$boxenv"
+}
+
+# ── 0t · ⛔⛔ WHERE THE CREDENTIAL COMES FROM WHEN NOTHING WAS MINTED ───────────────────────────────────────
+#
+# In a birth, step 3 mints each tenant's operator token and holds it in this shell. The two modes below are
+# asked of a box that was born days ago, by a scheduler — so the token has to come BACK off the box, and
+# `remote_secret_get` is that read (its own header carries the custody argument).
+#
+# ⛔ AND AN ABSENT SECRET IS A REFUSAL, NEVER AN EMPTY STRING PASSED ALONG. An empty credential does not fail
+# loudly at the port: it comes back `unauthorized`, which reads exactly like a box whose kernel is broken —
+# and a scheduled run that reports the wrong failure is worse than one that reports none.
+load_operator_tokens() {
+  local t name val missing=''
+  for t in $TENANTS; do
+    name="$(secret_name_for "$t" seed)"
+    val="$(remote_secret_get "$name")"
+    if [ -z "$val" ]; then missing="$missing $name"; continue; fi
+    eval "$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')=\$val"
+  done
+  [ -z "$missing" ] || die "this box carries no$missing in its .secrets, so no credential can be presented for
+     the tenant(s) that name. That is what a box which has NEVER BEEN BORN here looks like — birth it
+     first (\`bash bin/birth-remote.sh ${ENV_NAME}\`); a warming or a verdict is not a birth."
+}
+
+# ── 0w · ★★★ `--warm-only` · STEP 14 ALONE, ON A BOX THAT IS ALREADY STANDING ──────────────────────────────
+#
+# ★★ WHY A CYCLE WARMS LAST, WHICH IS THE WHOLE REASON THIS MODE EXISTS: everything that holds warmth — the
+# route cache, the ISR entries, the image derivatives — lives in a FRONT CONTAINER, and every gesture that
+# recreates a front throws it away. Warming inside the birth and recreating afterwards hands over a box as
+# cold as one that never warmed, having paid the ~1h10 for it.
+#
+# ⚠️ THIS MODE IS NOT A BIRTH AND DOES NOT PRETEND TO BE ONE. It runs one step, it stamps no roteiro, and its
+# exit carries exactly what step 14's carries: warmth is a REPORT, and a store `seed/box.json` DECLARES that
+# the box does not hold is still red. It opens no door and grades no configuration — `--verdict-only` does.
+if [ "$MODE" = warm ]; then
+  note "${ENV_NAME} · ${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR} · ${FORGE_PUBLIC_ORIGIN}"
+  load_operator_tokens
+  BOX_REVALIDATE="$(remote_env_get FORGE_REVALIDATE_SECRET)"
+  COLD=''
+  WARM_UNKNOWN=''
+  MISSING_STORE=''
+  say 'the re-warm · warming every store the port says has a public page, on a box already standing'
+  note 'this is step 14 and nothing else — no door is opened and no configuration is graded here.'
+  warm_every_tenant
+  [ -z "$COLD" ] || printf '\n%s ⚠️  REPORT — THE RE-WARM DID NOT LEAVE%s FULLY WARM. Not a failure: warmth reports, it\n         does not grade. The ⚠ lines above name every url.\n\n' "$TAG" "$COLD" >&2
+  [ -z "$WARM_UNKNOWN" ] || printf '\n%s ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: the warmer could not ASK. That is a different\n         sentence from "they are cold", and nothing above claims either.\n\n' "$TAG" "$WARM_UNKNOWN" >&2
+  if [ -n "$MISSING_STORE" ]; then
+    printf '\n%s ⛔ %s IS MISSING A STORE THIS REPOSITORY DECLARES. That is not warmth — the birth did not\n         build it, and this run only noticed. The ✗ line above names the store.\n\n' "$TAG" "$MISSING_STORE" >&2
+    exit 1
+  fi
+  exit 0
+fi
+
+# ── 0v · ★★★ `--verdict-only` · STEPS 14-bis AND 15 ALONE, ASKED AGAIN OF A STANDING BOX ───────────────────
+#
+# ★★★ A VERDICT TAKEN BEFORE THE STATE IT GRADES IS FINISHED IS NOT A VERDICT. That is a measurement, not a
+# principle: a birth can name a red that a later gesture has already repaired, and a cycle that graded on the
+# birth alone would alert every week about a box that is perfectly well. So the two questions are put AGAIN,
+# of the box as it is handed over — and a red HERE has nothing after it to repair it, which is what makes it
+# worth waking somebody for.
+if [ "$MODE" = verdict ]; then
+  note "${ENV_NAME} · ${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR} · ${FORGE_PUBLIC_ORIGIN}"
+  load_operator_tokens
+  SHUT=''
+  DOORS_UNKNOWN=''
+  MISCONFIGURED=''
+  say 'the verdict · the two questions of the birth, asked again of the box as it stands now'
+  note 'this is 14-bis and 15 and nothing else — nothing is built, nothing is warmed, no address is moved.'
+  prove_every_tenant
+  say 'the verdict over the CONFIGURATION (verify-config)'
+  verify_the_configuration
+  [ -z "$SHUT" ] || printf '\n%s ⛔ THE BOX IS UP AND%s HAS DOORS A SHOPPER CANNOT OPEN. This was asked AGAIN, after the\n         birth and the warming, and it is still true: nothing comes after this to repair it.\n\n' "$TAG" "$SHUT" >&2
+  [ -z "$DOORS_UNKNOWN" ] || printf '\n%s ⛔ NOTHING WAS LEARNED ABOUT%s'"'"'S DOORS. Read it as UNPROVEN, never as proven-open.\n\n' "$TAG" "$DOORS_UNKNOWN" >&2
+  [ -z "$MISCONFIGURED" ] || printf '\n%s ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Asked AGAIN, of the box as it stands.\n\n' "$TAG" >&2
+  if [ -n "$SHUT" ] || [ -n "$DOORS_UNKNOWN" ] || [ -n "$MISCONFIGURED" ]; then exit 1; fi
+  note 'both questions of the birth were asked again here and both answered ✓.'
+  exit 0
+fi
 
 # ── ★ `--plan` · THE ROTEIRO WITHOUT THE BIRTH ─────────────────────────────────────────────────────────────
 # It reads nothing on the host and starts nothing. Placed AFTER the node floor and the face plan (both are
@@ -973,18 +1113,9 @@ if [ "$WARM" != 1 ]; then
   skip 14 "$WARM_SKIP_WHY"
 else
   say '14 · warming every store the port says has a public page'
-  for t in $TENANTS; do
-    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-    eval "tokval=\${$tokvar:-}"
-    FORGE_OPERATOR_TOKEN="$tokval" FORGE_REVALIDATE_SECRET="$BOX_REVALIDATE" \
-      node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
-    case $? in
-      0) ;;
-      2) WARM_UNKNOWN="$WARM_UNKNOWN $t" ;;
-      3) MISSING_STORE="$MISSING_STORE $t" ;;
-      *) COLD="$COLD $t" ;;
-    esac
-  done
+  # ★ THE LOOP ITSELF IS `warm_every_tenant`, DEFINED IN §0f — one copy, two callers (this step and
+  # `--warm-only`), for the reason written there.
+  warm_every_tenant
 fi
 
 # ── 14-bis · EVERY DOOR OF EVERY STORE, OPENED ────────────────────────────────────────────────────────────
@@ -995,16 +1126,9 @@ fi
 say '14-bis · opening every door of every store'
 SHUT=''
 DOORS_UNKNOWN=''
-for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-  eval "tokval=\${$tokvar:-}"
-  FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/prove-doors.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
-  case $? in
-    0) note "$t · every door opened" ;;
-    2) DOORS_UNKNOWN="$DOORS_UNKNOWN $t" ;;
-    *) SHUT="$SHUT $t" ;;
-  esac
-done
+# ★ THE LOOP ITSELF IS `prove_every_tenant`, DEFINED IN §0f — one copy, two callers (this step and
+# `--verdict-only`).
+prove_every_tenant
 
 # ── 15 · THE VERDICT OVER THE CONFIGURATION ───────────────────────────────────────────────────────────────
 # ★ Step 12 grades the DATA; this grades what the box IS. ⚠️ AND IT IS ASKED OF THE BOX'S OWN `.env`, fetched
@@ -1012,14 +1136,8 @@ done
 # against a bench's declaration would answer a question nobody asked.
 say '15 · the verdict over the CONFIGURATION (verify-config)'
 MISCONFIGURED=''
-boxenv="$(mktemp)"
-trap 'rm -f "$boxenv"' EXIT
-if "${REMOTE_SSH[@]}" "cat $(printf '%q' "$REMOTE_BOX_DIR/.env")" </dev/null > "$boxenv" 2>/dev/null; then
-  node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" --env "$boxenv" || MISCONFIGURED=1
-else
-  MISCONFIGURED=1
-  note '⛔ the box’s own .env could not be read, so the configuration was NOT graded.'
-fi
+# ★ ONE COPY, TWO CALLERS — see §0f.
+verify_the_configuration
 
 # ── THE ROTEIRO — WHAT THIS RUN RAN, WHAT IT SKIPPED, AND WHY ─────────────────────────────────────────────
 # ⛔ DERIVED FROM RESULT, NEVER FROM THIS FILE'S INTENT: `$STEPS_RAN` was stamped by each step's own `say` as
@@ -1060,6 +1178,12 @@ printf '\n' >&2
 [ -z "${MISCONFIGURED:-}" ] || printf '%s ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Step 15 names the face that disagrees.\n\n' "$TAG" >&2
 [ -z "${ONLINE_ONLY_FAILED:-}" ] || printf '%s ⛔ A FACILITY THAT ONLY EXISTS ONLINE WAS CONFIGURED AND COULD NOT RUN. Step 13 names it.\n\n' "$TAG" >&2
 [ -z "${ROTEIRO_INCOMPLETE:-}" ] || printf '%s ⛔ THIS RUN CANNOT ACCOUNT FOR EVERY STEP IT DECLARES. The roteiro above names the step.\n\n' "$TAG" >&2
+# ⛔⛔ AND THE TOTEM GETS THE SHOUTED SENTENCE `bin/box-up.sh` GIVES IT, word for word. It used to be a `note`
+# and nothing else — the run still exited 1 (the conjunction below has always carried it), but it exited 1
+# WITHOUT NAMING A REASON. `bin/box-cycle.sh`'s exit policy reads reasons out of the text, so a remote cycle
+# whose totem never started would have graded it as an UNRECOGNISED non-zero: red, correctly, and mute about
+# which of eight things went wrong — at 3am, on a schedule, which is the only hour this sentence is read.
+[ -n "${TOTEM_UP:-}" ] || printf '%s ⛔ THE BOX IS UP AND %s IS NOT. The summary above says so where the address would be;\n         this line is here because an exit code is what a script downstream reads.\n\n' "$TAG" 'the totem' >&2
 if [ -n "$UNSETTLED" ]; then
   printf '%s ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Everything above is standing; what it HOLDS is not what
          this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$TAG" "$UNSETTLED" >&2
