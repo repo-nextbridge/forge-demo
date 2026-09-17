@@ -48,12 +48,19 @@
 // that door: it states the condition rather than offering a seventh destination, and it names the host it is
 // talking about rather than pretending to be one of the six.
 //
-// ⛔ THE COOKIE IS THIS ORIGIN'S, AND THAT IS A FACT ABOUT THE PRODUCT, NOT A CHOICE MADE HERE. `dismissGate`
-// writes `forge_gate_dismissed` with no `domain` attribute (packages/storefront-kit/src/gate/actions.ts:57-64
-// and src/cookies.ts, in the Forge monorepo), so the dismissal does NOT travel between the six hostnames: a
-// visitor who came through here meets the gate again on the next one. A cookie scoped to the whole
-// `.forgecommerce.pro` zone was decided on 13/09 and lands in the KIT, not in this repository — see the head
-// of `./gate`.
+// ★ THE DISMISSAL COVERS THE WHOLE DEMO, AND THAT IS THIS BOX'S DECLARATION — NOT THE PRODUCT'S DEFAULT.
+//
+// ⚠️ THIS PARAGRAPH USED TO SAY THE OPPOSITE AND WAS SIMPLY OLD, WHICH IS WORTH LEAVING IN VIEW: it said a
+// zone-wide cookie "was decided on 13/09 and lands in the KIT, not in this repository", and by then the kit
+// HAD ALREADY LANDED IT (`packages/storefront-kit/src/gate/cookie-scope.ts`, pk35/p5). The mechanism was
+// declarable and this box had simply never declared it — the same shape as the storage driver on 2026-09-17:
+// a capability exists in the product, and the box is never told. ⇒ A comment that records a decision outlives
+// the decision; this one cost an afternoon of arguing the wrong fence.
+//
+// `deploy/box.env` declares `FORGE_STOREFRONT_GATE_COOKIE_DOMAIN=forgecommerce.pro`, so one "enter" covers
+// all six faces. The kit checks that suffix against the address the browser really used and falls back to
+// HOST-ONLY when it does not match, which is why the bench on `localhost` still gates every face separately.
+// ⛔ The licence for widening THIS cookie and no other is stated in full at the head of `cookie-scope.ts`.
 
 import type { GateFace, GateTenant } from '../faces.generated';
 import { GATE_TENANTS } from '../faces.generated';

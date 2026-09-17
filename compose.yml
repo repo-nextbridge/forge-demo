@@ -227,6 +227,12 @@ services:
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      # ★★ ONE DISMISSAL FOR THE WHOLE DEMO. `packages/storefront-kit/src/gate/cookie-scope.ts` (pk35/p5) made
+      # the gate's dismissal scope DECLARABLE, and this box never declared it — so entering at one of the six
+      # faces left the other five still greeting, because a cookie with no `domain` belongs to the origin that
+      # wrote it. ⚠️ The kit checks the declared suffix against the address the browser really used and falls
+      # back to HOST-ONLY when it does not match, so a bench on `localhost` is unaffected and says so.
+      FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
       NODE_ENV: production
       PORT: 3000
@@ -280,6 +286,12 @@ services:
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      # ★★ ONE DISMISSAL FOR THE WHOLE DEMO. `packages/storefront-kit/src/gate/cookie-scope.ts` (pk35/p5) made
+      # the gate's dismissal scope DECLARABLE, and this box never declared it — so entering at one of the six
+      # faces left the other five still greeting, because a cookie with no `domain` belongs to the origin that
+      # wrote it. ⚠️ The kit checks the declared suffix against the address the browser really used and falls
+      # back to HOST-ONLY when it does not match, so a bench on `localhost` is unaffected and says so.
+      FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
       NODE_ENV: production
       PORT: 3000

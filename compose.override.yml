@@ -81,6 +81,9 @@ services:
       # ⚠️ SOFT (`:-`) LIKE ITS THREE SIBLINGS, and the emptiness is handled at the other end: `wiring.ts` uses
       # `||`, not `??`, because compose passes an UNSET variable as the empty string rather than as absent.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      # The same scope the other two fronts get — a dismissal written by one and deleted by another at a
+      # DIFFERENT scope would delete nothing, which is the silent half `cookie-scope.ts` warns about.
+      FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
     volumes:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
@@ -146,6 +149,9 @@ services:
       # `compose.yml` gives the storefront and the checkout, for the same reason: the gate's entry is a
       # Server Component, so its links live where the component runs. They never reach the browser.
       FORGE_GATE_SITE_URL: ${FORGE_GATE_SITE_URL:-}
+      # The same scope the other two fronts get — a dismissal written by one and deleted by another at a
+      # DIFFERENT scope would delete nothing, which is the silent half `cookie-scope.ts` warns about.
+      FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
     depends_on:
       - kernel
