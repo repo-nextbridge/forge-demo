@@ -254,11 +254,33 @@ export FORGE_OPERATOR_TOKEN_FORGECAFE="$(optional_secret forge-operator-token-fo
 # ⚠️ EMPTY OBJECT, NEVER EMPTY STRING, and never an error. This is sourced on machines mid-setup, on a box
 # with no `.secrets` yet, and by a shell with no node on PATH; each of those is "this box declares no door",
 # which is a state — not a reason to refuse to export the rest of the environment.
+#
+# ★★ AND WHEN THERE IS NO NODE, `.env` IS ASKED BEFORE `{}` — WHICH IS THE WHOLE REPAIR OF A MEASURED BUG.
+#
+# ⛔ MEASURED on the deployed box 2026-09-16 and still true on 2026-09-17: the birth MINTED every key and
+# filed it, and this function still exported `{}` — because a deployed box has no node and this line gave up
+# immediately. The gate's "abrir o admin" landed on a login screen with a real key filed two metres away.
+#
+# ⇒ `bin/birth-remote.sh` now assembles the map on the OPERATOR's machine (which has node) and writes it into
+# the box's `.env`, like every other derived value. So the order here is: the script when it can run (the
+# bench, where `.secrets` and the script are both present), then what the box was TOLD, then `{}`.
+#
+# ⚠️ The order matters and is not alphabetical: on a bench the script is the truth, because a key rotated
+# there must not be shadowed by a stale `.env`. On a deployed box the script cannot run at all, so the
+# declaration is the only truth there is. Neither machine ever reads the other's source.
 _forge_admin_access_keys() {
-  local dir
+  local dir declared
   dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  command -v node >/dev/null 2>&1 || { printf '{}'; return 0; }
-  node "$dir/bin/admin-access-key.mjs" --declare 2>/dev/null || printf '{}'
+  if command -v node >/dev/null 2>&1 && [ -f "$dir/bin/admin-access-key.mjs" ]; then
+    node "$dir/bin/admin-access-key.mjs" --declare 2>/dev/null && return 0
+  fi
+  declared="$(_forge_env_declares FORGE_ADMIN_ACCESS_KEYS || printf '')"
+  # A declaration that is not an object is "could not look", never "declares none" — the same reading the
+  # rest of this file gives a half-configured value.
+  case "$declared" in
+    '{'*'}') printf '%s' "$declared" ;;
+    *) printf '{}' ;;
+  esac
 }
 export FORGE_ADMIN_ACCESS_KEYS="$(_forge_admin_access_keys)"
 

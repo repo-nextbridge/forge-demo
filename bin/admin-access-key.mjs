@@ -3,6 +3,8 @@
 //
 //   FORGE_OPERATOR_TOKEN=<that tenant's credential> node bin/admin-access-key.mjs --tenant <id> --api <origin>
 //   node bin/admin-access-key.mjs --declare      the map `env-source.sh` exports, built from the secret store
+//   … --assemble  < {"secrets":{…},"storeIds":{…}}   the same map, from inputs on STDIN (a birth that holds
+//                                                     both halves and is talking to a box with no node)
 //
 // Writes the RAW KEY to stdout and nothing else; every word for a human goes to stderr. `bin/box-up.sh`
 // captures stdout into a temp file, files it into `.secrets`, and shreds the file — the same handling
@@ -274,7 +276,27 @@ async function main() {
 // Run, never on import: the test below imports this module for `chooseOperator`, and a module that talks to
 // the port on import would make that suite need a box.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.includes('--declare')) {
+  if (process.argv.includes('--assemble')) {
+    // ★★ THE SAME MAP, BUILT FROM INPUTS THIS PROCESS IS HANDED RATHER THAN FROM FILES IT READS.
+    //
+    // ⛔⛔ WHY IT EXISTS, MEASURED 2026-09-16 AND STILL OPEN ON 2026-09-17: a DEPLOYED box mints its keys and
+    // then exports `FORGE_ADMIN_ACCESS_KEYS={}`, because `--declare` reads `.secrets` and `.env` ON the box
+    // and the box has no node — so the gate's "abrir o admin" lands on a login screen with a real key filed
+    // two metres away. The birth, on the operator's machine, HOLDS both halves at that moment: it has just
+    // minted each key and it built the store-id map in step 3.
+    //
+    // ⇒ So the birth assembles the map HERE, with `declaredAccessKeys` still the single author of the shape,
+    // and writes it into the box's `.env` like every other derived value. No node on the box, no second
+    // spelling of the rule.
+    //
+    // ⚠️ THE SECRETS ARRIVE ON STDIN, never on argv — `ps` on a shared host shows a command line.
+    const raw = readFileSync(0, 'utf8');
+    const input = JSON.parse(raw || '{}');
+    const secrets = new Map(Object.entries(input.secrets ?? {}));
+    process.stdout.write(
+      `${JSON.stringify(declaredAccessKeys(secrets, input.storeIds ?? {}, boxTenants()))}\n`,
+    );
+  } else if (process.argv.includes('--declare')) {
     // ⛔ THE MAP, NEVER A KEY IN PROSE. This writes one JSON document to stdout for `env-source.sh` to
     // capture into a variable; nothing about it is ever logged, counted aloud or named on stderr.
     process.stdout.write(

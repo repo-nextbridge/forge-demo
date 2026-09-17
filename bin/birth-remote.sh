@@ -570,20 +570,50 @@ for t in $TENANTS; do
   out="$(mktemp)"
   if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/admin-access-key.mjs" \
        --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" > "$out"; then
-    if remote_secret_put "$(secret_name_for "$t" access)" "$(tail -1 "$out" | tr -d '\r\n')"; then
+    keyval="$(tail -1 "$out" | tr -d '\r\n')"
+    if remote_secret_put "$(secret_name_for "$t" access)" "$keyval"; then
       keys_filed=$((keys_filed + 1))
+      # ★ HELD IN THIS SHELL TOO, exactly as step 3 holds the operator token and for the same reason: the
+      # map below is assembled HERE. It never touches disk on this machine and never reaches a command line.
+      eval "$(secret_name_for "$t" access | tr 'a-z-' 'A-Z_')=\$keyval"
       note "$t · $(secret_name_for "$t" access): filed"
     fi
+    unset keyval
   else
     note "⚠️ $t · no key minted — its /enter falls through to the login screen"
   fi
   shred -u "$out" 2>/dev/null || rm -f "$out"
 done
 note "$keys_filed of $(echo "$TENANTS" | wc -w) tenant(s) have a gate key filed on the box"
-if ! "${REMOTE_SSH[@]}" 'command -v node >/dev/null 2>&1' </dev/null; then
-  note '⚠️ the box has NO node, so env-source.sh exports FORGE_ADMIN_ACCESS_KEYS={} and the gate’s'
-  note '   "abrir o admin" lands on a LOGIN SCREEN rather than a session. The keys above are real and filed;'
-  note '   what is missing is the assembly. See this step’s comment for the two repairs.'
+
+# ── ★★ AND THE MAP IS ASSEMBLED HERE, WHICH IS THE REPAIR THE COMMENT ABOVE PROMISED ───────────────────────
+#
+# `--declare` reads `.secrets` and `.env` ON the box and needs a node there; this box has none, so it exported
+# `{}` and the gate's "abrir o admin" landed on a login screen with real keys filed two metres away
+# (measured on the deployed box 2026-09-16, still true on 2026-09-17). THIS shell holds both halves at this
+# moment — it just minted every key, and it built ADMIN_STORE_IDS back in step 3 — so it assembles the map
+# with `declaredAccessKeys` still the single author of the shape, and writes it like every other derived
+# value. ⚠️ The keys go to node on STDIN, never on argv: `ps` on a shared host shows a command line.
+if [ "$keys_filed" -gt 0 ]; then
+  access_map="$(
+    { printf '{"storeIds":%s,"secrets":{' "$ADMIN_STORE_IDS"
+      first=1
+      for t in $TENANTS; do
+        kv="$(eval "printf '%s' \"\${$(secret_name_for "$t" access | tr 'a-z-' 'A-Z_'):-}\"")"
+        [ -n "$kv" ] || continue
+        [ "$first" = 1 ] || printf ','
+        first=0
+        printf '%s' "$(jq -nc --arg n "$(secret_name_for "$t" access)" --arg v "$kv" '{($n):$v}' | sed 's/^{//;s/}$//')"
+      done
+      printf '}}'
+    } | node "$HERE/bin/admin-access-key.mjs" --assemble
+  )" || access_map=''
+  if [ -n "$access_map" ] && [ "$access_map" != '{}' ]; then
+    remote_env_put FORGE_ADMIN_ACCESS_KEYS "$access_map"
+    note "the gate's /enter map is on the box — $(printf '%s' "$access_map" | jq -r 'keys|join(", ")') enter with a session"
+  else
+    note '⚠️ the /enter map came out EMPTY — every admin falls through to its own login screen.'
+  fi
 fi
 
 # ── 6 · the terrain, once per tenant ──────────────────────────────────────────────────────────────────────
