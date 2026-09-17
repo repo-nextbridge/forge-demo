@@ -219,3 +219,21 @@ remote_env_has() { # <name>   → 0 when the box's .env declares it with a non-e
 remote_secret_has() { # <name>   → 0 when the box carries it
   "${REMOTE_SSH[@]}" "grep -q '^$1=' $(printf '%q' "$REMOTE_BOX_DIR/.secrets") 2>/dev/null" </dev/null
 }
+
+# ── ⛔⛔ AND THE ONE READ-BACK, WITH THE REASON IT EXISTS ────────────────────────────────────────────────────
+#
+# The block above says `.secrets` is WRITTEN AND NEVER READ BACK, and that was true while the only gesture
+# that needed a tenant's operator token was the birth that had just MINTED it. `bin/birth-remote.sh --warm-only`
+# and `--verdict-only` broke that: they are asked of a box that is ALREADY BORN, by a scheduler, on a machine
+# that minted nothing. The token they need is that box's own, and the only place it lives is that box.
+#
+# ⇒ So the read-back exists, and it keeps the SAME custody the birth keeps for the token it holds: the value
+# crosses ssh into a shell VARIABLE and stops there. It never lands on this machine's disk, never reaches a
+# command line (`FORGE_OPERATOR_TOKEN=… node …` is an environment, which `ps` does not show), and is never
+# printed. The caller that echoes it is the bug; this function is not.
+#
+# ⚠️ IT ANSWERS EMPTY FOR A SECRET THE BOX DOES NOT CARRY, and a caller must tell that from a token — an empty
+# credential does not fail loudly at the port, it fails as "unauthorized", which reads like a broken box.
+remote_secret_get() { # <name>   → the value, or empty
+  "${REMOTE_SSH[@]}" "sed -n 's/^$1=//p' $(printf '%q' "$REMOTE_BOX_DIR/.secrets") 2>/dev/null | head -1" </dev/null
+}

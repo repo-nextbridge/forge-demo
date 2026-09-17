@@ -118,6 +118,35 @@ test('★★★ the four commands are there, in the ONE order that works', () =>
   const promote = at('bin/box-up.sh" --promote "$PROMOTE_TO"');
   const warm = at('bin/box-up.sh" --warm-only');
   const verdict = at('bin/box-up.sh" --verdict-only');
+  // ⛔⛔ AND THE REMOTE DESTINATION IS GRADED FOR THE SAME ORDER, SEPARATELY. It is not the same commands with
+  // a flag: it is four other scripts (`--env` on the teardown, `bin/birth-remote.sh` for the rest), and a
+  // reordering there is exactly as destructive as one here. The two branches are checked apart because the
+  // file interleaves them, so one list of positions could be satisfied by a file where the remote gestures
+  // run in any order at all.
+  const rDown = at('bin/box-down.sh" --env "$ENV_NAME"');
+  const rBirth = at('bin/birth-remote.sh" "$ENV_NAME" --no-warm');
+  const rWarm = at('bin/birth-remote.sh" "$ENV_NAME" --warm-only');
+  const rVerdict = at('bin/birth-remote.sh" "$ENV_NAME" --verdict-only');
+  assert.ok(rDown < rBirth, 'the DEPLOYED box is born before it is torn down.');
+  assert.ok(rBirth < rWarm, 'the deployed re-warm runs before the birth that fills what it warms.');
+  assert.ok(
+    rWarm < rVerdict,
+    'the deployed verdict is taken before the re-warm. It is LAST there for the same reason it is last here: ' +
+      'a verdict taken before the state it grades is finished is not a verdict.',
+  );
+  // ⛔ AND THE PROMOTION IS ABSENT FROM THAT BRANCH BY DESIGN, WITH THE REASON WRITTEN. A deployed box is born
+  // AT its own six addresses, so a promotion would rewrite the directory the birth just built.
+  assert.match(
+    CYCLE,
+    /SKIP_WHY_DEPLOYED='[^']{120,}'/,
+    'the remote branch skips gesture 3 without a reason long enough to be one. A gesture that vanishes with ' +
+      'no sentence is a gesture nobody can tell from one that was forgotten.',
+  );
+  assert.ok(
+    !/bin\/birth-remote\.sh" "\$ENV_NAME" --promote/.test(CYCLE),
+    'the remote branch promotes. A deployed box claims its own hostnames during the birth; a promotion after ' +
+      'it points the admin directory at a destination typed on a laptop, over the one the birth built.',
+  );
   assert.ok(down < birth, 'the box is born before it is torn down — the birth would then run against the box that is about to be destroyed.');
   assert.ok(
     birth < promote,
@@ -144,9 +173,24 @@ test('★★★ the four commands are there, in the ONE order that works', () =>
 test('★★ every gesture goes through `run_gesture`, so each one is TIMED and its status RECORDED', () => {
   // A call added beside the others without going through it would run and be invisible to both the roteiro
   // and the verdict — the box would be reset by a step no summary mentions.
-  const calls = [...CYCLE.matchAll(/^run_gesture (\d) /gm)].map((m) => m[1]);
-  assert.deepEqual(calls, ['1', '2', '4', '5'], 'the gestures invoked through run_gesture are not 1, 2, 4 and 5 (3 is inside the promotion branch).');
-  assert.match(CYCLE, /run_gesture 3 /, 'gesture 3 is not run through run_gesture either.');
+  // ⚠️ THE LIST IS SORTED AND DEDUPED, because the file now carries TWO destinations and therefore two calls
+  // for each of 1, 2, 4 and 5 — one per branch. What this test is about is that no gesture reaches the box
+  // OUTSIDE `run_gesture`; the ORDER is the previous test's subject, on each branch separately.
+  const calls = [...CYCLE.matchAll(/^ *run_gesture (\d) /gm)].map((m) => m[1]);
+  assert.deepEqual(
+    [...new Set(calls)].sort(),
+    ['1', '2', '3', '4', '5'],
+    'the gestures invoked through run_gesture are not 1…5.',
+  );
+  // ⛔ AND EVERY GESTURE THAT TOUCHES A BOX GOES THROUGH IT — counted, so a fifth call added beside the four
+  // (a branch that tears down twice, a copy-paste) is red rather than invisible.
+  const local = calls.filter((_c, i) => i < calls.length);
+  assert.equal(
+    local.length,
+    9,
+    `run_gesture is called ${local.length} times; the two destinations account for 9 (local 1,2,3,4,5 and ` +
+      'remote 1,2,4,5 — the remote has no promotion). A call more or less is a gesture nobody declared.',
+  );
   assert.match(
     CYCLE,
     /reasons="\$\(reasons_named_in "\$out"\)"/,
@@ -194,6 +238,117 @@ test('★★★ "no destination" is a DECLARED mode, not an omission — and ges
     // ⛔ AND THE OTHER THREE ARE NOT SKIPPED WITH IT.
     for (const id of ['1', '2', '4']) assert.match(out, new RegExp(`→\\s+${id}\\s`), `--no-promote also dropped gesture ${id}:\n${out}`);
   }));
+
+// ── 2-bis · ⛔⛔ THE REMOTE DESTINATION, REHEARSED — THE PLAN MAY NOT PROMISE THE BENCH'S GESTURES ─────────
+//
+// This is the failure the remote destination was one edit away from shipping with: `--env` ran four other
+// scripts and the plan went on printing `bash bin/box-up.sh --no-warm`, the bench's skip reason, and this
+// laptop's COMPOSE_PROJECT_NAME. ⛔ A PLAN THAT CAN DISAGREE WITH ITS RUN IS WORSE THAN NO PLAN — it is read
+// precisely by the person who is about to destroy a deployed box and wants to know what will happen first.
+
+test('★★★ `--env --plan` names the REMOTE commands, not the bench ones, and still touches nothing', () =>
+  withTemp((dir) => {
+    const logDir = join(dir, 'logs');
+    const { status, out } = runCycle(['--env', 'stag', '--plan'], { logDir });
+    assert.equal(status, 0, `bash bin/box-cycle.sh --env stag --plan exited ${status}:\n${out}`);
+    assert.match(out, /bin\/box-down\.sh --env stag/, `the plan does not name the REMOTE teardown:\n${out}`);
+    assert.match(out, /bin\/birth-remote\.sh stag --no-warm/, `the plan does not name the remote birth:\n${out}`);
+    assert.match(out, /bin\/birth-remote\.sh stag --warm-only/, `the plan does not name the remote re-warm:\n${out}`);
+    assert.match(out, /bin\/birth-remote\.sh stag --verdict-only/, `the plan does not name the remote verdict:\n${out}`);
+    // ⛔ AND IT MAY NOT PROMISE THE BENCH'S. This is the assertion that would have caught the near-miss.
+    assert.ok(
+      !/bash bin\/box-up\.sh/.test(out),
+      `the plan for a DEPLOYED box still promises bin/box-up.sh, which is the bench's birth and will not run:\n${out}`,
+    );
+    assert.ok(!existsSync(logDir), 'the remote plan created its log directory; --plan touches nothing.');
+  }));
+
+test('★★★ `--env` skips gesture 3 with the DEPLOYED reason, never the bench’s --no-promote one', () =>
+  withTemp((dir) => {
+    const { status, out } = runCycle(['--env', 'stag', '--plan'], { logDir: join(dir, 'logs') });
+    assert.equal(status, 0, out);
+    assert.match(out, /⏭\s+3\s.*WILL BE SKIPPED/, `gesture 3 is not marked skipped for a deployed box:\n${out}`);
+    assert.match(out, /why: a DEPLOYED box is born AT its own addresses/, `the deployed skip gives the wrong reason — or none:\n${out}`);
+    assert.ok(
+      !/asked with --no-promote/.test(out),
+      `a deployed cycle explains itself with the BENCH's reason. They are different facts: one is an operator ` +
+        `choosing localhost, the other is a topology in which no promotion exists:\n${out}`,
+    );
+    for (const id of ['1', '2', '4', '5']) assert.match(out, new RegExp(`→\\s+${id}\\s`), `--env dropped gesture ${id}:\n${out}`);
+  }));
+
+test('★★★ `--env` and a promotion together are REFUSED, not silently reconciled', () =>
+  withTemp((dir) => {
+    for (const args of [
+      ['--env', 'stag', '--promote', 'demo.example.com'],
+      ['--env', 'stag', '--no-promote'],
+    ]) {
+      const { status, out } = runCycle(args, { logDir: join(dir, 'logs') });
+      assert.equal(status, 2, `${args.join(' ')} was accepted (exit ${status}). A flag silently dropped is a flag somebody believes worked:\n${out}`);
+      assert.match(out, /cannot be asked together/, `the refusal does not say what is wrong:\n${out}`);
+      assert.match(out, /born at its own six addresses/i, `the refusal does not say WHY a deployed box has no promotion:\n${out}`);
+    }
+  }));
+
+test('★★ an environment this repository does not declare is REFUSED by name, before anything is touched', () =>
+  withTemp((dir) => {
+    const logDir = join(dir, 'logs');
+    const { status, out } = runCycle(['--env', 'nao-existe', '--plan'], { logDir });
+    assert.equal(status, 2, `a cycle against an undeclared environment was accepted (exit ${status}):\n${out}`);
+    assert.match(out, /deploy\/nao-existe\.env/, `the refusal does not name the file it looked for:\n${out}`);
+    assert.ok(!existsSync(logDir), 'a refused cycle created its log directory.');
+    // ⛔ AND `--env` WITH NOTHING AFTER IT IS THE OTHER HALF: it must not swallow the next flag as a name.
+    const bare = runCycle(['--env', '--plan'], { logDir });
+    assert.equal(bare.status, 2, `--env with no name was accepted:\n${bare.out}`);
+    assert.match(bare.out, /needs the NAME of an environment/, `--env with no name does not say what it wanted:\n${bare.out}`);
+  }));
+
+// ── 2-ter · ⛔ THE MESSAGE AT THE END, AND WHAT IT MAY NOT DO ─────────────────────────────────────────────
+
+test('★★ `--mail-to` with no address REFUSES rather than mailing nowhere', () =>
+  withTemp((dir) => {
+    const { status, out } = runCycle(['--env', 'stag', '--plan', '--mail-to'], { logDir: join(dir, 'logs') });
+    assert.equal(status, 2, `--mail-to with no address was accepted (exit ${status}):\n${out}`);
+    assert.match(out, /--mail-to needs an address/, `the refusal does not say what was missing:\n${out}`);
+  }));
+
+test('★★★ the mail is sent AFTER the verdict and may not change it — a dead relay is not a red box', () => {
+  // ⛔ THIS IS THE ASSERTION THAT MATTERS. A `| node …` in the wrong place makes the mailer's exit status the
+  // cycle's (pipefail is on in this file), so a relay that refused would have reported a box that is
+  // perfectly well as BROKEN — every week, until somebody stopped believing the mail.
+  const mailBlock = CYCLE.slice(CYCLE.indexOf('if [ -n "$MAIL_TO" ]'));
+  assert.ok(mailBlock.length > 0, 'bin/box-cycle.sh no longer sends the end-of-cycle message at all.');
+  // ⛔ AND THE TOLERANCE IS ASSERTED ON THE *SEND*, NOT ANYWHERE IN THE BLOCK. The first version of this
+  // assertion asked whether `|| true` appeared at all — and it does, on the line that fetches the relay's
+  // address. Removing the one that matters left the guard green, which was measured by sabotaging it: the
+  // send became the cycle's exit code and 48 tests still passed. A guard satisfied by the wrong occurrence
+  // of a string is worse than none, because it is believed.
+  assert.match(
+    mailBlock,
+    /cycle-mail\.mjs[^\n]*(\n[^\n]*)?\|\| true/,
+    'the SEND is not tolerated to fail. A relay that refuses would then decide the cycle’s exit code, which ' +
+      'is the box being reported broken because the mail server was.',
+  );
+  const verdictAt = CYCLE.indexOf('cycle_verdict "$RESULTS"');
+  const mailAt = CYCLE.indexOf('if [ -n "$MAIL_TO" ]');
+  assert.ok(verdictAt > 0 && mailAt > verdictAt, 'the mail is assembled before the verdict it is supposed to carry.');
+  const exitAt = CYCLE.lastIndexOf('exit "$VERDICT"');
+  assert.ok(exitAt > mailAt, 'the cycle exits before it mails, so the message is never sent.');
+});
+
+test('★★★ it mails on BOTH answers — a message only on failure makes a dead schedule look green', () => {
+  // A cron that has stopped firing, a unit that died before the lock, a machine rebuilt without the timer:
+  // all three are indistinguishable from a quiet green week. The weekly GREEN is what gives silence meaning.
+  // ⚠️ SLICED FROM THE SECTION HEADER, not from the `if` — the reason a mechanism exists lives in the prose
+  // ABOVE it, which is the half a slice starting at the code would cheerfully declare missing.
+  const mailBlock = CYCLE.slice(CYCLE.indexOf('# ── ★★ ONE MESSAGE, ON BOTH ANSWERS'));
+  assert.ok(
+    !/VERDICT" = 1 \] && .*cycle-mail/s.test(mailBlock),
+    'the message is sent only on a red verdict.',
+  );
+  assert.match(mailBlock, /mail_verdict=GREEN/, 'the message does not carry a GREEN case at all.');
+  assert.match(mailBlock, /SILENCE IS NOT GREEN/, 'the reason it mails on green is not written where the next person will edit it.');
+});
 
 test('★★★ a cycle told NOTHING about a destination REFUSES, and names the three ways to tell it', () =>
   withTemp((dir) => {

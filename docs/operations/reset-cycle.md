@@ -271,6 +271,150 @@ log traz o relógio de cada gesto.
 
 ---
 
+## 6-bis. A caixa que **não é esta máquina** — `--env`
+
+Tudo acima descreve o ciclo na bancada. A mesma corrida contra uma caixa implantada é `--env`:
+
+```bash
+bash bin/box-cycle.sh --env stag --plan                  # o roteiro, sem tocar em nada
+bash bin/box-cycle.sh --env stag --dry-run               # o mecanismo inteiro, com os gestos IMPRESSOS
+bash bin/box-cycle.sh --env stag                         # a corrida
+bash bin/box-cycle.sh --env prod --mail-to voce@exemplo  # …com a mensagem do fim
+```
+
+### ⛔ São QUATRO gestos, não cinco — e o 3 não existe lá
+
+A promoção existe porque uma **bancada** nasce em `localhost` por decisão e precisa ser apontada depois para
+o endereço onde é realmente alcançada. Uma caixa implantada **nasce nos próprios endereços**:
+`bin/deployed-faces.mjs` lê os seis hostnames de `deploy/<env>.env` **antes de um byte ser escrito** e recusa
+o nascimento se faltar um; cada loja reivindica o seu no diretório do kernel durante o próprio nascimento.
+
+⇒ Não sobra o que apontar — e uma promoção inventada ali **não seria redundante, seria errada**: reescreveria
+o diretório do admin que o nascimento acabou de montar certo, apontando-o para um destino digitado num laptop.
+O gesto 3 aparece no roteiro como **pulado, com essa razão**, nunca silenciosamente ausente. `--env` junto de
+`--promote`/`--no-promote` é **recusado**.
+
+### ⚠️ O que NÃO muda
+
+A ordem. O gesto 4 (aquecer) e o 5 (julgar) continuam por último, e a razão da bancada (*a promoção destrói
+as frentes*) não é a razão de lá — o nascimento remoto também termina recriando as frentes, então calor
+adquirido no meio dele é jogado fora do mesmo jeito; e um veredito tirado antes de a caixa assentar continua
+não sendo veredito. **A ordem é a decisão nos dois lados; só muda o gesto que fica no meio dela.**
+
+E a **política de saída é a mesma tabela** — o `bin/birth-remote.sh` imprime as **oito** sentenças que o
+`bin/box-up.sh` imprime, palavra por palavra, porque é assim que uma tabela só serve às duas caixas.
+
+> ⛔ **Uma delas foi acertada nesta fatia, e vale saber por quê.** O totem parado saía do nascimento remoto
+> como um `note` e um `exit 1` — vermelho certo, **sem nomear razão nenhuma**. A política lê razões do texto,
+> então um ciclo remoto com o totem morto graduaria aquilo como *"não-zero não reconhecido"*: vermelho, sim, e
+> mudo sobre qual das oito coisas quebrou — às 3 da manhã, num agendamento, que é a única hora em que essa
+> frase é lida.
+
+### ⛔⛔ O que a PRIMEIRA corrida remota de verdade achou — e ler não acharia
+
+Medido em 17/09, contra o staging: o gesto 1 destruiu os volumes de estado e — **corretamente** — preservou o
+`.secrets`, que é **identidade, não estado**. O gesto 2 leu esse mesmo `.secrets`, concluiu que a caixa já
+havia nascido, e **RECUSOU**. A caixa ficou no chão, com um ciclo em que cada peça fez exatamente o que
+prometia.
+
+⇒ **A recusa é sobre uma caixa que alguém está usando, e uma caixa sem estado não é uma dessas.** O que ela
+protege está escrito nela mesma: *"as configurações, os sortimentos e as promoções que este repositório
+declara sendo re-aplicados sobre o que a caixa viva tenha virado"* — uma frase **sem sujeito** quando o volume
+do banco não existe mais. Então a pergunta passou a ser feita ao **ESTADO** (`<projeto>_pgdata`, o primeiro
+nome da lista STATE do próprio `bin/box-down.sh`), e identidade deixada para trás por um teardown parou de
+ser lida como vida.
+
+⚠️ **E as duas respostas são frases diferentes, de propósito.** Caixa com segredos **e** estado é caixa viva e
+é recusada; caixa com segredos e **sem** estado é um **RENASCIMENTO** e diz isso em voz alta — uma corrida que
+silenciosamente fizesse a coisa certa aqui seria indistinguível da que fez a errada.
+
+★ **A lição, que é mais larga que este arquivo:** a recusa estava certa no dia em que foi escrita, quando o
+único jeito de destruir o estado era o mesmo gesto que apagava os segredos. O que a quebrou foi **um gesto
+novo** — um teardown que separa identidade de estado — e nenhum dos dois arquivos mudou. **Duas peças
+corretas compõem errado**, e só a corrida inteira mostra isso.
+
+### ⛔⛔ O RELÓGIO DE UMA CAIXA IMPLANTADA NÃO É O DA BANCADA — medido, e muda o que dá para agendar
+
+A tabela da §6 diz *"reserve ~2 h"*, e ela é honesta sobre o que mediu: uma **bancada** — um laptop com
+núcleos de sobra. A caixa de staging da demo é **1 vCPU e 2 GB**. Medido em 17/09, durante um renascimento
+real:
+
+| | bancada (15/09) | staging implantada (17/09) |
+|---|---|---|
+| gesto 2 · nascer | **1 273 s** (~21 min) | **~7 h** (extrapolado do ritmo medido) |
+| ritmo do catálogo | — | **5,4 produtos/min**, 2 790 a semear |
+| load average | — | **12** num núcleo · 98 MB livres · 736 MB em swap |
+
+⇒ **O gargalo é a máquina, não o código.** Um núcleo carrega Postgres, Redis, o kernel, a borda e **cinco
+frentes** enquanto semeia; o swap é o que mantém isso lento em vez de morto (é literalmente o argumento da
+§3 do `bin/provision-host.sh`, visto de dentro).
+
+⚠️ **O que isso significa para um agendamento**, e é a parte que precisa ser decidida e não estimada:
+
+- Uma corrida semanal às 3h da manhã **termina às 10h**, e a caixa passa a manhã inteira degradada. Numa
+  DEMO isso é aceitável e deve estar escrito; numa caixa com clientes **não existe** — e é por isso que o
+  ciclo é gesto da demo, nunca do produto.
+- A **produção** da demo é **2 vCPU e 4 GB** (load 0,85 em regime, medido no mesmo instante). O mesmo ciclo
+  lá é materialmente mais rápido, e é a caixa em que o cron de facto vai rodar.
+- ⛔ **Não estime — meça na caixa que vai agendar.** Os dois números acima diferem por um fator de vinte, e a
+  única coisa que os separa é onde a corrida aconteceu.
+
+### As credenciais, quando nada foi cunhado nesta corrida
+
+Num nascimento, o passo 3 cunha o token de operador de cada tenant e o segura no shell. Os modos
+`--warm-only` e `--verdict-only` são perguntados a uma caixa **nascida dias atrás**, por um agendador, numa
+máquina que não cunhou nada — então o token volta **da caixa** (`remote_secret_get`), atravessa para uma
+variável de shell e **para ali**: não toca disco desta máquina, não entra em linha de comando e não é impresso.
+
+⛔ **Um segredo ausente é recusa, nunca string vazia repassada.** Uma credencial vazia não falha alto na porta:
+volta `unauthorized`, que se parece com uma caixa quebrada — e uma corrida agendada que relata o erro errado é
+pior do que uma que não relata nada.
+
+---
+
+## 6-ter. A mensagem do fim (`--mail-to`)
+
+`bin/cycle-mail.mjs` manda **uma** mensagem, pelo **relay da própria caixa** — os mesmos `FORGE_SMTP_*` por
+onde saem os códigos de acesso da loja, montados pelo `env-source.sh` dela, que é o autor único deles.
+
+- **SMTP à mão, sem dependência e sem fornecedor.** O relay de hoje também atende em HTTP, e um `fetch` teria
+  sido quarenta linhas em vez de cento e cinquenta. São as quarenta linhas erradas: a doutrina do produto é
+  que uma instância nunca fica presa a um SaaS, e um ciclo que só soubesse se reportar pela API de **uma**
+  empresa seria exatamente essa prisão, no script que o operador não tem como evitar rodar.
+- **E a mensagem é uma TESTEMUNHA.** Um ciclo que relata verde pelo mesmo relay dos códigos da loja
+  demonstrou, na mesma respiração, que aquele relay funciona.
+- **Ela sai nos DOIS vereditos.** Mandar só quando quebra é o erro clássico: um agendamento que parou de
+  disparar, uma unit que morreu antes do lock, uma máquina reconstruída sem o timer — os três são
+  indistinguíveis de uma semana verde. **É o verde semanal que dá sentido ao silêncio.**
+- **Ela é a ÚLTIMA coisa, depois do código de saída, e nunca no lugar dele.** Um relay que recusa não muda o
+  veredito do ciclo: o `cycle-mail` diz isso no stderr, a mensagem do próprio agendador carrega essa linha, e
+  a caixa continua sendo o que o veredito disse que ela é.
+
+⚠️ **O limite, dito em voz alta:** um ciclo que falha **porque** o e-mail da caixa está quebrado não consegue
+mandar e-mail sobre isso. Não é buraco a tapar aqui — um segundo canal é uma segunda coisa para configurar,
+esquecer e errar. O canal curto do agendador é o reserva, e sempre foi. **Silêncio não é verde.**
+
+### A unit, para uma caixa implantada
+
+```ini
+# /etc/systemd/system/forge-demo-cycle.service
+[Unit]
+Description=Forge Demo — o ciclo semanal da caixa implantada
+[Service]
+Type=oneshot
+User=<user>
+WorkingDirectory=/caminho/para/forge-demo
+Environment=PATH=/home/<user>/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/bash bin/box-cycle.sh --env prod --mail-to <voce@exemplo>
+TimeoutStartSec=3h
+```
+
+⚠️ **`docker` não é requisito desta máquina** quando o destino é `--env`: quem roda contêiner é a caixa. O que
+esta máquina precisa é do **Node** que o release pina (`bin/require-node.sh` recusa por nome, antes de
+qualquer leitura) e da **chave ssh** que `deploy/<env>.env` nomeia.
+
+---
+
 ## 7. Irmãos
 
 | documento | do que trata |
@@ -278,4 +422,6 @@ log traz o relógio de cada gesto.
 | `docs/operations/runbook-demo.md` | a caixa online inteira: a ordem do deploy, o que preencher, o reset (§5) |
 | `README.md` (este repo) | subir a caixa na bancada, e o porquê de cada peça |
 | `bin/box-cycle.sh` | o script — a prosa dele é a versão longa desta página |
-| `bin/box-cycle.guard.mjs` | o que fica vermelho se um gesto sumir, a ordem trocar, o perdão virar cego ou uma sentença do `box-up.sh` mudar |
+| `bin/box-cycle.guard.mjs` | o que fica vermelho se um gesto sumir, a ordem trocar, o perdão virar cego ou uma sentença do `box-up.sh` mudar — e, desde `--env`, se o **plano remoto prometer os comandos da bancada** ou o e-mail passar a decidir o veredito |
+| `bin/birth-remote.sh` | o nascimento da caixa que não é esta máquina — e os modos `--warm-only` / `--verdict-only` que os gestos 4 e 5 pedem |
+| `bin/cycle-mail.mjs` | a mensagem do fim: SMTP à mão, sem dependência, pelo relay da própria caixa |
