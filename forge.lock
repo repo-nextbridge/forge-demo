@@ -1,13 +1,13 @@
 {
-  "forgeVersion": "v0.3.0-pre.a8bef5f5a",
+  "forgeVersion": "v0.3.0",
   "node": {
     "minMajor": 24,
     "engines": ">=24"
   },
   "provenance": {
     "origin": "local build",
-    "built_from": "v03/integra@a8bef5f5a",
-    "built_at": "2026-09-14T23:27:23Z",
+    "built_from": "release/v0.3.0@706701262",
+    "built_at": "2026-09-17T02:50:37Z",
     "built_on": "ms-s1",
     "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
     "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
@@ -42,18 +42,18 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:a3527b0de37976f950262717a39bd8d9d02ee6597a3f95bfe6fcfc7b37ab66dd",
-    "storefront": "forge-demo-storefront@sha256:9cd11cf7e026e3d66777d9d61054e7d328f8d419ca9bc6ada8b2529424578ee4",
-    "checkout": "forge-demo-checkout@sha256:ff1d6aca604970afe475fdb7f43666ed8a6c8aa29f82ed4bb971f0246a6a7a80",
-    "admin": "forge-demo-admin@sha256:1f0a7445592bed7ec25fe4e092b3c0972dd043e7674ada8ae2622e687cf35b06"
+    "kernel": "forge-demo-kernel@sha256:3e286efc1a3128e72f402115f6af4f73453376bc78e2df46f609a7f967482905",
+    "storefront": "forge-demo-storefront@sha256:77a6911d2be4729b0f020092befffa3ce1329ed367d811f7e18e518a5cd21f01",
+    "checkout": "forge-demo-checkout@sha256:2efd76fc6acfd7ed7fac9dcd6d0b3386c8fb5f1fc652c028f67e8c75f0ae0c36",
+    "admin": "forge-demo-admin@sha256:25bbd50094c53ce210f4985f7b17cc850ad220a0132870efb4199cf6c5834fb7"
   },
   "extensions": [],
   "dataset": {
     "source": "instances/demo/dataset",
     "id": "demo",
     "catalog": {
-      "version": "527c0631f8825346",
-      "totalBytes": 41293917
+      "version": "c3962ed84cb2ffc8",
+      "totalBytes": 41493954
     },
     "photos": {
       "version": "9aa8af0d782b82ec",
