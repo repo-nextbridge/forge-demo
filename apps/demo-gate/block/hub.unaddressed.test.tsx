@@ -75,8 +75,12 @@ test('★★ an ADMIN with no declared address is a row that says so, not a dead
 test('⛔ and the face that DOES have an address is unaffected — the control', async () => {
   const { GateHub } = await import('./hub');
   const { container } = render(<GateHub lang="pt" here="elsewhere.example" dismiss={noop} />);
+  // The control is about the ADDRESS being there at all, so it asserts the host — the card also carries the
+  // visitor's language, which is a fact about the link and not about whether the shop has an address.
   expect(
-    container.querySelector('[data-face="forgeco/forge"] a')?.getAttribute('href'),
+    new URL(
+      String(container.querySelector('[data-face="forgeco/forge"] a')?.getAttribute('href')),
+    ).origin,
     'the addressed shop lost its link too, so the rule above is about the screen and not about the address',
   ).toBe('https://store.example');
   expect(container.querySelector('[data-unaddressed="forgeco/forge"]')).toBeNull();

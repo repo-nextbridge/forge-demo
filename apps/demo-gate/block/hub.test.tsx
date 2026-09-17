@@ -12,7 +12,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { GATE_FACES, GATE_TENANTS } from '../faces.generated';
 import { HUB, HUB_MARKS, LANGS } from '../i18n';
 import { GateHub, adminHrefOf, hubTally, isHere, urlOf } from './hub';
@@ -71,7 +71,16 @@ test('★ every shop card opens the hostname the box declares for it, and no oth
   for (const face of shops) {
     const card = container.querySelector(`[data-face="${face.key}"]`);
     const href = card?.querySelector('a')?.getAttribute('href');
-    expect(href, `${face.key} has no link`).toBe(`https://${face.host}`);
+    // ⚠️ THE HOST IS THE RULE, AND THE QUERY IS NOT. This used to compare the whole string, and the day the
+    // card started carrying the visitor's language (`?lang=`, so it survives the jump to another ORIGIN) the
+    // comparison called a correct link wrong. What must never drift is the HOSTNAME — so that is what is
+    // asserted, and the only thing allowed after it is the language parameter.
+    const asked = new URL(String(href));
+    expect(asked.origin, `${face.key} opens the wrong host`).toBe(`https://${face.host}`);
+    expect([...asked.searchParams.keys()], `${face.key} carries a parameter nobody declared`).toStrictEqual(
+      asked.search ? ['lang'] : [],
+    );
+    expect(asked.pathname, `${face.key} opens a path instead of the shop's root`).toBe('/');
   }
 });
 
@@ -399,3 +408,25 @@ for (const lang of LANGS) {
     expect(container.querySelectorAll('[data-face]').length).toBe(GATE_FACES.length);
   });
 }
+
+// ── ★★ THE CHOSEN LANGUAGE TRAVELS BETWEEN THE SIX ORIGINS ──────────────────────────────────────────────────
+//
+// ⛔ MEASURED 2026-09-17 on the live box: pick English here, open the outlet, and the gate greets you in
+// Portuguese. `forge_gate_lang` is written with no `domain`, so it belongs to the origin that wrote it, and
+// the six faces are six origins. The link is the only thing that crosses.
+describe('★★ a store link carries the language the visitor chose', () => {
+  test('the shop link carries ?lang, so the next origin opens in the same language', () => {
+    const face = { key: 'forge', host: 'store.example.test' } as never;
+    expect(urlOf(face, 'en')).toBe('https://store.example.test?lang=en');
+    expect(urlOf(face, 'es')).toBe('https://store.example.test?lang=es');
+  });
+
+  test('⛔ CONTROL — without a language it is the bare address, unchanged', () => {
+    const face = { key: 'forge', host: 'store.example.test' } as never;
+    expect(urlOf(face)).toBe('https://store.example.test');
+  });
+
+  test('⛔ CONTROL — a face the box declares no address for is still null, not a bare ?lang', () => {
+    expect(urlOf({ key: 'forge', host: null } as never, 'en')).toBe(null);
+  });
+});

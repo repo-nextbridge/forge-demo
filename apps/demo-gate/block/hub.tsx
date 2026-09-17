@@ -95,8 +95,28 @@ const AdminIcon = ({ tone }: { tone: string }) => (
   </svg>
 );
 
-/** The address a face is opened at. `null` when the box declares none — which the screen SAYS. */
-export const urlOf = (face: GateFace): string | null => (face.host ? `https://${face.host}` : null);
+/**
+ * The address a face is opened at. `null` when the box declares none — which the screen SAYS.
+ *
+ * ── ★★ `lang` TRAVELS ON THE LINK, BECAUSE A COOKIE CANNOT ──────────────────────────────────────────────
+ *
+ * ⛔ MEASURED 2026-09-17: a visitor who picks English here and then opens the outlet meets the gate again in
+ * Portuguese. `forge_gate_lang` is written with `document.cookie` and NO `domain`, so it belongs to the
+ * origin that wrote it — and the six faces of this box are six origins. The same is true of the DISMISSAL
+ * cookie, and that half is the KIT's (see the note at the head of this file); this half is ours.
+ *
+ * ⚠️ AND THE QUERY STRING IS NOT A WORKAROUND FOR A SERVER THAT «FORGOT» TO READ IT. `entry.tsx` reads the
+ * cookie and `Accept-Language` and deliberately does NOT read `?lang`, so that a query string cannot make
+ * this route uncacheable for everybody else. `GateBlock` reads it on the client and writes the cookie for
+ * that new origin. ⇒ The cost is one paint in the guessed language before the switch, which is the cost that
+ * decision already accepted for the links the marketing site sends.
+ *
+ * ⛔ THE ADMIN ROW DOES NOT GET IT, and the omission is deliberate: `/enter` opens an ADMIN, which is not
+ * this gate and does not read this parameter. A link that carries an argument its destination ignores is a
+ * promise nobody keeps.
+ */
+export const urlOf = (face: GateFace, lang?: Lang): string | null =>
+  face.host ? `https://${face.host}${lang ? `?lang=${lang}` : ''}` : null;
 
 /**
  * ★ THE ADMIN IS OPENED AT ITS `/enter` ROUTE, AND THAT IS THE WHOLE POINT OF THE ROW. `/enter` redeems the
@@ -163,7 +183,7 @@ function ShopFace({
   const t = HUB[lang];
   const copy = t.faces[face.key];
   const mark = HUB_MARKS[face.key];
-  const url = urlOf(face);
+  const url = urlOf(face, lang);
   // ★ The design accents the SECOND shop of a card (rose on the dark card, sand on the light one). Derived
   //   from position, exactly like the card's own tone: a colour keyed by store handle would be a list that
   //   rots the day a fifth shop is declared, and this needs no list to draw what the design draws.
