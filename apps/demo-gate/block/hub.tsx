@@ -226,7 +226,37 @@ function ShopFace({
           </button>
         </form>
       ) : (
-        <a className={styles.cta} href={url} target="_blank" rel="noreferrer">
+        // ── ★★ CLICKING A CARD *IS* PASSING THROUGH THE GATE ────────────────────────────────────────────
+        //
+        // ⛔ MEASURED 2026-09-17: dismissing here and THEN opening the outlet worked, but pressing the
+        // outlet's own card inside this screen opened it still gated. The dismissal was only ever written by
+        // the button on the card the visitor is standing on; every other card was a bare link that navigated
+        // and told nobody. ⇒ The header of this file already says the rule — «the cards ARE the choice» — and
+        // this makes the cross-origin card keep it.
+        //
+        // ⚠️ IT WORKS ONLY BECAUSE THE COOKIE IS NOW ZONE-SCOPED. `deploy/box.env` declares the suffix, so a
+        // dismissal written on THIS origin is sent by the browser to the one we are about to open. On a bench,
+        // where the kit correctly falls back to host-only, this click dismisses here and the next face still
+        // greets — which is the honest behaviour for a box whose addresses share no suffix, not a regression.
+        //
+        // ⚠️ AND THE NAVIGATION WAITS FOR THE ACTION. Firing it and letting the browser leave would be a race
+        // the cookie usually loses; `finally` keeps the visitor moving even when the dismissal fails, because
+        // a shop that greets again is worse than a shop nobody reaches. A modifier-click is left alone: the
+        // browser's own "open in a new tab" is not ours to cancel, and the dismissal still goes out.
+        <a
+          className={styles.cta}
+          href={url}
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+              void dismiss();
+              return;
+            }
+            event.preventDefault();
+            void dismiss().finally(() => {
+              window.location.assign(url);
+            });
+          }}
+        >
           {copy?.cta ?? face.key}
           <ArrowIcon />
         </a>

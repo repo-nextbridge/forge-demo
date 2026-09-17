@@ -12,7 +12,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { GATE_FACES, GATE_TENANTS } from '../faces.generated';
 import { HUB, HUB_MARKS, LANGS } from '../i18n';
 import { GateHub, adminHrefOf, hubTally, isHere, urlOf } from './hub';
@@ -428,5 +428,65 @@ describe('★★ a store link carries the language the visitor chose', () => {
 
   test('⛔ CONTROL — a face the box declares no address for is still null, not a bare ?lang', () => {
     expect(urlOf({ key: 'forge', host: null } as never, 'en')).toBe(null);
+  });
+});
+
+// ── ★★★ THE CARD IS THE WAY THROUGH, NOT JUST A LINK ────────────────────────────────────────────────────────
+//
+// ⛔ MEASURED 2026-09-17 on the live box: dismissing here and THEN opening the outlet worked; pressing the
+// outlet's own card inside this screen opened it STILL GATED. The dismissal was written only by the card the
+// visitor was standing on. These hold the repair — and the modifier-click, which is the browser's to handle.
+describe('★★★ pressing another face dismisses before it leaves', () => {
+  const firstAway = () => {
+    const shops = GATE_FACES.filter((f) => f.kind === 'shop' && f.host);
+    return must(
+      shops.find((f) => !isHere(f, 'elsewhere.example')),
+      'a shop the visitor is not standing on',
+    );
+  };
+
+  test('a plain click calls dismiss, and only then navigates', async () => {
+    const calls: string[] = [];
+    const dismiss = () => {
+      calls.push('dismiss');
+      return Promise.resolve();
+    };
+    const assign = vi.fn((url: string) => calls.push(`go:${url}`));
+    vi.stubGlobal('location', { ...window.location, assign });
+
+    const { container } = render(<GateHub lang="pt" here="elsewhere.example" dismiss={dismiss} />);
+    const link = container.querySelector(`[data-face="${firstAway().key}"] a`) as HTMLAnchorElement;
+    expect(link, 'the away card has no link to press').toBeTruthy();
+    link.click();
+    await vi.waitFor(() => expect(assign).toHaveBeenCalled());
+
+    expect(calls[0], 'it navigated before dismissing — the next origin will still greet').toBe('dismiss');
+    expect(calls[1]).toBe(`go:${link.getAttribute('href')}`);
+    vi.unstubAllGlobals();
+  });
+
+  test('⛔ CONTROL — a modifier-click is left to the browser, and still dismisses', () => {
+    let dismissed = 0;
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+
+    const { container } = render(
+      <GateHub
+        lang="pt"
+        here="elsewhere.example"
+        dismiss={() => {
+          dismissed += 1;
+          return Promise.resolve();
+        }}
+      />,
+    );
+    const link = container.querySelector(`[data-face="${firstAway().key}"] a`) as HTMLAnchorElement;
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+    link.dispatchEvent(event);
+
+    expect(dismissed, 'a modifier-click should still record the choice').toBe(1);
+    expect(assign, 'the browser opens the new tab; this file must not').not.toHaveBeenCalled();
+    expect(event.defaultPrevented, 'a modifier-click was cancelled — ctrl/cmd-click is broken').toBe(false);
+    vi.unstubAllGlobals();
   });
 });
