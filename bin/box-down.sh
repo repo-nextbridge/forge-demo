@@ -3,6 +3,20 @@
 #
 #   bash bin/box-down.sh              # the normal one: state dies, the photo cache lives
 #   bash bin/box-down.sh --all        # everything, cache included (you will re-pull 3.6 GB)
+#   bash bin/box-down.sh --env prod   # THE SAME GESTURES, on a deployed box (deploy/<env>.env names it)
+#   bash bin/box-down.sh --env prod --plan   # say what WOULD go and what would stay; destroy nothing
+#
+# ── ★★ WHY `--env` IS A DESTINATION AND NOT A SECOND SCRIPT ─────────────────────────────────────────────────
+#
+# ⛔ MEASURED 2026-09-17: there was NO way to tear a deployed box down. `bin/box-cycle.sh` calls this file
+# directly, so the weekly rebirth the INFRA-EXEMPLAR spec asks for (decision 5, prod only) could not exist;
+# and the one remote gesture that did exist, `bin/birth-remote.sh --again`, CONVERGES. Convergence does not
+# finish on a box that has had commerce: 17 SKUs carrying a reservation made `inventory.adjust` refuse to put
+# stock back below what is reserved, and the kernel is right to refuse.
+#
+# ⇒ So the destination moved and nothing else did. Every rule below — which volume is state, which is
+# identity, which is cache, and the sweep that names an unclassified one — has ONE author, and a remote run
+# reads exactly the same lists. A second script would be a second opinion about what a certificate is.
 #
 # ── WHY THIS SCRIPT EXISTS AT ALL, WHICH IS THE ONLY INTERESTING THING ABOUT IT ─────────────────────────────
 #
@@ -47,25 +61,63 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
 
 : "${COMPOSE_PROJECT_NAME:=forge-preseed}"
-export COMPOSE_PROJECT_NAME
 DOCKER_SH="${FORGE_DOCKER_SH:-sg docker -c}"
 dc() {
   local quoted='' a
   for a in "$@"; do quoted+=" $(printf '%q' "$a")"; done
-  $DOCKER_SH "cd $(printf '%q' "$HERE") && docker compose$quoted"
+  $DOCKER_SH "cd $(printf '%q' "$COMPOSE_DIR") && ${REMOTE_PRELUDE}docker compose$quoted"
 }
 note() { printf '   %s\n' "$*" >&2; }
 
 ALL=0
-[ "${1:-}" = '--all' ] && ALL=1
+PLAN=0
+ENV_NAME=''
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --all) ALL=1 ;;
+    --plan) PLAN=1 ;;
+    --env) ENV_NAME="${2:?--env needs an environment name (a file in deploy/)}"; shift ;;
+    *) printf 'box-down: unknown option %s\n' "$1" >&2; exit 2 ;;
+  esac
+  shift
+done
 
-# The environment only has to be complete enough for compose to interpolate the file.
-# shellcheck disable=SC1091
-set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
+# ── THE DESTINATION ─────────────────────────────────────────────────────────────────────────────────────────
+# Local is the default and needs no ceremony. `--env` swaps the executor: `$DOCKER_SH` stops being the local
+# docker group and becomes this box's ssh, `$COMPOSE_DIR` stops being this checkout and becomes the deploy
+# directory, and the project name comes from that directory exactly as compose derives it there.
+COMPOSE_DIR="$HERE"
+REMOTE_PRELUDE=''
+if [ -n "$ENV_NAME" ]; then
+  # shellcheck disable=SC1091
+  . "$HERE/bin/remote-box.sh"
+  remote_box_load "$ENV_NAME" "$HERE" || exit 1
+  COMPOSE_DIR="$FORGE_DEPLOY_DIR"
+  COMPOSE_PROJECT_NAME="$(basename "$FORGE_DEPLOY_DIR")"
+  DOCKER_SH="${REMOTE_SSH[*]}"
+  # ⚠️ COMPOSE CANNOT INTERPOLATE THE FILE WITHOUT THE BOX'S OWN SECRETS, and they live only on the box —
+  # `env-source.sh` is what puts them in a shell there. Without this the `down` dies on `${DATABASE_URL:?}`
+  # and leaves the containers standing, which is the one outcome worse than not trying.
+  REMOTE_PRELUDE=". ./env-source.sh >/dev/null 2>&1; export COMPOSE_PROJECT_NAME=$(printf '%q' "$COMPOSE_PROJECT_NAME"); "
+fi
+export COMPOSE_PROJECT_NAME
 
-printf '\n\033[1m── tearing down %s\033[0m\n' "$COMPOSE_PROJECT_NAME" >&2
-dc down --remove-orphans >/dev/null 2>&1
-note 'containers and network removed'
+# The environment only has to be complete enough for compose to interpolate the file. ⛔ LOCAL ONLY: on a
+# deployed box the secrets are the BOX's, and sourcing this checkout's would hand a remote `down` the bench's
+# database URL — the prelude above is what gives a remote run its own.
+if [ -z "$ENV_NAME" ]; then
+  # shellcheck disable=SC1091
+  set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
+fi
+
+printf '\n\033[1m── tearing down %s%s\033[0m\n' "$COMPOSE_PROJECT_NAME" \
+  "${ENV_NAME:+ on ${FORGE_DEPLOY_USER:-?}@${FORGE_DEPLOY_HOST:-?}}" >&2
+if [ "$PLAN" = 1 ]; then
+  note 'PLAN — nothing below is destroyed; the containers are left standing'
+else
+  dc down --remove-orphans >/dev/null 2>&1
+  note 'containers and network removed'
+fi
 
 # ★ THE STATE VOLUMES, BY NAME. Named explicitly rather than swept, so that adding a volume to `compose.yml`
 # without deciding which kind it is shows up here as a leftover instead of being silently destroyed — or
@@ -74,7 +126,11 @@ STATE='pgdata redisdata media'
 for v in $STATE; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
-    $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "state    $v — destroyed"
+    if [ "$PLAN" = 1 ]; then
+      note "state    $v — WOULD BE DESTROYED"
+    else
+      $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "state    $v — destroyed"
+    fi
   fi
 done
 
@@ -95,7 +151,11 @@ for v in $CACHE; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
     if [ "$ALL" = 1 ]; then
-      $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "cache    $v — destroyed (--all); the next birth re-pulls it"
+      if [ "$PLAN" = 1 ]; then
+        note "cache    $v — WOULD BE DESTROYED (--all)"
+      else
+        $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "cache    $v — destroyed (--all); the next birth re-pulls it"
+      fi
     else
       n=$($DOCKER_SH "docker run --rm -v $full:/p alpine sh -c 'find /p -type f | wc -l'" 2>/dev/null | tr -dc '0-9')
       note "cache    $v — KEPT (${n:-?} file(s)); it is fetched bytes, not derived state. --all to drop it"

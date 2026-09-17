@@ -96,3 +96,66 @@ test('⟂ the database IS state — this guard did not make everything precious'
     assert.ok(state.has(v), `${v} left STATE. A birth that keeps the database is not a birth.`);
   }
 });
+
+// ── ★★★ THE DESTINATION MOVED; THE RULES DID NOT ────────────────────────────────────────────────────────────
+//
+// ⛔ MEASURED 2026-09-17: there was no way to tear a DEPLOYED box down. `bin/box-cycle.sh` calls `box-down.sh`
+// directly, so the weekly rebirth of the INFRA-EXEMPLAR spec could not exist; and the one remote gesture that
+// did, `birth-remote --again`, CONVERGES — which does not finish on a box that has had commerce (17 SKUs with
+// a reservation made `inventory.adjust` refuse to put stock back below what is reserved, correctly).
+//
+// `--env` was the answer, and the danger it brings is a SECOND OPINION about what a certificate is. These
+// hold the single author: one file, one set of lists, whichever box is being torn down.
+
+test('★★★ `--env` exists, and it routes through the ONE place that knows how to reach a box', () => {
+  assert.match(script, /--env\)/, 'box-down.sh has no --env: a deployed box cannot be torn down');
+  assert.match(
+    script,
+    /remote-box\.sh[\s\S]{0,200}remote_box_load/,
+    'the remote destination is built here instead of through bin/remote-box.sh — that is a second author of the ssh command',
+  );
+});
+
+test('★★★ the three category lists exist EXACTLY ONCE — a remote run reads the same ones', () => {
+  for (const [name, re] of [
+    ['STATE', /^STATE=/gm],
+    ['IDENTITY', /^IDENTITY=/gm],
+    ['CACHE', /^CACHE=/gm],
+  ]) {
+    const hits = script.match(re) ?? [];
+    assert.equal(
+      hits.length,
+      1,
+      `${name} is assigned ${hits.length} time(s). Two assignments is two opinions about what that volume is, ` +
+        'and the remote box would get whichever one ran last.',
+    );
+  }
+});
+
+test("★★ a REMOTE run uses the BOX's secrets, never this checkout's", () => {
+  // Sourcing this checkout's env-source for a remote `down` would hand the deployed box the bench's database
+  // URL — and compose would either interpolate the wrong thing or refuse, leaving the containers standing.
+  assert.match(
+    script,
+    /if \[ -z "\$ENV_NAME" \][\s\S]{0,260}env-source\.sh/,
+    'the local env-source is sourced unconditionally; a remote run must not read this checkout\'s secrets',
+  );
+  assert.match(
+    script,
+    /REMOTE_PRELUDE=.{0,40}env-source\.sh/,
+    'a remote compose command carries no env-source prelude, so `${DATABASE_URL:?}` will stop the teardown',
+  );
+});
+
+test('★★ `--plan` destroys nothing — every `volume rm` is behind the check', () => {
+  const removals = [...script.matchAll(/docker volume rm/g)];
+  assert.ok(removals.length > 0, 'no volume removal at all — this guard is about the ones that exist');
+  for (const m of removals) {
+    const before = script.slice(Math.max(0, m.index - 220), m.index);
+    assert.match(
+      before,
+      /\$PLAN"? = 1/,
+      'a `docker volume rm` is not guarded by the PLAN check — a plan that destroys is not a plan',
+    );
+  }
+});
