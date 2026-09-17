@@ -361,6 +361,28 @@ remote_compose "${COMPOSE_FILES[@]}" run --rm kernel node dist/migrate.js 2>&1 |
 # temp file this script shreds, and are piped to the box's `.secrets` on STDIN — never in a command line,
 # where `ps` on that host would show them.
 say '3 · provision-ref (once per tenant)'
+
+# ── ⛔⛔ AN ADMIN WITH NO OPERATOR IS AN ADMIN NOBODY CAN ENTER, AND IT LOOKS PERFECT FROM OUTSIDE ───────────
+#
+# `reference-env.ts` reads an unset FORGE_ADMIN_SEED_EMAIL as «seed no operator», so the line below creates
+# the tenant, the bootstrap store and the two tokens — and NOBODY. Measured on the staging box 2026-09-17:
+# both tenants held ZERO rows in `admin_user`, after a birth that ended green.
+#
+# ⚠️ AND THE THREE WAYS IN ARE CLOSED AT THE SAME TIME on a deployed box, which is what turns a missing row
+# into a locked door: `FORGE_ADMIN_OPS_LOGIN` is off (deploy/box.env), the OTP needs `forge-smtp-pass`, and
+# social login can only recognise an operator who already exists. So this is asked HERE, before the tenant is
+# made, rather than discovered at a login screen that renders correctly.
+if ! remote_env_has FORGE_ADMIN_SEED_EMAIL; then
+  die "${FORGE_DEPLOY_HOST} has no FORGE_ADMIN_SEED_EMAIL, so this birth would create an admin with no
+     operator in it — and on a deployed box there is then no way in at all (ops-login off, no OTP without
+     \`forge-smtp-pass\`, and social login can only recognise somebody who already exists).
+     It is a real person's inbox, so this repository does not carry it. Write it on the box, once:
+       ssh ${FORGE_DEPLOY_USER}@${FORGE_DEPLOY_HOST} \"printf 'FORGE_ADMIN_SEED_EMAIL=%s\\nFORGE_ADMIN_SEED_NAME=%s\\n' \\
+         'you@example.invalid' 'Your Name' >> ${FORGE_DEPLOY_DIR}/.env\"
+     \`deploy/box.env\` deliberately does NOT declare it: a declared key beats a carried one, so declaring it
+     empty is how the value got erased on every deploy before 2026-09-17."
+fi
+
 ADMIN_STORE_IDS='{}'
 BOOTSTRAP_STORE_OF=''
 for t in $TENANTS; do

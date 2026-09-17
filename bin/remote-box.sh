@@ -205,6 +205,17 @@ remote_secret_put() { # <name> <value>
   "
 }
 
+# ★★ DOES THE BOX'S OWN `.env` DECLARE THIS NAME? — the read half of `remote_env_put`, and the same shape as
+# `remote_secret_has` below: it answers about the NAME and never reads the value. A caller that needs to know
+# whether a box has been TOLD something (rather than what it was told) asks here.
+#
+# ⚠️ A NAME DECLARED EMPTY COUNTS AS ABSENT, deliberately. `.env` is full of keys whose emptiness is a real
+# decision (`FORGE_ADMIN_TENANT=` is host mode), but nobody asks THIS question about those — they ask it about
+# a value the box was supposed to be given, and `NAME=` is exactly what "was never given" looks like there.
+remote_env_has() { # <name>   → 0 when the box's .env declares it with a non-empty value
+  "${REMOTE_SSH[@]}" "grep -qE '^$1=.+' $(printf '%q' "$REMOTE_BOX_DIR/.env") 2>/dev/null" </dev/null
+}
+
 remote_secret_has() { # <name>   → 0 when the box carries it
   "${REMOTE_SSH[@]}" "grep -q '^$1=' $(printf '%q' "$REMOTE_BOX_DIR/.secrets") 2>/dev/null" </dev/null
 }
