@@ -388,7 +388,41 @@ for (const row of rows) {
   // only thing a merchant switched off; the checkout, the account and the LOGIN are a different deployable
   // and must keep answering, or the person who paid at the counter cannot open the order they just paid for.
   const { servable, reason } = servability(row);
-  const base = `${api}/s/${row.id}`;
+
+  // ── ⛔⛔ THE STORE'S OWN HOSTNAME, AND `/s/<id>` ONLY WHERE THAT IS HOW A BOX ROUTES ────────────────────
+  //
+  // MEASURED on this instance's deployed box 2026-09-17: every door of every store was reported 404, and
+  // every one of them answered correctly to a browser. The addresses were the difference. `/s/<store>` is
+  // the BENCH's path routing; a deployed box routes by HOSTNAME, and the path form does not exist there —
+  // it is the same dev-only override `production-cutover.md` was teaching as real until pk43/doc2.
+  //
+  // ⚠️ AND IT LOOKED GREEN FOR THE WRONG REASON FIRST. Without the gate's dismissal cookie, `/s/<id>/checkout`
+  // answers 200 on a deployed box — because the GATE substitutes the first screen at any path. That 200 is
+  // the front door, not the shop floor, which is exactly why this file grades the BODY. With the cookie the
+  // same address answers 404, and that 404 is the truth about the address.
+  //
+  // ⇒ The kernel's directory already answers this: `read.internal.stores` carries each store's `host`. Use it
+  // when it is there, and keep the path form for the bench, where it is how the box really routes.
+  const base = row.host ? String(row.host).replace(/\/+$/, '') : `${api}/s/${row.id}`;
+
+  // ── ★★ A STORE THIS BOX ROUTES BY A HOSTNAME IT DOES NOT HAVE IS «COULD NOT LOOK», NEVER «IT IS BROKEN» ──
+  //
+  // A counter (`directory: false`) is served at the EDGE and claimed by no store in the kernel's directory, so
+  // it has no `host` to be addressed at. On a bench that is harmless — the path form is how the box routes
+  // there anyway. On a HOST-ROUTED box the path form does not exist, and probing it would report three
+  // failures about an address this file invented.
+  //
+  // ⛔ So it says so and moves on. That is not the same as passing: a run that could not look at a door
+  // announces the door and the reason, exactly as the census above announces an undeclared store.
+  if (!row.host && rows.some((r) => r.host)) {
+    noted(
+      row.handle,
+      `NOT CHECKED — this box routes stores by hostname and the directory claims none for this one ` +
+        `(${row.id}). Its doors are served at the edge; naming the address is a decision this file does not ` +
+        `get to make.`,
+    );
+    continue;
+  }
 
   // ── ★★★ pk33 · DOES THIS STORE HAVE A FRONT DOOR, AND DOES EVERYBODY AGREE? ─────────────────────────────
   //
