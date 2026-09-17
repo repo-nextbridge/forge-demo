@@ -830,14 +830,38 @@ async function upload(file, { library = true, dir = 'photos' } = {}) {
     );
   }
 
+  // ★★★ THE HEADERS THE PORT SIGNED TRAVEL WITH THE PUT, AND DROPPING THEM IS A 403 WITH NO REASON IN IT.
+  //
+  // `media.request_upload` answers `{provider_key, upload_url, headers}` (apps/api/src/media-adapter.ts), and
+  // the third field is not a suggestion: a bucket driver signs `cache-control;host`, so the bytes must arrive
+  // carrying that exact Cache-Control or the signature covers a request that was never made.
+  //
+  // ⛔ THIS LINE USED TO SEND `content-type` AND NOTHING ELSE, AND NOTHING WAS RED FOR AS LONG AS IT DID.
+  // The `local` driver's upload_url points back at the kernel's own route, which signs nothing and therefore
+  // never missed a header; this repository has run on that driver since it was written. The first bucket this
+  // box ever wrote to answered `403 SignatureDoesNotMatch` on its first photograph (2026-09-17, R2), and the
+  // failure said `HTTP 403` because that is all this line knew how to say.
+  //
+  // ⇒ The signed headers go FIRST-CLASS and `content-type` is merged UNDER them: if a driver ever signs the
+  // content type, the signed value has to win over the one guessed here.
+  const signedHeaders = plan.headers ?? plan.value?.headers ?? {};
   // The PUT is NOT a command — it goes to the connector's own edge, so it is not paced and does not spend
   // the credential's window. Only the two commands around it do.
   const put = await fetch(url.startsWith('http') ? url : `${api}${url}`, {
     method: 'PUT',
-    headers: { 'content-type': mime },
+    headers: { 'content-type': mime, ...signedHeaders },
     body: bytes,
   });
-  if (!put.ok) fail(`PUT ${url} → HTTP ${put.status}`);
+  if (!put.ok) {
+    // ⚠️ THE BODY, NOT JUST THE NUMBER. Every refusal an object store issues is a 403 — a wrong key, a key
+    // with no write, a bucket that does not exist and a signature that covers a different request are the
+    // same three digits, and only the body tells them apart.
+    const why = await put.text().catch(() => '');
+    fail(
+      `PUT ${url} → HTTP ${put.status}\n  sent header(s): ${Object.keys({ 'content-type': mime, ...signedHeaders }).join(', ')}` +
+        `\n  the store said: ${why.slice(0, 400) || '(empty body)'}`,
+    );
+  }
 
   if (library) {
     await command('asset.create', { provider_key: key, filename, mime, kind: 'image', size: bytes.byteLength });
