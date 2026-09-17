@@ -9,18 +9,20 @@
 # A DIRECT dependency arrives as an install target (`npm install ./vendor/x.tgz`), because that is what
 # rewrites its entry to the local file. A TRANSITIVE one arrives as an `overrides` entry, because an
 # override for a direct dependency is refused outright (`EOVERRIDE ... conflicts with direct dependency`).
-# Getting it backwards adds `@forgecommerce/contracts` to the vitrine's own dependencies, which its
+# Getting it backwards adds `@forgeco/contracts` to the vitrine's own dependencies, which its
 # `src/structure.test.ts` then fails — correctly: a front speaks HTTP to the port and never links the
 # kernel's types.
 #
 # ⚠️ IT EDITS `storefront-coffee/package.json`, and the edit is COMMITTED. The `overrides` block it writes
 # uses paths RELATIVE to that file, so it is the same on any clone of this repository and describes a real
-# state of the world: this project installs Forge packages from a directory because no registry serves them
-# yet. It leaves at the same moment the tarballs do.
+# state of the world: this project installs Forge packages from a DIRECTORY, not from npm. ⚠️ The reason is
+# no longer "no registry serves them" — all nineteen went public on 2026-09-16 (`@forgeco/*@0.3.0`) — it is
+# that the images beside them are baked from a CHECKOUT and npm can only serve released versions. See the
+# block at the top of bin/vendor-packages.sh. It leaves at the same moment the tarballs do.
 #
 # ── ★★ pk24/D2 — AND IT EVICTS THE VENDORED ENTRIES FROM THE LOCK BEFORE INSTALLING. MEASURED, 2026-09-08 ─
 #
-# A tarball's PATH does not change when it is re-vendored — `vendor/forgecommerce-contracts-0.3.0.tgz` is
+# A tarball's PATH does not change when it is re-vendored — `vendor/forgeco-contracts-0.3.0.tgz` is
 # the same string every time — so `npm install` sees a lock entry it already satisfies and resolves it BY
 # INTEGRITY out of its content-addressed cache. It never opens the file that was just rewritten. On a clean
 # worktree, right after a full re-vendor from `v03/integra@217734df8`:
@@ -29,7 +31,7 @@
 #     what npm installed     dist/index.js  5967a83c…   1288 lines   ← last week's, out of the cache
 #     the committed lock     sha512-SvMA4i7B…                        ← the OLD tarball's hash, unmoved
 #
-# 174 lines of the release's `@forgecommerce/contracts` were missing from the fork, `npm install` printed
+# 174 lines of the release's `@forgeco/contracts` were missing from the fork, `npm install` printed
 # nothing, and the lock stayed stale — so the next `npm ci` in a pipeline would fail EINTEGRITY against a
 # tarball nobody could tell had changed. The DIRECT packages escape this only because they arrive as install
 # TARGETS (`npm install ./vendor/x.tgz` does re-read the file); every `overrides` entry — which is where
@@ -64,7 +66,7 @@ const app = process.argv[1];
 const manifestPath = join(app, "package.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const nameOf = (file) =>
-  "@forgecommerce/" + file.replace(/^forgecommerce-/, "").replace(/-\d+\.\d+\.\d+\.tgz$/, "");
+  "@forgeco/" + file.replace(/^forgeco-/, "").replace(/-\d+\.\d+\.\d+\.tgz$/, "");
 
 const tarballs = readdirSync(join(app, "vendor")).filter((f) => f.endsWith(".tgz"));
 const direct = new Set(Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }));

@@ -7,7 +7,7 @@
 // prerendered. No generateStaticParams — its mere presence marks the route SSG (● in the build), and force-
 // dynamic does NOT override it.
 
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { HomeView, homeMetadata } from '@/templates/home/HomeView';
 

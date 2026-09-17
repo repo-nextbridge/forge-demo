@@ -9,7 +9,7 @@
 //         at tx (.next/server/src/middleware.js)
 //
 // Everything that could have caught it was green. The kit installed in that fork DID export the function
-// (`node_modules/@forgecommerce/storefront-kit/src/edge-cache.ts`). `tsc --noEmit` was green —
+// (`node_modules/@forgeco/storefront-kit/src/edge-cache.ts`). `tsc --noEmit` was green —
 // `bin/fork-typecheck.guard.mjs` compiles the fork against exactly that file. `next build` exited 0. And the
 // middleware it emitted carried `function te(e,t,r)`: the THREE-parameter `isCacheableRequest` of a kit six
 // days older, next to an unmangled `(0 , i.isServerActionSubmission)` — webpack's fallback for an import it
@@ -44,7 +44,7 @@
 //        exportsPresence 'auto'  →  ⚠ Compiled with warnings … exit 0, and the broken bundle ships
 //        exportsPresence 'error' →  Failed to compile. Attempted import error:
 //                                   'isServerActionSubmission' is not exported from
-//                                   '@forgecommerce/storefront-kit/edge-cache'      exit 1
+//                                   '@forgeco/storefront-kit/edge-cache'      exit 1
 //
 // ⚠️ ONE IS THE CURE AND THE OTHER IS THE ALARM, and the alarm is worth more: rule 1 keeps this box's own
 // builds honest, rule 2 makes ANY disagreement between a fork and its kit — stale cache, half-vendored tree,

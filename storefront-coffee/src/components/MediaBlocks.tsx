@@ -2,7 +2,7 @@
 // link, served with the url the read port already resolved.
 // S6-PDP — a `video_external` is no longer a block down the page: it is a square of the GALLERY and plays on
 // the stage (see components/Gallery.tsx). The embed mapping moved to lib/gallery.ts with it.
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import styles from './MediaBlocks.module.css';
 
 export function DocumentLinks({ media }: { media: MediaRef[] }) {

@@ -17,7 +17,7 @@
 // path-scoped render is the one that catches it, and the host-resolved render is what stops the fix from
 // over-correcting into `/s//checkout` on a store that has its own DNS.
 
-import { HOST_BASE, pathScopedBase } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, pathScopedBase } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { CoffeeChrome } from './CoffeeChrome';

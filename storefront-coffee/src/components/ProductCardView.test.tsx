@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import type { CartModel } from '@/lib/cardModel';

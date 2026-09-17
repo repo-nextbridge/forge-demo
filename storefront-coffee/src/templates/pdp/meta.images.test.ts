@@ -1,7 +1,7 @@
 // S6-IMAGES — what the crawler and the share card get: JSON-LD `image` and og:image. Both are ABSOLUTE urls
 // minted by the KERNEL (MediaRef.url) — never the optimizer's path, never something the theme joined.
 
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';
 import { pdpMetadata, productJsonLd } from './meta';

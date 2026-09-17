@@ -12,7 +12,7 @@
 import {
   EMPTY_SNAPSHOT,
   type MinicartSnapshot,
-} from '@forgecommerce/storefront-kit/minicart-types';
+} from '@forgeco/storefront-kit/minicart-types';
 import {
   createContext,
   type ReactNode,

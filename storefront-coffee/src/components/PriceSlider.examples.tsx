@@ -4,7 +4,7 @@
 // R$ Y+" readout below. Both states are dressed here with the same {min,max} price bounds. Inline fixtures only.
 'use client';
 
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { FilterState } from '@/lib/filters/filter-url';
 import { PriceSlider } from './PriceSlider';
 

@@ -315,7 +315,7 @@ test('★ the monorepo mirror is this list, in this order', { skip }, () => {
 /**
  * The asset path a manifest DECLARES, read from its source.
  *
- * ⚠️ BY TEXT, AND EVERY ALTERNATIVE IS WORSE HERE. A manifest is TypeScript importing `@forgecommerce/contracts`,
+ * ⚠️ BY TEXT, AND EVERY ALTERNATIVE IS WORSE HERE. A manifest is TypeScript importing `@forgeco/contracts`,
  * which in this repository is a gitignored symlink `bin/pack-apps.sh` writes from a monorepo checkout — so
  * importing one would make this rule skip on the machine that has no checkout, which is the machine most
  * likely to be wrong. The field is a string literal in a file this repository owns.

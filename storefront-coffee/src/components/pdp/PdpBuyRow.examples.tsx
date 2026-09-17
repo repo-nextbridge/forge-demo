@@ -4,8 +4,8 @@
 // state ("Esgotado", disabled, no add path).
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
 import { useMemo } from 'react';
 import { type MinicartActions, MinicartProvider } from '../minicart/MinicartProvider';
 import { PdpBuyRow } from './PdpBuyRow';

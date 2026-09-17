@@ -1,5 +1,5 @@
 // The demo-gate manifest (DEMO-GATE) — what this app IS and the powers it asks for. Validated against the
-// contract shape (@forgecommerce/contracts). Deterministic app: no AI, no privileged write, no data of its own, and
+// contract shape (@forgeco/contracts). Deterministic app: no AI, no privileged write, no data of its own, and
 // `scopes: []` — it drives NO kernel command. It only FILLS the neutral theme slot `storefront:gate` with a
 // full-screen interstitial of two views — a HUB over every face this box publishes, and a second one that
 // explains the demo's architecture — plus the ribbon that stays under the store once the visitor is through.
@@ -14,7 +14,7 @@
 // URL. The screen COPY is embedded (PT/EN/ES), not config, and the hub's ADDRESSES are the box's own
 // declaration (`seed/box.json` → `faces.generated.ts`), not this app's.
 
-import { type ExtensionManifest, extensionManifestSchema } from '@forgecommerce/contracts';
+import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
 
 export const manifest: ExtensionManifest = extensionManifestSchema.parse({
   id: 'demo-gate',

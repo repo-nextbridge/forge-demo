@@ -12,7 +12,7 @@
 // The empty list is deliberate: nothing is prerendered at BUILD time (a build must not need a live port, and
 // the set of stores is not known then). Params arrive on demand and are cached per store from the first hit.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { HomeView, homeMetadata } from '@/templates/home/HomeView';
 

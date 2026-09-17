@@ -1,7 +1,7 @@
 // The list (category) template's slot declarations. Same rule as the PDP manifest: declare here, the
 // system discovers; V1 empty/default, ADM-1 fills.
 
-import type { TemplateManifest } from '@forgecommerce/storefront-kit/slots/registry';
+import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
 
 export const listManifest: TemplateManifest = {
   template: 'list',

@@ -1,6 +1,6 @@
 // THE DEMO GATE, ON THE COUNTER'S HOST — one import and one entry, written by hand, and this is why.
 //
-// ★★ THE KIT'S OWN GATE REGISTRY IS EMPTY, AND IT IS EMPTY EVERYWHERE. `@forgecommerce/storefront-kit`'s
+// ★★ THE KIT'S OWN GATE REGISTRY IS EMPTY, AND IT IS EMPTY EVERYWHERE. `@forgeco/storefront-kit`'s
 // `gate/registry.tsx` ships `const GATE_REGISTRY = {}` and says so in its header: a gate is ONE instance's
 // decision, never the platform's, so the reference storefront ships the slot working and the map empty. What
 // fills it for this box's storefront and checkout is the FLEET OVEN: `bin/build-local.sh` stages
@@ -14,7 +14,7 @@
 // ⛔⛔ AND THE SENTENCE THAT USED TO FOLLOW — *"while every other one is covered"* — WAS FALSE, MEASURED
 // 2026-09-11 (pk31/§2). The coffee vitrine is the other fork, built by `bin/build-coffee.sh` outside the same
 // oven, and it has no file like this one: `storefront-coffee/src/app/s/[store]/layout.tsx` resolves the gate
-// through `@forgecommerce/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and held empty by the
+// through `@forgeco/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and held empty by the
 // kit's own guard, and `storefront-coffee/src/lib/extensions/generated/registry.tsx` is a 2026-09-01 cut of the
 // product's composition with no gate in it. So that host finds the app filling the slot and resolves no
 // implementation.
@@ -31,7 +31,7 @@
 // declared itself `gate: false` in `seed/box.json`. ⛔ THAT ARRANGEMENT IS OVER AND EVERY SENTENCE ABOUT IT IS
 // GONE WITH IT (pk36/d1) — leaving the reasoning behind while changing the decision is how the next false
 // paragraph gets written. The exception was then reversed — the café gets a gate too — and pk35/d2 gave the café's
-// fork its own `composition.json`, a `codegen` script and a real dependency on `@forgecommerce/surface-codegen`,
+// fork its own `composition.json`, a `codegen` script and a real dependency on `@forgeco/surface-codegen`,
 // so `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` exists and resolves `demo-gate` to both
 // faces. ⇒ ALL FOUR STORES ARE GATED NOW, and this file is no longer the only front that draws one.
 //

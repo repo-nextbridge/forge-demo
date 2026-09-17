@@ -8,10 +8,10 @@
 // route this renders is `force-dynamic`, but the reads are the same ones the cacheable twin would make, and
 // a `no-store` fetch introduced here would be a per-visitor call on the most-visited page of the shop.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
-import { fetchPublishedReviews } from '@forgecommerce/ext-reviews/reviews';
-import { fetchRatingSummaries } from '@forgecommerce/ext-reviews/ratings';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
+import { fetchPublishedReviews } from '@forgeco/ext-reviews/reviews';
+import { fetchRatingSummaries } from '@forgeco/ext-reviews/ratings';
 import type { Metadata } from 'next';
 import { ExtensionOutlet } from '@/lib/extensions/ExtensionOutlet';
 import { NEUTRAL_STORE_TITLE } from '@/lib/site-metadata';

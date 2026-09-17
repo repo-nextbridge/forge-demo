@@ -16,8 +16,8 @@
 // asked store may not even publish (MT5-A1: 25/25 units for a product HIDDEN in the resolved store). Both halves
 // were needed: the PDP now forwards `?store=`, and `read.availability_by_skus` scopes by publication.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { AVAILABILITY_MAX_SKUS } from '@forgecommerce/storefront-kit/read-client';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { AVAILABILITY_MAX_SKUS } from '@forgeco/storefront-kit/read-client';
 import { NextResponse } from 'next/server';
 import { resolveRequestStore } from '@/lib/store-context';
 

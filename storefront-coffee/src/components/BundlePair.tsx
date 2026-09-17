@@ -35,16 +35,16 @@
 // afterwards — the front never computes the cart.
 'use client';
 
-import { ShoppingCart } from '@forgecommerce/storefront-kit/icons';
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { altOf, coverOf, mediaSrcOf } from '@forgecommerce/storefront-kit/media/src';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import { displayPrice } from '@forgecommerce/storefront-kit/promo/display-price';
+import { ShoppingCart } from '@forgeco/storefront-kit/icons';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { altOf, coverOf, mediaSrcOf } from '@forgeco/storefront-kit/media/src';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import { displayPrice } from '@forgeco/storefront-kit/promo/display-price';
 import type {
   PriceTogether,
   ProductDoc,
   TogetherLine,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';
 import { colorAxisId, orderedOptions } from '@/lib/variant-axes';

@@ -11,11 +11,11 @@
 // Next's "static to dynamic" 500. force-dynamic builds it dynamic, so both the redirect and the uncategorized
 // render happen per request.
 
-import { canonicalProductPath, primaryCategory } from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { skuParamFromSearch } from '@forgecommerce/storefront-kit/sku-url';
-import { storePermanentRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { canonicalProductPath, primaryCategory } from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { skuParamFromSearch } from '@forgeco/storefront-kit/sku-url';
+import { storePermanentRedirect } from '@forgeco/storefront-kit/store-navigation';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { pdpMetadata } from '@/templates/pdp/meta';

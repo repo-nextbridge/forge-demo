@@ -6,7 +6,7 @@
 // hidden field so the no-JS POST carries it too. Inert (no add) when there is no minicart provider (SSR/preview).
 'use client';
 
-import { ShoppingCart } from '@forgecommerce/storefront-kit/icons';
+import { ShoppingCart } from '@forgeco/storefront-kit/icons';
 import { useState, useTransition } from 'react';
 import { useOptionalMinicart } from '@/components/minicart/MinicartProvider';
 import { useDelayedFlag } from '@/lib/useDelayedFlag';

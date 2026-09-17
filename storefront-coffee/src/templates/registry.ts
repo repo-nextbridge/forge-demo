@@ -14,9 +14,9 @@ import {
   discoverSlots,
   mountSlotRegistry,
   type TemplateManifest,
-} from '@forgecommerce/storefront-kit/slots/registry';
-import { footerManifest } from '@forgecommerce/storefront-kit/subtemplates/footer/template.manifest';
-import { headerManifest } from '@forgecommerce/storefront-kit/subtemplates/header/template.manifest';
+} from '@forgeco/storefront-kit/slots/registry';
+import { footerManifest } from '@forgeco/storefront-kit/subtemplates/footer/template.manifest';
+import { headerManifest } from '@forgeco/storefront-kit/subtemplates/header/template.manifest';
 // Import the subtemplate manifests from their manifest modules directly (pure data), NOT via
 // subtemplates/registry.ts — that barrel also pulls in the variant components, which import <Slot>, which
 // imports this file: going through it would form a module cycle (TDZ at load).

@@ -8,7 +8,7 @@
 // plain SYNC component; the tests render the SHELL with `cart={false}` (the interactive island is tested in
 // ProductCardCart.test.tsx).
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, within } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

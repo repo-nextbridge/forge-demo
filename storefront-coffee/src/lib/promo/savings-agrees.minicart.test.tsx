@@ -14,9 +14,9 @@
 // producer. `promo/discount-lines.ts` computes it and it lives in the kit, which both deployables import.
 // What is asserted here is that this build's surface actually prints what that producer says.
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { CartPricing, Totalizer } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { CartPricing, Totalizer } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { MinicartDrawer } from '@/components/minicart/MinicartDrawer';

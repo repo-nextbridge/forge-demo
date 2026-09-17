@@ -9,10 +9,10 @@
 //
 // See `c/[store]/page.tsx` for why `revalidate` + `generateStaticParams` must both be here.
 
-import { canonicalProductPath, primaryCategory } from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { storePermanentRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { canonicalProductPath, primaryCategory } from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { storePermanentRedirect } from '@forgeco/storefront-kit/store-navigation';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { pdpMetadata } from '@/templates/pdp/meta';

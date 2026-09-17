@@ -1,7 +1,7 @@
 // THE STRUCTURAL RULE OF ANY FRONT: it speaks HTTP to the port and never links the kernel's types.
 //
 // The coffee vitrine carries the same guard (`storefront-coffee/src/structure.test.ts`) and it is not
-// ceremony: `@forgecommerce/contracts` is the KERNEL's compile-time vocabulary. A front that imports it stops
+// ceremony: `@forgeco/contracts` is the KERNEL's compile-time vocabulary. A front that imports it stops
 // being a consumer of a public port and becomes a second copy of the kernel's assumptions — and the day the
 // two versions differ, the failure is a type error in somebody else's repository.
 //
@@ -20,7 +20,7 @@ function sources(dir: string): string[] {
   });
 }
 
-const FORBIDDEN = ['@forge/core', '@forgecommerce/contracts', '@forge/db'];
+const FORBIDDEN = ['@forge/core', '@forgeco/contracts', '@forge/db'];
 
 describe('the totem is a consumer of the port, not a layer of the kernel', () => {
   const files = sources(src);

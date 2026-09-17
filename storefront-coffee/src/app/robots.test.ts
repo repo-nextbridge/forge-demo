@@ -24,7 +24,7 @@ const { headersMock, resolveStoreForHost } = vi.hoisted(() => ({
 }));
 
 vi.mock('next/headers', () => ({ headers: headersMock }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ resolveStoreForHost }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ resolveStoreForHost }));
 
 import robots from './robots';
 

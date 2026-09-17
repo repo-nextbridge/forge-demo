@@ -3,8 +3,8 @@
 // a block's data fetch — that is covered in ExtensionOutlet.test.tsx) and assert the rendered order follows
 // `position`, with a stable tiebreak on extension_id+component.
 
-import type { InstalledExtension } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { InstalledExtension } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
 
@@ -12,7 +12,7 @@ const extensionsMock = vi.fn<() => Promise<InstalledExtension[] | null>>();
 const storeFlagsMock: () => Promise<{ timezone: string } | null> = async () => ({
   timezone: 'America/Sao_Paulo',
 });
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   // Q3-HYDRATION: the outlet resolves the STORE's clock for the blocks it renders (see ExtensionOutlet.tsx),
   // so the stub answers `store_flags` too. `storeFlagsMock` is a variable so a case can make the read degrade.
   readClient: () => ({ extensions: () => extensionsMock(), storeFlags: () => storeFlagsMock() }),

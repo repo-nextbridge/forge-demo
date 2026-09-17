@@ -13,8 +13,8 @@
 // It mounts on the PLP and the PDP alike: both render prices through anchors, so one component covers both and
 // there is no second implementation to drift.
 
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import { applyIdentityPrices, skusOnPage } from '@forgecommerce/storefront-kit/prices/apply';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import { applyIdentityPrices, skusOnPage } from '@forgeco/storefront-kit/prices/apply';
 import { useEffect } from 'react';
 import { fetchIdentityPrices } from '@/lib/prices/overlay';
 

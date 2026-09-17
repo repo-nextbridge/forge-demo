@@ -19,8 +19,8 @@
 // tells a shopper their coffee is in the bag when the port refused. The label only changes after the action
 // resolves, and a refusal says so instead.
 
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { useState, useTransition } from 'react';
 import { useMinicart } from '@/components/minicart/MinicartProvider';
 import { grindIcon, PathIcon } from '@/components/coffee/icons';

@@ -46,7 +46,7 @@ const SHEETS = {
  * in a checkout that installed the tarball.
  */
 const TOKEN_SHEETS = [
-  createRequire(import.meta.url).resolve('@forgecommerce/theme-storefront-vanilla/tokens.css'),
+  createRequire(import.meta.url).resolve('@forgeco/theme-storefront-vanilla/tokens.css'),
   join(src, 'styles/globals.css'),
 ];
 

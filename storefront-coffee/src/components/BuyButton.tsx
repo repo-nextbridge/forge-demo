@@ -4,7 +4,7 @@
 // second cart before the cookie is set. Semantic tokens only.
 'use client';
 
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { addToCartAction } from '@/lib/cart-actions';

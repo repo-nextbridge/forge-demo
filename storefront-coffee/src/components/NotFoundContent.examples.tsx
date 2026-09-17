@@ -2,7 +2,7 @@
 // "4·0·4" with the zero in the copper accent + the two CTAs. Two shapes — store-less (the logo, since there is
 // no header to carry it) and store-scoped (no logo).
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { NotFoundContent } from './NotFoundContent';
 
 export function NotFoundContentExamples() {

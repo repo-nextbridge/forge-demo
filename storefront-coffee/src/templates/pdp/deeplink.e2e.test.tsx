@@ -2,7 +2,7 @@
 // Browser e2e (jsdom, port mocked): the PDP is mounted at a URL carrying `?sku=`, and we assert the whole page
 // state follows — variant, price, gallery and title — and that choosing another variant rewrites the URL.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

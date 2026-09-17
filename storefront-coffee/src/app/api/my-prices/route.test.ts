@@ -10,8 +10,8 @@ const { readCustomerSession, myPrices } = vi.hoisted(() => ({
   readCustomerSession: vi.fn(),
   myPrices: vi.fn(),
 }));
-vi.mock('@forgecommerce/storefront-kit/session', () => ({ readCustomerSession }));
-vi.mock('@forgecommerce/storefront-kit/kernel-write-clients', () => ({
+vi.mock('@forgeco/storefront-kit/session', () => ({ readCustomerSession }));
+vi.mock('@forgeco/storefront-kit/kernel-write-clients', () => ({
   customerClient: () => ({ myPrices }),
 }));
 

@@ -1,6 +1,6 @@
 // THE COFFEE SHOP'S CHROME — this store's own header and footer, replacing the reference vitrine's.
 //
-// The reference chrome (`@forgecommerce/storefront-kit/chrome`) is a shop-shaped header: search box, mega
+// The reference chrome (`@forgeco/storefront-kit/chrome`) is a shop-shaped header: search box, mega
 // menu, a mini-cart drawer, the merchant's composed header regions. This shop has none of that by design —
 // two links, a logo, an account button and a bag — so it is written here rather than configured there. That
 // is what forking the vitrine IS, and it is the one place where writing our own is cheaper than bending
@@ -28,8 +28,8 @@
 // used to be `components/SkipLink.test.tsx`, which rendered the REFERENCE chrome — the one no layout of this
 // app mounts any more. Measured under sabotage: deleting the `<SkipLink />` below left that file GREEN.
 
-import { MAIN_CONTENT_ID, SkipLink } from '@forgecommerce/storefront-kit/SkipLink';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { MAIN_CONTENT_ID, SkipLink } from '@forgeco/storefront-kit/SkipLink';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';
 import {

@@ -19,11 +19,11 @@
 // outlets while leaving the declarations would be a promise that renders nothing, which is the one shape
 // this house refuses.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { coverMediaOf } from '@forgecommerce/storefront-kit/sku';
-import { imagesOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { coverMediaOf } from '@forgeco/storefront-kit/sku';
+import { imagesOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
 import type { ReactNode } from 'react';
 import { Icon, noteIcon, PathIcon, ScrollHintIcon } from '@/components/coffee/icons';
 import { field, notesOf, priceOf, variantSummary } from '@/lib/coffee/product-view';

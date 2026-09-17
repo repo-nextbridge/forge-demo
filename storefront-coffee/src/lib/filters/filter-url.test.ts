@@ -1,5 +1,5 @@
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { describe, expect, test } from 'vitest';
 import {
   activeChips,

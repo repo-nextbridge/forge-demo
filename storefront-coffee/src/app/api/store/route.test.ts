@@ -15,7 +15,7 @@ const { storeFlags, resolveStoreForHost } = vi.hoisted(() => ({
   storeFlags: vi.fn(),
   resolveStoreForHost: vi.fn(),
 }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ storeFlags }),
   resolveStoreForHost,
 }));

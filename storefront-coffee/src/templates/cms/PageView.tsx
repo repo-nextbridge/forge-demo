@@ -8,8 +8,8 @@
 // render is serving — the same reason `base` travels as a prop instead of being looked up. See `registry.ts`:
 // this fork FILLS the overlay, so on this front the prop chooses between the café's words and the shared ones.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import { resolvePageTemplate, storeTemplateAxis } from './registry';
 import styles from './template.module.css';
 

@@ -16,7 +16,7 @@
 // The scheme is fixed `https`, the same choice the sitemap made: a store is served over TLS anywhere a
 // crawler can reach it, and deriving it from a proxy header would let a misconfiguration publish `http://`.
 
-import { hostMap, publicOrigin } from '@forgecommerce/storefront-kit/config';
+import { hostMap, publicOrigin } from '@forgeco/storefront-kit/config';
 
 /** The absolute origin for a store, or null when the instance declared none and the dev map does not name it
  * — the caller then omits the absolute URL entirely rather than guessing a domain. */

@@ -24,7 +24,7 @@
 // (checkout-flow.test.ts, "ensureCart reuses an ACTIVE cart, mints fresh on a CONVERTED/unknown one"): a
 // pointer that outlives its cart mints a new one instead of resurrecting anything.
 
-import { enrichLine } from '@forgecommerce/storefront-kit/checkout/enrich';
+import { enrichLine } from '@forgeco/storefront-kit/checkout/enrich';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 const { jarSet, jarGet, createCart, addLine, readCart, readCheckout, linkCart } = vi.hoisted(
@@ -42,12 +42,12 @@ const { jarSet, jarGet, createCart, addLine, readCart, readCheckout, linkCart } 
 vi.mock('next/headers', () => ({
   cookies: async () => ({ get: jarGet, set: jarSet, delete: vi.fn() }),
 }));
-vi.mock('@forgecommerce/storefront-kit/kernel-write-clients', () => ({
+vi.mock('@forgeco/storefront-kit/kernel-write-clients', () => ({
   commandClient: () => ({ createCart, addLine }),
   // ③ — `customer.link_cart`, which this fork now drives on every cart write of a signed-in shopper.
   customerClient: () => ({ linkCart }),
 }));
-vi.mock('@forgecommerce/storefront-kit/config', async (importOriginal) => ({
+vi.mock('@forgeco/storefront-kit/config', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   readClient: () => ({ cart: readCart, checkout: readCheckout }),
 }));
@@ -75,7 +75,7 @@ function written(): { name: string; value: string; options: Record<string, unkno
 
 test('★★ the guest add writes a cart cookie that OUTLIVES the browser window (this is s2b-5)', async () => {
   const { CART_COOKIE, CART_COOKIE_MAX_AGE_SECONDS } = await import(
-    '@forgecommerce/storefront-kit/cart-cookie'
+    '@forgeco/storefront-kit/cart-cookie'
   );
   const { addToCartAction } = await import('@/lib/cart-actions');
 
@@ -89,7 +89,7 @@ test('★★ the guest add writes a cart cookie that OUTLIVES the browser window
 });
 
 test('★ the window is a WEEK, and it is bounded — a cart pointer is not a permanent handle on a visitor', async () => {
-  const { CART_COOKIE_MAX_AGE_SECONDS } = await import('@forgecommerce/storefront-kit/cart-cookie');
+  const { CART_COOKIE_MAX_AGE_SECONDS } = await import('@forgeco/storefront-kit/cart-cookie');
   expect(CART_COOKIE_MAX_AGE_SECONDS).toBe(7 * DAYS);
   // ⚠️ The privacy limit, as a test: this cookie may last days and may NOT last a season. The kernel's own
   // `cart_ttl_days` (90 by default) is a RETENTION number and deliberately not this one.
@@ -127,10 +127,10 @@ test('★★ the cookie carries the cart ID AND NOTHING ELSE — no PII rides in
 
 test('★★ SIGNING IN keeps the same attributes — the login path used to emit the pointer with none at all', async () => {
   const { CART_COOKIE, cartCookieOptions } = await import(
-    '@forgecommerce/storefront-kit/cart-cookie'
+    '@forgeco/storefront-kit/cart-cookie'
   );
   const { applyLoginCartPolicy } = await import(
-    '@forgecommerce/storefront-kit/checkout/login-cart-policy'
+    '@forgeco/storefront-kit/checkout/login-cart-policy'
   );
 
   // The policy adopts the cart this account left live (branch 2), which is when the cookie gets rebound.
@@ -161,8 +161,8 @@ test('★★ SIGNING IN keeps the same attributes — the login path used to emi
 // ── ② the aged cart, reopened ────────────────────────────────────────────────────────────────────────────
 
 test('★★ A CART REOPENED A WEEK LATER shows the kernel’s prices of TODAY, never the ones it was filled at', async () => {
-  const { CART_COOKIE } = await import('@forgecommerce/storefront-kit/cart-cookie');
-  const { resolveState } = await import('@forgecommerce/storefront-kit/checkout/checkout-flow');
+  const { CART_COOKIE } = await import('@forgeco/storefront-kit/cart-cookie');
+  const { resolveState } = await import('@forgeco/storefront-kit/checkout/checkout-flow');
 
   // The sitting that filled the basket: two lines, 19990 and 70000.
   const filled = {
@@ -225,7 +225,7 @@ test('★★ A CART REOPENED A WEEK LATER shows the kernel’s prices of TODAY, 
 // while the header shows an account. The link is what lets the promotion engine price BY PERSON.
 
 test('★★ a SIGNED-IN shopper adding from the vitrine gets the cart attached to the account, on the first click', async () => {
-  const { CUSTOMER_SESSION_COOKIE } = await import('@forgecommerce/storefront-kit/cookies');
+  const { CUSTOMER_SESSION_COOKIE } = await import('@forgeco/storefront-kit/cookies');
   const { addToCartAction } = await import('@/lib/cart-actions');
 
   jarGet.mockImplementation((name: string) =>
@@ -251,7 +251,7 @@ test('★ A GUEST PAYS NOTHING — no session cookie, no port call, byte-identic
 });
 
 test('★ the link is BEST-EFFORT — a port that refuses it must not cost the shopper the item', async () => {
-  const { CUSTOMER_SESSION_COOKIE } = await import('@forgecommerce/storefront-kit/cookies');
+  const { CUSTOMER_SESSION_COOKIE } = await import('@forgeco/storefront-kit/cookies');
   const { addToCartAction } = await import('@/lib/cart-actions');
 
   jarGet.mockImplementation((name: string) =>

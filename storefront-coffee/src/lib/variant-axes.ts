@@ -9,8 +9,8 @@
 // or the size selector would turn into a photo grid (and the deep-link/gallery mechanics that follow the
 // resolved SKU would break). "Cor" is presentation vocabulary in the THEME (degradable), not the kernel.
 
-import { coverOf } from '@forgecommerce/storefront-kit/media/src';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { coverOf } from '@forgeco/storefront-kit/media/src';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 
 type Sku = ProductDoc['skus'][number];
 

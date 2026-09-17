@@ -17,7 +17,7 @@
 // robots.txt is also not an access mechanism: the demo's gate blocks by itself, so nothing here emits noindex on
 // its behalf.
 
-import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
+import { resolveStoreForHost } from '@forgeco/storefront-kit/config';
 import type { MetadataRoute } from 'next';
 import { requestOrigin } from '@/lib/seo/origin';
 

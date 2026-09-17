@@ -3,7 +3,7 @@
 // The route existed only as a 404 (QA-S3 OBS-1 on Staging). The assertion is the TARGET, not merely that
 // something happened: a redirect to the home page would also stop the 404 and would still lose the buyer.
 
-import { HOST_BASE, pathScopedBase } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, pathScopedBase } from '@forgeco/storefront-kit/store-route';
 import { expect, test, vi } from 'vitest';
 
 const redirected: string[] = [];
@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
   },
 }));
 
-vi.mock('@forgecommerce/storefront-kit/store-route.server', () => ({
+vi.mock('@forgeco/storefront-kit/store-route.server', () => ({
   // The header-resolved case: the shopper is on the store's own host, so the base is clean.
   requestStoreBase: async () => HOST_BASE,
 }));
@@ -43,7 +43,7 @@ test('★ /cart sends the shopper to the checkout, where this storefront keeps t
 test('★ …and it is the STORE’s checkout under path-based routing, never another store’s', async () => {
   // The money bug this storefront's `storeHref`/`requestStoreBase` pair exists to prevent: a clean `/checkout`
   // emitted from a path-scoped page resolves the next request against whatever store the Host names.
-  vi.doMock('@forgecommerce/storefront-kit/store-route.server', () => ({
+  vi.doMock('@forgeco/storefront-kit/store-route.server', () => ({
     requestStoreBase: async (store: string) => pathScopedBase(store),
   }));
   vi.resetModules();

@@ -1,5 +1,5 @@
 // Shared test fixtures — a ProductDoc shaped exactly as the read port returns it.
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 
 export function makeProduct(overrides: Partial<ProductDoc> = {}): ProductDoc {
   return {

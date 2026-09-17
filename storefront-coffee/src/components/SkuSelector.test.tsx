@@ -1,6 +1,6 @@
 // SkuSelector reflects the catalog model: option tuple -> SKU -> the SKU's price (not the product's).
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

@@ -12,9 +12,9 @@
 // degrades to the harvested product photo, then to a neutral chip. Every other axis is a text grid / checkbox
 // list. The read intelligence is the port's; this is a view over `facets` + the current `FilterState`.
 
-import { X } from '@forgecommerce/storefront-kit/icons';
-import type { Facets } from '@forgecommerce/storefront-kit/read-client';
-import type { StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { X } from '@forgeco/storefront-kit/icons';
+import type { Facets } from '@forgeco/storefront-kit/read-client';
+import type { StorePath } from '@forgeco/storefront-kit/store-route';
 import Link from 'next/link';
 import { cfLabel, cfValueLabel } from '@/lib/filters/cf-label';
 import { colorHex, isColorAxis } from '@/lib/filters/color-swatch';

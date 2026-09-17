@@ -14,10 +14,10 @@
 // Nothing here may touch a dynamic API (cookies/headers): on the cacheable entry that is a runtime 500, not a
 // degrade — LAW 2 of `edge-cache.guard.test.ts`.
 
-import { canonicalProductPath } from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { CollectionSummary } from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { canonicalProductPath } from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { CollectionSummary } from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';

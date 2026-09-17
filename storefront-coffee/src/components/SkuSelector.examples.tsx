@@ -6,9 +6,9 @@
 // a third adds `backorder` — the SAME zeroed colour, sold anyway: dashed border, amber notice, CTA still buying.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { useMemo } from 'react';
 import { type MinicartActions, MinicartProvider } from './minicart/MinicartProvider';
 import { SkuSelector } from './SkuSelector';

@@ -5,7 +5,7 @@
 // the store never flashes underneath); otherwise it renders the route as-is.
 //
 // It names NO app. WHICH extension fills the slot comes from read.extensions at runtime; WHAT to render for
-// it comes from the static gate registry (`@forgecommerce/storefront-kit/gate/registry`, one import + one entry, empty in
+// it comes from the static gate registry (`@forgeco/storefront-kit/gate/registry`, one import + one entry, empty in
 // the reference storefront). Everything a particular gate needs beyond `store` + the two actions — its env,
 // its language cookie, its copy — is read inside its own registry entry, never here. That separation is the
 // whole point of the slot: the layout owns the MACHINERY (when a gate shows, the dismissal cookie, the two
@@ -16,21 +16,21 @@
 // a gate is actually going to render — a store with no gate keeps its pages static (no dynamic opt-in) and
 // is byte-identical to before this file. Asserted in gate-slot.test.tsx, not merely claimed here.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { GATE_DISMISSED_COOKIE } from '@forgecommerce/storefront-kit/cookies';
-import { CompositionGapNotice } from '@forgecommerce/storefront-kit/extensions/CompositionGapNotice';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { GATE_DISMISSED_COOKIE } from '@forgeco/storefront-kit/cookies';
+import { CompositionGapNotice } from '@forgeco/storefront-kit/extensions/CompositionGapNotice';
 import {
   GATE_TARGET,
   isStructuralTarget,
-} from '@forgecommerce/storefront-kit/extensions/composition-gap';
-import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
+} from '@forgeco/storefront-kit/extensions/composition-gap';
+import { dismissGate, reopenGate } from '@forgeco/storefront-kit/gate/actions';
 import { resolveGate } from '@/lib/extensions/gate';
 import {
   requestAddresses,
   requirePublicStorefront,
   requireStore,
-} from '@forgecommerce/storefront-kit/require-store.server';
-import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
+} from '@forgeco/storefront-kit/require-store.server';
+import { storeThemeStyle } from '@forgeco/storefront-kit/theme/store-theme';
 import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
 

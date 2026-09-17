@@ -5,9 +5,9 @@
 // shows the empty state. Effects don't run under renderToString, so SSR renders the (mounted-but-hidden) panel.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { useEffect, useMemo } from 'react';
 import { MinicartDrawer } from './MinicartDrawer';
 import { type MinicartActions, MinicartProvider, useMinicart } from './MinicartProvider';

@@ -1,6 +1,6 @@
 // SearchBox is a native GET form to the platform search route — no JS needed to reach /search?q=.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { act, createEvent, fireEvent, render } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { SearchBox } from './SearchBox';

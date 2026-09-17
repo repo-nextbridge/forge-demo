@@ -9,8 +9,8 @@
 // assertion is about THIS repo rather than about any storefront, and only this file travels to a customer's
 // copy (FRONT-OWN).
 
-import type { TemplateManifest } from '@forgecommerce/storefront-kit/slots/registry';
-import * as kitSubtemplates from '@forgecommerce/storefront-kit/subtemplates';
+import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
+import * as kitSubtemplates from '@forgeco/storefront-kit/subtemplates';
 import { expect, test } from 'vitest';
 import { TEMPLATE_MANIFESTS } from '@/templates/registry';
 
@@ -26,14 +26,14 @@ declare global {
 //
 // ★ CHECKOUT-APP (K1) — TWO SOURCES, AND THE SECOND IS NOT A GLOB ON PURPOSE. This app's own manifests
 // (templates + the minicart composition) are DISCOVERED by the glob. The header/footer manifests moved to
-// `@forgecommerce/storefront-kit` with the chrome, and a glob for them would have to spell a path across a
+// `@forgeco/storefront-kit` with the chrome, and a glob for them would have to spell a path across a
 // package boundary — `../../../../packages/…`, true in this monorepo and false in the packed copy this very
 // file travels to, where it would resolve to nothing and leave the count silently short. The kit's own barrel
 // is asked instead, and the kit polices ITS half (`subtemplates/registration.test.ts` there asserts every
 // manifest under its tree is re-exported by that barrel). Two halves, one guarantee, neither vacuous.
 const modules = {
   ...import.meta.glob('../**/*.manifest.ts', { eager: true }),
-  '@forgecommerce/storefront-kit/subtemplates': kitSubtemplates as Record<string, unknown>,
+  '@forgeco/storefront-kit/subtemplates': kitSubtemplates as Record<string, unknown>,
 };
 
 function isManifest(v: unknown): v is TemplateManifest {

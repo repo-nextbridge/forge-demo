@@ -2,8 +2,8 @@
 // and a JS-off shopper, see and can use everything. We renderToString the SearchTemplate and assert the states
 // + that filters/sort/chips are plain links in the raw markup (GET-first).
 
-import type { CategoryMap, Facets } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { CategoryMap, Facets } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import type { FilterState } from '@/lib/filters/filter-url';

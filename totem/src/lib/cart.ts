@@ -16,8 +16,8 @@
 // ⚠️ THE COOKIE IS httpOnly, SO ONLY A SERVER ACTION CAN CLEAR IT. That is not an inconvenience, it is the
 // reason the reset can be trusted: nothing the idle screen does in the browser can leave the pointer behind.
 
-import { CART_COOKIE, cartCookieOptions } from '@forgecommerce/storefront-kit/cart-cookie';
-import type { CheckoutView } from '@forgecommerce/storefront-kit/read-client';
+import { CART_COOKIE, cartCookieOptions } from '@forgeco/storefront-kit/cart-cookie';
+import type { CheckoutView } from '@forgeco/storefront-kit/read-client';
 import { cookies } from 'next/headers';
 import { totemCommand, totemRead } from './port';
 import { resolveTotemStore } from './store';

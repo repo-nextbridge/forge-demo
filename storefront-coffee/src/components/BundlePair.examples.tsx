@@ -5,9 +5,9 @@
 // a cart and opens the drawer, and given a store-bound `addToCart` fake so the button is live offline.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { useMemo } from 'react';
 import { BundlePair } from './BundlePair';
 import { type MinicartActions, MinicartProvider } from './minicart/MinicartProvider';

@@ -899,7 +899,7 @@ que solda o registro dele; o café é o `storefront-coffee`, que resolvia pelo r
 Como `storefront:gate` é alvo **estrutural**, o fork **RECUSAVA a página** em voz alta (*"Esta loja está
 temporariamente indisponível"*), então `seed/coffee.mjs` **removia a colocação do café** e `seed/box.json`
 declarava `"gate": false` + o motivo. ⇒ **As duas coisas morreram juntas nesta fatia**, porque a pk35/d2 deu ao
-fork um `composition.json` próprio, um script `codegen` e a dependência real do `@forgecommerce/surface-codegen`:
+fork um `composition.json` próprio, um script `codegen` e a dependência real do `@forgeco/surface-codegen`:
 `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` **existe** e resolve o `demo-gate` nas duas
 faces. ⛔ **E a divergência declarada saiu junto** — o `bin/front-app-reach.guard.mjs` agora **grada** o par
 `storefront-coffee × demo-gate` em vez de dispensá-lo, e fica vermelho no dia em que o fork deixar de alcançar
@@ -989,7 +989,7 @@ caixa **se** estourando o próprio teto anônimo, não um defeito — é exatame
 do aquecedor. Um 500 cujo corpo traz **Código:** é um defeito, e esse código é o que se procura no
 `docker compose logs`.
 
-⚠️ **E uma dívida de produto ficou nomeada, não consertada:** o `@forgecommerce/storefront-kit` **embarca**
+⚠️ **E uma dívida de produto ficou nomeada, não consertada:** o `@forgeco/storefront-kit` **embarca**
 `src/ceiling-digest.ts` (o vocabulário de "não agora") e **não publica** o subcaminho —
 `packages/storefront-kit/package.json` tem `./ceiling-digest` em `exports` e **não** em `publishConfig.exports`
 (91 chaves contra 92). Dentro do monorepo o import resolve; **de um tarball, não**. Os dois forks daqui o

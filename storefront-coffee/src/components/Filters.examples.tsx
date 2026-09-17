@@ -4,8 +4,8 @@
 // same file: the SortControl strip and the ActiveChips row. Inline fixtures only — no data port is touched.
 'use client';
 
-import type { Facets } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { Facets } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { FilterState } from '@/lib/filters/filter-url';
 import type { SwatchImages } from '@/lib/filters/plp';
 import { ActiveChips, Filters, SortControl } from './Filters';

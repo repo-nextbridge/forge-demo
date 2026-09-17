@@ -43,7 +43,7 @@
 // TWO BLOCKS, TWO ROLES (PAY-APP-SHAPE). The totem draws its own screens and renders neither of them. They are
 // here because a payment app without them is broken for every OTHER front, and because the composition may ask.
 
-import { type ExtensionManifest, extensionManifestSchema } from '@forgecommerce/contracts';
+import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
 
 const DESCRIPTION_EN =
   'The counter’s payment methods for a self-service totem: the card machine, approved on the spot because the machine has already taken the payment, and a PIX QR on the totem’s screen. No PSP is ever contacted: this app belongs to one box and is never offered. Enable each method per store via PAY-TOGGLES.';

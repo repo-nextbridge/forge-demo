@@ -23,8 +23,8 @@
 // click at a time, and no single request can ever cost more than the window. An absurd page clamps to the LAST
 // window (not to an empty shelf), so `?page=999` lands on the end of the catalog.
 
-import { coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
-import type { CatalogList, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { coverOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
+import type { CatalogList, ProductDoc } from '@forgeco/storefront-kit/read-client';
 
 /** The prototype's page size — 20 per "load" (HANDOVER §5). Also the per-port-call page size the accumulation
  * uses, so every call stays well under the port's 100 `limit` ceiling regardless of how many pages are loaded. */

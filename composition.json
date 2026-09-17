@@ -68,7 +68,7 @@
   "apps": [
     {
       "id": "banners",
-      "package": "@forgecommerce/ext-banners"
+      "package": "@forgeco/ext-banners"
     },
     {
       "id": "channel-push",
@@ -84,11 +84,11 @@
     },
     {
       "id": "chrome",
-      "package": "@forgecommerce/ext-chrome"
+      "package": "@forgeco/ext-chrome"
     },
     {
       "id": "content",
-      "package": "@forgecommerce/ext-content"
+      "package": "@forgeco/ext-content"
     },
     {
       "id": "demo-data",
@@ -96,11 +96,11 @@
     },
     {
       "id": "feed",
-      "package": "@forgecommerce/ext-feed"
+      "package": "@forgeco/ext-feed"
     },
     {
       "id": "leads",
-      "package": "@forgecommerce/ext-leads"
+      "package": "@forgeco/ext-leads"
     },
     {
       "id": "order-review",
@@ -108,23 +108,23 @@
     },
     {
       "id": "payment-mercadopago",
-      "package": "@forgecommerce/ext-payment-mercadopago"
+      "package": "@forgeco/ext-payment-mercadopago"
     },
     {
       "id": "payment-promissory",
-      "package": "@forgecommerce/ext-payment-promissory"
+      "package": "@forgeco/ext-payment-promissory"
     },
     {
       "id": "payment-reference",
-      "package": "@forgecommerce/ext-payment-reference"
+      "package": "@forgeco/ext-payment-reference"
     },
     {
       "id": "payment-zero",
-      "package": "@forgecommerce/ext-payment-zero"
+      "package": "@forgeco/ext-payment-zero"
     },
     {
       "id": "recommendations",
-      "package": "@forgecommerce/ext-recommendations"
+      "package": "@forgeco/ext-recommendations"
     },
     {
       "id": "redirects",
@@ -136,15 +136,15 @@
     },
     {
       "id": "reviews",
-      "package": "@forgecommerce/ext-reviews"
+      "package": "@forgeco/ext-reviews"
     },
     {
       "id": "shelves",
-      "package": "@forgecommerce/ext-shelves"
+      "package": "@forgeco/ext-shelves"
     },
     {
       "id": "subscriptions",
-      "package": "@forgecommerce/ext-subscriptions"
+      "package": "@forgeco/ext-subscriptions"
     }
   ],
   "_notComposed_why": [

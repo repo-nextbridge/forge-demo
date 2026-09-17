@@ -23,7 +23,7 @@
 // `cart.set_delivery` takes `shipping_address.region`. They are the same fact under two names, and mapping
 // one to the other is the single most likely place for this file to be "cleaned up" into a silent failure.
 
-import type { PickupPoint, ShippingOption } from '@forgecommerce/storefront-kit/read-client';
+import type { PickupPoint, ShippingOption } from '@forgeco/storefront-kit/read-client';
 import { identifyBuyer } from './buyer';
 import { readCheckout } from './cart';
 import { totemCommand, totemRead } from './port';

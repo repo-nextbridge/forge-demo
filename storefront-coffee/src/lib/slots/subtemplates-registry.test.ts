@@ -2,7 +2,7 @@
 // are found by the SAME discovery the rest of the front uses — with zero edit to a central list. This mirrors
 // lib/slots/registry.test.ts for the subtemplate slots, and asserts the variant record exposes both variants.
 
-import { footerVariants, headerVariants } from '@forgecommerce/storefront-kit/subtemplates';
+import { footerVariants, headerVariants } from '@forgeco/storefront-kit/subtemplates';
 import { expect, test } from 'vitest';
 import { slotRegistry } from '@/templates/registry';
 

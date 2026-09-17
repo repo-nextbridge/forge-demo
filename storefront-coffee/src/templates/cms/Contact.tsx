@@ -31,7 +31,7 @@
 // `CoffeeChrome.tsx` documents at length for the announcement bar's prices. An e-mail and a phone have no row
 // anywhere in this tenant, so nothing here can contradict the kernel.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 export function Contact({ page }: { page: PageDoc }) {

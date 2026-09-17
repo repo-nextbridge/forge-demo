@@ -96,7 +96,7 @@ say(`forge.lock pins: ${PINNED ? PINNED.ref : 'no branch@sha — this lock names
 if (TREE.path) {
   say(`linking from: ${TREE.path} (${TREE.how})`);
 } else {
-  say('⚠️ NOT CHECKED — no checkout of the PINNED release with a built @forgecommerce/contracts here.');
+  say('⚠️ NOT CHECKED — no checkout of the PINNED release with a built @forgeco/contracts here.');
   for (const line of TREE.tried) say(`   tried: ${line}`);
   say('   set FORGE_MONOREPO=<a clone at the pinned commit> and run `pnpm build` there.');
 }
@@ -118,7 +118,7 @@ if (TREE.path) {
 function notChecked(app) {
   if (!TREE.path) {
     return (
-      'NOT CHECKED — no checkout of the PINNED release with a built @forgecommerce/contracts ' +
+      'NOT CHECKED — no checkout of the PINNED release with a built @forgeco/contracts ' +
       '(set FORGE_MONOREPO to a clone at that commit, then `pnpm build` there)'
     );
   }

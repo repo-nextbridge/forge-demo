@@ -5,8 +5,8 @@
 // mode: no timer, a backdrop, mobile swipe-hint) and the badge shows the live unit count. Semantic tokens only.
 'use client';
 
-import { ShoppingCart } from '@forgecommerce/storefront-kit/icons';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { ShoppingCart } from '@forgeco/storefront-kit/icons';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { MinicartDrawer } from './MinicartDrawer';
 import { useMinicart } from './MinicartProvider';

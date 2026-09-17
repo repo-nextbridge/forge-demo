@@ -15,7 +15,7 @@ const { revalidateTag, revalidateSecret, purgeEdge } = vi.hoisted(() => ({
 }));
 
 vi.mock('next/cache', () => ({ revalidateTag }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ revalidateSecret }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ revalidateSecret }));
 vi.mock('@/lib/edge-purge', () => ({ purgeEdge }));
 
 const { POST } = await import('./route');

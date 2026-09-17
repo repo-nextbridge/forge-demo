@@ -9,8 +9,8 @@ import type {
   CheckoutView,
   OrderConfirmationView,
   ProductDoc,
-} from '@forgecommerce/storefront-kit/read-client';
-import { coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
+} from '@forgeco/storefront-kit/read-client';
+import { coverOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
 import { money } from './money';
 
 export type BagLine = {

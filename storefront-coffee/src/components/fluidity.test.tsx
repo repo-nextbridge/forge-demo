@@ -4,11 +4,11 @@
 // in the DOM (just hidden). FadeLayer is the sanctioned way to satisfy it; the anti-pattern below shows what
 // the guard catches. WS4 extends this file to assert the real chrome (minicart, submenu, modal, drawer).
 
-import { FadeLayer } from '@forgecommerce/storefront-kit/FadeLayer';
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
-import { MegaMenu } from '@forgecommerce/storefront-kit/subtemplates/header/MegaMenu';
-import { MobileNavDrawer } from '@forgecommerce/storefront-kit/subtemplates/header/MobileNavDrawer';
+import { FadeLayer } from '@forgeco/storefront-kit/FadeLayer';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
+import { MegaMenu } from '@forgeco/storefront-kit/subtemplates/header/MegaMenu';
+import { MobileNavDrawer } from '@forgeco/storefront-kit/subtemplates/header/MobileNavDrawer';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { FilterDrawer } from './FilterDrawer';

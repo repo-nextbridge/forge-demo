@@ -21,9 +21,9 @@
 // that must both be members of closed allow-lists. An unbounded width would let anyone mint unbounded cache
 // entries and unbounded CPU on a small box; off-ladder is a 400 before any fetch.
 
-import { isImageFormat } from '@forgecommerce/storefront-kit/media/driver';
-import { mediaProxyPath, normalizeProviderKey } from '@forgecommerce/storefront-kit/media/key';
-import { isAllowedWidth } from '@forgecommerce/storefront-kit/media/widths';
+import { isImageFormat } from '@forgeco/storefront-kit/media/driver';
+import { mediaProxyPath, normalizeProviderKey } from '@forgeco/storefront-kit/media/key';
+import { isAllowedWidth } from '@forgeco/storefront-kit/media/widths';
 import { acceptFor } from '@/lib/derivative-accept';
 
 /** The quality every derivative is built at. Kept OUT of the URL on purpose — one more free dimension is one

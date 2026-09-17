@@ -2,7 +2,7 @@
 // forks the template. The CMS routes the page's slug to this template_key ('privacy'). Demo copy — NOT legal
 // advice; a real store replaces it with a policy reviewed for the LGPD.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 export function Privacy({ page }: { page: PageDoc }) {

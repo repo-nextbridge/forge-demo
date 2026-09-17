@@ -16,7 +16,7 @@
 // A tab with no data never renders: no content sections → those tabs are absent; no custom fields → no "Detalhes".
 // The first tab is selected by default. (This replaces the S2 <details> accordions the PDP shipped with.)
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { Markdown } from '@/components/Markdown';
 import { customFieldEntries, labelOf } from '@/lib/custom-fields';
 import styles from './ProductTabs.module.css';

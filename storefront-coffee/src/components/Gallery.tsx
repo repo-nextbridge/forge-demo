@@ -20,9 +20,9 @@
 // two <img>s disagreed on `src`/`srcset`/`sizes` at hydration. Props cross the boundary; the env does not.
 'use client';
 
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { altOf, mediaSrcOf } from '@forgecommerce/storefront-kit/media/src';
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { altOf, mediaSrcOf } from '@forgeco/storefront-kit/media/src';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { useRef, useState } from 'react';
 import { embedSrc, isVideo } from '@/lib/gallery';
 import styles from './Gallery.module.css';

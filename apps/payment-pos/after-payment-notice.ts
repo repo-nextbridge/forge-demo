@@ -22,7 +22,7 @@
 // The confirmation slot now compares WHO IT IS CALLING against WHO THE KERNEL SAYS CHARGED, and hands each
 // block the verdict as `settledByThisApp`. The comparison belongs there and not here, and the reason is worth
 // keeping written down: an app that recognised its own id would have to HARDCODE that id — it cannot import
-// its own manifest without dragging `@forgecommerce/contracts` into the front bundle — and then a fork or a
+// its own manifest without dragging `@forgeco/contracts` into the front bundle — and then a fork or a
 // rename would put the class defect back in silence. This app therefore knows the answer without knowing its
 // own name.
 //

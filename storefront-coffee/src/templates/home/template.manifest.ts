@@ -2,7 +2,7 @@
 // ENTIRELY from these (S6-FIXPACK: no hardcoded hero, no default shelf) — an empty composition is an empty
 // home. The slot NAMES are stable: saved compositions target them (never rename, only add).
 
-import type { TemplateManifest } from '@forgecommerce/storefront-kit/slots/registry';
+import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
 
 export const homeManifest: TemplateManifest = {
   template: 'home',

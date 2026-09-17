@@ -87,15 +87,15 @@ const tally = (out, word) => Number(new RegExp(`^ℹ ${word} (\\d+)$`, 'm').exec
 function impostor() {
   const dir = mkdtempSync(join(tmpdir(), 'forge-impostor-'));
   mkdirSync(join(dir, 'packages', 'storefront-kit'), { recursive: true });
-  writeFileSync(join(dir, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgecommerce/storefront-kit"}');
+  writeFileSync(join(dir, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgeco/storefront-kit"}');
   mkdirSync(join(dir, 'extensions', 'nothing-this-box-composes'), { recursive: true });
   writeFileSync(
     join(dir, 'extensions', 'nothing-this-box-composes', 'package.json'),
-    '{"name":"@forgecommerce/ext-nothing-this-box-composes","forge":{"origin":"platform"}}',
+    '{"name":"@forgeco/ext-nothing-this-box-composes","forge":{"origin":"platform"}}',
   );
   writeFileSync(
     join(dir, 'extensions', 'composition.base.json'),
-    JSON.stringify({ apps: [{ id: 'nothing-this-box-composes', package: '@forgecommerce/ext-nothing-this-box-composes' }] }),
+    JSON.stringify({ apps: [{ id: 'nothing-this-box-composes', package: '@forgeco/ext-nothing-this-box-composes' }] }),
   );
   const git = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' });
   git('init', '-q', '-b', 'impostor');

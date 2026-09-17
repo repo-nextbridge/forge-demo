@@ -16,9 +16,9 @@
 // imported one app's type would silently become that app's injection. If a block's shape ever drifts from
 // these, the generated registry stops compiling at the call site — which is the whole point of generating it.
 
-import { mediaOptimized } from '@forgecommerce/storefront-kit/media/src';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { mediaOptimized } from '@forgeco/storefront-kit/media/src';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { BundlePairQuoted } from '@/components/BundlePairQuoted';
 import { ProductCard } from '@/components/ProductCard';

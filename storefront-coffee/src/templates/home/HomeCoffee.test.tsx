@@ -4,7 +4,7 @@
 // size and others in six, and (today) no reviews at all. A page asserted against the fullest product looks
 // correct in review and breaks on the seventh coffee somebody adds.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import type { WallReview } from '@/lib/coffee/reviews-view';

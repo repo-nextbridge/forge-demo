@@ -2,7 +2,7 @@
 // pick marks the swatch, narrows the gallery to that color's photos, updates the price/name, and rewrites the
 // `?sku=` deep-link. A size-only product keeps the S5/S6 gallery mechanic (covered by media/deeplink tests).
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

@@ -37,7 +37,7 @@
 // see `src/lib/own-store.ts` for the mechanism (box-up writes it, compose delivers it) and for the
 // hand-written id that already rotted once in the café's edge rule (`caddy/extra-local/coffee.caddy`).
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import { ownStoreId, ownStoreProblem } from '@/lib/own-store';
 import { About } from './About';
 import { CoffeeAbout } from './CoffeeAbout';

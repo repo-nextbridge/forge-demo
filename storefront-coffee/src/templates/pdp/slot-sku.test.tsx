@@ -21,7 +21,7 @@ vi.mock('@/lib/extensions/ExtensionOutlet', () => ({
   },
 }));
 vi.mock('@/lib/cart-actions', () => ({ addManyToCartAction: async () => {} }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ categories: async () => ({}) }),
 }));
 vi.mock('@/lib/cardChrome', () => ({
@@ -45,7 +45,7 @@ vi.mock('./template', () => ({
   ),
 }));
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { PdpView } from './PdpView';
 
 const PRODUCT = {

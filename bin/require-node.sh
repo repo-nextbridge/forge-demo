@@ -29,7 +29,7 @@
 # ── ★★ WHERE THE NUMBER COMES FROM: THE LOCK, BECAUSE THE FLOOR IS A PROPERTY OF THE RELEASE ─────────────
 #
 # The first version of this file TYPED the floor, and said at length why it had to: the number lived in the
-# monorepo's root package.json and in no artifact this box receives — not in a published `@forgecommerce/*`
+# monorepo's root package.json and in no artifact this box receives — not in a published `@forgeco/*`
 # package, not in `templates/instance/`, and not in `forge.lock`. One number in two repositories is two
 # truths that age apart in silence, on the day the product raises its floor and nobody edits the other side.
 #

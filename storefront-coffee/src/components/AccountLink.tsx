@@ -23,8 +23,8 @@
 // served to the next visitor. This is the same "by-possession pieces arrive a beat later" pattern the
 // mini-cart uses.
 
-import { Check, UserRound } from '@forgecommerce/storefront-kit/icons';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { Check, UserRound } from '@forgeco/storefront-kit/icons';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import { useEffect, useState } from 'react';
 import styles from './AccountLink.module.css';
 

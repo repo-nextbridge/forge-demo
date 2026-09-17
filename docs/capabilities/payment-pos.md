@@ -93,7 +93,7 @@ cada bloco (`settledByThisApp: 'yes' | 'no' | 'unknown'`, `pk23/p4` no produto).
 `'no'`** e desenha nos outros dois.
 
 ⚠️ **Por que o app não reconhece o próprio id:** ele teria de **escrevê-lo à mão** — não dá para importar o
-próprio manifesto sem arrastar o `@forgecommerce/contracts` para o bundle da frente — e aí um *fork* ou um
+próprio manifesto sem arrastar o `@forgeco/contracts` para o bundle da frente — e aí um *fork* ou um
 *rename* recolocaria o defeito **em silêncio**.
 
 ⚠️ **E `'unknown'` NÃO é `'no'`.** `'unknown'` é *"o kernel não nomeou ninguém"* — nenhuma tentativa de

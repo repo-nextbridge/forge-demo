@@ -20,7 +20,7 @@ import { KIT_SRC } from '@/test/kit-source';
 
 const SRC = join(import.meta.dirname, '../..');
 // ★★ CHECKOUT-APP (K1) — THE PROMISE IS KEPT ACROSS TWO TREES NOW. Every `header.*`, `footer.*` and
-// `minicart.*` outlet moved with the chrome into `@forgecommerce/storefront-kit`, while the manifests that
+// `minicart.*` outlet moved with the chrome into `@forgeco/storefront-kit`, while the manifests that
 // DECLARE those slots moved with it too. A sweep of this app alone would have found the declarations (through
 // `slotRegistry()`, which imports them) and none of the outlets — the guard would have gone red for the wrong
 // reason, and the day someone "fixed" that by narrowing the corpus it would have gone quiet for the right one.

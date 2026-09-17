@@ -8,7 +8,7 @@
 import {
   COUPON_ERROR_COPY,
   couponFailureOf,
-} from '@forgecommerce/storefront-kit/promo/coupon-error';
+} from '@forgeco/storefront-kit/promo/coupon-error';
 
 /**
  * ★★ THE REASON IS THE KERNEL'S OWN WORD, READ WITH THE KIT'S OWN READER.
@@ -19,7 +19,7 @@ import {
  *     → 400 {"code":"validation_failed","message":"this coupon does not exist",
  *            "details":{"reason":"coupon_not_found"}}
  *
- * `couponFailureOf` and `COUPON_ERROR_COPY` come from `@forgecommerce/storefront-kit/promo/coupon-error` —
+ * `couponFailureOf` and `COUPON_ERROR_COPY` come from `@forgeco/storefront-kit/promo/coupon-error` —
  * the same five sentences the reference storefront shows, over the vocabulary the kernel wave agreed to.
  * Re-writing that map here would put the product's vocabulary in a second place, and this would be the copy
  * that rots: a reason added upstream would arrive as `unknown` and the till would say nothing new.

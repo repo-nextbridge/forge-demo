@@ -13,7 +13,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
 const { readClient } = vi.hoisted(() => ({ readClient: vi.fn() }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ readClient }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ readClient }));
 // The render's furniture is not what is under test — only WHICH question the view asks the port.
 vi.mock('@/lib/cardChrome', () => ({
   cardChrome: async () => ({ freeShippingThreshold: null, maxInstallments: 1 }),
@@ -24,7 +24,7 @@ vi.mock('@/components/ProductCard', () => ({ ProductCard: () => null }));
 vi.mock('@/components/JsonLd', () => ({ JsonLd: () => null }));
 vi.mock('@/lib/extensions/ExtensionOutlet', () => ({ ExtensionOutlet: () => null }));
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { parseFilterState } from '@/lib/filters/filter-url';
 import {
   CollectionView,

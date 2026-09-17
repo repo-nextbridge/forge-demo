@@ -19,8 +19,8 @@
 // props. That is the browser's situation exactly. A unit test cannot catch this (it renders once, in one
 // environment) — this one renders twice, in two, and hydrates across.
 
-import { mediaOptimized } from '@forgecommerce/storefront-kit/media/src';
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
+import { mediaOptimized } from '@forgeco/storefront-kit/media/src';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
 import { act } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';

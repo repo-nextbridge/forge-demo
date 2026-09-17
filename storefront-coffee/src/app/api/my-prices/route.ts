@@ -19,8 +19,8 @@
 //   · the kernel read is `no-store` (customer-client), so Next's shared data cache can never hold one
 //     shopper's prices and hand them to the next.
 
-import { customerClient } from '@forgecommerce/storefront-kit/kernel-write-clients';
-import { readCustomerSession } from '@forgecommerce/storefront-kit/session';
+import { customerClient } from '@forgeco/storefront-kit/kernel-write-clients';
+import { readCustomerSession } from '@forgeco/storefront-kit/session';
 import { NextResponse } from 'next/server';
 import { MY_PRICES_MAX_SKUS } from '@/lib/prices/overlay';
 import { resolveRequestStore } from '@/lib/store-context';

@@ -5,10 +5,10 @@
 // task — cheapest on the card, first on the PDP, no photo fallback at all. There is no backfill and nothing is
 // auto-starred, so "without" is the state of every product that exists today.
 
-import { productImageUrls } from '@forgecommerce/storefront-kit/media/seo';
-import type { MediaRef, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { coverMediaOf, defaultSku, displaySku } from '@forgecommerce/storefront-kit/sku';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { productImageUrls } from '@forgeco/storefront-kit/media/seo';
+import type { MediaRef, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { coverMediaOf, defaultSku, displaySku } from '@forgeco/storefront-kit/sku';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { ProductCard } from '@/components/ProductCard';

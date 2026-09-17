@@ -12,7 +12,7 @@
 // A mutation that flashes an indicator INSTANTLY (before 1s) violates the doctrine — the behavioural proof
 // below pins the representative wiring (AddToCartForm); the other three use the identical useDelayedFlag(busy).
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { AddToCartForm } from './minicart/AddToCartForm';

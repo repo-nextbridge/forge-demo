@@ -2,7 +2,7 @@
 // PDP title: caption-type links + a faint "/" separator + the ink current item. Shown at two depths (a single
 // crumb and a deeper path) so the separator/spacing is reviewable.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { Breadcrumb } from './Breadcrumb';
 
 export function BreadcrumbExamples() {

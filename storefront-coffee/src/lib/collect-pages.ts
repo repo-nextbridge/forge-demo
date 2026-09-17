@@ -4,7 +4,7 @@
 // two were already drifting: only one of them knew whether the walk had finished. A second copy of a walk is a
 // second answer to "did we get everything?", so it moved here rather than being duplicated a third time.
 
-import type { ReadList } from '@forgecommerce/storefront-kit/read-client';
+import type { ReadList } from '@forgeco/storefront-kit/read-client';
 
 /** The read port's hard ceiling for one products page (LIST_LIMITS.products.max). More is a 400, not a clamp. */
 export const PAGE = 100;

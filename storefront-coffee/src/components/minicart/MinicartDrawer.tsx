@@ -15,24 +15,24 @@
 // Semantic tokens only.
 'use client';
 
-import { backorderNotice } from '@forgecommerce/storefront-kit/checkout/backorder';
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import { FadeLayer } from '@forgecommerce/storefront-kit/FadeLayer';
-import { Trash2, X } from '@forgecommerce/storefront-kit/icons';
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
+import { backorderNotice } from '@forgeco/storefront-kit/checkout/backorder';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import { FadeLayer } from '@forgeco/storefront-kit/FadeLayer';
+import { Trash2, X } from '@forgeco/storefront-kit/icons';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { formatMoney } from '@forgeco/storefront-kit/money';
 import {
   lineDiscountLabels,
   linePricePair,
   savingsFrom,
   totalizerLabel,
   totalRowsFor,
-} from '@forgecommerce/storefront-kit/promo/discount-lines';
-import { GiftBlock, GiftDepartedNotice } from '@forgecommerce/storefront-kit/promo/GiftBlock';
-import { departedGifts } from '@forgecommerce/storefront-kit/promo/gifts';
-import { ThresholdProgress } from '@forgecommerce/storefront-kit/promo/ThresholdProgress';
-import type { GiftLine } from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/promo/discount-lines';
+import { GiftBlock, GiftDepartedNotice } from '@forgeco/storefront-kit/promo/GiftBlock';
+import { departedGifts } from '@forgeco/storefront-kit/promo/gifts';
+import { ThresholdProgress } from '@forgeco/storefront-kit/promo/ThresholdProgress';
+import type { GiftLine } from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Slot } from '@/lib/slots/Slot';
 import styles from './MinicartDrawer.module.css';

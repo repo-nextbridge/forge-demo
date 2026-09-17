@@ -1,11 +1,11 @@
 // PDP metadata + structured data, shared by both routes that can render a product (the canonical
 // category-path route and the /p/<handle> alias). Canonical = the primary-category path (locked SEO).
 
-import { canonicalProductPath } from '@forgecommerce/storefront-kit/catalog-path';
-import { productImageUrls } from '@forgecommerce/storefront-kit/media/seo';
-import { displayPrice } from '@forgecommerce/storefront-kit/promo/display-price';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { displaySku } from '@forgecommerce/storefront-kit/sku';
+import { canonicalProductPath } from '@forgeco/storefront-kit/catalog-path';
+import { productImageUrls } from '@forgeco/storefront-kit/media/seo';
+import { displayPrice } from '@forgeco/storefront-kit/promo/display-price';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { displaySku } from '@forgeco/storefront-kit/sku';
 import type { Metadata } from 'next';
 import type { ProductStructuredData } from '@/lib/product-structured-data/contract';
 

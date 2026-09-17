@@ -4,8 +4,8 @@
 // null. Crucially, nothing in the storefront was edited to teach it about `shelves` — discovery
 // is by registry + runtime install, not a hardcoded branch.
 
-import type { InstalledExtension } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { InstalledExtension } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -15,7 +15,7 @@ const extensionsMock = vi.fn<() => Promise<InstalledExtension[] | null>>();
 let storeFlagsMock: () => Promise<{ timezone: string } | null> = async () => ({
   timezone: 'America/Sao_Paulo',
 });
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   // Q3-HYDRATION: the outlet resolves the STORE's clock for the blocks it renders (see ExtensionOutlet.tsx),
   // so the stub answers `store_flags` too. `storeFlagsMock` is a variable so a case can make the read degrade.
   readClient: () => ({ extensions: () => extensionsMock(), storeFlags: () => storeFlagsMock() }),

@@ -3,9 +3,9 @@
 // suggests CATEGORIES (from the catmap) + a few NEWEST products. Additive: when SIG lands, swap/augment the
 // product row with curated best-sellers. Server-rendered links (no JS).
 
-import { ltreeToSegments } from '@forgecommerce/storefront-kit/catalog-path';
-import type { CategoryMap, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { ltreeToSegments } from '@forgeco/storefront-kit/catalog-path';
+import type { CategoryMap, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
 import { Shelf } from '@/components/Shelf';

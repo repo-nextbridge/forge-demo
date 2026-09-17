@@ -1,5 +1,5 @@
-import type { CategoryMap } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { CategoryMap } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { cleanup } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';

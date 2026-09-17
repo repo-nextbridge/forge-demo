@@ -12,15 +12,15 @@
 // asserted there, against the real component. A test that imported the bar here would be asserting the same
 // fact twice and calling the second one end-to-end.
 
-import type { InstalledExtension } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { InstalledExtension } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
 import { resolveBlock } from './registry';
 
 const extensionsMock = vi.fn<() => Promise<InstalledExtension[] | null>>();
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({
     extensions: () => extensionsMock(),
     storeFlags: async () => ({ timezone: 'America/Sao_Paulo' }),

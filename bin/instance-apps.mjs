@@ -17,7 +17,7 @@
 // (pk26/D2) — the apps this box owns, and the list is DERIVED so a fourth costs nobody a line. Their manifests
 // are written in the monorepo's vocabulary and NOTHING here or in the oven ever resolves it:
 //
-//     "@forgecommerce/contracts": "workspace:*"     ← a pnpm workspace link; there is no workspace here
+//     "@forgeco/contracts": "workspace:*"     ← a pnpm workspace link; there is no workspace here
 //     "@types/node": "catalog:", "vitest": "catalog:", …   ← a pnpm catalog; there is no catalog here
 //
 // `catalog:` and `workspace:*` are protocols only pnpm understands, inside a workspace these apps are not in
@@ -79,7 +79,7 @@ export function declaredDependencies(app) {
 }
 
 /** A workspace package of the Forge checkout, by the name its own `package.json` declares — never by guessing
- *  a directory from the package name, because `@forgecommerce/contracts` lives in `packages/contracts`. */
+ *  a directory from the package name, because `@forgeco/contracts` lives in `packages/contracts`. */
 function workspacePackage(tree, name) {
   const packages = join(tree, 'packages');
   if (!existsSync(packages)) return null;
@@ -172,7 +172,7 @@ export function toolFromTree(tree, bin) {
 
 // ── THE CHECKOUT AN APP OF THIS BOX IS LINKED AGAINST ────────────────────────────────────────────────────
 
-/** A Forge checkout can only lend an app its contracts if that package has been BUILT: `@forgecommerce/
+/** A Forge checkout can only lend an app its contracts if that package has been BUILT: `@forgeco/
  *  contracts` declares `main: ./dist/index.js`, and a tree with no `dist` links cleanly and then fails at
  *  import. Measured 2026-09-08 against the worktree at the pinned commit, which had never been built:
  *  `manifest.test.ts` alone went red and 14 of 23 tests ran — a RED that says nothing about this app. */
@@ -192,7 +192,7 @@ export function lendable(base) {
  * validated against — none of them a versioned surface — which is what `bin/pack-apps.sh` already does with
  * whatever checkout the operator names. That reasoning was measured false on 2026-09-14, and the set it is
  * false about is DERIVED, not typed: `declaredDependencies()` lends whatever an app's own manifest names, and
- * `apps/demo-setup` names `@forgecommerce/storefront-kit` — the kit. That IS the versioned surface, and it is
+ * `apps/demo-setup` names `@forgeco/storefront-kit` — the kit. That IS the versioned surface, and it is
  * precisely the thing `bin/fork-typecheck.guard.mjs` refuses to take from an unpinned tree.
  *
  * What it cost, on this machine, on an untouched tree: the only checkout here sits 545 commits BEHIND the
@@ -217,7 +217,7 @@ export function lendingTree() {
   }
   tried.push(
     found.path
-      ? `${found.path} — the tree at ${pinned.ref}, but @forgecommerce/contracts is not built there (pnpm build)`
+      ? `${found.path} — the tree at ${pinned.ref}, but @forgeco/contracts is not built there (pnpm build)`
       : `no checkout at ${pinned.ref} on this machine`,
   );
   for (const line of found.tried ?? []) tried.push(line);

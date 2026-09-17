@@ -6,7 +6,7 @@
 // box here, which is what got photographed as "the categories are broken". It now renders the deliberate empty
 // state (the category's initial), and this page is where a human sees the two side by side.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { type CategoryTile, CategoryTilesView } from './CategoryTiles';
 
 /** A dark line-icon glyph as a data URI — a stand-in for the seed's category icons (they are PNG art on white). */

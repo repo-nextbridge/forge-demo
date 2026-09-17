@@ -16,8 +16,8 @@ import {
   cardBadges,
   MAX_CARD_BADGES,
   SIGNAL_PROVENANCE,
-} from '@forgecommerce/storefront-kit/promo/badges';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/promo/badges';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, within } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { ProductCard } from '@/components/ProductCard';

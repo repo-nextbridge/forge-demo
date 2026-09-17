@@ -1,7 +1,7 @@
 // Catalog example for the PDP's non-image media block (/ui-storefront/media-blocks) — DocumentLinks renders a
 // `document` MediaRef as a download link, served with the url the read port already resolved (or the provider
 // key as a fallback). Shows a labelled document, one with the default label, and a key-only fallback url.
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { DocumentLinks } from './MediaBlocks';
 
 const MEDIA: MediaRef[] = [

@@ -21,14 +21,14 @@
 //
 // WHICH extensions are INSTALLED (per tenant) is discovered at runtime via read.extensions —
 // never hardcoded. The storefront imports only the block (a React component), never the manifest (which
-// would pull @forgecommerce/contracts, forbidden here): slot -> block comes from read.extensions at runtime.
+// would pull @forgeco/contracts, forbidden here): slot -> block comes from read.extensions at runtime.
 
-import type { BlockComponent } from '@forgecommerce/storefront-kit/extensions/registry';
+import type { BlockComponent } from '@forgeco/storefront-kit/extensions/registry';
 import { resolveComposedBlock } from './generated/registry';
 
 // The GENERATED registry imports `BlockComponent` from `'../registry'` — this module is its stable address,
 // whatever else moves. Re-exported rather than redeclared: one contract, in the kit, for both deployables.
-export type { BlockComponent } from '@forgecommerce/storefront-kit/extensions/registry';
+export type { BlockComponent } from '@forgeco/storefront-kit/extensions/registry';
 
 // ★ CHECKOUT-APP (K1) — the block CONTRACT moved to the kit (both deployables render the same blocks); what
 // stayed is this app's own answer to "which component is `<extension>.<block>` here": the generated registry

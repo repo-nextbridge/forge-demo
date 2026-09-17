@@ -3,7 +3,7 @@
 // no-JS baseline (rendered until the island mounts). jsdom has no PointerEvent, so we drive the native <input
 // type=range> via fireEvent.change + a release event (mouseUp) — the accessible, library-free path.
 
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import type { FilterState } from '@/lib/filters/filter-url';

@@ -2,8 +2,8 @@
 // 4-column grid (2 on mobile) built from the CORE `read.brands` map (the seed logos), each linking to its
 // brand page. Server Component; degrades to nothing when the store has no active brands (never an empty grid).
 // The presentational body (BrandsGridView) is split out so the preview gallery can render it with a fixture.
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import styles from './BrandsGrid.module.css';
 
 export type BrandCell = { slug: string; name: string; logoUrl?: string | null; href: string };

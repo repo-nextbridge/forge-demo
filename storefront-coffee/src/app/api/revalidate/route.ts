@@ -17,7 +17,7 @@
 // `tag` may repeat, so one event that touches several tags is one call — and a single `tag` is exactly the
 // call the admin has always made.
 
-import { revalidateSecret } from '@forgecommerce/storefront-kit/config';
+import { revalidateSecret } from '@forgeco/storefront-kit/config';
 import { revalidateTag } from 'next/cache';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';

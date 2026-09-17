@@ -23,7 +23,7 @@ import { join, relative, sep } from 'node:path';
 import {
   ceilingRefusalDigest,
   ceilingWaitSentence,
-} from '@forgecommerce/storefront-kit/ceiling-digest';
+} from '@forgeco/storefront-kit/ceiling-digest';
 import { render } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
@@ -145,7 +145,7 @@ test('★ the retry re-renders the refused segment — which, once the window ro
 // real boundary and is understood. This is the half that proves the digest TRAVELS to this fork at all — the
 // fork installs the kit from a tarball, so "the kit labels a 429" and "this fork sees the label" are two facts.
 test('★★ a 429 from the port, labelled by the vendored kit, lands on the café’s busy body', async () => {
-  const { ReadPortError } = await import('@forgecommerce/storefront-kit/read-client');
+  const { ReadPortError } = await import('@forgeco/storefront-kit/read-client');
   const thrown = new ReadPortError('products', 429, '40') as Error & { digest?: string };
   expect(
     thrown.digest,

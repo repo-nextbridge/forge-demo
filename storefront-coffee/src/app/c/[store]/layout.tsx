@@ -38,9 +38,9 @@ import {
   REACHED_AT_THE_STORES_OWN_ADDRESS,
   requirePublicStorefront,
   requireStore,
-} from '@forgecommerce/storefront-kit/require-store.server';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
-import { storeThemeStyle } from '@forgecommerce/storefront-kit/theme/store-theme';
+} from '@forgeco/storefront-kit/require-store.server';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
+import { storeThemeStyle } from '@forgeco/storefront-kit/theme/store-theme';
 import type { ReactNode } from 'react';
 import { CoffeeChrome } from '@/components/coffee/CoffeeChrome';
 

@@ -10,13 +10,13 @@
 // apps/api/src/cms.e2e.test.ts ("unpublishing removes one"). Asserting it here would have looked like coverage
 // and tested the mock.
 
-import { CATALOG_REVALIDATE_SECONDS } from '@forgecommerce/storefront-kit/edge-cache';
+import { CATALOG_REVALIDATE_SECONDS } from '@forgeco/storefront-kit/edge-cache';
 import type {
   BrandMap,
   CategoryMap,
   ProductDoc,
   PublishedPageSummary,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { PATHS_PAGE } from '@/lib/collect-pages';
 import { CACHEABLE_ENTRIES, SITEMAP_MAX_URLS } from '@/lib/sitemap-data';
@@ -64,7 +64,7 @@ vi.mock('next/cache', () => ({ unstable_cache: unstableCache }));
 // face this document may not spend. It is never reached on the way through — the modules this test loads that
 // do use `readClient` (`templates/collection/CollectionView`) call it only inside handlers this file does not
 // run; if that ever changes, the sentence above is what the run prints.
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   resolveStoreForHost,
   readClient: () => {
     throw new Error('the sitemap is an enumeration, not a shopper page — it must not spend the anonymous face');

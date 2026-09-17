@@ -27,7 +27,7 @@
 // (byte for byte, the request it always sent) for every other master. An extension we do not know falls back to
 // the original list: today's behaviour, which is safe for every master Next keeps.
 
-import type { ImageFormat } from '@forgecommerce/storefront-kit/media/driver';
+import type { ImageFormat } from '@forgeco/storefront-kit/media/driver';
 
 /** What the `orig` lane asks for when the optimizer will keep the master's own format anyway. No wildcard:
  * `image/*` would match `image/webp` and the optimizer would transcode, which would make the URL a lie. */

@@ -13,7 +13,7 @@ import {
   BULK_AVAILABILITY_MAX_SKUS,
   BULK_PRODUCTS_MAX_PAGE,
   PRODUCTS_MAX_PAGE,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { batchSkus } from './batch-skus';
 

@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./port', () => ({ totemCommand: () => ({}) }));
 vi.mock('./store', () => ({ resolveTotemStore: () => ({ id: 'sto_test', handle: 'balcao' }) }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   commandBaseUrl: () => 'http://kernel:3000',
 }));
 

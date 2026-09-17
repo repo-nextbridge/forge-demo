@@ -38,10 +38,10 @@ storefront** — DEMO-OUT. The reference storefront ships the slot and its machi
 the `dismiss`/`reopen` Server Actions, the full-screen interstitial that preserves the deep link) with an
 **empty** gate registry, because who gates a store is that store's decision.
 
-**Why the package is `@forge/…` and not `@forgecommerce/…`.** Two different names live here and only one
+**Why the package is `@forge/…` and not `@forgeco/…`.** Two different names live here and only one
 of them moved. The extension **id** (`demo-gate`) and the **slot** (`storefront:gate`) are runtime
 identity — manifest, `read.extensions`, Compose, the row in the database of whoever installed it — and
-they are frozen. The npm **scope** is the distribution label, and N1 governs it: `@forgecommerce/*` is
+they are frozen. The npm **scope** is the distribution label, and N1 governs it: `@forgeco/*` is
 what crosses the border into a customer's repo, `@forge/*` stays inside. Since this app is no longer
 published, the old scope was a name promising an install nobody could perform. It was not renamed; it was
 relabelled to tell the truth about where it can be installed FROM. When DEMO-OUT step 2 moves it into the
@@ -114,7 +114,7 @@ Without it the build fails loudly (`Module parse failed: Unexpected token`) — 
 unstyled page.
 
 The blocks style themselves in semantic design tokens, never literal colours, so install
-`@forgecommerce/theme-storefront-vanilla` (or provide the same token names from your own theme) and import
+`@forgeco/theme-storefront-vanilla` (or provide the same token names from your own theme) and import
 its `tokens.css` once in your root layout.
 
 ## Licence

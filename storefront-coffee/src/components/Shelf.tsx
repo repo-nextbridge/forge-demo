@@ -5,8 +5,8 @@
 // via cardChrome and threads in. Absent → the plain card (no chrome), keeping every existing renderToString of a
 // bare Shelf green.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import { Fragment, type ReactNode } from 'react';
 import { ProductCard } from './ProductCard';
 import styles from './Shelf.module.css';

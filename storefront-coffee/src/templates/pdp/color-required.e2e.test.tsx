@@ -12,8 +12,8 @@
 // Not a duplicate of the earlier fix: that one was about clicking the DEFAULT swatch not lighting up (a pick
 // that changed no value). This is about buying with no pick at all.
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';

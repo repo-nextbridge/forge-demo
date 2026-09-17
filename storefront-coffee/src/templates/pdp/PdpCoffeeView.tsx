@@ -3,10 +3,10 @@
 // The buy box is a client component and the cart write is a SERVER ACTION — so the action is bound to the
 // store here, on the server, and handed down. The client never learns a store id it could change.
 
-import { fetchPublishedReviews } from '@forgecommerce/ext-reviews/reviews';
-import { fetchRatingSummaries } from '@forgecommerce/ext-reviews/ratings';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { fetchPublishedReviews } from '@forgeco/ext-reviews/reviews';
+import { fetchRatingSummaries } from '@forgeco/ext-reviews/ratings';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import { addManyToCartAction } from '@/lib/cart-actions';
 import { ExtensionOutlet } from '@/lib/extensions/ExtensionOutlet';
 import { wallReviews } from '@/lib/coffee/reviews-view';

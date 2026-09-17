@@ -20,9 +20,9 @@
 // it is warming up and the screen tries again; `[]` → the section is genuinely empty and says so. Nothing
 // caches the negative answer, because the negative answer has a short shelf life by construction.
 
-import type { CatalogList, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { CatalogList, ProductDoc } from '@forgeco/storefront-kit/read-client';
 import type { MenuCard } from './menu-card';
-import { coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
+import { coverOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
 import { money } from './money';
 import { totemRead } from './port';
 import { resolveTotemStore } from './store';

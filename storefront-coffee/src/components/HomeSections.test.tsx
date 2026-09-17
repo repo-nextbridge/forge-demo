@@ -2,8 +2,8 @@
 // maps (read.categories / read.brands) and DEGRADE to nothing when empty (never an empty grid). Async server
 // components, so the tests call and await them.
 
-import type { BrandMap, CategoryMap } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { BrandMap, CategoryMap } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { BrandsGrid } from './BrandsGrid';
@@ -11,7 +11,7 @@ import { CategoryTiles } from './CategoryTiles';
 
 const categories = vi.fn<() => Promise<CategoryMap | null>>();
 const brands = vi.fn<() => Promise<BrandMap | null>>();
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ categories, brands }),
 }));
 

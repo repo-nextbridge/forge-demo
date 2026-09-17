@@ -32,7 +32,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { CoffeeChrome } from './CoffeeChrome';

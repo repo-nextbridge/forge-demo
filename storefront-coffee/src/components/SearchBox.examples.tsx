@@ -5,8 +5,8 @@
 // real photos.
 'use client';
 
-import type { SuggestProduct, SuggestResult } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SuggestProduct, SuggestResult } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { SearchBox } from './SearchBox';
 
 function item(

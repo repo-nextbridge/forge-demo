@@ -21,7 +21,7 @@
 // The STOREFRONT's chrome: the kit's composition, this app's three fragments.
 //
 // The chrome itself — skip link, header, main landmark, footer, and every `header.*`/`footer.*` extension
-// outlet — lives in `@forgecommerce/storefront-kit/chrome`, because the checkout deployable wears the same
+// outlet — lives in `@forgeco/storefront-kit/chrome`, because the checkout deployable wears the same
 // one and neither half may import the other's routes. What is the VITRINE's and could never be the kit's:
 //
 //   · the minicart CONTEXT and its five store-bound Server Actions (`(checkout)/checkout/actions`);
@@ -52,8 +52,8 @@
 // ★ The fork is the piece that does not inherit the platform's rules for free: the monorepo's typecheck is
 // green without it. Measured 2026-09-04, on the bake that produced this image.
 
-import { StorefrontChrome as KitChrome } from '@forgecommerce/storefront-kit/chrome';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { StorefrontChrome as KitChrome } from '@forgeco/storefront-kit/chrome';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { AccountLink } from '@/components/AccountLink';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';

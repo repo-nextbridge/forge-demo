@@ -46,13 +46,13 @@ const { resolveStoreForHost, storeHasGate } = vi.hoisted(() => ({
   resolveStoreForHost: vi.fn(async () => 'demo' as string | undefined),
   storeHasGate: vi.fn(async () => false),
 }));
-vi.mock('@forgecommerce/storefront-kit/config', async () => {
-  const actual = await vi.importActual<typeof import('@forgecommerce/storefront-kit/config')>(
-    '@forgecommerce/storefront-kit/config',
+vi.mock('@forgeco/storefront-kit/config', async () => {
+  const actual = await vi.importActual<typeof import('@forgeco/storefront-kit/config')>(
+    '@forgeco/storefront-kit/config',
   );
   return { ...actual, resolveStoreForHost };
 });
-vi.mock('@forgecommerce/storefront-kit/gate/directory', () => ({ storeHasGate }));
+vi.mock('@forgeco/storefront-kit/gate/directory', () => ({ storeHasGate }));
 
 const { middleware } = await import('./middleware');
 const {

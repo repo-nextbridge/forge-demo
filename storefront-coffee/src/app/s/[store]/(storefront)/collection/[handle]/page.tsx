@@ -7,7 +7,7 @@
 // routes the requests that DON'T carry a meaningful query to the twin, so the clean URL a crawler and most
 // shoppers ask for is served from the edge and only the filtered/paginated tail reaches this file.
 
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { parseFilterState } from '@/lib/filters/filter-url';
 import { CollectionView, collectionMetadata } from '@/templates/collection/CollectionView';

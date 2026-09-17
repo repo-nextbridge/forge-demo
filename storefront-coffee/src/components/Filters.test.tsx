@@ -3,8 +3,8 @@
 // sizes as a text grid, brands/cf as checkbox rows with counts, price as the no-JS form baseline; each is a plain
 // link carrying the filter-url convention, and "Limpar filtros" shows only with an active filter.
 
-import type { Facets } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { Facets } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import type { FilterState } from '@/lib/filters/filter-url';

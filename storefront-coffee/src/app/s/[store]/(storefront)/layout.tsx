@@ -7,7 +7,7 @@
 //
 // Route groups don't change the URL — these pages still resolve at `/s/<store>/...`.
 
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { ReactNode } from 'react';
 import { CoffeeChrome } from '@/components/coffee/CoffeeChrome';
 

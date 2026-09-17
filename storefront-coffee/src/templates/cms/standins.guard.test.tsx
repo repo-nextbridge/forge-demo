@@ -28,7 +28,7 @@
 // friends), a phone made of zeros, lorem, and the scaffolding words. Real copy for a fictional shop passes —
 // what is refused is copy that ANNOUNCES it was never written.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import { renderToString } from 'react-dom/server';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

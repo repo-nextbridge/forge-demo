@@ -1063,7 +1063,7 @@ on — the defect it grades is invisible everywhere else.
 
 ⚠️ **And one of them is about a rule this repository never asked for.** `bin/store-mount-drift.guard.mjs`
 reads the REFERENCE vitrine out of that same pinned checkout and requires `storefront-coffee/`'s
-store-scoped root layouts to mount whatever the reference mounts there from `@forgecommerce/*`. It exists
+store-scoped root layouts to mount whatever the reference mounts there from `@forgeco/*`. It exists
 because `/s/cafe` answered **200** from the fork on the same bench where `/s/outlet` answered 404 from the
 reference: a fix that shipped in the product does not travel to a cut of it, and until this guard the only
 thing that knew was `curl`. A red here is not automatically "go copy the product" — this fork owns its
@@ -1074,7 +1074,7 @@ is the eye for what is up there.** `sitemap.xml`, `robots.txt` and the `api/*` h
 store-scoped tree and outside the middleware matcher, so no layout refuses on their behalf: whatever they
 refuse, they refuse in their own body. This guard derives that complement (`src/app/**` minus every path
 holding a `[store]` segment), reads which of those routes the REFERENCE refuses on before answering — a
-`@forgecommerce/*` call whose value decides an early `return` out of an exported handler — and requires the
+`@forgeco/*` call whose value decides an early `return` out of an exported handler — and requires the
 fork's file at the same path to ask the same question. It exists because the fork's `src/app/sitemap.ts`
 was cut without `readClient().storeFlags`, so a store with **no public page** (`storefront_enabled: false`)
 had its whole list of URLs — categories, CMS pages, products, brands, collections, every one of them a

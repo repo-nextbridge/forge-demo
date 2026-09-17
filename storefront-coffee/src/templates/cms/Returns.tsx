@@ -1,7 +1,7 @@
 // The "Trocas e devoluções" template (CMS-1, yellow zone). CONTENT is theme code — a store edits it here or
 // forks the template. The CMS routes the page's slug to this template_key ('returns'). Demo copy.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 export function Returns({ page }: { page: PageDoc }) {

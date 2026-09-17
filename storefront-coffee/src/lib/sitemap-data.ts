@@ -89,10 +89,10 @@
 // up to five minutes later. A sitemap is read by robots, rarely; minutes of staleness are free, and inventing
 // a second TTL for it would only be one more number to keep in agreement with the first.
 
-import { ltreeToSegments, productPathFrom } from '@forgecommerce/storefront-kit/catalog-path';
-import { isCategoryBrowsable } from '@forgecommerce/storefront-kit/category-visibility';
-import { instanceReadClient } from '@forgecommerce/storefront-kit/config';
-import { CATALOG_REVALIDATE_SECONDS } from '@forgecommerce/storefront-kit/edge-cache';
+import { ltreeToSegments, productPathFrom } from '@forgeco/storefront-kit/catalog-path';
+import { isCategoryBrowsable } from '@forgeco/storefront-kit/category-visibility';
+import { instanceReadClient } from '@forgeco/storefront-kit/config';
+import { CATALOG_REVALIDATE_SECONDS } from '@forgeco/storefront-kit/edge-cache';
 import { unstable_cache } from 'next/cache';
 import { collectAllParallel, PAGE, PATHS_PAGE, type Walk, walkStopText } from '@/lib/collect-pages';
 import { collectionPath } from '@/templates/collection/CollectionView';

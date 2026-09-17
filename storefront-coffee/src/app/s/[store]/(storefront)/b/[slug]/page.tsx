@@ -5,10 +5,10 @@
 //
 // Dynamic: reads searchParams (pagination/filters). Port reads stay ISR-cached. Unknown/archived slug → 404.
 
-import { canonicalProductPath } from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { storeHref } from '@forgecommerce/storefront-kit/store-route';
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { canonicalProductPath } from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { storeHref } from '@forgeco/storefront-kit/store-route';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';

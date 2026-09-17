@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { Price } from '@forgecommerce/storefront-kit/Price';
+import { Price } from '@forgeco/storefront-kit/Price';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { KIT_SRC } from '@/test/kit-source';
@@ -20,7 +20,7 @@ import { KIT_SRC } from '@/test/kit-source';
 // against a file we do NOT publish while claiming to prove the theme is swappable. `exports` gives the same
 // bytes in both worlds: a pnpm symlink here, a real `node_modules` there.
 const tokensPath = createRequire(import.meta.url).resolve(
-  '@forgecommerce/theme-storefront-vanilla/tokens.css',
+  '@forgeco/theme-storefront-vanilla/tokens.css',
 );
 // CHECKOUT-APP (K1): `Price` is the kit's now — both deployables print money — so the stylesheet
 // this test reads moved with it. Resolved through the package's exports map, never spelled as a path.

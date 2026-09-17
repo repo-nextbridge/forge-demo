@@ -35,7 +35,7 @@
 //
 // A REFUSAL, defined structurally so that no route and no function is ever typed out here:
 //
-//   · it is asked of the PORT — the value comes from a binding this file imported from `@forgecommerce/*`,
+//   · it is asked of the PORT — the value comes from a binding this file imported from `@forgeco/*`,
 //     directly (`resolveStoreForHost(host)`) or through the read client (`readClient().storeFlags(store)`).
 //     The kit is the shared, versioned surface, which is the only thing a fork can fall BEHIND on; a file's
 //     own `@/lib` is its own business. Same boundary `store-mount-drift` draws, reached from another side.
@@ -72,7 +72,7 @@ const say = (line) => console.error(`[fork-refusal] ${line}`);
 
 /** The scope whose modules ARE the product's rules out here. A fork installs these by name; everything else
  *  it imports is its own file, and its own file is its own business. */
-const KIT_SCOPE = '@forgecommerce/';
+const KIT_SCOPE = '@forgeco/';
 
 /**
  * ★ THE REFUSALS THIS FORK HAS DECIDED NOT TO ADOPT — empty today, and it is the affordance that makes the

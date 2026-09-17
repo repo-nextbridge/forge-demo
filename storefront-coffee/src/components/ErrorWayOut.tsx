@@ -14,7 +14,7 @@
 // actions stand as they are.
 'use client';
 
-import { type StoreBase, pathScopedBase } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, pathScopedBase } from '@forgeco/storefront-kit/store-route';
 import { useEffect, useState } from 'react';
 import { currentStore, withStoreParam } from '@/lib/store-param';
 import { ErrorActions } from './ErrorActions';

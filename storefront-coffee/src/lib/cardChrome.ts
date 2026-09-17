@@ -8,7 +8,7 @@
 // Everything degrades to null: a down port, an absent read, a store with no free-shipping rate, or no payment
 // app installed → the card simply omits that tag/line. The card is a pure Server Component over this result.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
+import { readClient } from '@forgeco/storefront-kit/config';
 import { cache } from 'react';
 
 export type CardChrome = {

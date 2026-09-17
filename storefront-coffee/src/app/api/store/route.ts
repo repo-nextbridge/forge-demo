@@ -33,7 +33,7 @@
 // store-scoped, ISR-cached row that answers null for an id nobody owns. The category map it replaced was a
 // TENANT-wide document read for its truthiness alone.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
+import { readClient } from '@forgeco/storefront-kit/config';
 import { NextResponse } from 'next/server';
 import { resolveRequestStore } from '@/lib/store-context';
 

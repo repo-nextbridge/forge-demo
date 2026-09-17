@@ -29,14 +29,14 @@
 // The two trees render the SAME views (lib/catalog-view.tsx, the shared chrome) — they differ only in what
 // they are allowed to read. `lib/edge-cache.ts` holds the rule; nothing about it is per-customer.
 
-import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
+import { resolveStoreForHost } from '@forgeco/storefront-kit/config';
 import {
   cachedPathFor,
   isCacheableRequest,
   isServerActionSubmission,
   SERVER_ACTION_HEADER,
-} from '@forgecommerce/storefront-kit/edge-cache';
-import { storeHasGate } from '@forgecommerce/storefront-kit/gate/directory';
+} from '@forgeco/storefront-kit/edge-cache';
+import { storeHasGate } from '@forgeco/storefront-kit/gate/directory';
 import { type NextRequest, NextResponse } from 'next/server';
 import { ownStoreId } from './lib/own-store';
 import { isRootRoutePath } from './lib/root-routes';

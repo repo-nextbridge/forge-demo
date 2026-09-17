@@ -8,9 +8,9 @@
 // `apps/checkout/src/lib/promo/savings-closes-the-account.test.tsx`; this is the surface THIS build renders.
 // The arithmetic has one home (`promo/discount-lines`, in the kit) and both deployables import it.
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { CartPricing, Totalizer } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { CartPricing, Totalizer } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { MinicartDrawer } from '@/components/minicart/MinicartDrawer';

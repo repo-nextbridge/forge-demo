@@ -38,7 +38,7 @@ export default defineConfig({
     hookTimeout: 20_000,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    server: { deps: { inline: [/@forgecommerce\//] } },
+    server: { deps: { inline: [/@forgeco\//] } },
     // Process CSS modules so component styles inject into the test DOM and class names stay readable —
     // lets a test render the REAL component and read the style binding it actually consumes.
     css: { modules: { classNameStrategy: 'non-scoped' } },

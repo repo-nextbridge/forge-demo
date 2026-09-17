@@ -4,7 +4,7 @@
 // useMinicart() resolves. Shows the default label and a custom-label variant. The stub action is a no-op resolve.
 'use client';
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
 import { AddToCartForm } from './AddToCartForm';
 import { type MinicartActions, MinicartProvider } from './MinicartProvider';
 

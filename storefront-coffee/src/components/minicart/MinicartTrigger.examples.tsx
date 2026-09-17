@@ -4,9 +4,9 @@
 // open-mode (backdrop + mobile swipe-hint). This is the fidelity/behaviour-review surface for the minicart.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { useMemo } from 'react';
 import { type MinicartActions, MinicartProvider, useMinicart } from './MinicartProvider';
 import { MinicartTrigger } from './MinicartTrigger';

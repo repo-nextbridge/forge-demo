@@ -20,8 +20,8 @@
 // needs all nine keys is a page that breaks on the seventh coffee somebody adds. Nothing here invents a
 // placeholder: a value that is not there produces no row, no chip and no badge.
 
-import { displaySku } from '@forgecommerce/storefront-kit/sku';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { displaySku } from '@forgeco/storefront-kit/sku';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 
 /** The bag, narrowed once. `metadata` is `unknown` on the wire and every reader below goes through here. */
 function bagOf(product: ProductDoc): Record<string, unknown> {

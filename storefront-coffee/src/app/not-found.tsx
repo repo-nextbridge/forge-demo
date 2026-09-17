@@ -4,7 +4,7 @@
 // own. A store-scoped miss (unknown handle) uses `s/[store]/(storefront)/not-found.tsx`, which inherits the
 // header/footer and points its CTAs at the store the port confirmed.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';
 import { NotFoundTitle } from '@/components/NotFoundTitle';
 

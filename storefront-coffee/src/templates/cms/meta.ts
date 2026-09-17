@@ -3,7 +3,7 @@
 // rewrites `/<slug>` -> `/s/<store>/<slug>`, so the public canonical is the clean one). meta_title falls back
 // to the page title; meta_description is optional.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import type { Metadata } from 'next';
 
 export function pageMetadata(page: PageDoc): Metadata {

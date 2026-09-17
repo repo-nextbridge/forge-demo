@@ -3,7 +3,7 @@
 // as load-bearing as the page's — a single dynamic API here turns every cached page of this tree into a
 // runtime 500. It therefore reads nothing: the whole way out arrives as a client fragment.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';
 import { NotFoundWayOut } from '@/components/NotFoundWayOut';
 import { NotFoundTitle } from '@/components/NotFoundTitle';

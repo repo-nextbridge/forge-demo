@@ -1,7 +1,7 @@
 // The FAQ template (CMS-1, yellow zone). CONTENT (the questions/answers) is theme code — a store edits this
 // list directly or forks the template. The CMS only routes the page's slug to this template_key ('faq').
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 // Placeholder Q&A a store replaces in its theme. Kept in code by design (CMS-lite is a registry, not an editor).

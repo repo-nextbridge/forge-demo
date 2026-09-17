@@ -16,7 +16,7 @@
 // Public, like /api/slots: the names of the skins a shop can wear are implied by the rendered page, and the
 // admin proxies this server-side anyway.
 
-import { availableThemeKeys } from '@forgecommerce/storefront-kit/theme/resolve';
+import { availableThemeKeys } from '@forgeco/storefront-kit/theme/resolve';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

@@ -25,7 +25,7 @@
 // stand as they are, which is how a store-less 404 has always rendered.
 'use client';
 
-import { type StoreBase, pathScopedBase } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, pathScopedBase } from '@forgeco/storefront-kit/store-route';
 import { useEffect, useState } from 'react';
 import { currentStore, withStoreParam } from '@/lib/store-param';
 import { NotFoundActions } from './NotFoundActions';

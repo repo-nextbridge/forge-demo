@@ -11,8 +11,8 @@
 // not show. Then it reads "Mostrando 21 a 120 de 250" and a link back to the top of the list appears — the
 // browser's Back is not an affordance the page may count on (it is gone on a fresh deep link to `?page=999`).
 
-import { pluralNoun } from '@forgecommerce/storefront-kit/plural';
-import type { StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { pluralNoun } from '@forgeco/storefront-kit/plural';
+import type { StorePath } from '@forgeco/storefront-kit/store-route';
 import Link from 'next/link';
 import { hasMorePages } from '@/lib/filters/plp';
 import styles from './LoadMore.module.css';

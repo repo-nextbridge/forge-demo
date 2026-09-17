@@ -5,7 +5,7 @@
 // the map, so its card shows no stars.
 //
 // ★ F2 — IT NO LONGER IMPORTS THE APP, AND THAT IS THE WHOLE SLICE. This file used to say
-// `import { fetchRatingSummaries, type RatingSummary } from '@forgecommerce/ext-reviews/ratings'` — the last
+// `import { fetchRatingSummaries, type RatingSummary } from '@forgeco/ext-reviews/ratings'` — the last
 // LIBRARY weld in the tree, and the reason `reviews` could not be taken out of the product: the call and the
 // type both left with the app. Now the storefront declares the extension POINT and the shape it accepts
 // (`./card-annotations/contract`), the app implements it structurally and DECLARES that it does (its own

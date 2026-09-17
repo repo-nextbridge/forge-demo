@@ -17,7 +17,7 @@
 // The failure posture mirrors store-directory.ts: a port that is down must never break navigation. No
 // answer means no redirect, which is exactly the behaviour the storefront had before this existed.
 
-import { readBaseUrl } from '@forgecommerce/storefront-kit/config';
+import { readBaseUrl } from '@forgeco/storefront-kit/config';
 
 /** A hit is stable — an operator edits redirects on human timescales. */
 export const REDIRECT_POSITIVE_TTL_MS = 60_000;

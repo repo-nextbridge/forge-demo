@@ -11,8 +11,8 @@
 // (mega-menu categories, slot discovery) and the checkout wants a clean variant. The root stays chrome-less
 // so non-store roots (`/`, 404) don't inherit a store header. Nothing here fetches data.
 
-import { ImageDriverProvider } from '@forgecommerce/storefront-kit/ImageDriverProvider';
-import { imageDriverConfig } from '@forgecommerce/storefront-kit/media/driver';
+import { ImageDriverProvider } from '@forgeco/storefront-kit/ImageDriverProvider';
+import { imageDriverConfig } from '@forgeco/storefront-kit/media/driver';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 // Self-hosted Urbanist via next/font/local (no CDN, CSP-clean; no build-time network — the woff2 ship in the
@@ -20,7 +20,7 @@ import type { ReactNode } from 'react';
 // so `display: swap` no longer reflows when Urbanist finishes loading — the FOUT layout shift is gone (the empty
 // checkout's CLS regression). It also preloads the weights. `--font-urbanist` is wired into `--font-sans` by
 // globals.css. Figtree/Geist stay documented token swaps (design-storefront.md), off by default.
-import '@forgecommerce/theme-storefront-vanilla/tokens.css';
+import '@forgeco/theme-storefront-vanilla/tokens.css';
 import '../styles/globals.css';
 
 const urbanist = localFont({

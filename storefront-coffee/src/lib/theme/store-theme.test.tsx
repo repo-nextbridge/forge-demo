@@ -21,8 +21,8 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:f
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { StoreFlags } from '@forgecommerce/storefront-kit/read-client';
-import { safeThemeCss } from '@forgecommerce/storefront-kit/theme/store-theme';
+import type { StoreFlags } from '@forgeco/storefront-kit/read-client';
+import { safeThemeCss } from '@forgeco/storefront-kit/theme/store-theme';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -31,7 +31,7 @@ import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
  *  INHERITED by the standalone copy a customer owns, where that directory does not exist (and where asserting
  *  against it would be testing a file we do not publish). `exports` gives the same bytes in both worlds. */
 const REFERENCE_THEME = dirname(
-  createRequire(import.meta.url).resolve('@forgecommerce/theme-storefront-vanilla/tokens.css'),
+  createRequire(import.meta.url).resolve('@forgeco/theme-storefront-vanilla/tokens.css'),
 );
 
 /** The store → theme table the port would answer with. */
@@ -53,7 +53,7 @@ const storeFlagsMock = vi.fn(
   }),
 );
 
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({
     storeFlags: (store: string) => storeFlagsMock(store),
     // The `s/[store]` layout also asks who fills the gate slot. Nobody does here — the reference storefront's

@@ -16,8 +16,8 @@
 // nothing the day somebody decides otherwise. `storeHref` keeps the target right under path-based store
 // routing (`/s/<store>/checkout`) as well as on a store's own host.
 
-import { storeRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { storeRedirect } from '@forgeco/storefront-kit/store-navigation';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 
 export const dynamic = 'force-dynamic';
 

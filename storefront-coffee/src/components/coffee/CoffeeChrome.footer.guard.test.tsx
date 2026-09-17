@@ -12,7 +12,7 @@
 // ⚠️ AND IT ASSERTS THE `©` IS GONE. Not tidiness: a footer that gained the seal and kept the notice would
 // pass every positive check above while showing exactly what the change was meant to remove.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { CoffeeChrome } from './CoffeeChrome';

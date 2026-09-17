@@ -8,7 +8,7 @@
 // It branches on the one cause it CAN know: a read ceiling refusal carries a digest that names itself and the
 // port's own `Retry-After`. Everything else keeps the apology, which is what an unknown cause deserves.
 //
-// ★ The predicate comes from the KIT — `@forgecommerce/storefront-kit/ceiling-digest` — and until 2026-09-11 it
+// ★ The predicate comes from the KIT — `@forgeco/storefront-kit/ceiling-digest` — and until 2026-09-11 it
 // could not: the subpath was in the kit's `exports` and missing from its `publishConfig.exports`, so a tarball
 // could not import it and this fork carried a weld. `pk32/p1` published the subpath and wrote the guard that
 // makes a missing one red, and the weld's own guard went red on the first re-vendor asking to be deleted. It was.
@@ -18,8 +18,8 @@
 import {
   ceilingRefusalWaitSeconds,
   isCeilingRefusalDigest,
-} from '@forgecommerce/storefront-kit/ceiling-digest';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/ceiling-digest';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { BusyContent } from '@/components/BusyContent';
 import { ErrorContent } from '@/components/ErrorContent';
 

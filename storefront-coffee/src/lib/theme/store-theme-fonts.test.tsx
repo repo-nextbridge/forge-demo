@@ -12,8 +12,8 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { StoreFlags } from '@forgecommerce/storefront-kit/read-client';
-import { safeThemeCss } from '@forgecommerce/storefront-kit/theme/store-theme';
+import type { StoreFlags } from '@forgeco/storefront-kit/read-client';
+import { safeThemeCss } from '@forgeco/storefront-kit/theme/store-theme';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
@@ -23,7 +23,7 @@ const APP_SRC = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const THEMES: Record<string, string> = { 'sto-cafe': 'cafe', 'sto-cores': 'cores' };
 
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({
     storeFlags: async (store: string): Promise<StoreFlags | null> => ({
       name: store,

@@ -2,7 +2,7 @@
 // found by the same discovery the app uses, with zero edit to a central list. If the slot set were a
 // fixed enum, a newly-declared name would not appear.
 
-import { discoverSlots } from '@forgecommerce/storefront-kit/slots/registry';
+import { discoverSlots } from '@forgeco/storefront-kit/slots/registry';
 import { expect, test } from 'vitest';
 import { slotRegistry, TEMPLATE_MANIFESTS } from '@/templates/registry';
 

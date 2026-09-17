@@ -79,8 +79,9 @@ mapfile -t forks < <(node --input-type=module -e '
 ')
 [ "${#forks[@]}" -gt 0 ] || {
   echo "[revendor] no fork of this repository installs the kit and declares a \`build\` script." >&2
-  echo "[revendor] That is either the day the @forgecommerce/* packages were published — in which case this" >&2
-  echo "[revendor] script, bin/vendor-packages.sh and bin/install-storefront.sh are deleted together — or a" >&2
+  echo "[revendor] That is either the day the forks install @forgeco/* from npm instead of from a checkout" >&2
+  echo "[revendor] — in which case this script, bin/vendor-packages.sh and bin/install-storefront.sh are" >&2
+  echo "[revendor] deleted together — or a" >&2
   echo "[revendor] fork lost its manifest. Either way it is not something to pass over in silence." >&2
   exit 1
 }

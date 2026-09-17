@@ -7,8 +7,8 @@
 // Two halves are proven here: the CHANNEL and its cleaning rule (the context), and what the shopper actually
 // SEES (the drawer opening on the failure and saying so inside itself — never a toast, never a banner).
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { MinicartDrawer } from './MinicartDrawer';

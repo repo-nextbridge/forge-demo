@@ -5,7 +5,7 @@
 // otherwise navigate away on click) — this also keeps the SSR render-guard happy.
 'use client';
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import { BuyButton } from './BuyButton';

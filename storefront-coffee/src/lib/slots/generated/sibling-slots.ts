@@ -6,7 +6,7 @@
 // it cannot import a sibling deployable to ask — so the sibling's registry arrives here as data, read from the
 // manifests that process actually aggregates.
 
-import type { SiblingSlots } from '@forgecommerce/storefront-kit/slots/registry';
+import type { SiblingSlots } from '@forgeco/storefront-kit/slots/registry';
 
 export const SIBLING_SLOTS: readonly SiblingSlots[] = [
   {

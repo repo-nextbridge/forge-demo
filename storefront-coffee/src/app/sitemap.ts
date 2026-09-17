@@ -18,7 +18,7 @@
 // cost, and why the cache had to go one level down instead of onto the route, is measured in `sitemap-data.ts`
 // — read that comment before changing anything here.
 
-import { instanceReadClient, resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
+import { instanceReadClient, resolveStoreForHost } from '@forgeco/storefront-kit/config';
 import type { MetadataRoute } from 'next';
 import { requestOrigin } from '@/lib/seo/origin';
 import { sitemapEntries } from '@/lib/sitemap-data';

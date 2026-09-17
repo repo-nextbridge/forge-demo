@@ -6,8 +6,8 @@
 import {
   EMPTY_SNAPSHOT,
   type MinicartSnapshot,
-} from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import type { MinicartActions } from './MinicartProvider';

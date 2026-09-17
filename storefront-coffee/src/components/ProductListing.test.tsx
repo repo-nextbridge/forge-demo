@@ -7,8 +7,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Facets } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { Facets } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';

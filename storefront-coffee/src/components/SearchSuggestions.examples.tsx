@@ -2,8 +2,8 @@
 // fallback (SEARCH-6): the EmptyState heading + a row of suggested CATEGORY links from the catmap + a "Novidades"
 // shelf of newest products. Shown with a full catmap+products and a reduced (categories-only) variant. Inline
 // fixtures only — no data port is touched.
-import type { CategoryMap, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { CategoryMap, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { SearchSuggestions } from './SearchSuggestions';
 
 /** A 1×1 colored square as a data URI — a stand-in product cover so the shelf renders offline. */

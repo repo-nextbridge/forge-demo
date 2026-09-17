@@ -205,7 +205,7 @@ Welding the import by hand is what `totem/src/lib/gate/registry.tsx` did, and th
 rotted by the time pk31/d1 read it.
 
 ⛔ **And the sentence that used to end this paragraph — "the tool is owed by the product (pk32/p1-parto)" — is
-false, measured 13/09.** `@forgecommerce/surface-codegen` is a package of the pinned release *and* on its
+false, measured 13/09.** `@forgeco/surface-codegen` is a package of the pinned release *and* on its
 publishable list, so `bin/vendor-packages.sh` already writes its tarball into `storefront-coffee/vendor/` on
 every build, and the fork's `package.json` already pins it under `overrides`. What is missing is **this
 repository's**: the fork carries no `composition.json` list of its own, no `codegen` script, and no dependency

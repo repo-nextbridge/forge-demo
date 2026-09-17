@@ -30,7 +30,7 @@
 // re-prove it every time buys nothing this file does not already state.)
 //
 // ★ AND THE FIRST RUN PROVED THE POINT AGAIN, exactly as `fork-suite.guard.mjs`'s did: pointed at the tree
-// as handed over, it went red on `@forgecommerce/contracts` — one package out of fifteen, whose committed
+// as handed over, it went red on `@forgeco/contracts` — one package out of fifteen, whose committed
 // hash was three commits stale. `npm ci` in `storefront-coffee` would have failed EINTEGRITY on it, in a
 // pipeline, with no line anywhere saying why.
 //
@@ -105,7 +105,7 @@ const TREE = PINNED ? releaseTree(PINNED) : { tried: [] };
 
 /** The directories a workspace package can live in, READ FROM THE WORKSPACE rather than typed here. The
  *  first version of this file listed `packages` and `extensions`, which is where the vendored packages
- *  happen to live — and it then reported `@forgecommerce/cli` as "no directory claims it", because the cli
+ *  happen to live — and it then reported `@forgeco/cli` as "no directory claims it", because the cli
  *  is under `apps/`. A second copy of the workspace's own layout is the same drift these guards exist for.
  *  Only the `<dir>/*` shape is understood; anything else is returned as an unreadable group so the caller
  *  can say NOT CHECKED instead of quietly seeing fewer packages. */
@@ -210,16 +210,19 @@ for (const fork of FORKS) {
 
 test('this repository owns at least one fork that installs the kit from vendored tarballs', () => {
   // ⚠️ POINTED AT ZERO FORKS THIS FILE ACCUSES ITSELF. Every rule below iterates a list, and a list that
-  // empties out turns them all green while proving nothing — the quietest way a loop dies. The day the
-  // `@forgecommerce/*` packages are published, `bin/vendor-packages.sh` and this file are DELETED together;
-  // until then their subject existing is a rule.
+  // empties out turns them all green while proving nothing — the quietest way a loop dies. The day the forks
+  // install `@forgeco/*` from the registry instead of from a checkout, `bin/vendor-packages.sh` and this file
+  // are DELETED together; until then their subject existing is a rule. ⚠️ THAT DAY IS NOT THE DAY THE
+  // PACKAGES WERE PUBLISHED, which has already passed (16/09, all nineteen at 0.3.0): what these forks pin is
+  // a COMMIT the oven baked, and npm only serves versions. See bin/vendor-packages.sh.
   assert.ok(FORKS.length > 0, `no directory of this repo depends on ${KIT} and declares a \`build\` script`);
   const withVendor = FORKS.filter((fork) => (vendored(fork) ?? []).length > 0);
   assert.ok(
     withVendor.length > 0,
     `${FORKS.length} fork(s) install ${KIT}, and not one of their committed package-lock.json files ` +
-      'resolves a single dependency from `file:vendor/`. Either the packages are published now (delete this ' +
-      'guard and its two scripts) or a lock was committed from an install that never saw the tarballs.',
+      'resolves a single dependency from `file:vendor/`. Either the forks install from the registry now ' +
+      '(delete this guard and its two scripts) or a lock was committed from an install that never saw ' +
+      'the tarballs.',
   );
 });
 
@@ -299,7 +302,7 @@ for (const fork of FORKS) {
   test(`★★ ${fork.dir} INSTALLED the tarballs in its own vendor/, not npm's cached copies of older ones`, (t) => {
     // ⚠️ THIS RULE EXISTS BECAUSE THE OPPOSITE WAS TRUE ON THIS BRANCH AND NOTHING SAID A WORD.
     //
-    // A re-vendored tarball keeps its PATH — `vendor/forgecommerce-contracts-0.3.0.tgz` is the same string
+    // A re-vendored tarball keeps its PATH — `vendor/forgeco-contracts-0.3.0.tgz` is the same string
     // every time — so `npm install` saw a lock entry it already satisfied and resolved it BY INTEGRITY out
     // of its content-addressed cache, never opening the file that had just been rewritten. Measured on a
     // clean worktree immediately after a full re-vendor from `v03/integra@217734df8`:
@@ -307,7 +310,7 @@ for (const fork of FORKS) {
     //     vendor/…contracts…tgz   dist/index.js  9ca046c7…  1462 lines   ← what the release packs
     //     node_modules/…          dist/index.js  5967a83c…  1288 lines   ← last week's, from the cache
     //
-    // 174 lines of the release's `@forgecommerce/contracts` were missing from the fork. `npm install`
+    // 174 lines of the release's `@forgeco/contracts` were missing from the fork. `npm install`
     // printed nothing, the committed lock kept the old hash, and `bin/revendor-forks.sh` reported "already
     // in step" because no lockfile had moved. `bin/install-storefront.sh` now EVICTS the `file:vendor/`
     // entries before installing, which leaves npm no lock to satisfy; this is the rule that proves it, and

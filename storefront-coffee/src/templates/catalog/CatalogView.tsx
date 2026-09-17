@@ -13,11 +13,11 @@
 // a degrade. The absolute URLs of the breadcrumb graph therefore come from the store's declared origin, not
 // from the request Host — see lib/seo/store-origin.ts.
 
-import { canonicalProductPath, crumbsForPath } from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { productImageUrls } from '@forgecommerce/storefront-kit/media/seo';
-import { storePermanentRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { canonicalProductPath, crumbsForPath } from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { productImageUrls } from '@forgeco/storefront-kit/media/seo';
+import { storePermanentRedirect } from '@forgeco/storefront-kit/store-navigation';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';

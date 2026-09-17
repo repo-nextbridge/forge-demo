@@ -23,7 +23,7 @@ const storeFlags = vi.fn(async (_store: string) => ({
   name: 'Loja Demo',
   timezone: 'America/Sao_Paulo',
 }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ readClient: () => ({ storeFlags }) }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ readClient: () => ({ storeFlags }) }));
 
 test('★ the home titles itself with the STORE, never with "Forge Storefront"', async () => {
   const { homeMetadata } = await import('./HomeView');

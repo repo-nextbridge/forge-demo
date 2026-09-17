@@ -57,8 +57,8 @@ const { resolveStoreForHost, storeHasGate } = vi.hoisted(() => ({
   storeHasGate: vi.fn(async () => false),
 }));
 
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ resolveStoreForHost }));
-vi.mock('@forgecommerce/storefront-kit/gate/directory', () => ({ storeHasGate }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ resolveStoreForHost }));
+vi.mock('@forgeco/storefront-kit/gate/directory', () => ({ storeHasGate }));
 
 const { middleware } = await import('./middleware');
 const { NextRequest } = await import('next/server');

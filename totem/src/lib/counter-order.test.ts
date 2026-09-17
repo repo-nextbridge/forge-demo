@@ -21,7 +21,7 @@
 // on a totem that wrote Entrega Expressa to the cart — which is the failure the old guard existed to prevent
 // and the one this fix must not buy its way out of. So the guard reads what reached the PORT: which method id
 // was written, and whose address went with it.
-import type { PickupPoint, ShippingOption } from '@forgecommerce/storefront-kit/read-client';
+import type { PickupPoint, ShippingOption } from '@forgeco/storefront-kit/read-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const shippingOptions = vi.fn();

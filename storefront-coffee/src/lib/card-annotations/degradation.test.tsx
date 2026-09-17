@@ -19,7 +19,7 @@
 // The registry is mocked because it is the composition BOUNDARY: what varies here is "does this image carry a
 // contributor", and mocking the generated module is how both answers are reachable from one suite.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

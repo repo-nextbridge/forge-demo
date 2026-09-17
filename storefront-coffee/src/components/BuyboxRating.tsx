@@ -5,7 +5,7 @@
 // A product with no reviews → the reviews block renders null → nothing is published → this stays empty (no hole).
 'use client';
 
-import { Star } from '@forgecommerce/storefront-kit/icons';
+import { Star } from '@forgeco/storefront-kit/icons';
 import { useEffect, useState } from 'react';
 import { onPdpRating, PDP_REVIEWS_ANCHOR, type PdpRating } from '@/lib/pdp-rating';
 import styles from './BuyboxRating.module.css';

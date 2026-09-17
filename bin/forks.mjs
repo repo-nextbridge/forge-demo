@@ -19,7 +19,7 @@ import { readJson, ROOT } from './release-tree.mjs';
 /** The package every front of this repository forks the Forge surface through. One package, and a fork that
  *  installs it has chrome, theme, slots and the port clients — so it is also the one whose signatures a fork
  *  can fall behind. */
-export const KIT = '@forgecommerce/storefront-kit';
+export const KIT = '@forgeco/storefront-kit';
 
 /**
  * Every Next app this repository owns that installs the kit AND declares `script` in its manifest.

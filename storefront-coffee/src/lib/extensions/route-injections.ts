@@ -42,19 +42,19 @@
 // environment; evaluated at module load it would freeze whatever the process had when Next first imported
 // this file. Called at request time it cannot.
 
-import { canonicalProductPath } from '@forgecommerce/storefront-kit/catalog-path';
+import { canonicalProductPath } from '@forgeco/storefront-kit/catalog-path';
 import {
   bulkReadToken,
   readBaseUrl,
   resolveStoreForHost,
   revalidateSeconds,
-} from '@forgecommerce/storefront-kit/config';
+} from '@forgeco/storefront-kit/config';
 import {
   AVAILABILITY_MAX_SKUS,
   BULK_AVAILABILITY_MAX_SKUS,
   BULK_PRODUCTS_MAX_PAGE,
   PRODUCTS_MAX_PAGE,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { requestOrigin } from '@/lib/seo/origin';
 
 /** The two facts a canonical product address is made of — declared STRUCTURALLY, deliberately not imported

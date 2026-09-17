@@ -23,18 +23,18 @@
 // `.selector` and the layout is byte-identical to the pre-form one.
 'use client';
 
-import { coverOf } from '@forgecommerce/storefront-kit/media/src';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
+import { coverOf } from '@forgeco/storefront-kit/media/src';
+import { formatMoney } from '@forgeco/storefront-kit/money';
 import {
   PRICE_AMOUNT_ATTR,
   PRICE_SKU_ATTR,
   PRICE_WAS_ATTR,
-} from '@forgecommerce/storefront-kit/prices/apply';
-import { badgesFor } from '@forgecommerce/storefront-kit/promo/badges';
-import { displayPrice } from '@forgecommerce/storefront-kit/promo/display-price';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { SKU_PARAM } from '@forgecommerce/storefront-kit/sku-url';
-import { HOST_BASE, type StoreBase } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/prices/apply';
+import { badgesFor } from '@forgeco/storefront-kit/promo/badges';
+import { displayPrice } from '@forgeco/storefront-kit/promo/display-price';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { SKU_PARAM } from '@forgeco/storefront-kit/sku-url';
+import { HOST_BASE, type StoreBase } from '@forgeco/storefront-kit/store-route';
 import { useMemo, useState } from 'react';
 import { PdpBuyRow } from '@/components/pdp/PdpBuyRow';
 import { addToCartThenCheckoutAction } from '@/lib/cart-actions';

@@ -25,7 +25,7 @@
 // many times; the read that would betray a second source is a different URL, and that is what it watches.
 
 import { Writable } from 'node:stream';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -45,7 +45,7 @@ const CATEGORIES = {
   'roupas.calcados': { category_id: 'cat_calcados', name: 'Calçados', path: 'roupas.calcados' },
 };
 
-vi.mock('@forgecommerce/storefront-kit/config', async (importOriginal) => {
+vi.mock('@forgeco/storefront-kit/config', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,

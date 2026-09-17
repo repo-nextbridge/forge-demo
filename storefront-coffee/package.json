@@ -15,19 +15,19 @@
   "dependencies": {
     "@fontsource/urbanist": "^5.2.5",
     "@forge/ext-demo-gate": "file:../apps/demo-gate",
-    "@forgecommerce/ext-banners": "file:vendor/forgecommerce-ext-banners-0.3.0.tgz",
-    "@forgecommerce/ext-feed": "file:vendor/forgecommerce-ext-feed-0.3.0.tgz",
-    "@forgecommerce/ext-leads": "file:vendor/forgecommerce-ext-leads-0.3.0.tgz",
-    "@forgecommerce/ext-payment-mercadopago": "file:vendor/forgecommerce-ext-payment-mercadopago-0.3.0.tgz",
-    "@forgecommerce/ext-payment-promissory": "file:vendor/forgecommerce-ext-payment-promissory-0.3.0.tgz",
-    "@forgecommerce/ext-payment-reference": "file:vendor/forgecommerce-ext-payment-reference-0.3.0.tgz",
-    "@forgecommerce/ext-payment-zero": "file:vendor/forgecommerce-ext-payment-zero-0.3.0.tgz",
-    "@forgecommerce/ext-recommendations": "file:vendor/forgecommerce-ext-recommendations-0.3.0.tgz",
-    "@forgecommerce/ext-reviews": "file:vendor/forgecommerce-ext-reviews-0.3.0.tgz",
-    "@forgecommerce/ext-shelves": "file:vendor/forgecommerce-ext-shelves-0.3.0.tgz",
-    "@forgecommerce/ext-subscriptions": "file:vendor/forgecommerce-ext-subscriptions-0.3.0.tgz",
-    "@forgecommerce/storefront-kit": "file:vendor/forgecommerce-storefront-kit-0.3.0.tgz",
-    "@forgecommerce/theme-storefront-vanilla": "file:vendor/forgecommerce-theme-storefront-vanilla-0.3.0.tgz",
+    "@forgeco/ext-banners": "file:vendor/forgeco-ext-banners-0.3.0.tgz",
+    "@forgeco/ext-feed": "file:vendor/forgeco-ext-feed-0.3.0.tgz",
+    "@forgeco/ext-leads": "file:vendor/forgeco-ext-leads-0.3.0.tgz",
+    "@forgeco/ext-payment-mercadopago": "file:vendor/forgeco-ext-payment-mercadopago-0.3.0.tgz",
+    "@forgeco/ext-payment-promissory": "file:vendor/forgeco-ext-payment-promissory-0.3.0.tgz",
+    "@forgeco/ext-payment-reference": "file:vendor/forgeco-ext-payment-reference-0.3.0.tgz",
+    "@forgeco/ext-payment-zero": "file:vendor/forgeco-ext-payment-zero-0.3.0.tgz",
+    "@forgeco/ext-recommendations": "file:vendor/forgeco-ext-recommendations-0.3.0.tgz",
+    "@forgeco/ext-reviews": "file:vendor/forgeco-ext-reviews-0.3.0.tgz",
+    "@forgeco/ext-shelves": "file:vendor/forgeco-ext-shelves-0.3.0.tgz",
+    "@forgeco/ext-subscriptions": "file:vendor/forgeco-ext-subscriptions-0.3.0.tgz",
+    "@forgeco/storefront-kit": "file:vendor/forgeco-storefront-kit-0.3.0.tgz",
+    "@forgeco/theme-storefront-vanilla": "file:vendor/forgeco-theme-storefront-vanilla-0.3.0.tgz",
     "jose": "^6.2.3",
     "next": "15.2.9",
     "react": "19.0.0",
@@ -37,7 +37,7 @@
     "rehype-sanitize": "6.0.0"
   },
   "devDependencies": {
-    "@forgecommerce/surface-codegen": "file:vendor/forgecommerce-surface-codegen-0.3.0.tgz",
+    "@forgeco/surface-codegen": "file:vendor/forgeco-surface-codegen-0.3.0.tgz",
     "@testing-library/dom": "10.4.0",
     "@testing-library/react": "16.1.0",
     "@types/node": "26.0.0",
@@ -49,10 +49,10 @@
     "vitest": "4.1.9"
   },
   "overrides": {
-    "@forgecommerce/cli": "./vendor/forgecommerce-cli-0.3.0.tgz",
-    "@forgecommerce/contracts": "./vendor/forgecommerce-contracts-0.3.0.tgz",
-    "@forgecommerce/ext-chrome": "./vendor/forgecommerce-ext-chrome-0.3.0.tgz",
-    "@forgecommerce/ext-content": "./vendor/forgecommerce-ext-content-0.3.0.tgz",
-    "@forgecommerce/sdk": "./vendor/forgecommerce-sdk-0.3.0.tgz"
+    "@forgeco/cli": "./vendor/forgeco-cli-0.3.0.tgz",
+    "@forgeco/contracts": "./vendor/forgeco-contracts-0.3.0.tgz",
+    "@forgeco/ext-chrome": "./vendor/forgeco-ext-chrome-0.3.0.tgz",
+    "@forgeco/ext-content": "./vendor/forgeco-ext-content-0.3.0.tgz",
+    "@forgeco/sdk": "./vendor/forgeco-sdk-0.3.0.tgz"
   }
 }

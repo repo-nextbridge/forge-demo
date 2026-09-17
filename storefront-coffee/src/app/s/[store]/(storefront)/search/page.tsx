@@ -11,11 +11,11 @@
 // low-value ?q= URLs dilute crawl budget / risk thin-content), so it leaves the index while product and
 // category pages stay indexable. `follow` keeps the result links crawlable. See front-composition.md.
 
-import { browsableCategories } from '@forgecommerce/storefront-kit/category-visibility';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { CatalogList } from '@forgecommerce/storefront-kit/read-client';
-import { storeRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { browsableCategories } from '@forgeco/storefront-kit/category-visibility';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { CatalogList } from '@forgeco/storefront-kit/read-client';
+import { storeRedirect } from '@forgeco/storefront-kit/store-navigation';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { ProductCard } from '@/components/ProductCard';
 import { cardChrome } from '@/lib/cardChrome';

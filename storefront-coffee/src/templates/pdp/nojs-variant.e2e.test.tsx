@@ -18,8 +18,8 @@
 // `color-required.e2e` all pass against the broken build). The subject here is the BYTES the server sends.
 // The markup is parsed with DOMParser purely to query it; nothing in this file mounts, hydrates or clicks.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { SKU_PARAM } from '@forgecommerce/storefront-kit/sku-url';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { SKU_PARAM } from '@forgeco/storefront-kit/sku-url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

@@ -2,7 +2,7 @@
 // honest, the button appears whenever a page is still unloaded. QA20/B11: past the per-request window the shelf
 // shows a SLICE, so the counter names the slice ("561 a 653") and a way back to the top of the list appears.
 
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { LoadMore } from './LoadMore';

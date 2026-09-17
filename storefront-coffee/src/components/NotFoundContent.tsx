@@ -23,7 +23,7 @@
 // category links — its chrome mounts two links and neither is a shelf, so a dead page is not the place to
 // grow one. The way out of this 404 is the two CTAs, and `wayOut` is what makes them point at the right store.
 
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { NotFoundActions } from './NotFoundActions';
 import styles from './NotFoundContent.module.css';

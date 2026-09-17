@@ -6,11 +6,11 @@
 // prototype. The presentational body (CategoryTilesView) is split out so the preview gallery can render it with
 // a fixture (the async wrapper reads the port, which the gallery has no access to).
 
-import { ltreeToSegments } from '@forgecommerce/storefront-kit/catalog-path';
-import { isCategoryBrowsable } from '@forgecommerce/storefront-kit/category-visibility';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { ArrowRight } from '@forgecommerce/storefront-kit/icons';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { ltreeToSegments } from '@forgeco/storefront-kit/catalog-path';
+import { isCategoryBrowsable } from '@forgeco/storefront-kit/category-visibility';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { ArrowRight } from '@forgeco/storefront-kit/icons';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { CSSProperties } from 'react';
 import { CategoryTileIcon } from './CategoryTileIcon';
 import styles from './CategoryTiles.module.css';

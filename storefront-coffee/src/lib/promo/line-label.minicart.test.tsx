@@ -9,8 +9,8 @@
 // label is computed once, by `promo/discount-lines` in the kit, and both deployables import it — so what each
 // side owes is that its own surface actually prints it.
 
-import type { CartPricing } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { CartPricing } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { MinicartDrawer } from '@/components/minicart/MinicartDrawer';

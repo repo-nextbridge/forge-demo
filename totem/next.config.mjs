@@ -12,7 +12,7 @@
 // `npm run build` deterministic.
 const standalone = process.env.FORGE_BUILD_STANDALONE === '1';
 
-const transpilePackages = ['@forgecommerce/storefront-kit', '@forge/ext-demo-gate'];
+const transpilePackages = ['@forgeco/storefront-kit', '@forge/ext-demo-gate'];
 
 // ── ★★ pk29/D2 · THE BLOCK EVERY FORK OF THIS REPOSITORY CARRIES, WORD FOR WORD ─────────────────────────
 //

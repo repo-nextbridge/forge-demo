@@ -16,8 +16,8 @@
 // about an argument.
 
 import { Writable } from 'node:stream';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -34,7 +34,7 @@ const CATEGORIES = {
   'roupas.calcados': { category_id: 'cat_calcados', name: 'Calçados', path: 'roupas.calcados' },
 };
 
-vi.mock('@forgecommerce/storefront-kit/config', async (importOriginal) => {
+vi.mock('@forgeco/storefront-kit/config', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,

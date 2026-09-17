@@ -15,7 +15,7 @@
 import {
   PENDING_IDENTITY_HINT,
   PENDING_IDENTITY_LEAD,
-} from '@forgecommerce/storefront-kit/promo/PendingIdentityNotice';
+} from '@forgeco/storefront-kit/promo/PendingIdentityNotice';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   addItem,

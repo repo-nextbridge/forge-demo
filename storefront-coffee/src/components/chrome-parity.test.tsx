@@ -5,7 +5,7 @@
 // (`src/app/s/[store]/(account)/chrome-parity.test.tsx`) and the two are deliberately not one file: the
 // deployables are two BUILDS and neither may import the other (there is a guard), so nothing can render both
 // halves in one process. What makes them a PAIR is not that they look alike — it is that both assert against
-// the SAME EXPORTED SOURCE in `@forgecommerce/storefront-kit`. A literal copied into both would pass while the
+// the SAME EXPORTED SOURCE in `@forgeco/storefront-kit`. A literal copied into both would pass while the
 // two stores diverged, which is the exact class of defect the acceptance pass found:
 //
 //   · the header on `/account/login` had NO CART while every page here had one (ACC1-3);
@@ -19,13 +19,13 @@
 // the reference chrome, which is what a re-fork starts from and what `chrome-identity.test.tsx` uses as its
 // control. Nothing about the shop the visitor opens is asserted here — that is `components/coffee/`.
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
-import { SEARCH_PROMPT } from '@forgecommerce/storefront-kit/subtemplates';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
+import { SEARCH_PROMPT } from '@forgeco/storefront-kit/subtemplates';
 import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
 
-vi.mock('@forgecommerce/storefront-kit/payment-badges', () => ({
+vi.mock('@forgeco/storefront-kit/payment-badges', () => ({
   paymentBadges: async () => ['Pix'],
 }));
 vi.mock('@/lib/extensions/ExtensionOutlet', () => ({
@@ -62,7 +62,7 @@ const EMPTY_CART_CONTEXT = {
 };
 
 const { StorefrontChrome } = await import('./StorefrontChrome');
-const { HOST_BASE } = await import('@forgecommerce/storefront-kit/store-route');
+const { HOST_BASE } = await import('@forgeco/storefront-kit/store-route');
 
 /** Resolve the async server-component levels the framework would, then render.
  *

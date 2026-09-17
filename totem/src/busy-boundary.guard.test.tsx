@@ -20,7 +20,7 @@ import {
   ceilingRefusalDigest,
   ceilingWaitSentence,
   isCeilingRefusalDigest,
-} from '@forgecommerce/storefront-kit/ceiling-digest';
+} from '@forgeco/storefront-kit/ceiling-digest';
 import { render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import CounterError from './app/error';

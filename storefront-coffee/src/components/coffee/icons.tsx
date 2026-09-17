@@ -130,7 +130,7 @@ const ICONS: Record<string, ReactElement> = {
   // ★ A34 — the footer's "Compra segura" seal, and it is the ONE icon here the coffee artboards do not draw.
   //
   // The rule of this file is transcription, not interpretation — so it is transcribed from the PRODUCT rather
-  // than invented: `Lock` in `@forgecommerce/storefront-kit/src/icons.tsx`, path for path. That is not an
+  // than invented: `Lock` in `@forgeco/storefront-kit/src/icons.tsx`, path for path. That is not an
   // arbitrary donor. The kit's own comment calls it "the 'compra segura' cue", and the checkout header
   // (`subtemplates/header/variants/checkout.tsx`) already renders exactly this padlock beside exactly these
   // two words. So a shopper who walks from this shop's footer into the checkout meets the same mark twice.

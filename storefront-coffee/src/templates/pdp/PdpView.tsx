@@ -13,11 +13,11 @@ import {
   canonicalProductPath,
   crumbsForPath,
   primaryCategory,
-} from '@forgecommerce/storefront-kit/catalog-path';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { SKU_PARAM } from '@forgecommerce/storefront-kit/sku-url';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/catalog-path';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { SKU_PARAM } from '@forgeco/storefront-kit/sku-url';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import { IdentityPriceOverlay } from '@/components/IdentityPriceOverlay';
 import { JsonLd } from '@/components/JsonLd';
 import { cardChrome } from '@/lib/cardChrome';

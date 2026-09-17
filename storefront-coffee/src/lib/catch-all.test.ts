@@ -7,7 +7,7 @@ import type {
   PageDoc,
   ProductDoc,
   ReadList,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { type CatchAllReads, resolveCatchAll } from './catch-all';
 

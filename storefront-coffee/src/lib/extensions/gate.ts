@@ -1,7 +1,7 @@
 // ★★ HOW THIS FORK RESOLVES THE GATE SLOT — composed first, welded second.
 //
 // ⛔ WHY IT EXISTS AT ALL, AND IT IS A TWO-WEEK STORY. `src/app/s/[store]/layout.tsx` used to import
-// `resolveGate` straight from `@forgecommerce/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and
+// `resolveGate` straight from `@forgeco/storefront-kit/gate/registry`, whose map is `{}` BY DESIGN and
 // stays `{}` — the kit cannot name one instance's apps. So the café resolved every gate to `undefined`, and
 // since pk32 `storefront:gate` is a STRUCTURAL target: a slot a front cannot draw makes it REFUSE the page.
 // That is why `seed/box.json` carried `gate: false` for this store — not an oversight, a declaration that
@@ -20,7 +20,7 @@
 import {
   type GateImplementation,
   resolveGate as resolveWeldedGate,
-} from '@forgecommerce/storefront-kit/gate/registry';
+} from '@forgeco/storefront-kit/gate/registry';
 
 import { resolveComposedGate } from './generated/gate-registry';
 

@@ -5,7 +5,7 @@
 // cached one would greet a customer with the previous customer's basket, which is the single failure this
 // whole slice is built to prevent.
 
-import type { CheckoutView } from '@forgecommerce/storefront-kit/read-client';
+import type { CheckoutView } from '@forgeco/storefront-kit/read-client';
 import { readCheckout } from '@/lib/cart';
 import { readMenu } from '@/lib/menu';
 import { totemRead } from '@/lib/port';

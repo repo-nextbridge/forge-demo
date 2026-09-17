@@ -17,8 +17,8 @@
 // suppresses that timer while the pointer is down, so a pause mid-drag never navigates under the finger.
 'use client';
 
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import type { StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import type { StorePath } from '@forgeco/storefront-kit/store-route';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {

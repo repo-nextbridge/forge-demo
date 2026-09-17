@@ -9,8 +9,8 @@
 // component imports it and bundled where a client component does. Adding one would drag the store-less 404
 // into the browser bundle for nothing.
 
-import { House, Search } from '@forgecommerce/storefront-kit/icons';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { House, Search } from '@forgeco/storefront-kit/icons';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import styles from './NotFoundContent.module.css';
 
 export function NotFoundActions({ base }: { base: StoreBase }) {

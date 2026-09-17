@@ -10,7 +10,7 @@
 // the clean URL a crawler and most shoppers ask for is served from the edge and only the filtered/paginated
 // tail reaches this file. Port reads stay ISR-cached on both sides.
 
-import { requestStoreBase } from '@forgecommerce/storefront-kit/store-route.server';
+import { requestStoreBase } from '@forgeco/storefront-kit/store-route.server';
 import type { Metadata } from 'next';
 import { parseFilterState } from '@/lib/filters/filter-url';
 import { CatalogView, catalogMetadata } from '@/templates/catalog/CatalogView';

@@ -6,7 +6,7 @@
 // prop: the PDP's HTML is edge-cached, so the page may not read the cart cookie. Both paths are covered below —
 // the fetched one (the real one) and the `initialCep` override the preview gallery still uses.
 
-import type { ShippingOption } from '@forgecommerce/storefront-kit/read-client';
+import type { ShippingOption } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 

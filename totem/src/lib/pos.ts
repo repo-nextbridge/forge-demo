@@ -21,8 +21,8 @@
 //     `res.ok` therefore does NOT mean "paid". Success is 200 AND `ok: true`, and `simulateScan` below is
 //     the only place that rule lives. `pos.test.ts` proves the two are not confused.
 
-import { commandBaseUrl } from '@forgecommerce/storefront-kit/config';
-import type { NextAction } from '@forgecommerce/storefront-kit/command-client';
+import { commandBaseUrl } from '@forgeco/storefront-kit/config';
+import type { NextAction } from '@forgeco/storefront-kit/command-client';
 import { totemCommand, totemRead } from './port';
 import { resolveTotemStore } from './store';
 

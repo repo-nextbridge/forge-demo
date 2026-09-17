@@ -23,9 +23,9 @@
 # again, or the box goes on serving the app you had before.
 #
 # ⚠️ IT NEEDS THE MONOREPO because the producer (`pnpm pack:extension`) lives there, along with the contracts
-# the manifest compiles against. That is the same pre-release dependency `bin/build-local.sh` has, and it
-# leaves at the same moment: once a Forge release publishes `@forgecommerce/contracts`, an app can be built
-# with npm and no monorepo at all.
+# the manifest compiles against. `@forgeco/contracts` reached npm on 2026-09-16 (0.3.0), so the CONTRACTS
+# half of that sentence stopped being a wall — but the PRODUCER half did not: `pnpm pack:extension` is a
+# script of the monorepo and no package publishes it. This argument leaves when both halves do, not one.
 
 set -euo pipefail
 
@@ -51,27 +51,29 @@ require_node || exit 1
 #
 # The producer IMPORTS each app's `manifest.ts` (it has to: a manifest is TypeScript here and JSON in the
 # artifact, and something must evaluate it once to make that trip). That import reaches for
-# `@forgecommerce/contracts`, which inside the monorepo is a workspace link and in this repository is
+# `@forgeco/contracts`, which inside the monorepo is a workspace link and in this repository is
 # nothing at all. Measured, before this block existed:
 #
-#     Cannot find package '@forgecommerce/contracts' imported from …/apps/demo-gate/manifest.ts
+#     Cannot find package '@forgeco/contracts' imported from …/apps/demo-gate/manifest.ts
 #
 # So it is linked at this repo's root, where Node's upward resolution finds it from any app. It is
 # GITIGNORED and rebuilt by this script every run: it points into a checkout on THIS machine and would be a
 # broken link in anybody else's clone.
 #
-# THE DAY THIS GOES AWAY is the day a Forge release publishes the package: then it is
-# `npm install @forgecommerce/contracts@<the release>` in this repo, pinned like everything else, and the
-# monorepo argument to this script disappears with it.
+# THE DAY THIS GOES AWAY is the day this repository INSTALLS the package instead of linking it. The release
+# publishes it now (`@forgeco/contracts@0.3.0`, measured 2026-09-16), so what is left is a decision, not a
+# wall: `npm install @forgeco/contracts@<the release>` here, pinned like everything else. It is deliberately
+# NOT taken by the slice that moved the scope — a link into the checkout these images are baked from and a
+# version off the registry are two different promises, and swapping them is the cut's call.
 contracts="$forge/packages/contracts"
 [ -d "$contracts" ] || {
   echo "[pack-apps] '$contracts' is missing — cannot link the contracts an app's manifest compiles against." >&2
   exit 1
 }
-mkdir -p "$here/node_modules/@forgecommerce"
-rm -f "$here/node_modules/@forgecommerce/contracts"
-ln -s "$contracts" "$here/node_modules/@forgecommerce/contracts"
-echo "[pack-apps] linked @forgecommerce/contracts → $contracts (gitignored, pre-release only)" >&2
+mkdir -p "$here/node_modules/@forgeco"
+rm -f "$here/node_modules/@forgeco/contracts"
+ln -s "$contracts" "$here/node_modules/@forgeco/contracts"
+echo "[pack-apps] linked @forgeco/contracts → $contracts (gitignored, pre-release only)" >&2
 
 packed=0
 for source in "$here"/apps/*/; do
@@ -80,10 +82,10 @@ for source in "$here"/apps/*/; do
   # ⚠️ AND THE APP-LOCAL SHADOW OF THAT LINK IS REMOVED FIRST. `bin/instance-app.guard.mjs` (pk24/D3) puts
   # the app's declared dependencies in `apps/<id>/node_modules/`, contracts among them, out of whatever Forge
   # checkout it could find. Node resolves upward, so that copy would WIN over the one just written above —
-  # and if the two checkouts differ, the manifest would be validated against a `@forgecommerce/contracts`
+  # and if the two checkouts differ, the manifest would be validated against a `@forgeco/contracts`
   # this pack is not producing for. One link, the one named on this command line. The guard rewrites its own
   # every run, so nothing is broken by taking it away.
-  rm -rf "$source/node_modules/@forgecommerce/contracts"
+  rm -rf "$source/node_modules/@forgeco/contracts"
   out="$here/extensions/$id"
   echo "[pack-apps] $id → extensions/$id" >&2
   # The producer takes the extension as INPUT and names none of its own — it is run from the monorepo (its

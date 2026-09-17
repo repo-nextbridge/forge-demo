@@ -61,7 +61,7 @@ const say = (line) => console.error(`[store-mount] ${line}`);
 
 /** The scope whose modules ARE the product's rules out here. A fork installs these by name; everything else
  *  it imports is its own file, and its own file is its own business. */
-const KIT_SCOPE = '@forgecommerce/';
+const KIT_SCOPE = '@forgeco/';
 
 /**
  * ★ THE DIVERGENCES THIS FORK HAS DECIDED NOT TO ADOPT — empty today, and it is the affordance that makes the

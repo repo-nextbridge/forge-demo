@@ -27,10 +27,10 @@
 // no thumbnails — the approved artboard draws all four at once (the bag beside the buy box, then a wide frame
 // and two squares in the story grid), which is why every photograph is on screen without a click.
 
-import type { MediaRef, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef, ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
 import { MinicartProvider } from '@/components/minicart/MinicartProvider';
 import { makeProduct } from '@/test/fixtures';
 import { PdpCoffee } from './PdpCoffee';

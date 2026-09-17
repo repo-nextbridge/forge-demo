@@ -24,7 +24,7 @@
 // screenshot can find the line in the log. The ONE cause this shop can explain — the read ceiling — has a page
 // of its own (`BusyContent.tsx`), because that one is not a defect and has an answer to "when do I come back?".
 
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { ErrorActions } from './ErrorActions';
 import styles from './NotFoundContent.module.css';

@@ -3,7 +3,7 @@
 // states: more to load, everything shown (button hidden), a SLID window (QA20/B11: the shelf holds a slice, so the
 // counter names it and the way back appears), and empty (renders nothing). Server-rendered, no data port.
 
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { LoadMore } from './LoadMore';
 
 export function LoadMoreExamples() {

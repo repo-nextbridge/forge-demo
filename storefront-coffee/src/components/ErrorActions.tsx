@@ -12,8 +12,8 @@
 // No 'use client' of its own: it is rendered only from boundaries that already are client components, and a
 // directive here would be a second, pointless bundle boundary.
 
-import { House, Search } from '@forgecommerce/storefront-kit/icons';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { House, Search } from '@forgeco/storefront-kit/icons';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import styles from './NotFoundContent.module.css';
 
 export function ErrorActions({

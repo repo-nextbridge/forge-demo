@@ -41,10 +41,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@forgecommerce/contracts": "workspace:*"
+    "@forgeco/contracts": "workspace:*"
   },
   "peerDependencies": {
-    "@forgecommerce/storefront-kit": "workspace:*",
+    "@forgeco/storefront-kit": "workspace:*",
     "react": "^19.0.0"
   },
   "devDependencies": {

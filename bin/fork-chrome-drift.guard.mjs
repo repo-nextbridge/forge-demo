@@ -25,7 +25,7 @@
 // the STORE-SCOPED ROOT LAYOUT, discovered as `src/app/<tree>/[store]/layout.tsx` (see `storeRootLayouts`
 // there) — so it reads `s/[store]/layout.tsx` and `c/[store]/layout.tsx` and nothing else. The chrome of the
 // dynamic tree is mounted one level DOWN, in the route group `s/[store]/(storefront)/layout.tsx`, which that
-// sweep never opens; and what it compares is KIT bindings (`@forgecommerce/*`), while a chrome is the app's
+// sweep never opens; and what it compares is KIT bindings (`@forgeco/*`), while a chrome is the app's
 // own module. Both halves of this defect are outside it by construction. It is also asked a different
 // question: "did the fork fall behind the reference at the mount point?" — the answer here is that the fork
 // is deliberately AHEAD, in one tree and not the other.

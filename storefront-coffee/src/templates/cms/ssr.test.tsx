@@ -6,8 +6,8 @@
 // suite grades the lookup; this file grades what a shopper is actually served, through the same component
 // tree the route mounts and with the environment the box hands this container.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
 import { OWN_STORE_ENV } from '@/lib/own-store';

@@ -7,8 +7,8 @@
 // verified on Staging. This module is imported ONLY by its examples file (gallery-only; tree-shaken from routes).
 //
 // ★ E (PACK 5) — THE TWO APP BLOCKS ARRIVE THROUGH THE REGISTRY NOW, and that is what let `banners` and `leads`
-// join the composition list. This file used to import `@forgecommerce/ext-banners/block/banner` and
-// `@forgecommerce/ext-leads/NewsletterForm` by name, which pinned both apps to the storefront's build (A2
+// join the composition list. This file used to import `@forgeco/ext-banners/block/banner` and
+// `@forgeco/ext-leads/NewsletterForm` by name, which pinned both apps to the storefront's build (A2
 // measured it and reverted a finished migration over it). The registry entry could not be used instead, because
 // every generated entry was `async` behind a dynamic import and this gallery renders with a SYNCHRONOUS
 // `renderToString` — an async component suspends. With the import static, an entry is async only when it awaits
@@ -23,9 +23,9 @@
 // A block the composition does not carry resolves to `undefined` and simply is not drawn — the same absence a
 // merchant sees, rather than a crash in a gallery.
 
-import { SHOWCASE_TIMEZONE } from '@forgecommerce/storefront-kit/datetime';
-import { authoredHref, HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
-import { FooterDefault } from '@forgecommerce/storefront-kit/subtemplates/footer/variants/default';
+import { SHOWCASE_TIMEZONE } from '@forgeco/storefront-kit/datetime';
+import { authoredHref, HOST_BASE } from '@forgeco/storefront-kit/store-route';
+import { FooterDefault } from '@forgeco/storefront-kit/subtemplates/footer/variants/default';
 import { Suspense } from 'react';
 import { resolveBlock } from '@/lib/extensions/registry';
 import { BrandsGridView } from './BrandsGrid';

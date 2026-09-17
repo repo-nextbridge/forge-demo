@@ -4,9 +4,9 @@
 // the drawer is re-read (never computed here) — so we stub the actions and let the components do the rest, the
 // same way checkout.e2e.test.tsx does.
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

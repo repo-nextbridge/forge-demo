@@ -15,12 +15,12 @@ const { suggest, resolveStoreForHost } = vi.hoisted(() => ({
   suggest: vi.fn(),
   resolveStoreForHost: vi.fn(),
 }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ suggest }),
   resolveStoreForHost,
 }));
 
-import { ReadPortError } from '@forgecommerce/storefront-kit/read-client';
+import { ReadPortError } from '@forgeco/storefront-kit/read-client';
 import { GET } from './route';
 
 const RESULT = { products: [{ handle: 'tenis-x', title: 'Tênis X' }], categories: [] };

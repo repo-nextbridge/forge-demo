@@ -12,7 +12,7 @@
 // breadcrumb JSON-LD also turns into absolute canonical URLs). Prefixing happens HERE, at the anchor, because
 // only navigation carries the store context: a canonical URL must never grow an `/s/<store>` segment.
 
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import Link from 'next/link';
 import styles from './Breadcrumb.module.css';
 

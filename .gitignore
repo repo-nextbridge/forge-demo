@@ -13,7 +13,8 @@ node_modules/
 
 # The Forge tarballs `bin/vendor-packages.sh` builds from a monorepo checkout. Build output, megabytes of
 # it, whose source of truth is that repository — committing them would make this the second place a package
-# version lives. They leave when `@forgecommerce/*` is published. See bin/vendor-packages.sh.
+# version lives. `@forgeco/*` reached npm on 16/09, so what keeps them here is no longer the registry but
+# the box: these images are baked from a CHECKOUT, not from a release. See bin/vendor-packages.sh.
 storefront-coffee/vendor/
 # The vitrine's build output.
 storefront-coffee/.next/

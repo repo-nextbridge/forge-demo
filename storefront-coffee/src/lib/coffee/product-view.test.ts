@@ -5,7 +5,7 @@
 // coffees are unscored, one is sold as beans only. A page written against the fullest product looks correct
 // in review and breaks on the seventh coffee somebody adds.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { describe, expect, test } from 'vitest';
 import { field, notesOf, priceOf, specsOf, variantSummary } from './product-view';
 

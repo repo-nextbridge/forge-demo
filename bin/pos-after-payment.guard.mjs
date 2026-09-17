@@ -19,7 +19,7 @@
 // The confirmation slot compares WHO IT IS CALLING against WHO THE KERNEL SAYS CHARGED and hands each block
 // the verdict as `settledByThisApp: 'yes' | 'no' | 'unknown'`. So this app never recognises its own id — which
 // it could only do by HARDCODING it (an app cannot import its own manifest without dragging
-// `@forgecommerce/contracts` into the front bundle), and a fork or a rename would then restore the class
+// `@forgeco/contracts` into the front bundle), and a fork or a rename would then restore the class
 // defect in silence.
 //
 // ⚠️ ONLY `'no'` IS SILENCE. `'unknown'` means the kernel named NOBODY — no payment intent was ever opened —

@@ -192,7 +192,7 @@ export function coffeePages() {
   return PAGES;
 }
 
-/** This app's key on the SKU bag. It belongs to `@forgecommerce/ext-subscriptions` (`subscribable.ts`) and
+/** This app's key on the SKU bag. It belongs to `@forgeco/ext-subscriptions` (`subscribable.ts`) and
  *  is repeated here because a seed script may not import an app's source — the app lives in the image. */
 export const SUB_ENABLED_FIELD = 'sub_enabled';
 

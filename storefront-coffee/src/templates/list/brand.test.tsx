@@ -4,7 +4,7 @@
 //   • a brand WITH a logo → the header renders it (the img, and the brand's name as its alt);
 //   • a brand WITHOUT one → nothing renders (the bare heading — byte-for-byte the page that shipped before).
 
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { ListTemplate } from './template';

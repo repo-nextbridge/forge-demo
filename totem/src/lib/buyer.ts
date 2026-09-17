@@ -17,7 +17,7 @@
 // instead of trusting a flag in the browser: going back a screen and forward again must not spend one of the
 // ten. The guard for this is `buyer.test.ts`, and the sabotage that proves it is in the slice report.
 
-import type { CheckoutView } from '@forgecommerce/storefront-kit/read-client';
+import type { CheckoutView } from '@forgeco/storefront-kit/read-client';
 import { totemCommand } from './port';
 import { resolveTotemStore } from './store';
 

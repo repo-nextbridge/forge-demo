@@ -13,7 +13,7 @@
 // first place — the CTAs were reviewed as a pair and the row arrived later, through another door (a fetch).
 // Whatever this component renders, no href may address another store, and nobody has to remember anything.
 
-import { pathScopedBase, HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { pathScopedBase, HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { NotFoundWayOut } from './NotFoundWayOut';

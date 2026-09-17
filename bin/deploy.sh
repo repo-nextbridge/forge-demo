@@ -23,7 +23,7 @@
 #
 # ── ★★ THE FENCE RUNS FIRST, AND BEFORE ANY REMOTE GESTURE AT ALL ───────────────────────────────────────────
 #
-# `forge-lock-provenance` (the product's `@forgecommerce/surface-codegen`) compares TWO inputs that nothing
+# `forge-lock-provenance` (the product's `@forgeco/surface-codegen`) compares TWO inputs that nothing
 # else compares: the composition list this instance declares, and the provenance `forge.lock` states for each
 # image. For every surface, an app of THIS box that has to be compiled into a build the lock pins as `release`
 # is a box whose front will not carry that app — an image the product baked from the product's list, which has
@@ -133,7 +133,7 @@ say '1 · the fence: does every surface this box pins carry the apps this box de
 
 # ★★ THE RESOLUTION ORDER IS DECLARED, AND ITS ABSENCE IS A REFUSAL RATHER THAN A SKIP.
 #
-# The binary travels in `@forgecommerce/surface-codegen`, the package a cut of a Forge front already installs
+# The binary travels in `@forgeco/surface-codegen`, the package a cut of a Forge front already installs
 # (`storefront-coffee/node_modules/.bin/`) — so in the finished world this resolves with nothing configured.
 # ⚠️ IT DOES NOT RESOLVE THERE TODAY, MEASURED 2026-09-16: the tarballs in `storefront-coffee/vendor/` were
 # vendored at 10:57 that morning, before the slice that added this binary reached the product, so the package

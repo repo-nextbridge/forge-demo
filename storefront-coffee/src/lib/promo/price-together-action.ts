@@ -13,8 +13,8 @@
 //
 // It is a READ, so it revalidates nothing and sets no cookie: the answer is data the caller renders.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { PriceTogether } from '@forgecommerce/storefront-kit/read-client';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { PriceTogether } from '@forgeco/storefront-kit/read-client';
 
 export async function priceTogetherAction(
   store: string,

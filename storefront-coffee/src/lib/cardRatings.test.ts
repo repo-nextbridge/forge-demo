@@ -3,7 +3,7 @@
 // carries, degrade to {} (no stars) on any contributor failure, and never call a contributor for an empty store.
 //
 // ★ F2 — WHAT IS MOCKED IS THE GENERATED REGISTRY, NOT AN APP. This suite used to `vi.mock`
-// '@forgecommerce/ext-reviews/ratings', which named an app in the storefront's own tests — the same weld the
+// '@forgeco/ext-reviews/ratings', which named an app in the storefront's own tests — the same weld the
 // production file carried. The seam under test is now the composition point: the registry is the boundary, and
 // mocking it is how the aggregation rules (0..n contributors, one that throws, an empty store) get exercised
 // without depending on which apps this instance's list happens to carry. The real contribution is unit-tested

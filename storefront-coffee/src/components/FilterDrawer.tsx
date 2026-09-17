@@ -14,8 +14,8 @@
 // keeps the URL clean and the `open` state drives everything.
 'use client';
 
-import { FadeLayer } from '@forgecommerce/storefront-kit/FadeLayer';
-import { SlidersHorizontal } from '@forgecommerce/storefront-kit/icons';
+import { FadeLayer } from '@forgeco/storefront-kit/FadeLayer';
+import { SlidersHorizontal } from '@forgeco/storefront-kit/icons';
 import { useState } from 'react';
 import styles from './FilterDrawer.module.css';
 

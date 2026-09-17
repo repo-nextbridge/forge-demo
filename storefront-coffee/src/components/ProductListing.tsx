@@ -8,9 +8,9 @@
 // O1-A — an EMPTY result keeps the filter rail whenever a filter is active, so the shopper who filtered down to
 // zero always has the way back (see the rule at the empty branch below).
 
-import { plural } from '@forgecommerce/storefront-kit/plural';
-import type { Facets, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import type { StoreBase, StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { plural } from '@forgeco/storefront-kit/plural';
+import type { Facets, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import type { StoreBase, StorePath } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { ActiveChips, Filters, SortControl } from '@/components/Filters';

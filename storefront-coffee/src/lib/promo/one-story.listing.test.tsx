@@ -9,7 +9,7 @@
 // renders in this build. What keeps them from drifting is not these two files agreeing by hand — it is that
 // the de/por is produced by `promo/display-price` in the kit, which both apps import.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, within } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { ProductCard } from '@/components/ProductCard';

@@ -32,11 +32,11 @@
 //
 // CHANGE THIS AND CHANGE `seed/coffee.mjs`.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 
 type Sku = ProductDoc['skus'][number];
 
-/** The app's key on the SKU bag (`@forgecommerce/ext-subscriptions`, `subscribable.ts`). */
+/** The app's key on the SKU bag (`@forgeco/ext-subscriptions`, `subscribable.ts`). */
 const SUB_ENABLED_FIELD = 'sub_enabled';
 
 /** The app's declared cart-line field (`cycle.ts`, `PLAN_FIELD`). The name the kernel validates against. */

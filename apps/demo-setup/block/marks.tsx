@@ -25,7 +25,7 @@
 // element to the right. So a shop that places a mark here LOSES the sentence unless it says one of its own.
 // `tagline` is that field, and it is only on this block for exactly that reason.
 
-import { mediaRenderSrc } from '@forgecommerce/storefront-kit/media/src';
+import { mediaRenderSrc } from '@forgeco/storefront-kit/media/src';
 import type { ReactNode } from 'react';
 import styles from './marks.module.css';
 

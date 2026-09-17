@@ -66,7 +66,7 @@ const say = (line) => console.error(`[front-app-reach] ${line}`);
  * ★★★ pk35/d2 — AND A THIRD SAFEGUARD, BECAUSE THE SECOND ONE DOES NOT COVER THE WAY THESE TWO ROTTED.
  * Both entries below were written waiting on ONE artifact of the product, and both said so in prose: *"the
  * tool is owed by the product and is being fiado by pk32/p1-parto"*. The tool LANDED — measured 2026-09-13,
- * `@forgecommerce/surface-codegen` is a package of the pinned release and is on its `publishable.json` — and
+ * `@forgeco/surface-codegen` is a package of the pinned release and is on its `publishable.json` — and
  * nothing here moved, because a blocker written in prose is a blocker nobody can grade. The waivers went on
  * matching a finding, so safeguard two stayed green, and went on PRINTING a reason that had stopped being
  * true. Two weeks of "somebody else owes this" over an artifact already in the box's own vendor directory.
@@ -88,7 +88,7 @@ const DIVERGENCES = [
     why:
       'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
       'It used to blame a missing product artifact ("the tool is owed by the product and is being fiado by ' +
-      'pk32/p1-parto"); that tool SHIPPED — `@forgecommerce/surface-codegen` is in the release, the fork ' +
+      'pk32/p1-parto"); that tool SHIPPED — `@forgeco/surface-codegen` is in the release, the fork ' +
       'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
       'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
       'would draw a second one. The rule decides it — A FORK BELONGS TO THE CUSTOMER, so when ' +
@@ -143,7 +143,7 @@ function conditionsOf(divergence) {
     out.push({
       what: `${until.fork} depends on ${dep}`,
       // ⚠️ A DEPENDENCY, NOT AN `overrides` ENTRY, AND THE DIFFERENCE IS THE WHOLE MEASUREMENT OF pk35/d2:
-      // `storefront-coffee/package.json` has carried `@forgecommerce/surface-codegen` under `overrides` for
+      // `storefront-coffee/package.json` has carried `@forgeco/surface-codegen` under `overrides` for
       // days — which pins a version npm would only reach for if something ELSE asked for it, and nothing
       // does. An override is not an install; grading it would call this waiver dead while the tool is absent.
       holds: Boolean(manifest.dependencies?.[dep] ?? manifest.devDependencies?.[dep]),

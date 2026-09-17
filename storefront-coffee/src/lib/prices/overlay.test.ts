@@ -11,7 +11,7 @@ import {
   applyIdentityPrices,
   PRICE_APPLIED_ATTR,
   skusOnPage,
-} from '@forgecommerce/storefront-kit/prices/apply';
+} from '@forgeco/storefront-kit/prices/apply';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { batchSkus, fetchIdentityPrices, MY_PRICES_MAX_SKUS } from './overlay';
 

@@ -2,7 +2,7 @@
 // calls a PSP, because at this counter there is no PSP: there is a card machine that already ran, and a QR on
 // a screen that somebody taps.
 //
-// It imports ONLY @forgecommerce/contracts types (no @forge/core, no pg), like every payment app in this house.
+// It imports ONLY @forgeco/contracts types (no @forge/core, no pg), like every payment app in this house.
 //
 // ── ★ `pos_card` SETTLES AT `initiate`, AND THE "~2 SECONDS" DO NOT EXIST HERE ────────────────────────────
 //
@@ -50,7 +50,7 @@ import type {
   PaymentProvider,
   PaymentReconcileRequest,
   PaymentReconcileResult,
-} from '@forgecommerce/contracts';
+} from '@forgeco/contracts';
 import { decideScan, fakePixCode, posCardRef, posPixRef } from './simulation';
 
 /** How long the totem tells the customer the QR is good for. It is the SCREEN's number; what actually expires

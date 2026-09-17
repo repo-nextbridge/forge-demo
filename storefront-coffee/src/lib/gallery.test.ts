@@ -1,7 +1,7 @@
 // S6-PDP — the gallery ordering rule: cover opens the stage, videos close the strip, a SKU without media
 // falls back to the product's (the S5 regression, proven at the pure level).
 
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { embedSrc, isVideo, orderGalleryItems } from '@/lib/gallery';
 

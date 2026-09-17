@@ -10,12 +10,12 @@
 // under path routing on one host it is the OTHER container that answers it — which is exactly why the
 // literal is asserted here rather than trusted.
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
 import {
   EMPTY_SNAPSHOT,
   type MinicartSnapshot,
-} from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { AddToCartForm } from './AddToCartForm';

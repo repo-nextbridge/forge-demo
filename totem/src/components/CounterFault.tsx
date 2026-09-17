@@ -25,7 +25,7 @@
 
 'use client';
 
-import { ceilingWaitSentence } from '@forgecommerce/storefront-kit/ceiling-digest';
+import { ceilingWaitSentence } from '@forgeco/storefront-kit/ceiling-digest';
 import styles from './CounterFault.module.css';
 
 export function CounterBusy({

@@ -3,7 +3,7 @@
 // a store-specific one). It is also the FALLBACK when a page's template_key is unknown (never a 500). The
 // copy below is placeholder institutional text a store replaces in its own theme fork.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 export function InstitutionalDefault({ page }: { page: PageDoc }) {

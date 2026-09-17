@@ -6,10 +6,10 @@
 // stub MinicartProvider so the buy row actually drives a cart, and publishes a rating so the stars light.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { useEffect, useMemo } from 'react';
 import { Breadcrumb } from '@/components/Breadcrumb';
 import { PDP_RATING_EVENT, PDP_RATING_GLOBAL, type PdpRating } from '@/lib/pdp-rating';

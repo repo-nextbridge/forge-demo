@@ -30,7 +30,7 @@
 // walked into — its buy box is a client component, and invoking one this way is a `useState` on a null
 // dispatcher.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { makeProduct } from '@/test/fixtures';
 
@@ -42,7 +42,7 @@ const { resolveCatchAll, productByHandle } = vi.hoisted(() => ({
 // The catalog decision and the reads are somebody else's proof (lib/catch-all.test.ts); this file is about the
 // parameter's journey, so the port is a stub and the template is a spy.
 vi.mock('@/lib/catch-all', () => ({ resolveCatchAll }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ productByHandle, categories: async () => ({}) }),
 }));
 vi.mock('@/lib/cardChrome', () => ({
@@ -50,7 +50,7 @@ vi.mock('@/lib/cardChrome', () => ({
 }));
 vi.mock('@/lib/productStructuredData', () => ({ productStructuredData: async () => undefined }));
 vi.mock('@/lib/seo/store-origin', () => ({ storeOrigin: () => null }));
-vi.mock('@forgecommerce/storefront-kit/store-route.server', () => ({
+vi.mock('@forgeco/storefront-kit/store-route.server', () => ({
   requestStoreBase: async () => '',
 }));
 vi.mock('@/lib/cart-actions', () => ({
@@ -137,7 +137,7 @@ test('★★ the catch-all product branch renders THIS shop`s page, not the refe
 // they walked: this route has no reader for the parameter any more, so an assertion about how it is parsed
 // would be asserting over a value nothing consumes, and would go on passing after the rule itself broke.
 //
-// The rule still exists and still matters — it lives in `@forgecommerce/storefront-kit/sku-url`, and it is
+// The rule still exists and still matters — it lives in `@forgeco/storefront-kit/sku-url`, and it is
 // proven where the reference storefront still honours it. Keeping a copy here would be a test that survives
 // its own subject.
 test('★★ and no shape of `?sku=` can put the reference template back', async () => {

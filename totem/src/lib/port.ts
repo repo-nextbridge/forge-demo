@@ -1,7 +1,7 @@
 // THE TOTEM'S DOORS TO THE PORT — the kit's clients, built here so this app can see a 429 for what it is.
 //
 // ★ THE CLIENTS ARE THE KIT'S. Nothing about a read or a command is re-implemented: `createReadClient` and
-// `createCommandClient` come from `@forgecommerce/storefront-kit`, the same code the reference storefront and
+// `createCommandClient` come from `@forgeco/storefront-kit`, the same code the reference storefront and
 // the coffee vitrine run. What this module adds is the ONE thing the kit's own factories cannot take — an
 // instrumented `fetch` — and it adds it by passing the parameter those factories already accept.
 //
@@ -25,14 +25,14 @@
 // all it does not forge an address to spread the bucket — that would be defeating a security cap with an
 // invented IP, and it is refused here on purpose (tech lead, 2026-09-01).
 
-import { ceilingRefusalDigest } from '@forgecommerce/storefront-kit/ceiling-digest';
+import { ceilingRefusalDigest } from '@forgeco/storefront-kit/ceiling-digest';
 // ★ From the KIT, which a fork could not do until 2026-09-11: the module was in the kit's `exports` and absent
 // from its `publishConfig.exports`, so a tarball could not import it. `pk32/p1` published it and added the guard
 // that makes the next missing subpath red instead of silent.
-import { createCommandClient } from '@forgecommerce/storefront-kit/command-client';
-import { commandBaseUrl, readBaseUrl } from '@forgecommerce/storefront-kit/config';
-import { createReadClient } from '@forgecommerce/storefront-kit/read-client';
-import { shopperIp } from '@forgecommerce/storefront-kit/shopper-ip';
+import { createCommandClient } from '@forgeco/storefront-kit/command-client';
+import { commandBaseUrl, readBaseUrl } from '@forgeco/storefront-kit/config';
+import { createReadClient } from '@forgeco/storefront-kit/read-client';
+import { shopperIp } from '@forgeco/storefront-kit/shopper-ip';
 
 /**
  * The port refused this caller for going too fast. Carries the port's OWN number — never a guess.

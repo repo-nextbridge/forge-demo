@@ -5,10 +5,10 @@
 // LIVE stub MinicartProvider so the grid's cards can add to the cart.
 'use client';
 
-import type { SummaryLine } from '@forgecommerce/storefront-kit/checkout/enrich';
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
-import type { Facets, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { SummaryLine } from '@forgeco/storefront-kit/checkout/enrich';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
+import type { Facets, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { useMemo } from 'react';
 import type { FilterState } from '@/lib/filters/filter-url';
 import type { SwatchImages } from '@/lib/filters/plp';

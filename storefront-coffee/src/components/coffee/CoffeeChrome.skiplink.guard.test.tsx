@@ -24,8 +24,8 @@
 // TREE lost it on the way to the shopper (a tree that stopped mounting this chrome, or mounted another).
 // Both derive the anchor from the kit's own `MAIN_CONTENT_ID`; neither restates the other's claim.
 
-import { MAIN_CONTENT_ID, SkipLink } from '@forgecommerce/storefront-kit/SkipLink';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { MAIN_CONTENT_ID, SkipLink } from '@forgeco/storefront-kit/SkipLink';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { CoffeeChrome } from './CoffeeChrome';

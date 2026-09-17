@@ -25,10 +25,10 @@
 // aggregate (over the neutral rating channel), the discreet CEP box, and the info slots.
 'use client';
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { defaultSku } from '@forgecommerce/storefront-kit/sku';
-import { parseSkuParam, skuSearch } from '@forgecommerce/storefront-kit/sku-url';
-import { HOST_BASE, type StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { defaultSku } from '@forgeco/storefront-kit/sku';
+import { parseSkuParam, skuSearch } from '@forgeco/storefront-kit/sku-url';
+import { HOST_BASE, type StoreBase } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { BuyboxRating } from '@/components/BuyboxRating';

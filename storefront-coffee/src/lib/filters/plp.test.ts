@@ -1,4 +1,4 @@
-import type { CatalogList, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { CatalogList, ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { describe, expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';
 import {

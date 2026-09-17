@@ -5,8 +5,8 @@
 // resolved here from `?store=` (the client reads it off the path) OR the request Host. Best-effort: an unknown
 // store or a blank q returns empty — the SearchBox still GET-submits, so autocomplete only ever ENHANCES.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { ReadPortError } from '@forgecommerce/storefront-kit/read-client';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { ReadPortError } from '@forgeco/storefront-kit/read-client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { resolveRequestStore } from '@/lib/store-context';

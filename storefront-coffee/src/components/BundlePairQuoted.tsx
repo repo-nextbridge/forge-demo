@@ -10,8 +10,8 @@
 // The DEFAULT selection has to be the same one `BundlePair` starts with (the first sellable SKU of each side),
 // or the quote would be about a variant the shopper is not looking at. Both use `sellable()`.
 
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { readClient } from '@forgeco/storefront-kit/config';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { priceTogetherAction } from '@/lib/promo/price-together-action';
 import { sellable } from '@/lib/variant-axes';
 import { BundlePair } from './BundlePair';

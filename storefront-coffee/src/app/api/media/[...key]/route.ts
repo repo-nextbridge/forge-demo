@@ -36,7 +36,7 @@
 // a broken thumbnail otherwise has nothing at all to go on, and goes looking for a key that is present and
 // fine. So: same response, and the cause survives where an operator can read it.
 
-import { joinMediaBase, normalizeProviderKey } from '@forgecommerce/storefront-kit/media/key';
+import { joinMediaBase, normalizeProviderKey } from '@forgeco/storefront-kit/media/key';
 import { masterContentType, SNIFF_BYTES, UNKNOWN_CONTENT_TYPE } from '@/lib/master-content-type';
 
 /** The bucket/CDN base the kernel also resolves against. Unset → this route serves nothing (honest 404). */

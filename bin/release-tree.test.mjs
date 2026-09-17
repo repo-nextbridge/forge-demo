@@ -43,7 +43,7 @@ function clone() {
   const root = mkdtempSync(join(tmpdir(), 'forge-release-tree-'));
   const main = join(root, 'main');
   mkdirSync(join(main, 'packages', 'storefront-kit'), { recursive: true });
-  writeFileSync(join(main, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgecommerce/storefront-kit"}\n');
+  writeFileSync(join(main, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgeco/storefront-kit"}\n');
   git(main, 'init', '-q', '-b', 'release');
   git(main, 'add', '-A');
   git(main, 'commit', '-q', '-m', 'the release');
@@ -159,7 +159,7 @@ function aged(commitsAfter) {
   const root = mkdtempSync(join(tmpdir(), 'forge-pin-aged-'));
   const main = join(root, 'main');
   mkdirSync(join(main, 'packages', 'storefront-kit'), { recursive: true });
-  writeFileSync(join(main, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgecommerce/storefront-kit"}\n');
+  writeFileSync(join(main, 'packages', 'storefront-kit', 'package.json'), '{"name":"@forgeco/storefront-kit"}\n');
   git(main, 'init', '-q', '-b', 'release');
   git(main, 'add', '-A');
   git(main, 'commit', '-q', '-m', 'the release');

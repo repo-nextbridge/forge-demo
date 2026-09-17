@@ -13,11 +13,11 @@
 // does not have — and no `gate-registry.tsx` existed beside it at all. So this box could install an app, see
 // it enabled in the kernel and its card in the admin, and the page would draw nothing, telling nobody.
 //
-// The product's answer is `@forgecommerce/surface-codegen`: a TOOL the fork installs and runs against its own
+// The product's answer is `@forgeco/surface-codegen`: a TOOL the fork installs and runs against its own
 // `composition.json`. It is in the release (`scripts/publishing/publishable.json`) and `bin/vendor-packages.sh`
 // has been writing its tarball into `storefront-coffee/vendor/` for days. ⚠️ AND NOTHING WAS INSTALLING IT:
 // the fork pinned it in `overrides`, which npm applies only to a package something else already depends on.
-// Measured before this slice — 19 tarballs in `vendor/`, and `node_modules/@forgecommerce/surface-codegen`
+// Measured before this slice — 19 tarballs in `vendor/`, and `node_modules/@forgeco/surface-codegen`
 // absent. An `overrides` entry is not a dependency.
 //
 // ── ★★ WHAT THIS FILE GRADES, AND WHY THE VERDICT IS AN OUTCOME AND NOT A BOOLEAN ────────────────────────

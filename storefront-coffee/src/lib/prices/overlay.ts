@@ -31,7 +31,7 @@
 // the side that batches.
 
 import { withStoreParam } from '@/lib/store-param';
-import type { MyPrice } from '@forgecommerce/storefront-kit/customer-client';
+import type { MyPrice } from '@forgeco/storefront-kit/customer-client';
 import { batchSkus as splitBatches } from '@/lib/batch-skus';
 
 /** The port's declared ceiling per call. Mirrors @forge/core's `MY_PRICES_MAX_SKUS`; the parity is asserted in

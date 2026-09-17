@@ -40,7 +40,7 @@ vi.mock('./port', () => ({
   totemCommand: () => ({ initiatePayment }),
 }));
 vi.mock('./store', () => ({ resolveTotemStore: () => ({ id: 'sto_test', handle: 'balcao' }) }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ commandBaseUrl: () => 'http://kernel:3000' }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ commandBaseUrl: () => 'http://kernel:3000' }));
 
 const { recoverCounterPayment } = await import('./pos');
 

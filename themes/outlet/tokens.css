@@ -1,7 +1,7 @@
 /* themes/outlet/tokens.css — the Forge Outlet's skin. An OVERRIDE, never a copy.
  *
  * The reference theme is loaded ABOVE this file (the root layout's static import of
- * `@forgecommerce/theme-storefront-vanilla/tokens.css`); this stylesheet is inlined by the store-scoped
+ * `@forgeco/theme-storefront-vanilla/tokens.css`); this stylesheet is inlined by the store-scoped
  * layout, after it, at the same specificity. So it only has to carry what DIFFERS — measured against the
  * reference file, that is NINE declarations. Seven of them are values the design's own artboard sets on
  * itself; the two added later (`--color-primary`, `--ext-banners-announcement-surface`) are the artboard's

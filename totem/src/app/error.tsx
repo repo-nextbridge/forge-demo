@@ -7,7 +7,7 @@
 // It branches on the one cause the counter CAN know, and the label travels in the digest — see
 // `lib/port.ts`, where `PortRateLimited` now carries one: `totemFetch` intercepts 429 before the kit can label
 // it, so without that line a rate-limited RENDER arrives here indistinguishable from a dead kernel. The
-// predicate and the wait come from `@forgecommerce/storefront-kit/ceiling-digest` — the kit's vocabulary, the
+// predicate and the wait come from `@forgeco/storefront-kit/ceiling-digest` — the kit's vocabulary, the
 // same words the reference fronts and the coffee vitrine branch on. ★ Until `pk32/p1` published that subpath it
 // was a weld here, because the kit listed it in `exports` and not in `publishConfig.exports`.
 //
@@ -20,7 +20,7 @@
 import {
   ceilingRefusalWaitSeconds,
   isCeilingRefusalDigest,
-} from '@forgecommerce/storefront-kit/ceiling-digest';
+} from '@forgeco/storefront-kit/ceiling-digest';
 import { CounterBusy, CounterDown } from '@/components/CounterFault';
 
 export default function CounterError({

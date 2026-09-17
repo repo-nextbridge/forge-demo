@@ -1,7 +1,7 @@
 // The subscription contract, from the fork's side — and every one of these is a rule about a SHOPPER'S
 // MONEY or about a product that must NOT offer a subscription.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { describe, expect, test } from 'vitest';
 import {
   DEFAULT_PLAN,

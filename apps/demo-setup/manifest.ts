@@ -40,7 +40,7 @@
 // ★ AREAS CONFINE BY PREFIX and this app invents no vocabulary in the kernel: `header` and `footer` are the
 // page prefixes the three slots already live under (trava 7).
 
-import { type ExtensionManifest, extensionManifestSchema } from '@forgecommerce/contracts';
+import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
 
 const DESCRIPTION_EN =
   "The demo's own marks IN ITS SHOP WINDOW: the shop's name and logo in the three places the storefront shows one — the header bar, the mobile drawer and the footer column — each placed and configured on its own in Compose. The login box is not here: that screen belongs to the checkout, which nobody forks, so its mark is the product's to configure. Written inside this instance, composed into its images, offered to nobody: it is what a customer's own app looks like.";

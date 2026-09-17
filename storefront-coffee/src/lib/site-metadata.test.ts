@@ -13,7 +13,7 @@
 // the half of this that is not merely copy: two fallbacks for one situation is how a store ends up named two
 // things on two screens.
 
-import { STOREFRONT_LOCALE } from '@forgecommerce/storefront-kit/datetime';
+import { STOREFRONT_LOCALE } from '@forgeco/storefront-kit/datetime';
 import { describe, expect, test } from 'vitest';
 import { NEUTRAL_STORE_TITLE, rootMetadata } from './site-metadata';
 

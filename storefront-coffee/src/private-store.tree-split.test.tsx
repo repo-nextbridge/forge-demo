@@ -33,7 +33,7 @@
 // for a private store — that is how the counter's totem keeps selling — and it is proven in the monorepo,
 // next to the kernel that implements it, never by mocking a port here.
 
-import type { StoreFlags } from '@forgecommerce/storefront-kit/read-client';
+import type { StoreFlags } from '@forgeco/storefront-kit/read-client';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -74,18 +74,18 @@ vi.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
   redirect: (to: string) => redirectMock(to),
 }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({
     storeFlags: (store: string) => storeFlagsMock(store),
     // The `s/[store]` layout also asks who fills the gate slot. Nobody does here.
     extensions: async () => [],
   }),
 }));
-vi.mock('@forgecommerce/storefront-kit/gate/actions', () => ({
+vi.mock('@forgeco/storefront-kit/gate/actions', () => ({
   dismissGate: async () => {},
   reopenGate: async () => {},
 }));
-vi.mock('@forgecommerce/storefront-kit/gate/registry', () => ({ resolveGate: () => undefined }));
+vi.mock('@forgeco/storefront-kit/gate/registry', () => ({ resolveGate: () => undefined }));
 
 // `headers()` JOINS `cookies()` HERE, and the two are mocked for OPPOSITE reasons. The cookie read must never
 // be reached by a refused store (the gate machinery is below the refusal). The header read is the refusal's

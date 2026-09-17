@@ -43,7 +43,7 @@
 // 204 when nothing claims the request. Every caller of this function is now store-scoped:
 // `my-prices`, `suggest`, `store`, `availability`.
 
-import { resolveStoreForHost } from '@forgecommerce/storefront-kit/config';
+import { resolveStoreForHost } from '@forgeco/storefront-kit/config';
 import { STORE_PARAM } from '@/lib/store-param';
 
 /**

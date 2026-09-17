@@ -2,9 +2,9 @@
 // the SKU selector) and marks the declared slots' render sites (<Slot>). The presentational components it uses
 // are theme (green) and consume only semantic tokens.
 
-import { mediaOptimized } from '@forgecommerce/storefront-kit/media/src';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, type StoreBase } from '@forgecommerce/storefront-kit/store-route';
+import { mediaOptimized } from '@forgeco/storefront-kit/media/src';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, type StoreBase } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { Breadcrumb, type Crumb } from '@/components/Breadcrumb';
 import { DocumentLinks } from '@/components/MediaBlocks';

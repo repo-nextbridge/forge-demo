@@ -7,8 +7,8 @@
 //   option.<name>=<v1>,<v2>   price_min=<cents>  price_max=<cents>  cf.<key>=<value>  sort=<enum>
 // `q` and `page` are NOT filter state — the caller carries them; changing a filter resets to page 1 (drop page).
 
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import type { StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import type { StorePath } from '@forgeco/storefront-kit/store-route';
 import { cfLabel, cfValueLabel } from './cf-label';
 
 export const SORT_KEYS = ['relevance', 'price_asc', 'price_desc', 'newest', 'name'] as const;

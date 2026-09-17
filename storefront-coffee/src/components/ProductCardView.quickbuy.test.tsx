@@ -10,7 +10,7 @@
 // rendered by a probe — and about what the SHOPPER can read on the card while the click that sells is still
 // pending. The fake port below is a real little cart: it keeps lines, and `readCart` answers from them.
 
-import type { MinicartSnapshot } from '@forgecommerce/storefront-kit/minicart-types';
+import type { MinicartSnapshot } from '@forgeco/storefront-kit/minicart-types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import type { CartModel } from '@/lib/cardModel';

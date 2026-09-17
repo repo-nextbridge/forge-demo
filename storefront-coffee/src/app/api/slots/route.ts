@@ -20,7 +20,7 @@
 // `target` (the grammar the kernel/admin validate). Public read (slot names are not a secret — they are
 // implied by the rendered page) and cheap; the admin proxies it, so no CORS concern.
 
-import { publishSlots } from '@forgecommerce/storefront-kit/slots/registry';
+import { publishSlots } from '@forgeco/storefront-kit/slots/registry';
 import { NextResponse } from 'next/server';
 import { SIBLING_SLOTS } from '@/lib/slots/generated/sibling-slots';
 import { slotRegistry } from '@/templates/registry';

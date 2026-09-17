@@ -2,7 +2,7 @@
 // discoverSlots()) with no edit to the registry or any central enum — the yellow-zone way to extend.
 // V1 slots are empty/default; ADM-1 fills them.
 
-import type { TemplateManifest } from '@forgecommerce/storefront-kit/slots/registry';
+import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
 
 export const pdpManifest: TemplateManifest = {
   template: 'pdp',

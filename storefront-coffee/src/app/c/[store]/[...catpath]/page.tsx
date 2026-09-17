@@ -9,7 +9,7 @@
 //
 // See `c/[store]/page.tsx` for why `revalidate` + `generateStaticParams` must both be here.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import { CatalogView, CLEAN_VIEW, catalogMetadata } from '@/templates/catalog/CatalogView';
 

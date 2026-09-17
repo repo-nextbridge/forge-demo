@@ -19,9 +19,9 @@
 // them. "Características" is the `cf.*` vocabulary the port serves, labelled by this shop (the anonymous
 // face publishes values, never declarations). The seals and the perks are copy this shop owns.
 
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { imagesOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
-import type { MediaRef, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { imagesOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
+import type { MediaRef, ProductDoc } from '@forgeco/storefront-kit/read-client';
 import type { ReactNode } from 'react';
 import { Icon, noteIcon, PathIcon } from '@/components/coffee/icons';
 import { FACT_PATHS, SEAL_PATHS } from '@/components/coffee/icons';

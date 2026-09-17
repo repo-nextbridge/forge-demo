@@ -5,8 +5,8 @@ import {
   crumbsForPath,
   ltreeToSegments,
   segmentsToLtree,
-} from '@forgecommerce/storefront-kit/catalog-path';
-import type { CategoryMap } from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/catalog-path';
+import type { CategoryMap } from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';
 

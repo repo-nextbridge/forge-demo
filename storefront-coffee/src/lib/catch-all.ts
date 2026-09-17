@@ -14,15 +14,15 @@
 // Note this makes an unknown path a real 404 (not an empty category list) — the catalog branch matches only a
 // category that actually exists, so garbage falls through to the page lookup and then to notFound().
 
-import { segmentsToLtree } from '@forgecommerce/storefront-kit/catalog-path';
-import { isCategoryBrowsable } from '@forgecommerce/storefront-kit/category-visibility';
+import { segmentsToLtree } from '@forgeco/storefront-kit/catalog-path';
+import { isCategoryBrowsable } from '@forgeco/storefront-kit/category-visibility';
 import type {
   CatalogList,
   CategoryMap,
   PageDoc,
   ProductDoc,
   ReadClient,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { accumulateList, PLP_PAGE_SIZE } from '@/lib/filters/plp';
 
 /** The reads the resolver needs — a structural subset of ReadClient, so a test can pass a small stub. */

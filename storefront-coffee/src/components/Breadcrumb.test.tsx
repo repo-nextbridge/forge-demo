@@ -11,7 +11,7 @@
 // This component had no test of its own before this card; the trail was only ever asserted through the PDP/list
 // template renders, which is why "every crumb is a link" was never a claim anybody had written down.
 
-import { HOST_BASE, pathScopedBase } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE, pathScopedBase } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
 import { Breadcrumb } from './Breadcrumb';

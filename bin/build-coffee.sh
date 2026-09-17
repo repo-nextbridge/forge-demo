@@ -25,10 +25,12 @@
 #
 # which is a true message about a missing step and reads like a broken image.
 #
-# ⚠️ THE `npm install` IS PRE-RELEASE AND SAYS SO. The cut names `@forgecommerce/*` at an exact version and
-# no registry serves those yet (measured: E404 for the kit, the theme and ext-reviews), so they are built
-# from the monorepo as tarballs — the same stand-in the Forge's own release guard uses. See
-# `bin/vendor-packages.sh`. It leaves at REL-CUT, together with this argument.
+# ⚠️ THE `npm install` COMES FROM A CHECKOUT, NOT FROM npm, AND SAYS SO. The cut names `@forgeco/*` at an
+# exact version, and since 2026-09-16 the registry does serve those (0.3.0) — what it cannot serve is the
+# tree these images are baked from, which `forge.lock` records as a `local build` of a branch. So the
+# packages are still built from the monorepo as tarballs, the same stand-in the Forge's own release guard
+# uses. See `bin/vendor-packages.sh`, which carries the measurement and the reason. It leaves when the box
+# pins a released kernel, together with this argument.
 
 set -euo pipefail
 

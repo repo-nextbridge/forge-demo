@@ -10,20 +10,29 @@
 # Duplicating the script would put npm's two-shapes rule (below) in two places, and the day it changes it
 # would change in one. So the directory became a parameter and the old call site did not move a letter.
 #
-# ⚠️ WHY A DIRECTORY OF TARBALLS INSTEAD OF `npm install`, AND WHEN THIS SHOULD STOP EXISTING.
+# ⚠️ WHY A DIRECTORY OF TARBALLS INSTEAD OF `npm install` — AND WHAT CHANGED ON 2026-09-16.
 #
 # `storefront-coffee/` is a CUT of the Forge storefront (`pnpm pack:surface`), and the cut is honest about
-# what it depends on: it names `@forgecommerce/storefront-kit`, the theme and the `ext-*` apps at an exact
-# version, the way any npm project names a dependency. Those packages are not published yet. Measured on
-# 2026-08-31:
+# what it depends on: it names `@forgeco/storefront-kit`, the theme and the `ext-*` apps at an exact
+# version, the way any npm project names a dependency.
 #
-#     npm view @forgecommerce/storefront-kit version           -> E404 Not Found
-#     npm view @forgecommerce/ext-reviews version              -> E404
-#     npm view @forgecommerce/theme-storefront-vanilla version -> E404
+# ★★ AND THOSE PACKAGES ARE PUBLISHED NOW — the reason this script was written has EXPIRED, so it is written
+# down rather than left to be discovered. Until pk43 this block said «they are not published yet» and carried
+# three E404s measured on 2026-08-31. The v0.3.0 cut put all nineteen on the public registry, under the scope
+# this repository now names. Measured 2026-09-16, on registry.npmjs.org:
 #
-# So `npm install` in that directory dies on a package nobody can fetch. This is the same pre-release moment
-# `bin/build-local.sh` and `bin/pack-apps.sh` are in, with the same shape of answer: build it from the
-# monorepo on this machine, and SAY SO.
+#     npm view @forgeco/storefront-kit version           -> 0.3.0
+#     npm view @forgeco/ext-reviews version              -> 0.3.0
+#     npm view @forgeco/theme-storefront-vanilla version -> 0.3.0
+#
+# ⚠️ THIS SCRIPT STAYS ANYWAY, FOR A DIFFERENT REASON THAN THE ONE IT WAS BORN WITH, and the new reason is
+# narrower. A registry install can only ever name a RELEASED version. This box does not run a released
+# version: `forge.lock`'s provenance says `local build` and names a branch and a sha, because the images are
+# baked from a checkout on this machine (`bin/build-local.sh`), and `bin/vendor-drift.guard.mjs` grades each
+# fork's committed lock against THAT tree, tarball by tarball. Pointing the forks at npm would have them pin
+# a coarser promise than the images standing beside them — a version, where the kernel is a commit. So the
+# origin does not move here: it moves when `forge.lock` stops saying `local build`, and that is a decision of
+# the cut, not a consequence of a rename.
 #
 # ★ THIS IS NOT A WORKAROUND WE INVENTED — it is the path the Forge's own release guard takes.
 # `scripts/publishing/packed-surface.guard.test.ts` proves a cut installs and boots, and it stands the
@@ -31,7 +40,7 @@
 # runs, which is the only reason to trust that this install resembles a customer's.
 #
 # ⚠️ AND IT IS npm's TWO SHAPES, NOT ONE. `npm install <tgz>` REWRITES that entry in package.json, so passing
-# every tarball would add the kernel's own `@forgecommerce/contracts` as a DIRECT dependency of the vitrine —
+# every tarball would add the kernel's own `@forgeco/contracts` as a DIRECT dependency of the vitrine —
 # which the surface's `structure.test.ts` forbids, correctly (a front speaks HTTP to the port; it must never
 # link the kernel's types). But an `overrides` entry for a direct dependency is refused outright
 # (`EOVERRIDE ... conflicts with direct dependency`). So DIRECT dependencies go in as install targets and
@@ -40,8 +49,9 @@
 #
 # THE TARBALLS ARE NOT COMMITTED (see .gitignore). They are megabytes of build output whose only source of
 # truth is the monorepo, and committing them would make this repository the second place a package version
-# lives. The day `@forgecommerce/*` is published, this script and its sibling are deleted and the vitrine's
-# `npm install` needs no argument at all.
+# lives. The day the forks install from the registry instead of from a checkout (see the block above — the
+# packages are already there; the box is what still is not), this script and its sibling are deleted and the
+# vitrine's `npm install` needs no argument at all.
 
 set -euo pipefail
 

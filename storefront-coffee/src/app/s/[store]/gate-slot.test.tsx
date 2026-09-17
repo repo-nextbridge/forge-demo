@@ -17,7 +17,7 @@
 // installed" claim from the layout's own header, which until now was a comment: reading a cookie opts the
 // route into dynamic rendering, so a store with no renderable gate would silently lose its static pages.
 
-import type { InstalledExtension } from '@forgecommerce/storefront-kit/read-client';
+import type { InstalledExtension } from '@forgeco/storefront-kit/read-client';
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -27,7 +27,7 @@ const cookiesMock = vi.fn();
 const resolveGateMock = vi.fn();
 
 vi.mock('next/headers', () => ({ cookies: () => cookiesMock() }));
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   GATE_DISMISSED_COOKIE: 'forge_gate_dismissed',
   readClient: () => ({
     extensions: () => extensionsMock(),
@@ -48,11 +48,11 @@ vi.mock('@forgecommerce/storefront-kit/config', () => ({
     }),
   }),
 }));
-vi.mock('@forgecommerce/storefront-kit/gate/actions', () => ({
+vi.mock('@forgeco/storefront-kit/gate/actions', () => ({
   dismissGate: async () => {},
   reopenGate: async () => {},
 }));
-vi.mock('@forgecommerce/storefront-kit/gate/registry', () => ({
+vi.mock('@forgeco/storefront-kit/gate/registry', () => ({
   resolveGate: (extensionId: string) => resolveGateMock(extensionId),
 }));
 
@@ -110,7 +110,7 @@ test('★★ the slot is filled and this build cannot draw it → the shopper is
   // own `gate-slot.test.tsx`; this is the fork's half of the same lie.)
   //
   // ★ `storefront:gate` is a STRUCTURAL target — the kit decides which targets may not go missing quietly, in
-  // `@forgecommerce/storefront-kit/extensions/composition-gap` — so an implementation this build lacks is a
+  // `@forgeco/storefront-kit/extensions/composition-gap` — so an implementation this build lacks is a
   // refusal the shopper READS, never a page that pretends the declaration was not there.
   extensionsMock.mockResolvedValue([gateHook('some-gate')]);
   resolveGateMock.mockReturnValue(undefined);

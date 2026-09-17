@@ -5,7 +5,7 @@
 //      this repository will never have. The numbers are copied rather than invented: a ceiling tuned to our
 //      runner is the only one we could defend on a machine we have never seen, and erring generous costs
 //      nothing but a slower hang report. Nothing mechanical ties this to the floor — said out loud.
-//   2. `server.deps.inline`. Installed from a tarball, `@forgecommerce/*` really lives in node_modules, which
+//   2. `server.deps.inline`. Installed from a tarball, `@forgeco/*` really lives in node_modules, which
 //      vitest externalizes — and an externalized `.tsx` is a syntax error, not a module. Same class of
 //      surprise as `transpilePackages` next door, one layer down. `@forge/ext-demo-gate` is on the list for
 //      exactly the same reason: it travels as source.
@@ -28,7 +28,7 @@ export default defineConfig({
     hookTimeout: 20_000,
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    server: { deps: { inline: [/@forgecommerce\//, /@forge\//] } },
+    server: { deps: { inline: [/@forgeco\//, /@forge\//] } },
     css: { modules: { classNameStrategy: 'non-scoped' } },
     include: ['src/**/*.test.{ts,tsx}'],
   },

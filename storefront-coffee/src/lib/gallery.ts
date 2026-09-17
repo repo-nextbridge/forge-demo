@@ -8,8 +8,8 @@
 // Ordering of the images: the media the operator marked as `role='cover'` opens the stage, whatever its
 // position; everything else follows by `position`. Sort is stable, so equal positions keep read order.
 
-import { imagesOf } from '@forgecommerce/storefront-kit/media/src';
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import { imagesOf } from '@forgeco/storefront-kit/media/src';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 
 /** A gallery entry: an image (stage = picture) or an external video (stage = player embed). */
 export type GalleryItem = MediaRef;

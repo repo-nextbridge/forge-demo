@@ -24,7 +24,7 @@
 // of dispatch, and a subscription with no lock-in. A "Sobre" that promised a fact the shop does not carry
 // would be the same defect as the shoe copy, one draft later.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import styles from './template.module.css';
 
 export function CoffeeAbout({ page }: { page: PageDoc }) {

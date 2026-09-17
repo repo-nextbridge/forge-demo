@@ -10,9 +10,9 @@
 // carrying a surcharge table. A product whose "G" costs less than its "P" would therefore show a negative
 // delta and still charge the truth, which is the only behaviour that cannot drift from the till.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import type { OptionAxis, ProductDetail } from './product-select';
-import { coverOf, imagesOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
+import { coverOf, imagesOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
 import { totemRead } from './port';
 import { resolveTotemStore } from './store';
 

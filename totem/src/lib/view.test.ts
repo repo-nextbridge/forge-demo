@@ -9,7 +9,7 @@
 // "right" — it checks that the total is the one the kernel SENT, by feeding a view whose `total_amount`
 // deliberately disagrees with the lines.
 import { describe, expect, it } from 'vitest';
-import type { CheckoutView } from '@forgecommerce/storefront-kit/read-client';
+import type { CheckoutView } from '@forgeco/storefront-kit/read-client';
 import { toBag } from './view';
 
 const view = (over: Partial<CheckoutView> = {}): CheckoutView =>

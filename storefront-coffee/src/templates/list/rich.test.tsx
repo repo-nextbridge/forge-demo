@@ -1,8 +1,8 @@
 // RICH (S2): the PLP (category list) shows a header (banner + markdown description) when the category has rich
 // content; a category with no content (or a null category) renders the current bare PLP — zero regression.
 
-import type { CategoryDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { CategoryDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { ListTemplate } from './template';

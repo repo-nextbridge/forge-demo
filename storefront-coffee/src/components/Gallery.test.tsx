@@ -5,7 +5,7 @@
 // S6-PDP — and the strip is alive: a thumb puts its media on the stage, a video plays there, and the video thumb
 // stays a real link (it works without JS). `media` arrives already in display order (see lib/gallery.ts).
 
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { fireEvent, render } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { Gallery } from './Gallery';

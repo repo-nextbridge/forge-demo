@@ -9,7 +9,7 @@
 // dynamically with `private, no-store`, whatever the export says). The list is empty on purpose: nothing is
 // prerendered at build time, the entries are filled on first request and then cached.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import type { Metadata } from 'next';
 import {
   CLEAN_VIEW,

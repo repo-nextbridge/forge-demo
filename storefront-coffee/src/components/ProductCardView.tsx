@@ -24,14 +24,14 @@
 // And the price stops disappearing at exactly that moment — see `.priceRow[data-open]` in the stylesheet.
 'use client';
 
-import { ShoppingCart, Star } from '@forgecommerce/storefront-kit/icons';
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
+import { ShoppingCart, Star } from '@forgeco/storefront-kit/icons';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
 import {
   PRICE_AMOUNT_ATTR,
   PRICE_SKU_ATTR,
   PRICE_WAS_ATTR,
-} from '@forgecommerce/storefront-kit/prices/apply';
-import { type Badge, badgeOf } from '@forgecommerce/storefront-kit/promo/badges';
+} from '@forgeco/storefront-kit/prices/apply';
+import { type Badge, badgeOf } from '@forgeco/storefront-kit/promo/badges';
 import Link from 'next/link';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { type CartModel, defaultSelection, resolveSkuId } from '@/lib/cardModel';

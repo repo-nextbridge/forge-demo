@@ -3,7 +3,7 @@
 // ★★ THE PROBLEM THIS SOLVES, AND IT IS THE ONE CHECKOUT-APP INTRODUCED. Half a dozen guards here do not
 // import what they police — they READ it, because reading is the only way to assert about a mirror, about a
 // cookie's spelling, or about which files a render graph reaches. Every one of them found its target with a
-// relative path into `src/lib`. Slice K1 moved those targets into `@forgecommerce/storefront-kit`, and a
+// relative path into `src/lib`. Slice K1 moved those targets into `@forgeco/storefront-kit`, and a
 // relative path that no longer resolves does not make a guard lenient — it makes it CRASH, which is at least
 // loud. The dangerous half is the guard that keeps passing over an empty corpus.
 //
@@ -18,4 +18,4 @@ import { dirname } from 'node:path';
 const require = createRequire(import.meta.url);
 
 /** The kit's `src` directory, resolved through the package's own exports map. */
-export const KIT_SRC = dirname(require.resolve('@forgecommerce/storefront-kit/read-client'));
+export const KIT_SRC = dirname(require.resolve('@forgeco/storefront-kit/read-client'));

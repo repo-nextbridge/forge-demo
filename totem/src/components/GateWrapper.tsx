@@ -10,7 +10,7 @@
 // filling it that this build cannot render → the counter renders; otherwise the cookie decides between the
 // full-screen interstitial and the ribbon underneath.
 
-import { dismissGate, reopenGate } from '@forgecommerce/storefront-kit/gate/actions';
+import { dismissGate, reopenGate } from '@forgeco/storefront-kit/gate/actions';
 import type { ReactNode } from 'react';
 import { gateState } from '@/lib/gate/mount';
 

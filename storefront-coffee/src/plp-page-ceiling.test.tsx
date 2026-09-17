@@ -10,8 +10,8 @@
 // over the same synthetic catalog — once as the page ceiling serves it, once as the whole catalog would be
 // served — and asserts the ratio. The port-call count rides along, because the html is only half the cost.
 
-import type { CatalogList, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { HOST_BASE, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { CatalogList, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { HOST_BASE, storeHref } from '@forgeco/storefront-kit/store-route';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { ProductListing } from '@/components/ProductListing';

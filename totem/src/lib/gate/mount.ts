@@ -10,7 +10,7 @@
 // not pay for one. Here it costs little (every totem screen is dynamic anyway), but copying the shape keeps
 // this file readable next to the two upstream layouts that do the same thing.
 
-import { GATE_DISMISSED_COOKIE } from '@forgecommerce/storefront-kit/cookies';
+import { GATE_DISMISSED_COOKIE } from '@forgeco/storefront-kit/cookies';
 import { cookies } from 'next/headers';
 import { totemRead } from '../port';
 import { resolveTotemStore } from '../store';

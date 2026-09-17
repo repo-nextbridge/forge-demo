@@ -15,8 +15,8 @@ const { resolveStoreForHost, lookupRouteRedirect, storeHasGate } = vi.hoisted(()
   storeHasGate: vi.fn(async () => false),
 }));
 
-vi.mock('@forgecommerce/storefront-kit/config', () => ({ resolveStoreForHost }));
-vi.mock('@forgecommerce/storefront-kit/gate/directory', () => ({ storeHasGate }));
+vi.mock('@forgeco/storefront-kit/config', () => ({ resolveStoreForHost }));
+vi.mock('@forgeco/storefront-kit/gate/directory', () => ({ storeHasGate }));
 vi.mock('./lib/route-redirect', async () => {
   // The real predicate is kept: which paths are even asked about is part of the behaviour under test.
   const actual =

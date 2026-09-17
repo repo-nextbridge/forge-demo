@@ -12,7 +12,7 @@
 //
 // It arrives, and it arrives through the VENDORED KIT, not through anything this fork had to be taught:
 //
-//   · this shop's reads go through `readClient()` (`@forgecommerce/storefront-kit/config`), which builds the
+//   · this shop's reads go through `readClient()` (`@forgeco/storefront-kit/config`), which builds the
 //     kit's own read client with the platform `fetch`;
 //   · a non-OK answer becomes `ReadPortError` (`storefront-kit/src/read-client.ts:1003`), and a 429 — and ONLY
 //     a 429 — is given `digest = forge.read.ceiling;<seconds>` from the port's own `Retry-After`;
@@ -28,8 +28,8 @@
 // port that published no delay, because a promise the shop cannot keep is the same species of lie as the white
 // error page this file replaces.
 
-import { ceilingWaitSentence } from '@forgecommerce/storefront-kit/ceiling-digest';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { ceilingWaitSentence } from '@forgeco/storefront-kit/ceiling-digest';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { ErrorActions } from './ErrorActions';
 import styles from './NotFoundContent.module.css';

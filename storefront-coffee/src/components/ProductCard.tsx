@@ -9,13 +9,13 @@
 // STORE-level chrome (free-shipping threshold, max installments)
 // arrives as props (cardChrome). RATING arrives as a prop (reviews live in the extension's isolated data).
 
-import { altOf, coverOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
-import { cardBadges } from '@forgecommerce/storefront-kit/promo/badges';
-import { displayPrice } from '@forgecommerce/storefront-kit/promo/display-price';
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { coverMediaOf, displaySku } from '@forgecommerce/storefront-kit/sku';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import { altOf, coverOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
+import { formatMoney } from '@forgeco/storefront-kit/money';
+import { cardBadges } from '@forgeco/storefront-kit/promo/badges';
+import { displayPrice } from '@forgeco/storefront-kit/promo/display-price';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { coverMediaOf, displaySku } from '@forgeco/storefront-kit/sku';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import type { CartModel, VariantOption } from '@/lib/cardModel';
 import { ProductCardView } from './ProductCardView';

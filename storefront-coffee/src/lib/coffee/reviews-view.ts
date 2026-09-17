@@ -2,7 +2,7 @@
 // of what this shop does to what the reviews app hands it.
 //
 // ── WHAT THE APP SERVES, MEASURED ────────────────────────────────────────────────────────────────────────
-// `fetchPublishedReviews` (`@forgecommerce/ext-reviews/reviews`, exported by D2-E3) returns ROWS, not a
+// `fetchPublishedReviews` (`@forgeco/ext-reviews/reviews`, exported by D2-E3) returns ROWS, not a
 // component: `{ id, product_id, rating, body, author, origin, status, created_at }`. That is deliberately
 // less than the artboard draws, and the two gaps are handled here rather than papered over:
 //
@@ -18,7 +18,7 @@
 // score in the shop's favour; a card that defaulted it to zero would be inventing one against the merchant.
 // It draws no dots.
 
-import type { Review } from '@forgecommerce/ext-reviews/reviews';
+import type { Review } from '@forgeco/ext-reviews/reviews';
 
 /** The scale the dots draw. The app's own, repeated here because a storefront may not import its internals. */
 export const STAR_MAX = 5;

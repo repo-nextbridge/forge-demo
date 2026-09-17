@@ -2,7 +2,7 @@
 // GALLERY (a link to the video that plays on the stage — it is no longer an iframe dumped below the description),
 // and a `document` renders as a download link. Server-rendered markup (a crawler sees it).
 
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { renderToString } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { makeProduct } from '@/test/fixtures';

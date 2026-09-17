@@ -2,7 +2,7 @@
 //
 // ★ THE CONTRACT BELONGS TO THE POINT, NEVER TO THE APP, and that sentence is the whole slice. Until now the
 // storefront got its card stars by importing the app's LIBRARY by name (`cardRatings.ts` →
-// `@forgecommerce/ext-reviews/ratings`) and taking the TYPE from the same import. That is the dependency
+// `@forgeco/ext-reviews/ratings`) and taking the TYPE from the same import. That is the dependency
 // inversion the wrong way round, and it is why `reviews` could not be taken out of the product: removing the
 // app removed the function AND the shape the caller was written against, in two different files.
 //

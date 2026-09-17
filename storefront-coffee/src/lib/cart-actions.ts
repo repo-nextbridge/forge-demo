@@ -8,13 +8,13 @@
 // build cannot serve.
 //
 // So each app owns its own entrypoints and the LOGIC is shared: everything below delegates to
-// `@forgecommerce/storefront-kit/checkout/checkout-flow`, which is dependency-injected and framework-free and
+// `@forgeco/storefront-kit/checkout/checkout-flow`, which is dependency-injected and framework-free and
 // is where the rules actually live (proven in isolation, in the kit's own suite). What is duplicated is the
 // thin `'use server'` wrapper — which is the correct amount to duplicate, because it is the part that is
 // per-app by definition.
 //
 // ⚠️ THE COOKIE IS THE SAME COOKIE. `forge_cart` is a frozen name with one attribute bag
-// (`@forgecommerce/storefront-kit/cart-cookie`), so a cart born here is the cart the checkout picks up on the
+// (`@forgeco/storefront-kit/cart-cookie`), so a cart born here is the cart the checkout picks up on the
 // next path of the same host. That is the whole handoff; there is nothing else to keep in step.
 //
 // ⚠️ WHAT IS DELIBERATELY NOT HERE: everything past the cart. Address, shipping choice, identity, payment,
@@ -22,11 +22,11 @@
 // checkout nobody maintains.
 'use server';
 
-import { CART_COOKIE } from '@forgecommerce/storefront-kit/cart-cookie';
+import { CART_COOKIE } from '@forgeco/storefront-kit/cart-cookie';
 import type {
   CouponResult,
   GiftResult,
-} from '@forgecommerce/storefront-kit/checkout/cart-write-results';
+} from '@forgeco/storefront-kit/checkout/cart-write-results';
 import {
   addManyToCart,
   addToCart,
@@ -39,21 +39,21 @@ import {
   resolveState,
   setPostalCode,
   updateLine,
-} from '@forgecommerce/storefront-kit/checkout/checkout-flow';
-import { buildProductIndex, enrichLines } from '@forgecommerce/storefront-kit/checkout/enrich';
-import { quotedOptions } from '@forgecommerce/storefront-kit/checkout/quote-result';
-import { readClient } from '@forgecommerce/storefront-kit/config';
-import { commandClient, customerClient } from '@forgecommerce/storefront-kit/kernel-write-clients';
+} from '@forgeco/storefront-kit/checkout/checkout-flow';
+import { buildProductIndex, enrichLines } from '@forgeco/storefront-kit/checkout/enrich';
+import { quotedOptions } from '@forgeco/storefront-kit/checkout/quote-result';
+import { readClient } from '@forgeco/storefront-kit/config';
+import { commandClient, customerClient } from '@forgeco/storefront-kit/kernel-write-clients';
 import {
   EMPTY_SNAPSHOT,
   type MinicartSnapshot,
-} from '@forgecommerce/storefront-kit/minicart-types';
-import { couponFailureOf, giftFailureOf } from '@forgecommerce/storefront-kit/promo/coupon-error';
-import { giftCatalogOf, skuIdsForCart } from '@forgecommerce/storefront-kit/promo/gifts';
-import type { ShippingOption } from '@forgecommerce/storefront-kit/read-client';
-import { readCustomerSession } from '@forgecommerce/storefront-kit/session';
-import { storeRedirect } from '@forgecommerce/storefront-kit/store-navigation';
-import type { StoreBase } from '@forgecommerce/storefront-kit/store-route';
+} from '@forgeco/storefront-kit/minicart-types';
+import { couponFailureOf, giftFailureOf } from '@forgeco/storefront-kit/promo/coupon-error';
+import { giftCatalogOf, skuIdsForCart } from '@forgeco/storefront-kit/promo/gifts';
+import type { ShippingOption } from '@forgeco/storefront-kit/read-client';
+import { readCustomerSession } from '@forgeco/storefront-kit/session';
+import { storeRedirect } from '@forgeco/storefront-kit/store-navigation';
+import type { StoreBase } from '@forgeco/storefront-kit/store-route';
 import { cookies } from 'next/headers';
 
 /** A cookie store over next/headers — writable inside a Server Action. httpOnly: the cart capability is never

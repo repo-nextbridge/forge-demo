@@ -3,7 +3,7 @@
 // NOTHING ELSE — this page used to end in a row of category chips, and the shop wants no browsable category
 // links, so the second test below is a rule over the page's anchors AS A SET rather than a list of names.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { NotFoundContent } from './NotFoundContent';

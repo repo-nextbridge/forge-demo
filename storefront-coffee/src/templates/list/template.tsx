@@ -2,10 +2,10 @@
 // listing body (filter sidebar + sort + chips + shelf, or a not-blank empty-state), then pagination. Filters
 // and sort ride the URL (GET-first, no JS). Presentational pieces are theme (green).
 
-import { MediaImage } from '@forgecommerce/storefront-kit/MediaImage';
-import { altOf, mediaSrc } from '@forgecommerce/storefront-kit/media/src';
-import type { CategoryDoc, Facets, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import type { StoreBase, StorePath } from '@forgecommerce/storefront-kit/store-route';
+import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
+import { altOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
+import type { CategoryDoc, Facets, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import type { StoreBase, StorePath } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { Breadcrumb, type Crumb } from '@/components/Breadcrumb';
 import { EmptyState } from '@/components/EmptyState';

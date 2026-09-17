@@ -1,6 +1,6 @@
 // o4 #22 — the buybox axis order is DERIVED from the colour-axis role, never the doc's stored option order.
 
-import type { ProductDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { colorAxisId, orderedOptions } from './variant-axes';
 

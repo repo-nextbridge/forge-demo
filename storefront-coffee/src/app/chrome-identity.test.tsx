@@ -21,8 +21,8 @@
 // must still carry the marker the trees must NOT carry. A day when `site-header` stops being the reference's
 // marker turns the negative assertion into a tautology, and this file goes red instead of silent.
 
-import { EMPTY_SNAPSHOT } from '@forgecommerce/storefront-kit/minicart-types';
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { EMPTY_SNAPSHOT } from '@forgeco/storefront-kit/minicart-types';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { cloneElement, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { expect, test, vi } from 'vitest';
@@ -31,7 +31,7 @@ const STORE = 'sto_01M1DE555TJ36TQB6E9PR5VSJ4';
 
 // The port. Both layouts ask it whether the store exists and is on the street, and `s/[store]` also asks who
 // fills the gate slot. Nobody does — this fork registers no gate implementation.
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({
     storeFlags: async () => ({
       name: 'forge.co',
@@ -45,7 +45,7 @@ vi.mock('@forgecommerce/storefront-kit/config', () => ({
 }));
 // The dynamic tree reads the request's store prefix. Path-scoped is the interesting one: it is the base under
 // which a bare `/checkout` would leave the shop.
-vi.mock('@forgecommerce/storefront-kit/store-route.server', () => ({
+vi.mock('@forgeco/storefront-kit/store-route.server', () => ({
   requestStoreBase: async () => HOST_BASE,
 }));
 // Server Actions bound by the chrome. Not the subject, and they must not reach a port from a suite.
@@ -56,7 +56,7 @@ vi.mock('@/lib/cart-actions', () => ({
   removeLineAction: async () => undefined,
   updateLineAction: async () => undefined,
 }));
-vi.mock('@forgecommerce/storefront-kit/payment-badges', () => ({ paymentBadges: async () => ['Pix'] }));
+vi.mock('@forgeco/storefront-kit/payment-badges', () => ({ paymentBadges: async () => ['Pix'] }));
 vi.mock('@/lib/extensions/ExtensionOutlet', () => ({
   ExtensionOutlet: ({ name }: { name: string }) => <i data-outlet={name} />,
 }));
@@ -173,7 +173,7 @@ test('★ and the keyboard shortcut survived the adoption — it is the first fo
   // focusable, landing on the wrapper that holds the page — is stated over the chrome that carries it, in
   // `components/coffee/CoffeeChrome.skiplink.guard.test.tsx`. What is asserted HERE is that neither tree
   // lost it on the way to the shopper: a layout that stops mounting that chrome, or mounts another one.
-  const { MAIN_CONTENT_ID } = await import('@forgecommerce/storefront-kit/SkipLink');
+  const { MAIN_CONTENT_ID } = await import('@forgeco/storefront-kit/SkipLink');
   for (const entry of TREES) {
     const html = await tree(entry);
     const first = html.search(/<(a\s[^>]*href=|button|input|select|textarea)/);

@@ -32,7 +32,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@forgecommerce/contracts": "workspace:*"
+    "@forgeco/contracts": "workspace:*"
   },
   "peerDependencies": {
     "next": "^15.0.0",

@@ -17,7 +17,7 @@ const availabilityBySkus = vi.fn(
     ids.map((id) => ({ sku_id: id, warehouse_id: 'wh_default', available: 3 })),
 );
 
-vi.mock('@forgecommerce/storefront-kit/config', () => ({
+vi.mock('@forgeco/storefront-kit/config', () => ({
   readClient: () => ({ availabilityBySkus }),
   resolveStoreForHost: (host?: string | null) => resolveStoreForHost(host),
 }));
@@ -25,7 +25,7 @@ vi.mock('@forgecommerce/storefront-kit/config', () => ({
 import {
   AVAILABILITY_MAX_SKUS,
   type Availability,
-} from '@forgecommerce/storefront-kit/read-client';
+} from '@forgeco/storefront-kit/read-client';
 import { GET } from './route';
 
 const request = (skus: string) =>

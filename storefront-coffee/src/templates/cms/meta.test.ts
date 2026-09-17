@@ -1,7 +1,7 @@
 // CMS page metadata (CMS-1) — the per-page <head> the route emits via generateMetadata. meta_title/description
 // feed title/description; canonical is the page's own clean path; meta_title falls back to the title.
 
-import type { PageDoc } from '@forgecommerce/storefront-kit/read-client';
+import type { PageDoc } from '@forgeco/storefront-kit/read-client';
 import { expect, test } from 'vitest';
 import { pageMetadata } from './meta';
 

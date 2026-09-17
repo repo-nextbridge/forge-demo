@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 // INFRA-1b-i: the storefront ships as a self-contained server (a container that reaches the kernel over the
 // compose network). `output: 'standalone'` emits that minimal server + traced deps under `.next/standalone`,
 // and `outputFileTracingRoot` (discovered below, not hardcoded) lets the tracer reach the workspace deps it
-// imports (@forgecommerce/ext-*, @forgecommerce/theme-storefront-vanilla). In THIS repo it is the monorepo root,
+// imports (@forgeco/ext-*, @forgeco/theme-storefront-vanilla). In THIS repo it is the monorepo root,
 // so the entry lands at `.next/standalone/apps/storefront/server.js`, which is what infra/storefront.Dockerfile
 // copies; in a customer's packed copy it is the app itself, so the entry is `.next/standalone/server.js`.
 //
@@ -59,18 +59,18 @@ const tracingRoot = fileURLToPath(
 // unless it is listed here.
 const transpilePackages = [
   '@forge/ext-demo-gate',
-  '@forgecommerce/ext-banners',
-  '@forgecommerce/ext-feed',
-  '@forgecommerce/ext-leads',
-  '@forgecommerce/ext-payment-mercadopago',
-  '@forgecommerce/ext-payment-promissory',
-  '@forgecommerce/ext-payment-reference',
-  '@forgecommerce/ext-payment-zero',
-  '@forgecommerce/ext-recommendations',
-  '@forgecommerce/ext-reviews',
-  '@forgecommerce/ext-shelves',
-  '@forgecommerce/ext-subscriptions',
-  '@forgecommerce/storefront-kit',
+  '@forgeco/ext-banners',
+  '@forgeco/ext-feed',
+  '@forgeco/ext-leads',
+  '@forgeco/ext-payment-mercadopago',
+  '@forgeco/ext-payment-promissory',
+  '@forgeco/ext-payment-reference',
+  '@forgeco/ext-payment-zero',
+  '@forgeco/ext-recommendations',
+  '@forgeco/ext-reviews',
+  '@forgeco/ext-shelves',
+  '@forgeco/ext-subscriptions',
+  '@forgeco/storefront-kit',
 ];
 
 // ── ★★ pk29/D2 · THE BLOCK EVERY FORK OF THIS REPOSITORY CARRIES, WORD FOR WORD ─────────────────────────

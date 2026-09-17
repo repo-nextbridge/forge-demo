@@ -7,17 +7,17 @@
 // (globals.css §2.7) applies. Green zone.
 'use client';
 
-import { ltreeToSegments } from '@forgecommerce/storefront-kit/catalog-path';
-import { FadeLayer } from '@forgecommerce/storefront-kit/FadeLayer';
-import { ArrowRight, Search } from '@forgecommerce/storefront-kit/icons';
-import { formatMoney } from '@forgecommerce/storefront-kit/money';
+import { ltreeToSegments } from '@forgeco/storefront-kit/catalog-path';
+import { FadeLayer } from '@forgeco/storefront-kit/FadeLayer';
+import { ArrowRight, Search } from '@forgeco/storefront-kit/icons';
+import { formatMoney } from '@forgeco/storefront-kit/money';
 import type {
   ProductDoc,
   SuggestProduct,
   SuggestResult,
-} from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
-import { SEARCH_PROMPT } from '@forgecommerce/storefront-kit/subtemplates';
+} from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
+import { SEARCH_PROMPT } from '@forgeco/storefront-kit/subtemplates';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';

@@ -4,7 +4,7 @@
 // free of a dynamic API: the layout no longer calls cookies(), so it stays statically cacheable. The token
 // custody is intact (httpOnly, server-only) — the client only ever learns a boolean.
 
-import { readCustomerSession } from '@forgecommerce/storefront-kit/session';
+import { readCustomerSession } from '@forgeco/storefront-kit/session';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';

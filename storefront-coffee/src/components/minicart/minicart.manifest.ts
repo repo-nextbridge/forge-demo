@@ -4,7 +4,7 @@
 // promo (free-shipping bar, PROMO/v0.3) or a cross-sell (REC) app fills them later by discovery/placement
 // (COMPOSE reads this same aggregated list). Adding a slot here needs no edit to any central enum.
 
-import type { TemplateManifest } from '@forgecommerce/storefront-kit/slots/registry';
+import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
 
 export const minicartManifest: TemplateManifest = {
   template: 'minicart',

@@ -11,7 +11,7 @@
 // any more: the way out became a CLIENT fragment that asks /api/store which store this request is about.
 // No JS / failed fetch / unknown store → the server-rendered CTAs stand as they are, never a crash.
 
-import { HOST_BASE } from '@forgecommerce/storefront-kit/store-route';
+import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { NotFoundContent } from '@/components/NotFoundContent';
 import { NotFoundWayOut } from '@/components/NotFoundWayOut';
 import { NotFoundTitle } from '@/components/NotFoundTitle';

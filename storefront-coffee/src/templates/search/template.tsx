@@ -7,8 +7,8 @@
 // S6-FIXPACK — there is NO search box in the page body: the header's is the one and only search input (two
 // boxes on the same screen was noise, and they drifted out of sync).
 
-import type { CategoryMap, Facets, ProductDoc } from '@forgecommerce/storefront-kit/read-client';
-import { type StoreBase, storeHref } from '@forgecommerce/storefront-kit/store-route';
+import type { CategoryMap, Facets, ProductDoc } from '@forgeco/storefront-kit/read-client';
+import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import { EmptyState } from '@/components/EmptyState';
 import { ProductListing } from '@/components/ProductListing';

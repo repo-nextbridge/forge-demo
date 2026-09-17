@@ -31,7 +31,7 @@ import {
 /** A manifest with every shape the two real ones use: a computed schema, a spread, an `as const`, comments
  *  with brackets in them, and a const the blocks never mention. */
 const FIXTURE = `
-import { type ExtensionManifest, extensionManifestSchema } from '@forgecommerce/contracts';
+import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
 
 const AREAS = ['start', 'end'].flatMap((area) => [
   { name: \`\${area}_text\`, type: 'string' as const, optional: true },

@@ -3,7 +3,7 @@
 // player embed. Fed offline with data-URI squares (no media door), so `optimized` is false — the plain <img> path.
 'use client';
 
-import type { MediaRef } from '@forgecommerce/storefront-kit/read-client';
+import type { MediaRef } from '@forgeco/storefront-kit/read-client';
 import { Gallery } from './Gallery';
 
 /** A 1×1 colored square as a data URI — a stand-in photo (no media door in the offline preview). */
