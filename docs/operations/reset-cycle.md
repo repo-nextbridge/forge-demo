@@ -310,6 +310,55 @@ E a **política de saída é a mesma tabela** — o `bin/birth-remote.sh` imprim
 > mudo sobre qual das oito coisas quebrou — às 3 da manhã, num agendamento, que é a única hora em que essa
 > frase é lida.
 
+### ⛔⛔ O que a PRIMEIRA corrida remota de verdade achou — e ler não acharia
+
+Medido em 17/09, contra o staging: o gesto 1 destruiu os volumes de estado e — **corretamente** — preservou o
+`.secrets`, que é **identidade, não estado**. O gesto 2 leu esse mesmo `.secrets`, concluiu que a caixa já
+havia nascido, e **RECUSOU**. A caixa ficou no chão, com um ciclo em que cada peça fez exatamente o que
+prometia.
+
+⇒ **A recusa é sobre uma caixa que alguém está usando, e uma caixa sem estado não é uma dessas.** O que ela
+protege está escrito nela mesma: *"as configurações, os sortimentos e as promoções que este repositório
+declara sendo re-aplicados sobre o que a caixa viva tenha virado"* — uma frase **sem sujeito** quando o volume
+do banco não existe mais. Então a pergunta passou a ser feita ao **ESTADO** (`<projeto>_pgdata`, o primeiro
+nome da lista STATE do próprio `bin/box-down.sh`), e identidade deixada para trás por um teardown parou de
+ser lida como vida.
+
+⚠️ **E as duas respostas são frases diferentes, de propósito.** Caixa com segredos **e** estado é caixa viva e
+é recusada; caixa com segredos e **sem** estado é um **RENASCIMENTO** e diz isso em voz alta — uma corrida que
+silenciosamente fizesse a coisa certa aqui seria indistinguível da que fez a errada.
+
+★ **A lição, que é mais larga que este arquivo:** a recusa estava certa no dia em que foi escrita, quando o
+único jeito de destruir o estado era o mesmo gesto que apagava os segredos. O que a quebrou foi **um gesto
+novo** — um teardown que separa identidade de estado — e nenhum dos dois arquivos mudou. **Duas peças
+corretas compõem errado**, e só a corrida inteira mostra isso.
+
+### ⛔⛔ O RELÓGIO DE UMA CAIXA IMPLANTADA NÃO É O DA BANCADA — medido, e muda o que dá para agendar
+
+A tabela da §6 diz *"reserve ~2 h"*, e ela é honesta sobre o que mediu: uma **bancada** — um laptop com
+núcleos de sobra. A caixa de staging da demo é **1 vCPU e 2 GB**. Medido em 17/09, durante um renascimento
+real:
+
+| | bancada (15/09) | staging implantada (17/09) |
+|---|---|---|
+| gesto 2 · nascer | **1 273 s** (~21 min) | **~7 h** (extrapolado do ritmo medido) |
+| ritmo do catálogo | — | **5,4 produtos/min**, 2 790 a semear |
+| load average | — | **12** num núcleo · 98 MB livres · 736 MB em swap |
+
+⇒ **O gargalo é a máquina, não o código.** Um núcleo carrega Postgres, Redis, o kernel, a borda e **cinco
+frentes** enquanto semeia; o swap é o que mantém isso lento em vez de morto (é literalmente o argumento da
+§3 do `bin/provision-host.sh`, visto de dentro).
+
+⚠️ **O que isso significa para um agendamento**, e é a parte que precisa ser decidida e não estimada:
+
+- Uma corrida semanal às 3h da manhã **termina às 10h**, e a caixa passa a manhã inteira degradada. Numa
+  DEMO isso é aceitável e deve estar escrito; numa caixa com clientes **não existe** — e é por isso que o
+  ciclo é gesto da demo, nunca do produto.
+- A **produção** da demo é **2 vCPU e 4 GB** (load 0,85 em regime, medido no mesmo instante). O mesmo ciclo
+  lá é materialmente mais rápido, e é a caixa em que o cron de facto vai rodar.
+- ⛔ **Não estime — meça na caixa que vai agendar.** Os dois números acima diferem por um fator de vinte, e a
+  única coisa que os separa é onde a corrida aconteceu.
+
 ### As credenciais, quando nada foi cunhado nesta corrida
 
 Num nascimento, o passo 3 cunha o token de operador de cada tenant e o segura no shell. Os modos

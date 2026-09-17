@@ -377,16 +377,44 @@ note "${ENV_NAME} · ${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR} · ${FORGE_PUBLIC_OR
 # The signal is the birth's OWN record and not a guess: step 3 files `forge-operator-token` into the box's
 # `.secrets`, so its presence means this exact script has run against this exact box. Asked over the same
 # channel everything else travels on, and the VALUE is never read — only whether the name is there.
+#
+# ⛔⛔ AND IT ASKS A SECOND QUESTION, BECAUSE THE FIRST ONE ALONE TORE A BOX DOWN AND LEFT IT DOWN.
+#
+# MEASURED on the first real remote cycle, 2026-09-17: gesture 1 (`bin/box-down.sh --env stag`) destroyed the
+# state volumes and — correctly — KEPT `.secrets`, which is identity and not state. Gesture 2 then read that
+# same `.secrets`, concluded the box had already been born, and REFUSED. The box stayed on the floor, with a
+# cycle that had done exactly what each of its parts promised.
+#
+# ⇒ THE REFUSAL IS ABOUT A BOX SOMEBODY IS USING, AND A BOX WITH NO STATE IS NOT ONE. What it protects is
+# "the settings, the assortments and the promotions this repository declares being re-applied over whatever
+# the live box has since become" — a sentence with no subject when the database volume is gone. So the
+# question is asked of the STATE (`<project>_pgdata`, the first name in `bin/box-down.sh`'s own STATE list),
+# and identity left behind by a teardown stops being read as a life.
+#
+# ⚠️ THE TWO ANSWERS ARE DIFFERENT SENTENCES, deliberately. A box with secrets AND state is a live box and is
+# refused; a box with secrets and NO state is a REBIRTH and says so out loud — a run that quietly did the
+# right thing here would be one nobody could tell from the run that did the wrong one.
 "${REMOTE_SSH[@]}" true 2>/dev/null || die "cannot reach ${REMOTE_BOX_TARGET} with ${REMOTE_BOX_KEY}. This script does not provision a
      host and does not deploy to one: run \`bash bin/deploy.sh ${ENV_NAME}\` first, which delivers the box."
 if remote_secret_has "$(secret_name_for "$(echo "$TENANTS" | head -1)" seed)"; then
-  [ "$AGAIN" = 1 ] || die "${FORGE_DEPLOY_HOST} HAS ALREADY BEEN BORN — its .secrets carries the operator token step 3 files.
-     Every step below converges rather than wipes, so this is not a request to confirm a deletion. What it
-     IS: the settings, the assortments, the promotions and the freight this repository DECLARES get
-     re-applied over whatever the live box has since become, and \`seed-history\` will either rebuild the
-     past or say it is SKIPPING one that is already there. On a box somebody is using, that is a decision.
+  # ⚠️ THE PROJECT NAME IS DERIVED THE WAY `bin/box-down.sh` DERIVES IT — `basename "$FORGE_DEPLOY_DIR"` —
+  # and not defaulted here. It is the name the volumes carry, so a second author of it would ask about a
+  # volume that does not exist and read every torn-down box as a rebirth, which is the failure inverted.
+  if "${REMOTE_SSH[@]}" "docker volume inspect $(basename "$FORGE_DEPLOY_DIR")_pgdata" </dev/null >/dev/null 2>&1; then
+    [ "$AGAIN" = 1 ] || die "${FORGE_DEPLOY_HOST} HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE — its .secrets carries the
+     operator token step 3 files, and its pgdata volume is there. Every step below converges rather than
+     wipes, so this is not a request to confirm a deletion. What it IS: the settings, the assortments, the
+     promotions and the freight this repository DECLARES get re-applied over whatever the live box has since
+     become, and \`seed-history\` will either rebuild the past or say it is SKIPPING one that is already
+     there. On a box somebody is using, that is a decision.
        bash bin/birth-remote.sh ${ENV_NAME} --again"
-  note '⚠️ --again: this box has been born before, and this run re-applies what the repository declares over it.'
+    note '⚠️ --again: this box has been born before AND still holds its state; this run re-applies what the repository declares over it.'
+  else
+    note "⚠️ this box carries secrets from an earlier birth but its state volume is GONE — it was torn down."
+    note '   Read as a REBIRTH, not a convergence: there is no live box to re-apply anything over. The'
+    note '   identity a teardown deliberately keeps (certificates, the operator token) is reused; everything'
+    note '   the state held is built again from zero by the steps below.'
+  fi
 fi
 
 # ── 0c · ★★ THE DATASET — GRADED HERE, AND THEN DELIVERED, WHICH IS THE HALF A BENCH NEVER NEEDS ───────────

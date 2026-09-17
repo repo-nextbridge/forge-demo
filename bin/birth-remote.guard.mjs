@@ -87,6 +87,10 @@ case "$cmd" in
   *'cat >'*) cat > /dev/null; exit 0 ;;
   *'cat '*'/.env'*)
     cat "$PROBE_BOX_ENV" 2>/dev/null; exit 0 ;;
+  # ★★ THE STATE VOLUME — the second question the refusal asks since the first remote cycle. Default YES, so
+  # every existing case keeps the meaning it had; only a test that says otherwise sees a torn-down box.
+  *'docker volume inspect'*)
+    [ "\${PROBE_STATE:-yes}" = yes ] && exit 0 || exit 1 ;;
   *'docker image inspect'*) exit 0 ;;
   *'install -d'*) exit 0 ;;
   *'tar -C'*) cat > /dev/null; exit 0 ;;
@@ -163,7 +167,7 @@ const PROBE_BOX = {
  * its own dependencies, the birth needs its own, and giving each only what it uses keeps a missing file from
  * looking like a refusal.
  */
-function scratch({ born = false, failAt = '', bench = false, missingFace = false } = {}) {
+function scratch({ born = false, state = true, failAt = '', bench = false, missingFace = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'forge-birth-guard-'));
   mkdirSync(join(dir, 'bin'), { recursive: true });
   mkdirSync(join(dir, 'deploy'), { recursive: true });
@@ -292,6 +296,7 @@ function scratch({ born = false, failAt = '', bench = false, missingFace = false
     PROBE_BOX_ENV: boxEnv,
     PROBE_ENV_WRITTEN: envWritten,
     PROBE_BORN: born ? 'yes' : 'no',
+    PROBE_STATE: state ? 'yes' : 'no',
     PROBE_FAIL_AT: failAt,
     FORGE_LOCK: join(dir, 'forge.lock'),
     // The deploy's closing verdict waits up to two minutes for a certificate per face, and `probe.example`
@@ -585,6 +590,60 @@ test('a box that has already been born refuses a second birth unless --again', (
     } finally {
       again.cleanup();
     }
+  } finally {
+    s.cleanup();
+  }
+});
+
+// ── ⟂ §3b · ⛔⛔ IDENTITY LEFT BY A TEARDOWN IS NOT A LIFE ──────────────────────────────────────────────────
+//
+// MEASURED ON THE FIRST REAL REMOTE CYCLE, 2026-09-17. Gesture 1 (`bin/box-down.sh --env`) destroyed the state
+// volumes and — correctly — KEPT `.secrets`, because a certificate and an operator token are IDENTITY, not
+// state. Gesture 2 read that same `.secrets`, concluded the box had already been born, and REFUSED. The box
+// stayed on the floor, and every part had done exactly what it promised.
+//
+// ⇒ THE REFUSAL IS ABOUT A BOX SOMEBODY IS USING. What it protects is written inside it: the settings, the
+// assortments and the promotions being re-applied over «whatever the live box has since become» — a sentence
+// with no subject once the database volume is gone. So it asks the STATE as well, and these two tests are the
+// two answers: they are a pair on purpose, because a guard that only proved the new branch would go green on
+// a file that had stopped refusing anything at all.
+//
+// ★ THE LESSON IS WIDER THAN THE FIX, and it is why this comment is long: the refusal was RIGHT on the day it
+// was written, when the only way to destroy the state was the same gesture that erased the secrets. What broke
+// it was a NEW GESTURE — a teardown that separates identity from state — and neither file changed. Two correct
+// pieces composed wrongly, and only the whole run shows it.
+
+test('⛔ a box that still HOLDS ITS STATE is refused — the pair’s first half, and the one that must not rot', () => {
+  const s = scratch({ born: true, state: true });
+  try {
+    const r = s.run('birth-remote.sh', ['probe']);
+    assert.notEqual(r.status, 0, 'a live box with secrets AND state was born over without --again');
+    assert.match(r.stderr, /HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE/);
+    assert.ok(!s.read().includes('up -d postgres'), 'it started bringing the box up before refusing');
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('★★★ a box whose STATE VOLUME IS GONE is a REBIRTH, not a convergence — and it says so out loud', () => {
+  const s = scratch({ born: true, state: false, failAt: 'migrate.js' });
+  try {
+    const r = s.run('birth-remote.sh', ['probe']);
+    // It must get PAST the refusal — the whole point — and the far side must have been reached.
+    assert.ok(
+      s.read().includes('up -d postgres'),
+      'a box torn down by gesture 1 was refused a rebirth by gesture 2, which is the cycle that tears a box ' +
+        'down and leaves it down',
+    );
+    assert.doesNotMatch(r.stderr, /HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE/);
+    // ⛔ AND IT IS NOT SILENT. A run that quietly did the right thing here would be indistinguishable from the
+    // run that did the wrong one, which is the property that makes the next defect of this shape invisible.
+    assert.match(
+      r.stderr,
+      /state volume is GONE|torn down/i,
+      'the rebirth said nothing about why it proceeded over a box that carries an earlier birth’s secrets',
+    );
+    assert.match(r.stderr, /REBIRTH, not a convergence/i, 'it does not name what it is doing');
   } finally {
     s.cleanup();
   }
