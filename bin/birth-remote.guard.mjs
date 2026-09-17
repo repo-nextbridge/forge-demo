@@ -709,6 +709,52 @@ remote_run true`,
   }
 });
 
+// ── ⟂ §5d · A CONTAINER PATH MAY NEVER REACH A HOST PROCESS ───────────────────────────────────────────────
+//
+// ⛔ MEASURED ON THE STAGING BOX 2026-09-16, AT STEP 11, AFTER TWENTY MINUTES OF SEEDING:
+// «FORGE_SEED_DATASET_DIR=/app/seed-dataset holds no forge-seed-dataset.json». `deploy/box.env` declares the
+// paths the BOX's containers read, `remote_box_load` sources that file into the birth's own shell (it is
+// where the host and the hostnames come from), and every node process the birth starts HERE inherited a path
+// that is true three thousand kilometres away.
+//
+// ⚠️ THE ASSERTION IS THE GENERAL RULE, NOT THE TWO VARIABLES THAT BIT. A third one added to `deploy/box.env`
+// next month has to be caught too, and it is caught by the same line: the birth blanks anything of that
+// shape and says which. So this scenario puts a variable there that NOTHING in this repository knows.
+test('a path that only exists inside a container never reaches the steps that run here', () => {
+  const s = scratch({ failAt: 'up -d postgres' });
+  try {
+    writeFileSync(
+      join(s.dir, 'deploy/box.env'),
+      [
+        'FORGE_ADMIN_TENANT=',
+        'FORGE_SEED_DATASET_HOST_DIR=./seed/dataset',
+        'FORGE_TOTEM_STORE_ID=sto_PENDING_SEED',
+        'FORGE_SEED_DATASET_DIR=/app/seed-dataset',
+        'FORGE_SEED_PHOTOS_DIR=/data/seed-photos',
+        // The one nothing here has ever heard of — this is the half that keeps the rule from going stale.
+        'FORGE_SOMETHING_NOBODY_KNOWS_DIR=/data/invented-by-a-later-slice',
+        '',
+      ].join('\n'),
+    );
+    const r = s.run('birth-remote.sh', ['probe']);
+    assert.match(r.stderr, /FORGE_SEED_PHOTOS_DIR/, 'a container path was carried into this machine unnoticed');
+    assert.match(
+      r.stderr,
+      /FORGE_SOMETHING_NOBODY_KNOWS_DIR/,
+      'the rule only covers the variables somebody remembered to list',
+    );
+    // ⟂ THE CONTROL: the dataset is REMAPPED rather than blanked — blanking it would make step 0c refuse for
+    //   a reason that has nothing to do with the box, which is the opposite failure.
+    assert.ok(
+      !/blanked container path\(s\)[^\n]*FORGE_SEED_DATASET_DIR/.test(r.stderr),
+      'the dataset pointer was blanked instead of pointed at the tree this machine really holds',
+    );
+    assert.match(r.stderr, /the same tree the images were built from|catalog /, 'step 0c never graded the dataset');
+  } finally {
+    s.cleanup();
+  }
+});
+
 // ── ⟂ §6 · THE BOX'S `.env` IS WRITTEN VERBATIM, AND THE VALUE REALLY ARRIVES ──────────────────────────────
 //
 // ⛔ THE BUG THIS EXISTS FOR, CAUGHT BEFORE THE FUNCTION HAD EVER RUN AGAINST A REAL BOX. `remote_env_put`

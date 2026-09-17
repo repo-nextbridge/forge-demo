@@ -287,6 +287,41 @@ DATASET_DEST="${REMOTE_BOX_DIR}/$(printf '%s' "${FORGE_SEED_DATASET_HOST_DIR:-./
 case "${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}" in
   /*) DATASET_DEST="$FORGE_SEED_DATASET_HOST_DIR" ;;
 esac
+
+# ── ★★★ A CONTAINER PATH MAY NEVER REACH A HOST PROCESS — and this script found that out the hard way ──────
+#
+# ⛔ MEASURED ON THE STAGING BOX 2026-09-16, AT STEP 11, AFTER TWENTY MINUTES OF SEEDING:
+#
+#     [seed] FORGE_SEED_DATASET_DIR=/app/seed-dataset holds no forge-seed-dataset.json.
+#
+# `deploy/box.env` declares the paths the BOX's containers read — `/app/seed-dataset`, `/data/seed-photos` —
+# and `remote_box_load` sources that file into THIS shell, because that is where the host, the key and the
+# hostnames come from. So every node process this script starts on the operator's machine INHERITED a path
+# that is true three thousand kilometres away and false here.
+#
+# ★ IT IS THE SAME DEFECT `bin/box-up.sh::host_node` WAS WRITTEN FOR, ARRIVING FROM THE OTHER SIDE — there the
+# container paths come from the bench's own `.env`, here from the deployed box's declaration. That function is
+# a shell function inside a script this slice may not touch, so the RULE is re-stated rather than shared, and
+# it is re-stated in the general form rather than as two variable names:
+#
+#   (1) the dataset is REMAPPED to the tree this machine really holds — the one step 0c just graded;
+#   (2) every other FORGE_* still pointing under /app or /data is BLANKED, and the blanking is NAMED. A host
+#       process that genuinely needs one then fails saying UNSET, which names itself, instead of chasing a
+#       path into a filesystem that is not its own.
+#
+# ⚠️ (2) IS THE HALF THAT KEEPS THIS FROM GOING STALE: (1) is what I know, (2) is what I do not — a variable
+# of that shape added to `deploy/box.env` next month is caught on its first run.
+export FORGE_SEED_DATASET_DIR="$DATASET_SRC"
+blanked=''
+while IFS='=' read -r cpvar cpval; do
+  case "$cpvar" in FORGE_*) ;; *) continue ;; esac
+  [ "$cpvar" != 'FORGE_SEED_DATASET_DIR' ] || continue
+  case "$cpval" in
+    /app|/app/*|/data|/data/*) export "$cpvar="; blanked="$blanked $cpvar" ;;
+  esac
+done < <(env)
+[ -z "$blanked" ] || note "blanked container path(s) for the steps that run HERE —$blanked"
+
 "${REMOTE_SSH[@]}" "install -d -m 755 $(printf '%q' "$DATASET_DEST")" </dev/null || die 'could not make room for the dataset on the box.'
 dataset_bytes="$(du -sk "$DATASET_SRC" | cut -f1)"
 note "delivering $(( dataset_bytes / 1024 )) MiB of dataset to ${DATASET_DEST}"
