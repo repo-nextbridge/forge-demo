@@ -1,90 +1,119 @@
-// ★★★ THE SEED'S PUT CARRIES EVERY HEADER THE PORT SIGNED — dropping one is a 403 nothing else catches.
+// ★★★ EVERY UPLOADER IN THIS REPOSITORY CARRIES WHAT THE PORT SIGNED — dropping one is a 403 nothing else
+// catches, and there is MORE THAN ONE UPLOADER.
 //
 //   node --test bin/seed-upload.guard.mjs        (or: bash bin/test.sh)
 //
-// ── WHAT HAPPENED, MEASURED 2026-09-17 ─────────────────────────────────────────────────────────────────────
+// ── WHAT HAPPENED, MEASURED 2026-09-17, TWICE ──────────────────────────────────────────────────────────────
 //
 // `media.request_upload` answers `{provider_key, upload_url, headers}` — `apps/api/src/media-adapter.ts`
 // composes the third field out of what the connector SIGNED. A bucket driver signs `cache-control;host`, so
 // a PUT that omits Cache-Control presents a signature for a request nobody made. R2 answers
-// `403 SignatureDoesNotMatch`, and the first photograph of the first bucket this box ever wrote to is where
-// it says so.
+// `403 SignatureDoesNotMatch`.
 //
 // ⛔ AND NOTHING WAS RED FOR AS LONG AS THE BUG EXISTED, WHICH IS THE POINT OF THIS FILE. The `local`
 // driver's upload_url points back at the kernel's own route: it signs nothing, so it misses nothing. Every
-// birth this repository has ever run — every bench, every CI lane — ran on that driver. The defect was not
-// rare; it was UNREACHABLE, until the day a bucket arrived.
+// birth this repository had ever run used that driver. The defect was not rare; it was UNREACHABLE, until
+// the day a bucket arrived.
 //
-// ⇒ SO THE RULE IS ABOUT THE SHAPE AND NOT ABOUT ONE HEADER NAME. `cache-control` is what today's two bucket
-// drivers sign. A guard that demanded that word would be a guard about R2, and would stay green the day a
-// driver signs `x-amz-storage-class` instead. What must hold is that whatever the port SAYS it signed is
-// what the PUT SENDS.
+// ⛔⛔ AND THE FIRST VERSION OF THIS GUARD NAMED **ONE FILE**, WHICH IS WHY IT IS WRITTEN THIS WAY NOW.
+// `bin/seed.mjs` was repaired and graded green; four hours later the production box failed on its first
+// banner, because `seed/outlet.mjs` holds a SECOND uploader and the guard could not see it. A rule about a
+// repository, written about a path, is a rule with exactly as many holes as it has copies.
 //
-// ── WHY IT READS THE SOURCE ────────────────────────────────────────────────────────────────────────────────
+// ⇒ THE LIST IS DERIVED. Any tracked script that reads an `upload_url` out of a plan is an uploader and is
+// graded — the third one costs no edit here. And the rule is about the SHAPE, not a header name: `cache-
+// control` is what today's two bucket drivers sign, and a guard demanding that word would be a guard about
+// R2 that stayed green the day a driver signs something else. What must hold is that whatever the port SAYS
+// it signed is what the PUT SENDS.
 //
-// `bin/seed.mjs` is a script with top-level effects, not a module: there is no uploader to import and call.
-// The honest options were to read the source or to stand up a fake port and a fake edge and run a whole seed
-// against them — which would grade a hundred other things and report this one as "the seed failed". So this
-// reads the source, and it pays for that choice with the CONTROL NEGATIVE below: the same check is run
-// against a copy of the file with the fix removed, and it has to go RED there. A source check that cannot
-// fail is a comment.
+// ── WHY IT READS SOURCE, AND WHAT IT PAYS FOR THAT ─────────────────────────────────────────────────────────
+//
+// These are scripts with top-level effects, not modules: there is no uploader to import and call. The honest
+// alternative was to stand up a fake port and a fake edge and run whole seeds against them, which would
+// grade a hundred other things and report this one as "the seed failed". So it reads source, and pays with
+// the CONTROL NEGATIVE below: each file is re-checked with its forwarding removed and has to go RED. A
+// source check that cannot fail is a comment.
 
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { test, describe } from 'node:test';
+import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const HERE = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SEED = readFileSync(join(HERE, 'bin', 'seed.mjs'), 'utf8');
+const SELF = 'bin/seed-upload.guard.mjs';
 
-/** The PUT that places the bytes: the one `fetch` in this file whose method is PUT. */
+/** Every tracked script that places bytes through a signed URL. Derived from the tree, never typed. */
+function uploaders() {
+  const tracked = execFileSync('git', ['ls-files', '*.mjs', '*.js'], { cwd: HERE, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+    .filter((p) => p !== SELF && !p.includes('node_modules/'));
+  return tracked
+    .map((path) => ({ path, source: readFileSync(join(HERE, path), 'utf8') }))
+    .filter(({ source }) => /\bupload_url\b/.test(source) && /method:\s*'PUT'/.test(source));
+}
+
+/** The PUT that places the bytes, as text: the fetch call around `method: 'PUT'`. */
 function uploadCall(source) {
   const i = source.indexOf("method: 'PUT'");
-  assert.notEqual(i, -1, 'bin/seed.mjs no longer contains a PUT — this guard is about one that does');
   const start = source.lastIndexOf('fetch(', i);
   const end = source.indexOf('});', i);
-  return source.slice(start, end);
+  return source.slice(start === -1 ? i : start, end === -1 ? source.length : end);
 }
 
-/** Does the PUT forward what the port answered, rather than a header list typed here? */
+/** Does the PUT forward what the port answered, rather than a header list typed at the call site? */
 function forwardsSignedHeaders(source) {
-  const call = uploadCall(source);
-  // The name is derived, not assumed: whatever variable is assigned from `plan.headers` is the one that has
-  // to appear, spread, inside the PUT's headers object.
-  const assigned = source.match(/const\s+(\w+)\s*=\s*plan\.headers\b/);
+  // The variable name is DERIVED: whatever is assigned from `<plan>.headers` is what has to appear, spread,
+  // inside the PUT's own headers object. Assuming a name would make this guard about a spelling.
+  const assigned = source.match(/const\s+(\w+)\s*=\s*\w+\.headers\b/);
   if (!assigned) return false;
-  return new RegExp(`headers:\\s*\\{[^}]*\\.\\.\\.${assigned[1]}\\b`).test(call);
+  return new RegExp(`headers:\\s*\\{[^}]*\\.\\.\\.${assigned[1]}\\b`).test(uploadCall(source));
 }
+
+const FILES = uploaders();
 
 describe('★★★ the bytes arrive carrying what the port signed', () => {
-  test('the PUT spreads the headers `media.request_upload` answered with', () => {
+  test('★★ ANTI-VACUUM — there is at least one uploader, and the list was derived from the tree', () => {
     assert.ok(
-      forwardsSignedHeaders(SEED),
-      'the upload PUT does not forward the port\'s `headers`. A bucket driver signs headers (today:\n' +
-        'cache-control), and a PUT that omits one presents a signature for a request that was never made —\n' +
-        '403 SignatureDoesNotMatch, on the first photograph, with no clue in it.',
+      FILES.length > 0,
+      'no tracked script reads an `upload_url` and PUTs to it. Either the uploaders moved (fix the\n' +
+        'derivation above) or this guard is now grading nothing while reporting green.',
     );
+    // Recorded so a run says how much it looked at. Two on 2026-09-17: bin/seed.mjs and seed/outlet.mjs.
+    console.log(`[seed-upload] graded ${FILES.length} uploader(s): ${FILES.map((f) => f.path).join(', ')}`);
   });
 
-  test('★ CONTROL NEGATIVE — the same check goes RED on a copy with the forwarding removed', () => {
-    const sabotaged = SEED.replace(/headers:\s*\{([^}]*)\.\.\.\w+,?\s*\}/, 'headers: {$1}');
-    assert.notEqual(sabotaged, SEED, 'the sabotage did not change the file — the check below proves nothing');
-    assert.equal(
-      forwardsSignedHeaders(sabotaged),
-      false,
-      'the check passes on a file with the forwarding removed, so it is not measuring the forwarding',
-    );
-  });
+  for (const { path, source } of FILES) {
+    test(`${path} spreads the headers \`media.request_upload\` answered with`, () => {
+      assert.ok(
+        forwardsSignedHeaders(source),
+        `${path}: the upload PUT does not forward the port's \`headers\`. A bucket driver signs headers\n` +
+          '(today: cache-control), and a PUT that omits one presents a signature for a request that was\n' +
+          'never made — 403 SignatureDoesNotMatch, on the first photograph, with no clue in it.',
+      );
+    });
 
-  test('★★ a refusal reports the store\'s own words, not only the number', () => {
-    const near = SEED.slice(SEED.indexOf("method: 'PUT'"), SEED.indexOf("method: 'PUT'") + 1400);
-    assert.match(
-      near,
-      /put\.text\(\)/,
-      'the PUT failure path does not read the response body. Every refusal an object store issues is a 403 —\n' +
-        'a wrong key, a key with no write, a missing bucket and a signature over a different request are the\n' +
-        'same three digits. Only the body tells them apart, and this one cost an hour of a birth.',
-    );
-  });
+    test(`★ CONTROL NEGATIVE — the check goes RED on ${path} with the forwarding removed`, () => {
+      const sabotaged = source.replace(/headers:\s*\{([^}]*)\.\.\.\w+,?\s*\}/, 'headers: {$1}');
+      assert.notEqual(sabotaged, source, `the sabotage did not change ${path} — the check proves nothing`);
+      assert.equal(
+        forwardsSignedHeaders(sabotaged),
+        false,
+        `the check passes on a ${path} with the forwarding removed, so it is not measuring the forwarding`,
+      );
+    });
+
+    test(`★★ ${path} reports the store's own words, not only the number`, () => {
+      const i = source.indexOf("method: 'PUT'");
+      assert.match(
+        source.slice(i, i + 1400),
+        /\.text\(\)/,
+        `${path}: the PUT failure path does not read the response body. Every refusal an object store\n` +
+          'issues is a 403 — a wrong key, a key with no write, a missing bucket and a signature over a\n' +
+          'different request are the same three digits. Only the body tells them apart.',
+      );
+    });
+  }
 });

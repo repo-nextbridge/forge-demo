@@ -323,12 +323,25 @@ async function upload({ api, token, tenant, command, fail }, filename) {
     );
   }
 
+  // ★★★ THE HEADERS THE PORT SIGNED TRAVEL WITH THE PUT. `media.request_upload` answers
+  // `{provider_key, upload_url, headers}`, and a bucket driver signs `cache-control;host`: bytes that
+  // arrive without that exact Cache-Control present a signature for a request nobody made, and the answer
+  // is `403 SignatureDoesNotMatch`. Measured on this instance's production box 2026-09-17, on the first
+  // banner — the twin of the same defect in `bin/seed.mjs`, which had been repaired hours earlier and did
+  // not reach here because the repair named a file instead of the repository. `bin/seed-upload.guard.mjs`
+  // now derives the list of uploaders instead of carrying one.
+  const signedHeaders = body.headers ?? body.value?.headers ?? {};
   const put = await fetch(url.startsWith('http') ? url : `${api}${url}`, {
     method: 'PUT',
-    headers: { 'content-type': mime },
+    headers: { 'content-type': mime, ...signedHeaders },
     body: bytes,
   });
-  if (!put.ok) fail(`PUT ${filename} → HTTP ${put.status}`);
+  if (!put.ok) {
+    // The BODY, not just the number: every refusal an object store issues is a 403, and only the body
+    // separates a wrong key from a key with no write from a signature over a different request.
+    const why = await put.text().catch(() => '');
+    fail(`PUT ${filename} → HTTP ${put.status}\n  the store said: ${why.slice(0, 400) || '(empty body)'}`);
+  }
 
   const created = await command('asset.create', {
     provider_key: key,
