@@ -24,8 +24,13 @@ secret() { # <name>
   #   printf 'forge-vault-key=%s\n' "$(openssl rand -base64 32)" >> .secrets
   local file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.secrets"
   [ -f "$file" ] || return 1
+  # ⚠️ THE **LAST** MATCH, NOT THE FIRST, AND THE DIFFERENCE IS A ROTATION. The one gesture this file
+  # documents for adding a secret is `>>` — appending. So rotating one the same way leaves TWO lines with
+  # that name, and `grep -m1` would hand the box the RETIRED value, silently, for as long as the old line
+  # stayed in the file. Last wins: the newest line is the live one, exactly as an append reads.
   local line
-  line="$(grep -m1 "^${name}=" "$file" 2>/dev/null)" || return 1
+  line="$(grep "^${name}=" "$file" 2>/dev/null | tail -n1)"
+  [ -n "$line" ] || return 1
   printf '%s' "${line#*=}"
 }
 
@@ -39,7 +44,11 @@ _forge_env_declares() { # <VAR>
   local file line
   file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env"
   [ -f "$file" ] || return 1
-  line="$(grep -m1 "^$1=" "$file" 2>/dev/null)" || return 1
+  # The LAST match, because compose reads this file the same way: `bin/deploy.sh` assembles `.env` from
+  # `deploy/box.env` and then `deploy/<env>.env`, so a key declared in both appears twice and the box's own
+  # value is the second one. A first-match read here would answer a different question than the containers do.
+  line="$(grep "^$1=" "$file" 2>/dev/null | tail -n1)"
+  [ -n "$line" ] || return 1
   line="${line#*=}"
   line="${line%\'}"
   line="${line#\'}"
@@ -297,6 +306,73 @@ unset _forge_revalidate_env _forge_revalidate_store
 
 # The private half that signs the social login's factor assertion. ONLY the checkout container gets it.
 export FORGE_CUSTOMER_ASSERTION_PRIVATE_KEY="$(optional_secret forge-customer-assertion-private-key)"
+
+# ── MEDIA STORAGE — THE BUCKET THIS BOX WRITES ITS PHOTOGRAPHS TO ───────────────────────────────────────────
+#
+# ★★ WHY THIS BLOCK EXISTS, AND IT IS A MEASUREMENT OF 2026-09-16 RATHER THAN A PRECAUTION. The staging box
+# answered 200 on every door with a home page of 72 KB where the bench serves 280 KB: no photograph, no
+# banner, no shelf. Nothing was red anywhere, because EMPTY IS A LEGAL STATE — with no driver the kernel
+# keeps media on its own disk, and with no public base it serves every image "as refs only" behind one log
+# line (`storage-connector.ts`, the line that says placeholder everywhere). A shop with no photograph is
+# still a 200. ⇒ AN HTTP CODE PROVES THE BOX IS UP. IT NEVER PROVES THE SHOP EXISTS.
+#
+# ── WHAT LIVES WHERE, AND WHY THE SPLIT IS NOT ARBITRARY ────────────────────────────────────────────────────
+# The bucket's NAME and the address a browser fetches bytes from are public by construction — a browser reads
+# them off every page — so they are declared in `.env` (`deploy/box.env` + `deploy/<env>.env`). The two
+# CREDENTIALS are secrets. The ENDPOINT is the third one here and it is not a credential: it names the
+# object-storage ACCOUNT, and this repository is public, so it is kept beside the keys rather than committed.
+# A fork that does not mind naming its own account may move it to `deploy/box.env` and delete it here.
+#
+# ⚠️ AND THIS BLOCK REFUSES WHERE THE SOCIAL ONES BELOW STAY SILENT. A half-configured social login hides a
+# button, which is kind to the shopper; a half-configured bucket gives a kernel that throws at boot, or —
+# worse, and this is the measured case — one that comes up green serving a catalogue of placeholders. So an
+# `s3` driver whose credentials are absent exports NOTHING and says both names out loud.
+_forge_storage() {
+  local driver bucket endpoint base id secret
+  driver="$(_forge_env_declares FORGE_STORAGE_DRIVER || printf '')"
+  case "$driver" in
+    '' | local)
+      # The bench, and every box that keeps its media on its own disk. Nothing to export, nothing to warn
+      # about: this is a posture, not an omission (`.env` says so where it declares the empty driver).
+      unset FORGE_STORAGE_ENDPOINT FORGE_STORAGE_ACCESS_KEY_ID FORGE_STORAGE_SECRET_ACCESS_KEY
+      return 0
+      ;;
+    s3) ;;
+    *)
+      echo "[env-source] ⚠️  FORGE_STORAGE_DRIVER=${driver} — this file fills the credentials of 's3' only." >&2
+      echo "[env-source]    Whatever that driver signs with has to reach the shell some other way." >&2
+      return 0
+      ;;
+  esac
+
+  endpoint="$(optional_secret forge-storage-endpoint)"
+  id="$(optional_secret forge-storage-access-key-id)"
+  secret="$(optional_secret forge-storage-secret-access-key)"
+  if [ -z "$endpoint" ] || [ -z "$id" ] || [ -z "$secret" ]; then
+    unset FORGE_STORAGE_ENDPOINT FORGE_STORAGE_ACCESS_KEY_ID FORGE_STORAGE_SECRET_ACCESS_KEY
+    echo "[env-source] ⛔ FORGE_STORAGE_DRIVER=s3 and this box cannot reach the bucket. The secret store must" >&2
+    echo "[env-source]    carry all three; nothing was exported and the kernel WILL refuse to start:" >&2
+    [ -n "$endpoint" ] || echo "[env-source]      forge-storage-endpoint            (https://<account>.<provider> — the account, never one bucket)" >&2
+    [ -n "$id" ]       || echo "[env-source]      forge-storage-access-key-id" >&2
+    [ -n "$secret" ]   || echo "[env-source]      forge-storage-secret-access-key" >&2
+    return 1
+  fi
+  export FORGE_STORAGE_ENDPOINT="$endpoint" FORGE_STORAGE_ACCESS_KEY_ID="$id" \
+    FORGE_STORAGE_SECRET_ACCESS_KEY="$secret"
+
+  # The two addresses `.env` owes this driver. A missing BUCKET is a boot error the kernel names itself; a
+  # missing public base is THE SILENT ONE, so it is the one said loudly here — it is the 72 KB home page, and
+  # it also makes the seed refuse to repair a single media ref (`seed-media.ts`).
+  bucket="$(_forge_env_declares FORGE_STORAGE_BUCKET || printf '')"
+  base="$(_forge_env_declares FORGE_MEDIA_BASE_URL || printf '')"
+  [ -n "$bucket" ] \
+    || echo "[env-source] ⚠️  FORGE_STORAGE_BUCKET is not declared in .env — the kernel refuses to start without it." >&2
+  [ -n "$base" ] \
+    || echo "[env-source] ⚠️  FORGE_MEDIA_BASE_URL is not declared in .env — this box will come up GREEN with a placeholder in place of every photograph, and the seed will repair no media ref at all." >&2
+
+  echo "[env-source] media storage: s3 → ${bucket:-<no bucket>} @ ${endpoint}" >&2
+}
+_forge_storage; unset -f _forge_storage
 
 # ── SOCIAL LOGIN — GOOGLE (operator and shopper) AND APPLE (shopper) ────────────────────────────────────────
 #

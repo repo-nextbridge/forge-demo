@@ -86,15 +86,32 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # Encrypts the connection secrets apps store. Rotating it re-keys them — keep it somewhere you can restore.
       FORGE_VAULT_KEY: ${FORGE_VAULT_KEY:?set FORGE_VAULT_KEY (env-source.sh) to a stable random key}
-      # ★ DIFFERENCE 2 — MEDIA ON THIS BOX'S DISK, not a bucket. The demo's product photos are seeded through
-      # the port (bin/seed.mjs) and served by the kernel's own local-driver route. FORGE_MEDIA_BASE_URL stays
-      # EMPTY on purpose: with no base the local driver DERIVES the URL from FORGE_PUBLIC_ORIGIN, which is the
-      # one address a browser can reach this stack at. Point a bucket at it the day the demo needs a CDN.
+      # ★ DIFFERENCE 2 — MEDIA: THE BENCH KEEPS IT ON THIS BOX'S DISK, A DEPLOYED BOX PUTS IT IN A BUCKET.
+      # The demo's product photos are seeded through the port (bin/seed.mjs). With FORGE_STORAGE_DRIVER unset
+      # the kernel's local driver stores them under FORGE_MEDIA_LOCAL_DIR and serves them itself, and an empty
+      # FORGE_MEDIA_BASE_URL makes it DERIVE the read URL from FORGE_PUBLIC_ORIGIN — which is what a bench
+      # wants and what `.env` in this repository declares. `deploy/box.env` declares the other posture.
       FORGE_MEDIA_LOCAL_DIR: /data/media
       FORGE_MEDIA_BASE_URL: ${FORGE_MEDIA_BASE_URL:-}
       FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:?set FORGE_PUBLIC_ORIGIN (.env) to the address a browser reaches this stack at — the local media URLs are derived from it}
+      # ── the bucket, when there is one ─────────────────────────────────────────────────────────────────────
+      # ⚠️ EIGHT NAMES, AND THE SET A DRIVER NEEDS IS THE DRIVER'S BUSINESS, NOT THIS FILE'S. `gcs` signs with
+      # a service account (CLIENT_EMAIL + PRIVATE_KEY, or neither and the VM's own identity); `s3` signs SigV4
+      # with an ACCESS_KEY_ID + SECRET_ACCESS_KEY against an ENDPOINT. Every one of them is forwarded whatever
+      # the driver is, because a container that receives only half of a set cannot say which half it is
+      # missing — `createStorageBackend` refuses by name, and it can only do that if the names reach it.
+      #
+      # ⛔⛔ THE FOUR `s3` NAMES WERE ABSENT FROM THIS BLOCK UNTIL 2026-09-16, and the absence was silent in
+      # the worst way. `apps/api/src/storage-connector.ts` reads them from ITS environment; compose forwards
+      # only what is listed here; so a box whose `.env` said `s3` and whose shell held the credentials still
+      # handed the kernel an endpoint-less, key-less `s3` — and the kernel threw at boot. ⇒ Adding a driver to
+      # the PRODUCT does not add it to this box: the variables are a second wire, and it is this one.
       FORGE_STORAGE_DRIVER: ${FORGE_STORAGE_DRIVER:-}
       FORGE_STORAGE_BUCKET: ${FORGE_STORAGE_BUCKET:-}
+      FORGE_STORAGE_ENDPOINT: ${FORGE_STORAGE_ENDPOINT:-}
+      FORGE_STORAGE_REGION: ${FORGE_STORAGE_REGION:-}
+      FORGE_STORAGE_ACCESS_KEY_ID: ${FORGE_STORAGE_ACCESS_KEY_ID:-}
+      FORGE_STORAGE_SECRET_ACCESS_KEY: ${FORGE_STORAGE_SECRET_ACCESS_KEY:-}
       FORGE_STORAGE_CLIENT_EMAIL: ${FORGE_STORAGE_CLIENT_EMAIL:-}
       FORGE_STORAGE_PRIVATE_KEY: ${FORGE_STORAGE_PRIVATE_KEY:-}
       # ★★ LOGIN E-MAIL. ALL FOUR OR NONE — a partial set is a FATAL BOOT ERROR that names the missing one.

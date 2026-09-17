@@ -248,7 +248,8 @@ fi
 missing_secrets=''
 [ "$HOST_REACHED" = 'yes' ] && missing_secrets="$("${SSH[@]}" "
   f='${FORGE_DEPLOY_DIR}/.secrets'
-  for n in forge-postgres-password forge-vault-key; do
+  for n in forge-postgres-password forge-vault-key \
+           forge-storage-endpoint forge-storage-access-key-id forge-storage-secret-access-key; do
     grep -q \"^\$n=\" \"\$f\" 2>/dev/null || printf '%s ' \"\$n\"
   done
 " 2>/dev/null)"
@@ -257,13 +258,22 @@ if [ -n "${missing_secrets// /}" ]; then
   # a rehearsal that stops at the first absence tells you about one absence.
   refuse=die; [ "$PLAN" = 'yes' ] && refuse=note
   $refuse "${FORGE_DEPLOY_DIR}/.secrets on ${host_name} does not carry: ${missing_secrets}
-     These are minted ON THE BOX and never travel. On the host, once:
+     None of them travel. Two are MINTED on the host, and three are COPIED from the object-storage account.
+     On the host, once:
        install -d -m 700 ${FORGE_DEPLOY_DIR}
        umask 077
        printf 'forge-postgres-password=%s\\n' \"\$(openssl rand -hex 24)\" >> ${FORGE_DEPLOY_DIR}/.secrets
        printf 'forge-vault-key=%s\\n'         \"\$(openssl rand -base64 32)\" >> ${FORGE_DEPLOY_DIR}/.secrets
+       printf 'forge-storage-endpoint=%s\\n'  'https://<account>.<provider>'   >> ${FORGE_DEPLOY_DIR}/.secrets
+       printf 'forge-storage-access-key-id=%s\\n'     '<from the bucket credential>' >> ${FORGE_DEPLOY_DIR}/.secrets
+       printf 'forge-storage-secret-access-key=%s\\n' '<from the bucket credential>' >> ${FORGE_DEPLOY_DIR}/.secrets
      ⚠️ \`forge-vault-key\` encrypts what apps store. Rotating it re-keys them; losing it means re-entering
-     every connection this box holds. Back it up wherever this instance keeps its custody."
+     every connection this box holds. Back it up wherever this instance keeps its custody.
+     ⚠️ THE THREE STORAGE NAMES ARE ASKED FOR BECAUSE \`deploy/box.env\` DECLARES \`FORGE_STORAGE_DRIVER=s3\`.
+     The credential should reach ONE bucket and no other (this box's, per \`deploy/<env>.env\`), and the
+     endpoint names the account, never a bucket. A box that starts without them does not degrade: the kernel
+     refuses the driver at boot. ⛔ Asking here, before anything is delivered, is the whole point — the
+     alternative is finding out from a container that will not stay up."
 fi
 [ "$HOST_REACHED" = 'yes' ] && note 'secrets   present on the host (names only — no value is read, sent or printed)'
 
