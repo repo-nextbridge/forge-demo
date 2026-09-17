@@ -14,13 +14,22 @@
 // only". ⇒ A SHOP WITH NO PHOTOGRAPH IS STILL A 200. The proof of a shop is its PHOTOGRAPHS, and nothing was
 // counting them.
 //
-// ── WHAT IT COUNTS, AND WHY NOT `<img>` ────────────────────────────────────────────────────────────────────
+// ── WHAT IT COUNTS, AND THE FALSE NEGATIVE THAT TAUGHT IT ──────────────────────────────────────────────────
 //
-// The vitrine never points a browser at the bucket: it routes every master through its OWN derivative door
-// (`/api/img/<spec>`, a 1-year immutable cache on this box) or the plain media door (`/api/media/<key>`).
-// That is the shape `bin/config-media-door.guard.mjs` defends, so it is the shape a real page has. Counting
-// `<img` alone would also count the theme's logo — which renders perfectly on a box with an empty catalogue,
-// and is exactly how the defective page looked healthy.
+// ⛔⛔ THE FIRST VERSION OF THIS FILE COUNTED ONLY `/api/img/` AND `/api/media/`, AND IT CALLED A PRODUCTION
+// BOX FULL OF PHOTOGRAPHS EMPTY. Measured 2026-09-17: three vitrines answered "NO PHOTOGRAPHS" while their
+// pages carried 57, 24 and 6 distinct images, every sampled one a 200 with real bytes. The pages address the
+// bucket at its PUBLIC BASE; the proxy door is one shape a page can use, not the only one. A probe that
+// measures the wrong shape is worse than no probe, and this one was built to stop exactly that mistake.
+//
+// ⇒ SO IT COUNTS BOTH, and prints the split. The two are not interchangeable — a master served through
+// `/api/img/<spec>` gets a derivative and a 1-year immutable cache on this box, and one served straight from
+// the base does not — so the split is data an operator should see, never something to normalise away.
+//
+// ⚠️ AND IT DOES NOT COUNT `<img`. A vitrine answers RSC, not rendered HTML: `curl` receives the flight
+// payload, where there is no such tag at all and the addresses live inside escaped JSON. Counting `<img`
+// would have reported zero on every box, forever — and `<img` would also count the theme's logo, which
+// renders perfectly on a box with an empty catalogue. That is how the defective page looked healthy.
 //
 // ⚠️ AND IT FETCHES EACH DOOR IT FOUND. A URL in the markup proves the page believes in an image; only a 200
 // with bytes proves the bytes are where the page says they are. The staging incident would have passed a
@@ -65,9 +74,20 @@ function facesOf(env) {
     .map(([name, host]) => [name, `https://${host}/`]);
 }
 
-const MEDIA_DOOR = /(?:\/api\/img\/[^\s"'\\)]+|\/api\/media\/[^\s"'\\)]+)/g;
+/** The box's OWN derivative and media doors. */
+const PROXY_DOOR = /(?:\/api\/img\/|\/api\/media\/)[^\s"'\\)]+/g;
 
-async function probe(name, url) {
+/** The public base this environment declares, as a matcher for absolute addresses under it. `deploy/<env>.env`
+ * is the one place that says where a browser reads this box's bytes from, so it is where this comes from —
+ * never a host typed here, which would make the probe about one instance. */
+function baseMatcher(env) {
+  const text = readFileSync(join(HERE, 'deploy', `${env}.env`), 'utf8');
+  const base = text.match(/^FORGE_MEDIA_BASE_URL=(.+)$/m)?.[1]?.trim().replace(/\/+$/, '');
+  if (!base) return null;
+  return new RegExp(`${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/[^\\s"'\\\\)]+`, 'g');
+}
+
+async function probe(name, url, base) {
   let res;
   try {
     res = await fetch(url, { redirect: 'follow' });
@@ -75,15 +95,19 @@ async function probe(name, url) {
     return { name, url, verdict: 'UNREACHABLE', detail: String(err.cause?.code ?? err.message) };
   }
   const body = await res.text();
-  const doors = [...new Set(body.match(MEDIA_DOOR) ?? [])];
-  const base = new URL(res.url).origin;
+  // RSC payload escapes the addresses, so a trailing backslash rides along; it is not part of the URL.
+  const clean = (u) => u.replace(/\\+$/, '');
+  const proxied = [...new Set((body.match(PROXY_DOOR) ?? []).map(clean))];
+  const direct = base ? [...new Set((body.match(base) ?? []).map(clean))] : [];
+  const doors = [...proxied, ...direct];
+  const origin = new URL(res.url).origin;
 
   // Fetch a sample of the doors the page believes in. A URL in markup is a belief; bytes are the fact.
   const picked = doors.slice(0, SAMPLE);
   const fetched = await Promise.all(
     picked.map(async (d) => {
       try {
-        const r = await fetch(new URL(d, base), { method: 'GET' });
+        const r = await fetch(new URL(d, origin), { method: 'GET' });
         const buf = await r.arrayBuffer();
         return { d, status: r.status, bytes: buf.byteLength, type: r.headers.get('content-type') ?? '' };
       } catch (err) {
@@ -105,25 +129,29 @@ async function probe(name, url) {
     status: res.status,
     kb: Math.round(body.length / 1024),
     doors: doors.length,
+    proxied: proxied.length,
+    direct: direct.length,
     sampled: fetched.length,
     broken,
   };
 }
 
-const targets = oneUrl ? [["url", oneUrl]] : envName ? facesOf(envName) : [];
+const targets = oneUrl ? [['url', oneUrl]] : envName ? facesOf(envName) : [];
+const BASE = envName ? baseMatcher(envName) : null;
 if (!targets.length) {
   console.error(`${TAG} usage: node bin/prove-shop.mjs <env> | --url <address>`);
   process.exit(2);
 }
 
 const results = [];
-for (const [name, url] of targets) results.push(await probe(name, url));
+for (const [name, url] of targets) results.push(await probe(name, url, BASE));
 
 console.log(`${TAG} floor: ${MIN_PHOTOS} media door(s) per home, ${SAMPLE} of them fetched for real\n`);
 for (const r of results) {
   const line = r.verdict === 'UNREACHABLE'
     ? `${r.detail}`
-    : `HTTP ${r.status} · ${r.kb} KB · ${r.doors} media door(s) · ${r.sampled} fetched`;
+    : `HTTP ${r.status} · ${r.kb} KB · ${r.doors} image(s) (${r.proxied} through this box's door, ` +
+      `${r.direct} straight from the public base) · ${r.sampled} fetched`;
   console.log(`  ${r.verdict === 'OK' ? '✓' : '⛔'} ${r.name.padEnd(8)} ${line}`);
   console.log(`    ${r.url}`);
   for (const b of r.broken ?? []) console.log(`    ⛔ ${b.status} ${b.bytes}B ${b.type} ${b.d.slice(0, 90)}`);
