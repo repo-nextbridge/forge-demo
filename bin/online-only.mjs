@@ -25,9 +25,27 @@
 //
 // `media-store` — drop the object prefix the previous birth wrote.
 //   On the bench the media is a docker VOLUME and `bin/box-down.sh` destroys it by name, so there is
-//   genuinely nothing left to sweep. ONLINE a bucket is not a volume: the rebirth uploads ~18 500 objects
-//   under fresh keys and last week's stay, paid for and pointed at by nothing. Nothing breaks — it only
-//   grows, which is why it needs a step rather than a person noticing.
+//   genuinely nothing left to sweep. ONLINE a bucket is not a volume: what the previous birth wrote stays,
+//   paid for and pointed at by nothing. Nothing breaks — it only grows.
+//
+//   ⛔⛔ AND THE SIZE OF THAT GROWTH WAS WRONG HERE UNTIL IT WAS MEASURED. This paragraph used to say the
+//   rebirth "uploads ~18 500 objects under fresh keys", which reads as ~3,5 GB orphaned every time and was
+//   the reason this facility looked urgent. MEASURED on the production bucket 2026-09-17:
+//
+//     demo/                   18 590 objects · 3 460 MiB   ← keys carry a CONTENT HASH; a rebirth rewrites
+//                                                            the same ones, so none of this orphans
+//     tenant_<schema>/           265 objects ·   162 MiB   ← these do: every asset gets a fresh ULID
+//
+//   The seed says so itself on a resumed run — «16805/18601 object(s) ALREADY in <base>, uploading 1796» —
+//   which is only possible because those keys are stable. ⇒ A rebirth orphans ~162 MiB, not ~3,5 GB: about
+//   8 GB a year under a weekly cron, which in object storage is cents.
+//
+//   ⇒ THE FACILITY STAYS DECLARED AND THE DRIVER STAYS UNWRITTEN, BY DECISION (2026-09-17). Writing one
+//   means carrying the bucket's credentials to wherever this script runs — it runs on the OPERATOR's machine
+//   and the secrets live on the box, which has no node — and that is a real widening of where a credential
+//   travels, bought for cents. The sweep is a manual gesture (list the `tenant_*` prefixes, keep the current
+//   schemas, delete the rest) on the day somebody cares. ⚠️ If the dataset ever stops content-addressing its
+//   keys, this arithmetic changes by a factor of twenty and the decision has to be taken again.
 //
 // ── ★★ AND AN UNIMPLEMENTED DRIVER REFUSES RATHER THAN NO-OPS ────────────────────────────────────────────
 //
