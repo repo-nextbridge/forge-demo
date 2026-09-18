@@ -162,8 +162,8 @@ services:
       FORGE_ADMIN_SEED_EMAIL: ${FORGE_ADMIN_SEED_EMAIL:-}
       FORGE_ADMIN_SEED_NAME: ${FORGE_ADMIN_SEED_NAME:-}
       # ★★ THE MOUNT FOR AN APP THIS BOX WANTS WITHOUT REBUILDING (FORGE_EXTENSIONS_DIR). It is EMPTY today and
-      # that is the state, not an omission: `demo-gate` used to arrive this way and is now COMPOSED into the
-      # images (`instanceApps` in composition.json), which is what gives it a screen — a mounted app reaches
+      # that is the state, not an omission: this box's own apps used to arrive this way and are now COMPOSED
+      # into the images (`instanceApps` in composition.json), which is what gives one a screen — a mounted app reaches
       # the kernel and renders nothing, because a front draws an app only from the composition. The two must
       # never both carry the same app: a composed id mounted on top of itself is a duplicate the kernel
       # refuses at boot. The seam stays because a box may still want an app of ACTIONS ONLY, with no rebuild.
@@ -219,10 +219,16 @@ services:
       # monta todas as URLs num esquema que este host não serve: 831 planejadas, 0 aquecidas.
       # O guard `env-forwarding` do produto pega isto — e grada os 3 composes DELE, não este.
       FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:-}
-      # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
+      # ★★ THE GATE SLOT'S OWN WIRING, read on the SERVER when a gate block renders (Forge P1).
       #
-      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`
-      # was only MOUNTED, the kernel was the only process that had the app at all — and the app had no screen.
+      # ⛔⛔ AND SINCE v0.4 NOTHING IN THIS BOX READS THESE TWO. The app that did was the demo's gate, and it
+      # left the repository with the slot it filled (an app INSTALLED on `storefront:gate` takes every store
+      # off the cacheable tree). They stay declared because the promotion machinery writes and grades them
+      # — `bin/box-up.sh`, `bin/verify-config.mjs`, `bin/box-config.guard.mjs` — and unpicking that is a
+      # slice of its own, not a line in this one. ⚠️ A READER SHOULD NOT INFER A CONSUMER FROM A VARIABLE.
+      #
+      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While that app
+      # was only MOUNTED, the kernel was the only process that had it at all — and it had no screen.
       # Now it is COMPOSED into the fronts, so `gateWiring()` runs in THIS process, inside a Server Component,
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.
@@ -278,10 +284,16 @@ services:
       # monta todas as URLs num esquema que este host não serve: 831 planejadas, 0 aquecidas.
       # O guard `env-forwarding` do produto pega isto — e grada os 3 composes DELE, não este.
       FORGE_PUBLIC_ORIGIN: ${FORGE_PUBLIC_ORIGIN:-}
-      # ★★ THE GATE APP'S OWN WIRING, read on the SERVER when its block renders (Forge P1).
+      # ★★ THE GATE SLOT'S OWN WIRING, read on the SERVER when a gate block renders (Forge P1).
       #
-      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While `demo-gate`
-      # was only MOUNTED, the kernel was the only process that had the app at all — and the app had no screen.
+      # ⛔⛔ AND SINCE v0.4 NOTHING IN THIS BOX READS THESE TWO. The app that did was the demo's gate, and it
+      # left the repository with the slot it filled (an app INSTALLED on `storefront:gate` takes every store
+      # off the cacheable tree). They stay declared because the promotion machinery writes and grades them
+      # — `bin/box-up.sh`, `bin/verify-config.mjs`, `bin/box-config.guard.mjs` — and unpicking that is a
+      # slice of its own, not a line in this one. ⚠️ A READER SHOULD NOT INFER A CONSUMER FROM A VARIABLE.
+      #
+      # ⚠️ IT MOVED HERE FROM THE KERNEL, and the move is the whole shape of what P1 changed. While that app
+      # was only MOUNTED, the kernel was the only process that had it at all — and it had no screen.
       # Now it is COMPOSED into the fronts, so `gateWiring()` runs in THIS process, inside a Server Component,
       # and these variables have to be where the component is. They never reach the browser: the entry resolves
       # them and hands the values down as props.

@@ -18,10 +18,16 @@
     "",
     "★★ THIS COPY WAS CUT BEFORE THE TOOL EXISTED, so this file was written by hand on 2026-09-13 rather",
     "than by `pnpm pack:surface`. It is the same derivation the cut makes — every app of the instance list",
-    "this project can IMPORT — so it holds the platform apps this fork installs plus `demo-gate`, which is",
-    "this box's own app and arrives as a directory (`file:../apps/demo-gate`) instead of a tarball.",
+    "this project can IMPORT — so it holds the platform apps this fork installs plus `demo-setup`, which is",
+    "this box's own app and arrives as a directory (`file:../apps/demo-setup`) instead of a tarball.",
     "`chrome` and `content` are on the box's list and NOT here: this fork does not depend on them, and an",
-    "entry naming a package `npm install` never fetched is exactly what the generator refuses."
+    "entry naming a package `npm install` never fetched is exactly what the generator refuses.",
+    "",
+    "⛔⛔ AND THE APP THAT USED TO BE ON THIS LINE WAS THE GATE, WHICH IS GONE FROM THIS REPOSITORY (v0.4).",
+    "It filled `storefront:gate`, and what that slot costs is not a screen — it is the ROUTING: an app merely",
+    "INSTALLED on it takes every store off the cacheable tree. `demo-setup` takes its place here because the",
+    "sentence a visitor is owed is a BLOCK now (`demo_ribbon`), and a block this fork cannot IMPORT is a block",
+    "this fork silently does not draw — which is the whole subject of `bin/front-app-reach.guard.mjs`."
   ],
   "version": 1,
   "surface": "storefront",
@@ -31,8 +37,8 @@
       "package": "@forgeco/ext-banners"
     },
     {
-      "id": "demo-gate",
-      "package": "@forge/ext-demo-gate"
+      "id": "demo-setup",
+      "package": "@forge/ext-demo-setup"
     },
     {
       "id": "feed",

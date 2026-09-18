@@ -13,8 +13,8 @@
 //
 // ── WHY AN INSTANCE APP CANNOT SIMPLY BE `npm install`ED, AND WHAT IS DONE INSTEAD ───────────────────────
 //
-// Measured 2026-09-08 on `apps/payment-pos` and `apps/demo-gate`, then the two of them plus `apps/demo-setup`
-// (pk26/D2) — the apps this box owns, and the list is DERIVED so a fourth costs nobody a line. Their manifests
+// Measured 2026-09-08 on `apps/payment-pos` and the box's other app of the day, then on `apps/demo-setup`
+// (pk26/D2) too — the apps this box owns, and the list is DERIVED so a fourth costs nobody a line. Their manifests
 // are written in the monorepo's vocabulary and NOTHING here or in the oven ever resolves it:
 //
 //     "@forgeco/contracts": "workspace:*"     ← a pnpm workspace link; there is no workspace here

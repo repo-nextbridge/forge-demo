@@ -9,6 +9,10 @@ import { injectRenderBundle, injectRenderCard } from '../injections';
 import { AnnouncementBlock as BannersAnnouncement } from '@forgeco/ext-banners/block/announcement';
 import { BannerBlock as BannersBanner } from '@forgeco/ext-banners/block/banner';
 import { BoughtTogetherBlock as RecommendationsBoughtTogether } from '@forgeco/ext-recommendations/block/bought-together';
+import { DemoRibbon as DemoSetupDemo_ribbon } from '@forge/ext-demo-setup/block/ribbon';
+import { DrawerBrand as DemoSetupDrawer_brand } from '@forge/ext-demo-setup/block/marks';
+import { FooterBrand as DemoSetupFooter_brand } from '@forge/ext-demo-setup/block/marks';
+import { HeaderBrand as DemoSetupHeader_brand } from '@forge/ext-demo-setup/block/marks';
 import { NewsletterBlock as LeadsNewsletter } from '@forgeco/ext-leads/block';
 import { PlanPickerBlock as SubscriptionsPlan_picker } from '@forgeco/ext-subscriptions/block/plan-picker';
 import { RelatedBlock as RecommendationsRelated } from '@forgeco/ext-recommendations/block/related';
@@ -19,6 +23,12 @@ const COMPOSED_BLOCKS: Record<string, Record<string, BlockComponent>> = {
   'banners': {
     'announcement': (props) => <BannersAnnouncement config={props.config} storeHref={props.storeHref} />,
     'banner': (props) => <BannersBanner store={props.store} placementId={props.placementId} config={props.config} storeHref={props.storeHref} />,
+  },
+  'demo-setup': {
+    'demo_ribbon': (props) => <DemoSetupDemo_ribbon locale={props.locale} />,
+    'drawer_brand': (props) => <DemoSetupDrawer_brand config={props.config} storeHref={props.storeHref} />,
+    'footer_brand': (props) => <DemoSetupFooter_brand config={props.config} storeHref={props.storeHref} />,
+    'header_brand': (props) => <DemoSetupHeader_brand config={props.config} storeHref={props.storeHref} />,
   },
   'leads': {
     'newsletter': (props) => <LeadsNewsletter store={props.store} />,

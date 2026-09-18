@@ -1399,7 +1399,7 @@ test('★★ a whoami the face refuses is THIS STEP\'s question failing — exit
 // the SILENCE, and these two tests are what keep it repaired.
 
 test('★★★ a store with a GATE in front of it is named, and the report says the warming warmed the gate', async () => {
-  const box = await fakeBox({ warm: 'ok', gates: { cafe: 'demo-gate' } });
+  const box = await fakeBox({ warm: 'ok', gates: { cafe: 'some-gate-app' } });
   try {
     const { stdout, status } = await runStep({ box });
     // ⚠️ A REPORT AND NOT A RED, deliberately: warming has never graded this birth (see this file's header),
@@ -1407,7 +1407,7 @@ test('★★★ a store with a GATE in front of it is named, and the report says
     assert.equal(status, 0, stdout);
     const line = stdout.split('\n').find((l) => l.includes('cafe') && l.includes('A GATE'));
     assert.ok(line, `the gated store is not named:\n${stdout}`);
-    assert.match(line, /demo-gate/, `the notice does not name the gate the port declared: ${line}`);
+    assert.match(line, /some-gate-app/, `the notice does not name the gate the port declared: ${line}`);
     // ⚠️ THE CITATION, NOT THE OLD WORDS. This assertion read `/no dismissal cookie/` and went RED at
     //    `8215a38`, the commit that rewrote exactly this sentence and touched only `bin/warm-box.mjs` — the
     //    step stopped claiming the fetcher carries no cookie (it has since pk33) and started saying what it

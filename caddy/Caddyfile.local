@@ -40,6 +40,13 @@
 }
 
 :80 {
+	# ── ⚠️ O MESMO REMENDO DE SEO QUE `caddy/Caddyfile` CARREGA, e ele está aqui para poder ser MEDIDO ──────
+	# A razão inteira, o que o aposenta e por que é adivinhação estão lá, uma vez. Sem esta cópia o cabeçalho
+	# só existiria numa caixa implantada, e uma regra que só pode ser conferida em produção é uma regra que
+	# ninguém confere. ⛔ As duas cópias saem juntas no dia em que a PLP do produto emitir `noindex`.
+	@faceted expression {http.request.uri.query}.contains("cf.") || {http.request.uri.query}.contains("option.")
+	header @faceted X-Robots-Tag "noindex, follow"
+
 	# ── the kernel's own faces, on the same paths production uses ──────────────────────────────────────────
 	handle /v1/* {
 		reverse_proxy kernel:3000

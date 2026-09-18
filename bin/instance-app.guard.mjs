@@ -1,8 +1,8 @@
 // ★★ AN APP OF THIS BOX DOES NOT REACH THE OVEN WITHOUT HAVING BEEN COMPILED AND TESTED — the loop nobody
 // had, on the only code in this repository that runs INSIDE the kernel.
 //
-// Measured on 2026-09-08, on this branch, before this guard existed. `apps/payment-pos` and `apps/demo-gate`
-// carry five vitest files between them, and the answer to "who runs them" was NOBODY:
+// Measured on 2026-09-08, on this branch, before this guard existed. `apps/payment-pos` and the box's other
+// app of the day carried five vitest files between them, and the answer to "who runs them" was NOBODY:
 //
 //     bash bin/test.sh              `find bin seed …` (bin/test.sh:33) — apps/ is not in it
 //     bin/fork-suite.guard.mjs      iterates forks('test'), and a fork is a directory that depends on the
@@ -26,7 +26,7 @@
 //     transform TypeScript, and answered `[TSCONFIG_ERROR] Failed to load tsconfig for 'manifest.test.ts':
 //     Tsconfig not found`, 2 files failed, 0 tests. The app only compiled after being COPIED into the
 //     monorepo as `.instance-apps/<id>/`, where the same relative path lands on a file that exists.
-//   · `apps/demo-gate/vitest.config.ts` imported `TIMEOUTS` from `../../vitest.shared` — same shape, same
+//   · the other app's `vitest.config.ts` imported `TIMEOUTS` from `../../vitest.shared` — same shape, same
 //     repository confusion: `Module not found`, and the config never loaded at all.
 //
 // This guard fixes neither by hand: it holds the property (rule 2 below) so a third app cannot arrive with a

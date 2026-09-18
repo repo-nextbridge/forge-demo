@@ -28,8 +28,8 @@ WORKDIR /app
 # it.
 #
 # ⚠️ ★★ pk35/d3 — THE ENTRY IS UNDER `storefront-coffee/`, NOT AT THE ROOT OF `standalone/`, and the reason is
-# one directory up. This front imports an app THIS BOX wrote (`@forge/ext-demo-gate`, installed from
-# `file:../apps/demo-gate`), and the standalone tracer never copies a file from above its root — so
+# one directory up. This front imports an app THIS BOX wrote (`@forge/ext-demo-setup`, installed from
+# `file:../apps/demo-setup`), and the standalone tracer never copies a file from above its root — so
 # `next.config.mjs` sets `outputFileTracingRoot` to the REPOSITORY root, and Next mirrors the path from that
 # root into the output. `totem/Dockerfile` carries the same three lines for the same app and the same reason.
 COPY .next/standalone ./

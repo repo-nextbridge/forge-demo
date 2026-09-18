@@ -5,15 +5,8 @@
 // The storefront:gate surface, storefront half: extension id → the two faces this build renders for it.
 
 import type { GateImplementation } from '@forgeco/storefront-kit/gate/registry';
-import { GateInterstitial as DemoGateGate } from '@forge/ext-demo-gate/block/entry';
-import { GateRibbonEntry as DemoGateRibbon } from '@forge/ext-demo-gate/block/entry';
 
-const COMPOSED_GATES: Record<string, GateImplementation> = {
-  'demo-gate': {
-    Interstitial: (props) => <DemoGateGate store={props.store} dismiss={props.dismiss} />,
-    Ribbon: (props) => <DemoGateRibbon store={props.store} reopen={props.reopen} />,
-  },
-};
+const COMPOSED_GATES: Record<string, GateImplementation> = {};
 
 export function resolveComposedGate(extensionId: string): GateImplementation | undefined {
   return COMPOSED_GATES[extensionId];

@@ -32,10 +32,10 @@
 //
 // ── ★ WHAT "REACHABLE" MEANS, AND IT IS THREE GESTURES, NOT ONE ──────────────────────────────────────────
 //
-// Derived from the fork that already does it. `totem/` reaches `apps/demo-gate` today, and it takes all three:
+// Derived from the fork that already does it. `totem/` reaches `apps/demo-setup` today, and it takes all three:
 //
-//   1. `totem/package.json`      `"@forge/ext-demo-gate": "file:../apps/demo-gate"`   npm installs a SYMLINK
-//   2. `totem/next.config.mjs`   `transpilePackages: [… '@forge/ext-demo-gate']`      it ships as .tsx + CSS
+//   1. `totem/package.json`      `"@forge/ext-demo-setup": "file:../apps/demo-setup"` npm installs a SYMLINK
+//   2. `totem/next.config.mjs`   `transpilePackages: [… '@forge/ext-demo-setup']`    it ships as .tsx + CSS
 //   3. `totem/next.config.mjs`   `outputFileTracingRoot: '..'`                        the standalone tracer
 //                                                                                     has to reach outside
 //
@@ -252,7 +252,7 @@ const GESTURES = [
     say: (front, c) =>
       `${front.dir}/package.json does not name ${c.package}, so \`${c.specifier}\` resolves to nothing — ` +
       `add it as \`"${c.package}": "file:${relative(front.path, c.appPath)}"\` (npm installs a symlink; ` +
-      `totem/package.json already does exactly this for @forge/ext-demo-gate)`,
+      `totem/package.json already does exactly this for @forge/ext-demo-setup)`,
   },
   {
     kind: 'not-transpiled',

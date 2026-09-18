@@ -13,7 +13,7 @@
   "dependencies": {
     "@fontsource/fraunces": "^5.2.5",
     "@fontsource/poppins": "^5.2.5",
-    "@forge/ext-demo-gate": "file:../apps/demo-gate",
+    "@forge/ext-demo-setup": "file:../apps/demo-setup",
     "@forgeco/storefront-kit": "file:vendor/forgeco-storefront-kit-0.3.0.tgz",
     "next": "15.2.9",
     "react": "19.0.0",

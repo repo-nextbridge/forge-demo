@@ -1,4 +1,5 @@
-// The counter's root layout: the two typefaces of the artboard, the sheet, and the demo gate around it all.
+// The counter's root layout: the two typefaces of the artboard, the sheet, and the demonstration ribbon
+// under it all.
 //
 // ★ THE FONTS ARE SELF-HOSTED, and the artboard's CDN link is the one thing here that is deliberately NOT
 // copied from it. `design-base/Totem forge.co.dc.html` pulls Fraunces and Poppins from Google Fonts, which is
@@ -10,7 +11,7 @@
 
 import type { ReactNode } from 'react';
 import localFont from 'next/font/local';
-import { GateWrapper } from '@/components/GateWrapper';
+import { DemoNotice } from '@/components/DemoNotice';
 import '../styles/globals.css';
 
 const fraunces = localFont({
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className={`${fraunces.variable} ${poppins.variable}`}>
       <body>
-        <GateWrapper>{children}</GateWrapper>
+        <DemoNotice>{children}</DemoNotice>
       </body>
     </html>
   );

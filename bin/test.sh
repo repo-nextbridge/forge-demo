@@ -16,7 +16,7 @@
 # (~5.6 s of work, which the parallelism below mostly absorbs) and for what the first run found.
 #
 # ★ pk24/D3 — AND IT REACHES THE APPS THIS BOX WRITES ITSELF, for the same reason and by the same trick.
-# `apps/payment-pos/` and `apps/demo-gate/` are loaded BY THE KERNEL, and until 2026-09-08 nothing compiled or
+# `apps/payment-pos/` and `apps/demo-setup/` are loaded BY THE KERNEL, and until 2026-09-08 nothing compiled or
 # ran them either: not this script, not `bin/pack-apps.sh`, not `bin/build-local.sh`, and there is still no CI.
 # `bin/instance-app.guard.mjs` is that loop — 35 tests and two typechecks, ~2.8 s of work — and the first run
 # found that NEITHER app could even be loaded here: both configs pointed at files of the Forge monorepo. Same

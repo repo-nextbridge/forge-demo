@@ -74,6 +74,38 @@
 #
 #   {args[0]} — the compose service serving the VITRINE at this hostname (`storefront`, or a fork of it).
 (forge_shop_host) {
+	# ── ⚠️⚠️ A REMENDO CONSCIENTE: `noindex` NA PLP COM FACETA, NO EDGE, PORQUE A RELEASE AINDA NÃO O EMITE ──
+	#
+	# ⛔ O PROBLEMA, E ELE NÃO É DO EDGE. Uma listagem com faceta é uma URL por combinação: `?cf.marca=x`,
+	# `?option.cor=y`, e as duas juntas. São milhares de endereços que mostram o mesmo catálogo recortado, e um
+	# robô que os indexa gasta o orçamento de rastreio da loja em páginas que ninguém deveria procurar —
+	# conteúdo duplicado, canônico disputado, e a home competindo com as suas próprias facetas.
+	#
+	# ⛔ O CONSERTO DURÁVEL É DO PRODUTO: a PLP emitindo `<meta name="robots" content="noindex, follow">` (ou o
+	# cabeçalho) quando a rota carrega faceta, porque só ela sabe o que é faceta e o que é uma categoria de
+	# verdade. Este bloco é o edge adivinhando pela QUERY, que é tudo o que o edge tem.
+	#
+	# ⇒ ★ O QUE APOSENTA ESTE BLOCO, escrito para poder ser cobrado: **a demo adotar uma release que já emita
+	# `noindex` na PLP com faceta**. Esta caixa assa de `release/v0.3.0` (veja `forge.lock`), que não o tem.
+	# Quando `forge.lock` apontar para uma release que o tenha, apague daqui — duas respostas para a mesma
+	# pergunta é pior do que nenhuma, e a do produto é a que sabe a diferença entre faceta e categoria.
+	#
+	# ⚠️ `follow`, E NÃO `noindex, nofollow`. A página não deve ser INDEXADA e os links dela continuam valendo:
+	# um `nofollow` cortaria o caminho do robô até os produtos que só a faceta lista.
+	# ⚠️ É a QUERY, nunca o caminho — `cf.` e `option.` são os prefixos que o kit emite para campo customizado
+	# e para opção de variante. Uma categoria de verdade é caminho (`/tenis`) e não passa por aqui.
+	#
+	# ★ MEDIDO, com `caddy:2` local, antes de entrar aqui (o `expression` é módulo padrão da imagem, e uma
+	# diretiva que este binário não conhecesse derrubaria o arquivo INTEIRO — veja o aviso sobre rate-limit no
+	# topo). `/` e `/tenis` → sem cabeçalho; `/tenis?page=2` → sem cabeçalho; `/tenis?cf.marca=nike` e
+	# `/tenis?option.cor=preto` → `X-Robots-Tag: noindex, follow`.
+	# ⚠️ E A IMPRECISÃO ESTÁ MEDIDA TAMBÉM, NÃO SUPOSTA: é `contains` sobre a query INTEIRA, então
+	# `/busca?q=cf.x` — um VALOR que contém a string — também recebe o cabeçalho. Para um remendo isso é o lado
+	# certo de errar (uma busca não deve ser indexada de qualquer jeito), e é a razão pela qual o conserto
+	# durável é do produto: só ele sabe se a rota tem faceta, em vez de adivinhar por substring.
+	@faceted expression {http.request.uri.query}.contains("cf.") || {http.request.uri.query}.contains("option.")
+	header @faceted X-Robots-Tag "noindex, follow"
+
 	# Who may reach the control face. Empty is not something `remote_ip` accepts, so "nobody" is written as
 	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
 	# in FORGE_CONTROL_ALLOW_CIDR (space-separated) if you want it reachable, and leave it alone otherwise.

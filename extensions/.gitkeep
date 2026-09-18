@@ -7,11 +7,11 @@
 # recusa do deploy é a primeira coisa que alguém encontra.
 #
 # ── POR QUE TEM DE FICAR VAZIO ────────────────────────────────────────────────────────────────────────────
-# Os três apps desta caixa (`demo-gate`, `demo-setup`, `payment-pos`) são COMPOSTOS DENTRO DAS IMAGENS desde
+# Os dois apps desta caixa (`demo-setup`, `payment-pos`) são COMPOSTOS DENTRO DAS IMAGENS desde
 # `fd018ff` — é literalmente o commit que apagou o conteúdo daqui. O kernel escaneia este diretório no boot e
 # RECUSA SUBIR se encontrar um app que a plataforma já provê:
 #
-#     Error: refusing to boot: the extension at /app/extensions/demo-gate claims id "demo-gate",
+#     Error: refusing to boot: the extension at /app/extensions/<id> claims id "<id>",
 #     which is already provided by the platform. An external extension may not shadow another.
 #
 # ⛔ MEDIDO 2026-09-18, EM PRODUÇÃO. O `deploy.sh` recusou por falta do diretório; a reação natural foi rodar

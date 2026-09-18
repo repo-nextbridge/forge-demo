@@ -3,8 +3,8 @@
 // ★★ IT BELONGS TO THIS BOX AND TO NOBODY ELSE, and that is the first fact about it rather than a footnote.
 // `forge.origin: "instance"` in package.json is the declaration; `instanceApps` in this repository's
 // composition.json is where it is asked for; no Forge release carries it, and a fleet list that named it
-// would be refused with rule `not-carried`. It is the third specimen of the species this box already owned
-// (`demo-gate` is UI, `payment-pos` is a payment driver) and the one written to be LOOKED AT: it exists to
+// would be refused with rule `not-carried`. It is the second specimen of the species this box owns
+// (`payment-pos` is a payment DRIVER; this one is UI) and the one written to be LOOKED AT: it exists to
 // show a customer how freely apps can be written — apps being the main way Forge is extended — and it does
 // that in the plainest shape available, one logo becoming another.
 //
@@ -34,16 +34,36 @@
 // ⛔ AND NO ADMIN PAGE, WHICH IS A SUBTRACTION AND NOT AN OVERSIGHT. There is no path from a page to the
 // vitrine's mark: the only access is the slot, and the shops that wear this run the VANILLA storefront image,
 // unforked. A page would either mirror what the seed already writes or invite a visitor to edit something the
-// weekly reset erases. Page administers, block renders — and `demo-gate`, the box's other UI app, has never
-// needed one either.
+// weekly reset erases. Page administers, block renders — and the gate app this box retired had never needed
+// one either.
 //
 // ★ AREAS CONFINE BY PREFIX and this app invents no vocabulary in the kernel: `header` and `footer` are the
-// page prefixes the three slots already live under (trava 7).
+// page prefixes the three marks' slots live under (trava 7).
+//
+// ★★★ AND A FOURTH BLOCK ARRIVED THAT IS NOT A MARK: `demo_ribbon`, the bar that says this shop is a
+// demonstration. It is here because the box's OTHER UI app is gone: the ribbon used to be one face of the
+// GATE app, which filled `storefront:gate` — and merely INSTALLING an app on that slot takes the whole store
+// off the cacheable tree (the product asks, at the edge of every store route, whether an installed app fills
+// it). Measured on the deployed box: every route answered `private, no-cache, no-store` and a robot got the
+// interstitial on every URL, with no `<title>`. A block costs none of that. The sentence a visitor is owed
+// did not need a front door to carry it.
+//
+// ⛔ IT DECLARES NO `area`, AND THAT IS THE DIFFERENCE BETWEEN IT AND THE THREE MARKS. A mark belongs to ONE
+// place — the bar, the drawer, the footer column — so each names its page prefix and the kernel refuses the
+// rest. The notice belongs wherever a store is looked at, which is more than one page prefix and is not this
+// manifest's to choose: an absent `area` is the contract's own way of saying «no page constraint», and the
+// place is picked in Compose, which is the doctrine this whole app is written around.
+//
+// ⛔ AND IT IS `repeatable` WHERE THE MARKS ARE `single`, WHICH IS NOT A RELAXATION. The marks are `single`
+// because each of them CEDES a node the front would otherwise draw itself: two marks in one header is two
+// wordmarks. This block cedes nothing — it stands beside whatever is in the slot — and the box needs it in
+// more than one place per store, because the shop's chrome (`footer.*`, which the vitrine and the account
+// screens both wear) and the funnel's chrome (`checkout.*`) are two different pairs of slots.
 
 import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
 
 const DESCRIPTION_EN =
-  "The demo's own marks IN ITS SHOP WINDOW: the shop's name and logo in the three places the storefront shows one — the header bar, the mobile drawer and the footer column — each placed and configured on its own in Compose. The login box is not here: that screen belongs to the checkout, which nobody forks, so its mark is the product's to configure. Written inside this instance, composed into its images, offered to nobody: it is what a customer's own app looks like.";
+  "The demo's own marks IN ITS SHOP WINDOW: the shop's name and logo in the three places the storefront shows one — the header bar, the mobile drawer and the footer column — each placed and configured on its own in Compose. The login box is not here: that screen belongs to the checkout, which nobody forks, so its mark is the product's to configure. It also carries the demonstration ribbon — the bar that tells a visitor nothing here is charged or shipped — which is a block and not a front door. Written inside this instance, composed into its images, offered to nobody: it is what a customer's own app looks like.";
 
 /** The three fields every mark has. `logo` is a `type:'id'` reference, so the generated drawer renders the
  *  shared asset picker and the kernel stamps `logo_url` beside it at read time — zero lines of admin code. */
@@ -60,8 +80,8 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
   version: '0.1.0',
   // ⚠️ DECLARING THIS IS HALF THE ICON AND THE OTHER HALF IS `"./icon"` IN package.json — a COMPOSED app's
   // icon is soldered from the package's EXPORTS and nothing ever opens the manifest to notice a disagreement.
-  // `demo-gate` lost its icon to exactly that, and `bin/composition.guard.mjs` holds both halves together and
-  // compares the BYTES.
+  // An app of this box lost its icon to exactly that, and `bin/composition.guard.mjs` holds both halves
+  // together and compares the BYTES.
   icon: 'icon.png',
   description: DESCRIPTION_EN,
   maturity: 'stable',
@@ -76,6 +96,7 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
       'block.header_brand.label': 'Mark · store header',
       'block.drawer_brand.label': 'Mark · mobile drawer',
       'block.footer_brand.label': 'Mark · store footer',
+      'block.demo_ribbon.label': 'Demo notice · ribbon',
       'compose.text': 'Name',
       'compose.text.hint': 'The word before the tail, e.g. "acme". With a logo, its description instead.',
       'compose.tail': 'Tail',
@@ -90,10 +111,11 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
     'pt-BR': {
       name: 'Configuração da demo',
       description:
-        'As marcas da própria demo NA VITRINE: o nome e o logo da loja nos três lugares em que a vitrine mostra um — a barra do cabeçalho, a gaveta do celular e a coluna do rodapé — cada um colocado e configurado por si no Compose. A caixa de login não está aqui: aquela tela é do checkout, que ninguém forka, então a marca dela é do produto. Escrito dentro desta instância, composto nas imagens dela, ofertado a ninguém: é o que se parece com um app do próprio cliente.',
+        'As marcas da própria demo NA VITRINE: o nome e o logo da loja nos três lugares em que a vitrine mostra um — a barra do cabeçalho, a gaveta do celular e a coluna do rodapé — cada um colocado e configurado por si no Compose. A caixa de login não está aqui: aquela tela é do checkout, que ninguém forka, então a marca dela é do produto. Ele também carrega a faixa de demonstração — a barra que avisa que nada ali é cobrado nem entregue — que é um bloco, e não uma portaria. Escrito dentro desta instância, composto nas imagens dela, ofertado a ninguém: é o que se parece com um app do próprio cliente.',
       'block.header_brand.label': 'Marca · cabeçalho da loja',
       'block.drawer_brand.label': 'Marca · gaveta do celular',
       'block.footer_brand.label': 'Marca · rodapé da loja',
+      'block.demo_ribbon.label': 'Aviso de demonstração · faixa',
       'compose.text': 'Nome',
       'compose.text.hint':
         'A palavra antes da terminação, ex.: "acme". Com logo, vira a descrição dele.',
@@ -110,10 +132,11 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
     es: {
       name: 'Configuración de la demo',
       description:
-        'Las marcas de la propia demo EN SU ESCAPARATE: el nombre y el logo de la tienda en los tres lugares donde el escaparate muestra uno — la barra de cabecera, el cajón del móvil y la columna del pie — cada uno colocado y configurado por separado en Compose. La caja de acceso no está aquí: esa pantalla es del checkout, que nadie bifurca, así que su marca es del producto. Escrita dentro de esta instancia, compuesta en sus imágenes, ofertada a nadie.',
+        'Las marcas de la propia demo EN SU ESCAPARATE: el nombre y el logo de la tienda en los tres lugares donde el escaparate muestra uno — la barra de cabecera, el cajón del móvil y la columna del pie — cada uno colocado y configurado por separado en Compose. La caja de acceso no está aquí: esa pantalla es del checkout, que nadie bifurca, así que su marca es del producto. También lleva la franja de demostración — la barra que avisa de que nada se cobra ni se envía — que es un bloque y no una portería. Escrita dentro de esta instancia, compuesta en sus imágenes, ofertada a nadie.',
       'block.header_brand.label': 'Marca · cabecera de la tienda',
       'block.drawer_brand.label': 'Marca · cajón del móvil',
       'block.footer_brand.label': 'Marca · pie de la tienda',
+      'block.demo_ribbon.label': 'Aviso de demostración · franja',
       'compose.text': 'Nombre',
       'compose.text.hint':
         'La palabra antes de la terminación, p. ej. "acme". Con logo, su descripción.',
@@ -167,6 +190,19 @@ export const manifest: ExtensionManifest = extensionManifestSchema.parse({
         placement: 'single',
         area: 'footer',
         config_schema: [...MARK_FIELDS, { name: 'tagline', type: 'string' as const, optional: true }],
+      },
+      {
+        // ★★★ THE ONE BLOCK OF THIS APP THAT IS NOT A MARK — the demonstration notice. See the head of this
+        // file for why it is a block at all, why it names no `area` and why it is the only `repeatable` one.
+        //
+        // ⛔ NO `config_schema`, AND THAT IS THE DECISION. Every other block here exists to be configured;
+        // this one exists to be TRUE. A sentence an operator can edit is a sentence an operator can empty,
+        // and an emptied honesty notice looks exactly like a shop that never had one. The copy ships with
+        // the app in three languages and the front's own `locale` picks between them.
+        component: 'demo_ribbon',
+        label: 'Demo notice · ribbon',
+        surface: 'storefront',
+        placement: 'repeatable',
       },
     ],
   },

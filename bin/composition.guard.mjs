@@ -113,8 +113,8 @@ const skip = FORGE
 
 /** Every app directory this release CARRIES, read the way `scripts/fleet/release.ts` reads it: a directory
  *  under `extensions/` with a readable `package.json`. A directory left behind with only `node_modules` in it
- *  (which is what `extensions/demo-gate` is today, after D1 moved that app to this repository) is not an app
- *  and must not be counted as one. */
+ *  (which is what an app's old directory becomes upstream once D1-style moves bring it into this
+ *  repository) is not an app and must not be counted as one. */
 function carried(forge) {
   const dir = join(forge, 'extensions');
   const out = new Map();
@@ -293,10 +293,10 @@ test('this box composes only apps the release CARRIES, and only platform ones', 
 });
 
 test("★ this box's OWN apps are not carried by the release — that is what makes them ours", { skip }, () => {
-  // ⚠️ THE COLLISION, PROVEN STILL IMPOSSIBLE RATHER THAN REMEMBERED. D1 moved `demo-gate` out of the
-  // monorepo; if a copy of it ever came back upstream, the oven would refuse this build with
-  // `@forge/ext-demo-gate would land on extensions/demo-gate, which this release already carries` — after a
-  // full image build. This says it in a second.
+  // ⚠️ THE COLLISION, PROVEN STILL IMPOSSIBLE RATHER THAN REMEMBERED. D1 moved this box's first app out of
+  // the monorepo; if a copy of any of ours ever came back upstream, the oven would refuse this build with
+  // `<package> would land on extensions/<id>, which this release already carries` — after a full image
+  // build. This says it in a second.
   const carriedDirs = carried(FORGE);
   const collisions = [];
   for (const app of COMPOSITION.instanceApps ?? []) {
@@ -358,9 +358,9 @@ function exportedIconBase64(file) {
 }
 
 test('★★ an instance app that DECLARES an icon also EXPORTS it — the composition solders the export, not the path', () => {
-  // ⛔ THE REGRESSION THIS EXISTS FOR, MEASURED ON THE BENCH 2026-09-03: `GET /v1/extensions/demo-gate/icon`
-  // → 404 (`banners`, a composed platform app, → 200 image/png, 5111 bytes). `demo-gate` declared
-  // `icon: 'icon.png'` and shipped the file, and neither of those is what a COMPOSED app is read by:
+  // ⛔ THE REGRESSION THIS EXISTS FOR, MEASURED ON THE BENCH 2026-09-03: `GET /v1/extensions/<id>/icon`
+  // → 404 for an app of this box (`banners`, a composed platform app, → 200 image/png, 5111 bytes). It
+  // declared `icon: 'icon.png'` and shipped the file, and neither of those is what a COMPOSED app is read by:
   // `packages/codegen/src/composition.ts` solders an icon into the image only when the package EXPORTS
   // `./icon`, and it never imports the app to notice the manifest disagrees. So the app went from MOUNTED
   // (an artifact directory, where the declared PATH is the icon) to COMPOSED (a bundled module, where the
@@ -403,7 +403,7 @@ test('★★ an instance app that DECLARES an icon also EXPORTS it — the compo
  * ⚠️ MEASURED HERE, 2026-09-09, BEFORE THE RULE WAS WRITTEN: `demo-setup`'s placeholder icon carried 2 879 of
  * 16 384 pixels below full alpha — 2 731 of them at alpha 0 with (0,0,0) underneath. Anywhere that fourth
  * channel is dropped — a flatten, a thumbnail, a composite onto a dark ground, a consumer that decodes RGB —
- * those pixels paint a BLACK SQUARE while `demo-gate` and `payment-pos` paint the artwork somebody drew. It
+ * those pixels paint a BLACK SQUARE while `payment-pos` paints the artwork somebody drew. It
  * is the same image rendering as two different pictures depending on who decodes it.
  *
  * ⛔ THE MONOREPO'S OWN GUARD CANNOT SEE THESE APPS — `scripts/publishing/icon-opacity.guard.test.ts` walks
@@ -412,7 +412,7 @@ test('★★ an instance app that DECLARES an icon also EXPORTS it — the compo
  * ALWAYS: it needs no Forge checkout, only this repository's own bytes.
  *
  * ★ IT ASSERTS THE PIXELS, NOT THE HEADER. A colour-type check would be the cheap version and the wrong one:
- * `demo-gate` IS RGBA and every one of its alpha bytes is 255. Carrying an alpha channel is harmless;
+ * an icon may be RGBA with every one of its alpha bytes at 255. Carrying an alpha channel is harmless;
  * carrying transparency is what paints black.
  */
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -520,7 +520,12 @@ test('★ the icon rule SEES the apps — a scanner that finds nothing passes ev
     (COMPOSITION.instanceApps ?? []).length,
     `every instance app ships an \`icon.ts\`; ${apps.map((a) => a.id).join(', ')} is a shorter list than the composition's`,
   );
-  assert.ok(apps.length >= 3, 'this box owns three apps — a shorter loop is an app that vanished');
+  // ⚠️ THE FLOOR IS A FLOOR AND NOT THE RULE. What actually catches a vanished app is the equality above —
+  // this list against `instanceApps` — and it is DERIVED, so it survives the day this box writes a fourth app
+  // or retires one (v0.4 retired the gate, and this number was `3`). What the floor buys is the other
+  // failure: a scanner that walks nothing agrees with a composition that lists nothing, and the two zeros
+  // would satisfy the equality perfectly.
+  assert.ok(apps.length >= 2, 'this box owns at least two apps — a shorter loop is a scanner that walked nothing');
   for (const app of apps) {
     const base64 = exportedIconBase64(join(app.dir, 'icon.ts'));
     assert.ok(

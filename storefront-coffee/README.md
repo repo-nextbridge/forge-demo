@@ -32,7 +32,9 @@ decide you want the rule gone, delete the test. It is your repo.
 **The extension points.** Two registries, each one import and one entry:
 
 - `src/lib/extensions/registry.tsx` — the blocks a page can render in a slot.
-- `src/lib/extensions/gate-registry.tsx` — implementations of the `storefront:gate` slot.
+- `src/lib/extensions/gate.ts` — how the `storefront:gate` slot is resolved. The slot is the kit's and this
+  fork still mounts it; **nothing in this box fills it**, so it resolves to nothing and the route is served
+  as-is.
 
 Which extensions are *installed* is read from the kernel at runtime (`read.extensions`); these registries only
 say what this build knows how to render. A block package installed from the registry also has to be listed in

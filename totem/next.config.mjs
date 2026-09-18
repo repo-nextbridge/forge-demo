@@ -12,7 +12,7 @@
 // `npm run build` deterministic.
 const standalone = process.env.FORGE_BUILD_STANDALONE === '1';
 
-const transpilePackages = ['@forgeco/storefront-kit', '@forge/ext-demo-gate'];
+const transpilePackages = ['@forgeco/storefront-kit', '@forge/ext-demo-setup'];
 
 // ── ★★ pk29/D2 · THE BLOCK EVERY FORK OF THIS REPOSITORY CARRIES, WORD FOR WORD ─────────────────────────
 //
@@ -79,20 +79,20 @@ function forkWebpack(config) {
 export default {
   reactStrictMode: true,
 
-  // ★ THE DEMO GATE TRAVELS AS SOURCE (.tsx + CSS Modules) from `apps/demo-gate/`, because this app does not
-  // go through the fleet oven that composes instance apps into the product images. Next has to compile it
-  // like our own code. `src/lib/gate/registry.tsx` says why the registry entry is written by hand here.
+  // ★ THIS BOX'S OWN APP TRAVELS AS SOURCE (.tsx + CSS Modules) from `apps/demo-setup/`, because this front
+  // does not go through the fleet oven that composes instance apps into the product images. Next has to
+  // compile it like our own code. `src/components/DemoNotice.tsx` says why it is mounted by hand here.
   //
   // ⚠️ IT IS A `file:` DEPENDENCY THAT NPM INSTALLS AS A SYMLINK, and the install needs `--legacy-peer-deps`
   // the first time a tree is built from scratch — npm 10.9.8 crashes resolving vitest's optional peer set
   // ("Cannot read properties of null (reading 'edgesOut')"). Once `package-lock.json` exists, the ordinary
   // `bin/install-storefront.sh totem` works unchanged, which is why the lock is committed.
   // Both of this app's source-shipped dependencies. The kit travels as TypeScript (it is a `pack-surface`
-  // package, not a built one) and the gate travels as .tsx + CSS Modules, so Next compiles both like our own
-  // code — exactly as `storefront-coffee/next.config.mjs` does for the same kit.
+  // package, not a built one) and the instance app travels as .tsx + CSS Modules, so Next compiles both like
+  // our own code — exactly as `storefront-coffee/next.config.mjs` does for the same kit.
   transpilePackages,
 
-  // The other half of the same seam: the gate's real path is one directory up, so the standalone tracer has
+  // The other half of the same seam: the app's real path is one directory up, so the standalone tracer has
   // to be allowed to reach outside this app when it copies the server's files.
   outputFileTracingRoot: new URL('..', import.meta.url).pathname,
 

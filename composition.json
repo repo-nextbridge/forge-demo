@@ -39,9 +39,9 @@
     "it; the oven adopts it with --instance-apps).",
     "",
     "⚠️ AN INSTANCE APP IS ADOPTED, NEVER COMPOSED, AND PUTTING ONE ON `apps` IS A RED BUILD. The oven",
-    "refuses the collision by name — `@forge/ext-demo-gate would land on extensions/demo-gate, which this",
-    "release already carries` — and `bin/composition.guard.mjs` proves the distinction still holds before",
-    "anybody reaches the oven.",
+    "refuses the collision by name — `<package> would land on extensions/<id>, which this release already",
+    "carries` — and `bin/composition.guard.mjs` proves the distinction still holds before anybody reaches",
+    "the oven.",
     "",
     "⚠️ AND THE IMAGE THAT COMES OUT IS NOT OFFERABLE, BY CONSTRUCTION. The oven stamps it, and the",
     "platform's release gate refuses to promote such an image. That is correct and it is not a limitation of",
@@ -161,22 +161,16 @@
   },
   "instanceApps": [
     {
-      "id": "demo-gate",
-      "package": "@forge/ext-demo-gate",
-      "source": "./apps/demo-gate",
-      "why": "the demo's own gate: the full-screen interstitial — ONE screen that draws this box as a diagram (every published shop as a card, gathered under its tenant, each tenant's admin beside it, all tied to one kernel) — and the ribbon under it. ⛔ v2 retired the second, prose screen that explained the architecture: the diagram demonstrates it. Composed, not mounted, since Forge P1 — which is what gives it a screen on the reference storefront the Outlet runs."
-    },
-    {
       "id": "demo-setup",
       "package": "@forge/ext-demo-setup",
       "source": "./apps/demo-setup",
-      "why": "the demo's own MARKS \u2014 the shop's name and logo in the four places a store shows one (header bar, mobile drawer, footer column, login box), each placed and configured on its own in Compose. It is on THIS list because no Forge release carries it and none should: a logo is CONTENT, and the product ships the four slots with a bare default while whoever wants a mark writes the block (r\u00e9gua 3 of CLAUDE.md). \u2605\u2605 AND IT IS THE DEMONSTRATION ITSELF, which is the reason it exists at all: an app that lives in ONE customer's repository, writes four blocks, ships no admin page, asks for no scope and changes the face of four shops is the shortest true answer to \u00abhow do I extend Forge?\u00bb \u2014 it shows one logo becoming another, plainly and with nothing else in the way. It replaces the `brand` block of the OOTB `chrome` app, which was one placement read in four renders."
+      "why": "the demo's own MARKS \u2014 the shop's name and logo in the three places the VITRINE shows one (header bar, mobile drawer, footer column), each placed and configured on its own in Compose \u2014 AND the demonstration ribbon, the bar that tells a visitor nothing here is charged or shipped. It is on THIS list because no Forge release carries it and none should: a logo is CONTENT, and the product ships the slots with a bare default while whoever wants a mark writes the block (r\u00e9gua 3 of CLAUDE.md). \u2605\u2605 AND IT IS THE DEMONSTRATION ITSELF, which is the reason it exists at all: an app that lives in ONE customer's repository, writes four blocks, ships no admin page, asks for no scope and changes the face of four shops is the shortest true answer to \u00abhow do I extend Forge?\u00bb \u2014 it shows one logo becoming another, plainly and with nothing else in the way. \u26d4 THE RIBBON IS A BLOCK AND NOT A GATE, AND THAT IS THIS BOX'S MOST EXPENSIVE MEASUREMENT: an app INSTALLED on `storefront:gate` puts every route of every store on the dynamic tree \u2014 the deployed box answered `private, no-cache, no-store` everywhere and served a robot the interstitial at every URL, with no `<title>`. A block is rendered by the slot it was dropped into and costs the cache nothing."
     },
     {
       "id": "payment-pos",
       "package": "@forge/ext-payment-pos",
       "source": "./apps/payment-pos",
-      "why": "the counter's two ways to pay: `pos_card` (the card machine already said yes) and `pos_pix` (the QR on the totem's screen). It is on THIS list and not on `apps` because no Forge release carries it — and it had to be written rather than reused, because `payment-reference`'s PIX mode is UNIVERSAL app config: turning it to auto-approve for the counter would take the live 'aguardando pagamento' away from the coffee store, which is a thing this demo exists to show. It is also the species' second specimen and its stronger one — `demo-gate` is UI, this is a payment DRIVER."
+      "why": "the counter's two ways to pay: `pos_card` (the card machine already said yes) and `pos_pix` (the QR on the totem's screen). It is on THIS list and not on `apps` because no Forge release carries it — and it had to be written rather than reused, because `payment-reference`'s PIX mode is UNIVERSAL app config: turning it to auto-approve for the counter would take the live 'aguardando pagamento' away from the coffee store, which is a thing this demo exists to show. It is also the species' other specimen and its stronger one — `demo-setup` is UI, this is a payment DRIVER."
     }
   ]
 }

@@ -68,7 +68,7 @@ bash "$here/bin/install-storefront.sh"
 ( cd "$app" && FORGE_BUILD_STANDALONE=1 npm run build )
 
 # ★★ pk35/d3 — AND THE ENTRY MOVED ONE DIRECTORY DOWN, because the tracing root moved one directory UP.
-# This front imports `@forge/ext-demo-gate` from `file:../apps/demo-gate`; the standalone tracer copies
+# This front imports `@forge/ext-demo-setup` from `file:../apps/demo-setup`; the standalone tracer copies
 # nothing from above its root, so `next.config.mjs` roots it at the repository and Next mirrors the path from
 # there. The path is DERIVED from the directory this script already knows, so a rename moves both at once.
 entry="$app/.next/standalone/$(basename "$app")/server.js"

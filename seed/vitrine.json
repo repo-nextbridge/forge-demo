@@ -14,7 +14,7 @@
   "store": "forge",
   "dataset": "demo",
 
-  "apps": ["banners", "demo-gate"],
+  "apps": ["banners"],
   "_apps_why": [
     "The apps this window needs that a fresh box would not already carry. `shelves`, `reviews`,",
     "`subscriptions` and `banners` itself are installed on this bench already (measured); the entry stays",
@@ -25,21 +25,16 @@
     "difference is `manifest.contact.hooks`: `banners` declares NONE, so installing it places nothing anywhere",
     "and every tile in this window is a deliberate placement.",
     "",
-    "★★★ pk33 — `demo-gate` IS HERE, AND THE TENANT-WIDE FAN-OUT IS WHY IT IS WANTED RATHER THAN TOLERATED.",
-    "THE DECISION: the gate arrives INSTALLED at the demo's birth, and the demo is the four shops — shoes,",
-    "outlet, café, totem — so BOTH stores of this tenant get the gate, which is exactly what",
-    "installing it here does: it declares ONE storefront hook (`storefront:gate`) and `seedDefaultPlacements`",
-    "writes a row per store. `forge` and `outlet` are both served by the reference vitrine and the checkout we",
-    "host, and both images COMPOSE this app (`composition.json` → `instanceApps`), so both can draw it.",
+    "⛔⛔ THE GATE APP USED TO BE ON THIS LIST AND IT IS GONE WITH THE APP (v0.4). It filled `storefront:gate`,",
+    "and the cost of that slot is not the screen — it is the ROUTING: the product asks, at the edge of every",
+    "store route, whether an INSTALLED app fills it, and an installed one takes the whole store off the",
+    "cacheable tree. Measured on the deployed box: every route answered `private, no-cache, no-store`, and a",
+    "robot got the interstitial at every URL, with no `<title>`. The sentence a visitor was owed is a BLOCK",
+    "now — `demo-setup/demo_ribbon` — and a block costs the cache nothing.",
     "",
     "⚠️ THIS IS THE ONLY DOOR INTO `forgeco`, AND THAT IS NOT A PREFERENCE. `seed/box.json` REFUSES an `apps`",
     "list on a tenant that declares `dataset: true` (`bin/seed-box.mjs::assertOneOwner`) — the dataset one-shot",
-    "owns that gesture there — so the shoe brand's installs have to come from a window seed, and this is it.",
-    "",
-    "⛔ AND UNTIL pk33 NOTHING IN THE BIRTH INSTALLED IT AT ALL. The app's README said \"Install the app for the",
-    "tenant\": a hand gesture somebody had to remember, which on the bench of 11/09 nobody had. The demo served",
-    "its front door open for days with every birth green underneath — and it could, because nothing anywhere",
-    "verified that the gate APPEARS. Step 14-bis does now, on both sides of the dismissal cookie."
+    "owns that gesture there — so the shoe brand's installs have to come from a window seed, and this is it."
   ],
 
   "_apps_held": {

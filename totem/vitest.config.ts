@@ -7,7 +7,7 @@
 //      nothing but a slower hang report. Nothing mechanical ties this to the floor — said out loud.
 //   2. `server.deps.inline`. Installed from a tarball, `@forgeco/*` really lives in node_modules, which
 //      vitest externalizes — and an externalized `.tsx` is a syntax error, not a module. Same class of
-//      surprise as `transpilePackages` next door, one layer down. `@forge/ext-demo-gate` is on the list for
+//      surprise as `transpilePackages` next door, one layer down. `@forge/ext-demo-setup` is on the list for
 //      exactly the same reason: it travels as source.
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
@@ -18,9 +18,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      // The demo gate resolves through a symlink in node_modules; pointing vitest at the real directory
+      // This box's own app resolves through a symlink in node_modules; pointing vitest at the real directory
       // keeps its .tsx on the transform side of the fence (see the note on server.deps.inline below).
-      '@forge/ext-demo-gate': fileURLToPath(new URL('../apps/demo-gate', import.meta.url)),
+      '@forge/ext-demo-setup': fileURLToPath(new URL('../apps/demo-setup', import.meta.url)),
     },
   },
   test: {

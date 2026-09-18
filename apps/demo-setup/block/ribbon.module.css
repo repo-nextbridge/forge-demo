@@ -1,0 +1,82 @@
+/* The demo ribbon — a deliberate, fixed warning bar and NOT a themed component, so the literal values here are
+ * correct in a way they would not be one file over (`marks.module.css` is all tokens, and says why).
+ *
+ * ★ THE REASON IS THE OPPOSITE OF THE MARKS'. A mark exists to LOOK LIKE THE SHOP: its tail takes
+ * `--color-accent` so one config draws four shops. This bar exists to NOT look like the shop — it is the box
+ * interrupting its own shop window to say the prices are not real — so a theme that re-tinted it would be a
+ * theme that could hide it. Its thickness mirrors the header AnnouncementBar (8px 16px, 13px), inverted to a
+ * warning red with white copy.
+ *
+ * ⚠️ AND IT CARRIES ITS OWN TYPE. The bar is placed into slots of two different deployables, and the vitrine's
+ * font stack is not the funnel's; `font-family: inherit` would make the same sentence look like two different
+ * notices. A system stack is what both can draw. */
+
+.ribbon {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+/* The reveal is DRIVEN BY SCROLL (an IntersectionObserver in ribbon.tsx), not by a load-time delay. The server
+   renders the ribbon visible (no-JS safe); when JS mounts it sets data-armed (hiding it at the page foot, off
+   screen), then data-revealed one second after it scrolls into view. Fade + a small rise. */
+.ribbon[data-armed='true'] {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+
+.ribbon[data-armed='true'][data-revealed='true'] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Drop the movement, keep the fade. */
+  .ribbon[data-armed='true'] {
+    transform: none;
+  }
+}
+
+.link {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 0.5em;
+  width: 100%;
+  background: #c0261f;
+  color: #ffffff;
+  padding: 8px 16px;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.link:hover {
+  background: #9e1e18;
+}
+
+.link:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -4px;
+}
+
+/* The sentence itself carries the warning; the call to action is what makes the bar worth clicking. It is
+   underlined rather than coloured — there is one colour on this bar and it is already the background. */
+.cta {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}

@@ -39,9 +39,9 @@ a primeira por existir separado. Custo total no kernel: zero linha.
 
 ## A espécie que isto prova
 
-Esta caixa já tinha um app seu, o `demo-gate` — mas o `demo-gate` é **tela**. Um *driver de pagamento* é a
-outra ponta: ele participa da parte do kernel que move dinheiro, com o mesmo mecanismo de composição e sem
-nenhuma permissão especial.
+Esta caixa já tinha um app seu de **tela** (`demo-setup`, as marcas da vitrine e a faixa de demonstração).
+Um *driver de pagamento* é a outra ponta: ele participa da parte do kernel que move dinheiro, com o mesmo
+mecanismo de composição e sem nenhuma permissão especial.
 
 A doutrina que sustenta isso é a dos **dois eixos**: o que a plataforma OFERECE e o que uma caixa COMPÕE são
 listas diferentes. Um app da instância entra só na segunda, e a imagem que o compõe sai carimbada

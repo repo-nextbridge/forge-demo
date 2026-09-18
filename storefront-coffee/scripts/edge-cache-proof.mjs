@@ -140,9 +140,14 @@ const reappearing = (handle, categorized) => ({
     : [],
 });
 
+/** ⛔ A FIXTURE, AND SINCE v0.4 THE ONLY GATE THIS REPOSITORY HAS. No app of this box fills
+ *  `storefront:gate` any more — this proof is what says WHY, and it is the measurement that retired the one
+ *  that did: an app merely INSTALLED on that target takes the whole store off the cacheable tree, on every
+ *  route, for every visitor and every robot. The name below is deliberately not an app anybody can install;
+ *  what is being proven is the SLOT's effect, not one app's. */
 const GATE_HOOK = [
   {
-    extension_id: 'demo-gate',
+    extension_id: 'gate-fixture',
     hooks: [{ target: 'storefront:gate', component: 'gate', position: 0 }],
   },
 ];
