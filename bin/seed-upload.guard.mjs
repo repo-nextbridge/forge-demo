@@ -63,13 +63,30 @@ function uploadCall(source) {
   return source.slice(start === -1 ? i : start, end === -1 ? source.length : end);
 }
 
-/** Does the PUT forward what the port answered, rather than a header list typed at the call site? */
+/** Does the PUT forward what the port answered, rather than a header list typed at the call site?
+ *
+ * ⛔ THE DERIVATION READS FROM THE PUT OUTWARDS, and it used to read the other way — measured 2026-09-18.
+ *
+ * It used to find the FIRST `const <name> = <x>.headers` in the file and then look for that name spread
+ * inside the PUT. That worked only while no other line in the file read a `.headers` off anything, and the
+ * day `seed/outlet.mjs` grew a `const length = res.headers.get('content-length')` — a RESPONSE header, in a
+ * completely unrelated HEAD request — the guard picked `length`, looked for `...length` inside the PUT, and
+ * went red about a file whose forwarding had not changed at all.
+ *
+ * ⚠️ AND IT WAS ALREADY FRAGILE, WHICH IS THE PART WORTH KEEPING IN MIND: `bin/seed.mjs` has carried
+ * `const after = Number(res.headers.get('retry-after'))` for a long time and never tripped it — only because
+ * `Number(` sits between the `=` and the `.headers`. The rule was surviving on the shape of an unrelated
+ * line. A guard that depends on what ELSE a file happens to contain is a guard that goes red on innocent
+ * work, and the cost of that is worse than a miss: it teaches people to edit the guard.
+ *
+ * So the question is asked from the thing under test: find what the PUT SPREADS into its headers, then ask
+ * whether THAT name was assigned from somebody's `.headers`. Same rule, read from the other end, and immune
+ * to every `.headers` the rest of the file may legitimately touch. */
 function forwardsSignedHeaders(source) {
-  // The variable name is DERIVED: whatever is assigned from `<plan>.headers` is what has to appear, spread,
-  // inside the PUT's own headers object. Assuming a name would make this guard about a spelling.
-  const assigned = source.match(/const\s+(\w+)\s*=\s*\w+\.headers\b/);
-  if (!assigned) return false;
-  return new RegExp(`headers:\\s*\\{[^}]*\\.\\.\\.${assigned[1]}\\b`).test(uploadCall(source));
+  const put = uploadCall(source);
+  const spread = put.match(/headers:\s*\{[^}]*\.\.\.(\w+)\b/);
+  if (!spread) return false;
+  return new RegExp(`const\\s+${spread[1]}\\s*=\\s*[^;]*\\.headers\\b`).test(source);
 }
 
 const FILES = uploaders();

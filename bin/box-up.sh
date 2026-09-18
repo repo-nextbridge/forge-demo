@@ -2063,7 +2063,11 @@ for t in $TENANTS; do
   # `FORGE_SEED_DATASET_DIR=/app/seed-dataset does not exist`: one variable name serving two filesystems.
   # The host's copy of the same directory is `FORGE_SEED_DATASET_HOST_DIR`, and that is what a host process
   # must be given.
-  FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
+  # ★★ `FORGE_MEDIA_BASE_URL` travels with the seed since 2026-09-18 — see the same note in
+  # `bin/birth-remote.sh`. On a bench with the `local` driver it is empty, and `seed/outlet.mjs` then says
+  # out loud that it is trusting the asset library instead of asking a destination it has no address for.
+  FORGE_OPERATOR_TOKEN="$tokval" FORGE_MEDIA_BASE_URL="${FORGE_MEDIA_BASE_URL:-}" \
+    host_node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
     || die "the curated seed failed for \"$t\". Its own output is above; nothing further has run."
 done
 

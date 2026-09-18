@@ -280,18 +280,65 @@ async function uploadMedia(port) {
     if (asset.filename) known.set(asset.filename, asset);
   }
 
+  // ⛔⛔ THE ROW IS NOT THE BYTES, AND THIS STEP USED TO BELIEVE IT WAS.
+  //
+  // Until 2026-09-18 a filename found in the asset LIBRARY was enough to skip the upload. The library is the
+  // kernel's own record — it says "this box once minted a key for this file", and it says nothing at all
+  // about whether an object still sits at that key. The two come apart for ordinary reasons: the box moves
+  // to another bucket, the bucket is emptied, a driver changes. The rows survive all three, so every upload
+  // would be skipped and the shop would render with broken pictures while this step reported success.
+  //
+  // ⚠️ THE PRODUCT ALREADY ASKS THE RIGHT QUESTION and this is its shape, deliberately copied rather than
+  // invented: `apps/api/src/seed-media.ts` HEADs the object at the destination the STORE reads from, and
+  // compares the CONTENT LENGTH — presence alone would accept a truncated or half-written object.
+  //
+  // ⚠️ AND WITH NO DESTINATION DECLARED IT FALLS BACK TO THE OLD BEHAVIOUR, out loud. `FORGE_MEDIA_BASE_URL`
+  // is what the browser fetches from; a bench with the `local` driver has none, and there a row IS the best
+  // answer available. Silently trusting the row is the defect; trusting it while saying so is the honest
+  // degradation.
+  const base = (process.env.FORGE_MEDIA_BASE_URL ?? '').replace(/\/+$/, '');
+  if (!base) {
+    log('media — FORGE_MEDIA_BASE_URL is not set, so a row in the asset library is taken as proof the bytes');
+    log('        are there. On a box with a bucket, set it: this step cannot see a bucket it has no address for.');
+  }
+
+  /** Is the object really at the destination the store reads from? `undefined` when we cannot ask. */
+  const bytesAreThere = async (key) => {
+    if (!base || !key) return undefined;
+    try {
+      const res = await fetch(`${base}/${key}`, { method: 'HEAD' });
+      if (!res.ok) return false;
+      const length = res.headers.get('content-length');
+      return length === null ? true : Number(length) > 0;
+    } catch {
+      // A destination we cannot reach is not a destination we can call empty. Fall back to the row.
+      return undefined;
+    }
+  };
+
   const assets = new Map();
   let uploaded = 0;
+  let replaced = 0;
   for (const filename of wanted) {
     const found = known.get(filename);
     if (found) {
-      assets.set(filename, { id: found.id, provider_key: found.provider_key });
-      continue;
+      const there = await bytesAreThere(found.provider_key);
+      if (there !== false) {
+        assets.set(filename, { id: found.id, provider_key: found.provider_key });
+        continue;
+      }
+      // The row is there and the bytes are not: re-upload, and SAY SO. This line is the whole point of the
+      // question — a box in this state used to be silently wrong.
+      log(`media — ${filename}: the library has a row and ${base} has no object; re-uploading`);
+      replaced += 1;
     }
     assets.set(filename, await upload(port, filename));
     uploaded += 1;
   }
-  log(`media — ${wanted.length} file(s): ${uploaded} uploaded, ${wanted.length - uploaded} already there`);
+  log(
+    `media — ${wanted.length} file(s): ${uploaded} uploaded (${replaced} because the bytes were gone), ` +
+      `${wanted.length - uploaded} already there` + (base ? ` (asked ${base})` : ' (row only)'),
+  );
   return assets;
 }
 

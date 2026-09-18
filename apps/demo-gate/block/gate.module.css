@@ -227,6 +227,14 @@
 .cardArt {
   display: block;
   width: 100%;
+  /* ⛔ `height: auto` IS LOAD-BEARING, and it is here because the screen shipped STRETCHED without it.
+   *
+   * The `<img>` carries `width`/`height` attributes (the bundler's intrinsic size, which is what stops the
+   * card from reflowing when the photograph arrives). Those attributes are PRESENTATIONAL HINTS: `height`
+   * lands as a specified `height: 900px`, and `aspect-ratio` only computes a dimension when the other one is
+   * `auto`. So the rule below was silently ignored and every card drew 100% wide by 900px tall — the design
+   * has a square. Measured on the deployed box 2026-09-18, against the artboard, by eye and then by rule. */
+  height: auto;
   aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 4px;
@@ -380,6 +388,8 @@
 .screenShot {
   display: block;
   width: 100%;
+  /* Same reason as `.cardArt` above — the intrinsic `height` attribute would beat this ratio. */
+  height: auto;
   aspect-ratio: 16 / 10;
   object-fit: cover;
   object-position: left top;

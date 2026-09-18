@@ -16,12 +16,26 @@ import { useEffect, useRef, useState } from 'react';
 import type { Lang } from '../i18n';
 import { STRINGS } from '../i18n';
 import { GATE_RIBBON_MARK } from './marks';
+import { shouldReopenGate } from './return-to-gate';
 import styles from './ribbon.module.css';
 
 export function GateRibbon({ lang, reopen }: { lang: Lang; reopen: () => Promise<void> }) {
   const ref = useRef<HTMLFormElement>(null);
   const [armed, setArmed] = useState(false);
   const [revealed, setRevealed] = useState(false);
+
+  // ★★★ THE BROWSER'S BACK BUTTON — see `./return-to-gate` for the whole account. If this page arrived by a
+  // BACK to the very address the gate sent the visitor away from, the gate comes back. The ribbon is where
+  // this lives because the ribbon is the one piece of this app that mounts on every store page once the
+  // visitor is through — the gate itself is, by then, not on the screen to ask anything.
+  //
+  // ⚠️ SEPARATE `useEffect`, NOT A LINE INSIDE THE REVEAL'S. They answer different questions and have
+  // different failure modes: a reveal that never fires costs an animation, and a reopen that fires wrongly
+  // traps the visitor behind a hoarding they cannot get past. Folding one into the other would make the
+  // second depend on the first's observer surviving.
+  useEffect(() => {
+    if (shouldReopenGate()) void reopen();
+  }, [reopen]);
 
   useEffect(() => {
     // JS is present: arm the reveal. The bar sits at the page foot (off-screen), so hiding it now is invisible.
