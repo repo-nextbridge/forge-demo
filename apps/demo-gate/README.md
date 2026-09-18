@@ -4,15 +4,20 @@ The public **demo's** gate app: a full-screen interstitial that covers every sto
 visitor chooses a way in, plus the persistent ribbon that says the store is a demo while they browse.
 PT/EN/ES embedded, on the one selector at the foot.
 
-It has **two views**, one at a time. The first **is** a HUB over every face this box publishes — one tenant
-card per brand, its shops inside it, one admin row at the card's foot — and nothing sits above it: the screen
-is the layout in `design-base/gate.dc.html`, whose headline is that layout's own sentence ("Dois tenants.
-Quatro lojas. Dois admins. Mesmo kernel!") and whose only frame is the tenant card's own; the notice that
-nothing here is real is the line at its foot. The second — *"A arquitetura da demo"*, opened by the
-affordance at the foot of the first and closed by the one at its own — says **why** that is hard for a
-visitor who has never heard the word multi-tenant: the two tenants with their two shops each, one admin under
-both, and the stack they stand on (API · CLI · MCP · SDK · Docs → the single command port → the kernel →
-PostgreSQL/Redis → infra). Both are embedded copy — `config_schema` stays `[]`.
+It has **ONE view**, and that is the v2 news. The screen is a DIAGRAM of this box: every shop it publishes
+drawn as a card across the top, the cards bracketed under the tenant that owns them, each tenant's admin
+drawn as a window beside its bracket, and dashed connectors carrying all of it down to one kernel chip at the
+foot. The layout is `design-base/gate-v2.dc.html`, the headline is that layout's own sentence ("Dois tenants.
+Quatro lojas. Dois admins. **Mesmo kernel!**"), and the notice that nothing here is real is the line at its
+foot. Embedded copy — `config_schema` stays `[]`.
+
+⛔ **The second view is gone, and it was not cut for space.** *"A arquitetura da demo"* was a screen of prose
+— two tenants, two shops each, one admin under both, and the stack they stand on — reached by an affordance
+at the foot of the first. It explained in words what the first screen was already showing, which is the exact
+failure this redesign was asked to fix: people were arriving, reading a hub of cards, and not seeing the one
+fact the demo exists to make obvious. A visitor who must switch views to learn what they are looking at has
+been told the architecture is somewhere else. Now the diagram **is** the explanation, and there is nothing to
+switch to — `block/gate.test.tsx` asserts that, so a second screen cannot quietly come back.
 
 ⛔ **No address is written in this app.** `seed/box.json` declares them and `bin/gate-faces.mjs`
 renders that declaration into `faces.generated.ts`, which the screen imports; `bin/gate-faces.guard.mjs`
@@ -20,11 +25,18 @@ regenerates and compares, so the two cannot drift. A face whose `domain` is dele
 **says** it has no published address — it never disappears. The destination the visitor is already on is
 the one that posts `dismiss` (the deep link survives); every other one is an ordinary link. On a host this
 box does not declare, a line at the foot says so and carries the way in — that is the only place a "go in
-anyway" door exists, because on a published face the six cards *are* the choice.
+anyway" door exists, because on a published face the cards on the diagram *are* the choice.
 
-✅ **The NUMBERS, on the other hand, are typed — and that is the decision.** Each shop's sentence carries
-its size ("2 777 produtos → 44 399 SKUs") exactly as the design writes it, and `block/hub.test.tsx` holds
-every one of those sentences against `design-base/gate.dc.html` so the screen and the artboard cannot drift.
+⚠️ **Those two sentences survive a redesign that has no place for them, deliberately.** The v2 artboard was
+drawn for the DEPLOYED box, where every face has an address and the visitor is standing on one of them.
+Neither is guaranteed — a bench is neither — so `hereNote`/`hereCta` and `noAddress` are still in `i18n.ts`
+and still drawn, at the foot where the diagram is not. Dropping them with the artboard would have removed an
+honesty the screen owes, not a decoration the design retired.
+
+✅ **The COPY, on the other hand, is typed — and that is the decision.** Each card carries the sentences the
+design writes for it: what the shop is ("Loja completa · 44 399 SKUs"), where it sits in the box ("Tenant 1 ·
+Loja I") and what its front IS ("storefront vanilla"). `block/gate.test.tsx` holds every one of those
+sentences against `design-base/gate-v2.dc.html`, word for word, so the screen and the artboard cannot drift.
 "Derive, never list" protects what a **customer** is handed; this screen is the public demo's own front
 door, not an app a customer installs or configures, and anyone who wants a different one **forks this app**.
 The screen asks the port for nothing: the only value it resolves at run time is the admin origin this box

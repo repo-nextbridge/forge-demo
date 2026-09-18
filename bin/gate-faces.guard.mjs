@@ -82,18 +82,23 @@ test('★ and it is really generated: its first line says so, and the app import
   const text = readFileSync(join(ROOT, GENERATED_FILE), 'utf8');
   assert.match(text.split('\n')[0], /GENERATED/, `${GENERATED_FILE} does not announce itself as generated on its first line`);
   assert.ok(text.length > 200, `${GENERATED_FILE} is ${text.length} byte(s) — the renderer produced almost nothing`);
+  // ⚠️ THE IMPORTER MOVED WITH THE REDESIGN, and naming it by hand is why this line went red instead of
+  // silent: GATE-V2 folded `hub.tsx` and `arch.tsx` into one `gate.tsx`, and a guard that read the old name
+  // would have thrown ENOENT — which it did, and that is the right failure. A guard that had searched the
+  // directory instead would have found no importer at all and reported a drift that did not exist.
   const app = join(ROOT, 'apps/demo-gate/block');
-  const importers = readFileSync(join(app, 'hub.tsx'), 'utf8');
+  const importers = readFileSync(join(app, 'gate.tsx'), 'utf8');
   assert.match(
     importers,
     /from '\.\.\/faces\.generated'/,
-    'apps/demo-gate/block/hub.tsx does not import the generated faces, so the screen is drawing something else',
+    'apps/demo-gate/block/gate.tsx does not import the generated faces, so the screen is drawing something else',
   );
 });
 
 test('★★ a face the box declares an address for carries BOTH halves — a host with no variable cannot be deployed', () => {
-  // The same sentence `bin/box-domains.guard.mjs` holds for the edge, held here for the SCREEN: the hub prints
-  // the hostname under the admin row (the design does), so half a declaration is half a promise.
+  // The same sentence `bin/box-domains.guard.mjs` holds for the edge, held here for the SCREEN: a face the
+  // box says it publishes is drawn as a card the visitor can click, so half a declaration is half a promise —
+  // and v2 makes that stricter rather than looser, since the card IS the link now.
   const broken = FACES.filter((f) => (f.host === null) !== (f.env === null)).map(
     (f) => `${f.key} → host=${f.host ?? '(none)'} env=${f.env ?? '(none)'}`,
   );

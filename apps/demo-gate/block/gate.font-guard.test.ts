@@ -4,9 +4,10 @@
 //
 // It used to be «no `@font-face` at all», and under it the H1 rode the theme's Urbanist and the design's serif
 // simply did not exist here. That was the right rule while the gate's first screen was a hero in one voice.
-// It stopped being the right rule when that screen became the 10/09 hub: there the SECOND tenant is a coffee
-// brand whose card — its headline and its two wordmarks (`design-base/gate.dc.html:68,73,79`) — is drawn in a
-// serif, and that contrast is the card's whole argument. A rule that forbids a font forbids the design.
+// It stopped being the right rule when that screen became the 10/09 hub: there the SECOND tenant was a coffee
+// brand whose card — its headline and its two wordmarks — was drawn in a serif, and that contrast was the
+// card's whole argument. A rule that forbids a font forbids the design. (The artboard that drew it was
+// `design-base/gate.dc.html`, deleted with the v2 redesign; `git log` is where it lives now.)
 //
 // ⚠️ SO WHAT THE RULE PROTECTS HAD TO BE SAID PROPERLY, because «no @font-face» was never the point — the
 // point is that THE FIRST SCREEN OF THIS DEMO MUST NOT DEPEND ON A THIRD PARTY. A gate that fetches a face
@@ -22,7 +23,26 @@
 // ⛔ AND THE DESIGN'S OWN DISPLAY FACE (Geigyll) STAYS OUT, unchanged and for the unchanged reason: nothing
 // licences it to this app, so naming it would be a promise this repository has no way to keep. The base HTML
 // falls back to `Fraunces` for the same role, which is SIL OFL and already travels with this box's coffee
-// theme — that is the face the hub ships.
+// theme — that is the face the hub shipped.
+//
+// ★★★ GATE-V2 — AND NOW THE APP SHIPS NO FACE AT ALL, WHICH IS NOT A HOLE IN THIS FILE. The v2 artboard sets
+// the whole screen in Urbanist, the coffee card included, so the serif left and the two Fraunces files left
+// with it. That moves the rule's SUBJECT and nothing else: it used to read «if you declare a face it must be
+// one you ship», and this app now declares none. The property the file exists to defend — the first screen
+// of this demo does not call a third party — is held MORE strongly by declaring nothing than by declaring a
+// local face, because there is no url to get wrong.
+//
+// ⚠️ WHAT THAT COST, AND WHAT PAYS IT BACK. The two `src` rules iterate the faces found on disk, and with none
+// found they assert over an empty list and pass on silence — the exact state a DELETED `@font-face` would
+// return them to. The old anti-vacuum answered that by requiring a face to exist, and v2 made that
+// requirement false. So it is answered the other way now, by a CONTROL NEGATIVE: the same extractor and the
+// same two filters are held against a stylesheet fabricated in the test, carrying the two defects this file
+// forbids, and both have to be caught. That proves the rules BITE with the app shipping nothing — which the
+// old form could never prove, because it could only ever report that the app still shipped something.
+//
+// ⚠️ Urbanist itself is not this app's to guard: the gate renders inside the storefront that hosts it, and
+// that app self-hosts the face (`storefront-coffee/src/app/fonts/urbanist-latin-*.woff2`). Verified
+// 2026-09-17 — the gate names a family and fetches nothing, which is the whole of what is asked of it here.
 //
 // ★ pk35/d1 — AND THE GENERIC-TAIL RULE IS A PROPERTY RATHER THAN A WORD; see `fallsThroughToAGeneric` below
 // for the measurement that moved it.
@@ -53,12 +73,17 @@ const BLOCK = join(root, 'block');
  *  that has to exempt itself from its own scan has a back door by construction. */
 const SHIPPED = ['.css', '.tsx'];
 
-function filesUnder(dir: string): string[] {
+/** Directories a walk must not descend into: they are not this app's source, and `node_modules` in
+ *  particular carries thousands of font files belonging to packages nobody here ships. */
+const NOT_OURS = new Set(['node_modules', '.next', 'dist', '.turbo', '.git']);
+
+function filesUnder(dir: string, extensions: readonly string[] = SHIPPED): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(dir)) {
+    if (NOT_OURS.has(entry)) continue;
     const path = join(dir, entry);
-    if (statSync(path).isDirectory()) found.push(...filesUnder(path));
-    else if (SHIPPED.includes(extname(path))) found.push(path);
+    if (statSync(path).isDirectory()) found.push(...filesUnder(path, extensions));
+    else if (extensions.includes(extname(path).toLowerCase())) found.push(path);
   }
   return found;
 }
@@ -71,16 +96,37 @@ const files = filesUnder(BLOCK).map((path) => ({
 }));
 const stylesheets = files.filter((f) => f.name.endsWith('.css'));
 
-/** Every `url(…)` that a `src:` inside an `@font-face` points at, with the stylesheet that wrote it. */
-const fontSources = stylesheets.flatMap((sheet) =>
-  (sheet.source.match(/@font-face\s*\{[^}]*\}/gi) ?? []).flatMap((rule) =>
-    (rule.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/gi) ?? []).map((raw) => ({
-      where: sheet.name,
-      dir: sheet.dir,
-      url: (raw.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/i)?.[1] ?? '').trim(),
-    })),
-  ),
-);
+type Sheet = { name: string; dir: string; source: string };
+type FontSource = { where: string; dir: string; url: string };
+
+/** Every `url(…)` that a `src:` inside an `@font-face` points at, with the stylesheet that wrote it.
+ *  ⚠️ A FUNCTION, NOT AN EXPRESSION, so the anti-vacuum below can run the SAME extraction over a sheet it
+ *  fabricates. A control negative that re-implements the thing it is checking checks its own copy. */
+function facesIn(sheets: readonly Sheet[]): FontSource[] {
+  return sheets.flatMap((sheet) =>
+    (sheet.source.match(/@font-face\s*\{[^}]*\}/gi) ?? []).flatMap((rule) =>
+      (rule.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/gi) ?? []).map((raw) => ({
+        where: sheet.name,
+        dir: sheet.dir,
+        url: (raw.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/i)?.[1] ?? '').trim(),
+      })),
+    ),
+  );
+}
+
+/** A `src` that leaves this app: any scheme, protocol-relative, or a data blob. */
+const pointingOffTheApp = (sources: readonly FontSource[]): string[] =>
+  sources
+    .filter(({ url }) => /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(url) || url.startsWith('data:'))
+    .map(({ where, url }) => `${where}: ${url}`);
+
+/** A `src` whose file is not on disk beside the stylesheet that named it. */
+const namingNothing = (sources: readonly FontSource[]): string[] =>
+  sources
+    .filter(({ dir, url }) => !existsSync(resolve(dir, url.replace(/[?#].*$/, ''))))
+    .map(({ where, url }) => `${where}: ${url}`);
+
+const fontSources = facesIn(stylesheets);
 
 /** Assert a forbidden pattern over every shipped file, one at a time: the offender is NAMED. Asserting over the
  *  concatenation would report the defect against a wall of joined sources, which is the message nobody reads. */
@@ -110,20 +156,14 @@ test('the guard is looking at the whole block (it did not walk into an empty dir
 test('★★★ every face the gate declares is a FILE THIS APP SHIPS — never a fetch to anybody', () => {
   // The rule that replaced «no @font-face». A face is allowed; a DEPENDENCY on somebody else's server is not,
   // and those are different sentences. Each `src` is judged on its own and the offender is named with its url.
-  const remote = fontSources
-    .filter(({ url }) => /^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(url) || url.startsWith('data:'))
-    .map(({ where, url }) => `${where}: ${url}`);
   expect(
-    remote,
+    pointingOffTheApp(fontSources),
     'a @font-face points off this app: the first screen of the demo would render in the fallback on any ' +
       'network that cannot reach that host, and would call it before the visitor has seen anything of ours',
   ).toEqual([]);
 
-  const missing = fontSources
-    .filter(({ dir, url }) => !existsSync(resolve(dir, url.replace(/[?#].*$/, ''))))
-    .map(({ where, url }) => `${where}: ${url}`);
   expect(
-    missing,
+    namingNothing(fontSources),
     'a @font-face names a file that is not in this tree — the declaration is a promise nothing keeps',
   ).toEqual([]);
 });
@@ -149,22 +189,65 @@ test('the gate imports no external font (no CDN, no @import)', () => {
   );
 });
 
-test('⛔ ANTI-VACUUM for the two rules above — they are held against a face that IS declared', () => {
-  // Both rules iterate `fontSources`. With none found they assert over an empty list and pass on silence,
-  // which is exactly the state the block was in before the serif arrived — and the state a deleted
-  // `@font-face` would silently return it to. The design gives the second tenant's card a serif, so there is
-  // one to find; if that ever stops being true this line is the accusation, not a quiet green.
+test('⛔ ANTI-VACUUM for the two rules above — they are held against a face fabricated HERE', () => {
+  // v2 ships no face, so the two rules above iterate an empty list and pass on silence. That is the right
+  // state of the app and the wrong state of a test, and the answer is not to demand the app carry a font it
+  // does not need: it is to prove the rules still bite. The SAME extractor and the SAME two filters are run
+  // over a stylesheet written right here, carrying exactly the two defects this file forbids.
+  const planted = [
+    {
+      name: 'fabricated-by-the-anti-vacuum.css',
+      dir: BLOCK,
+      source: [
+        '@font-face { font-family: Geigyll; src: url(https://fonts.gstatic.com/s/geigyll.woff2); }',
+        '@font-face { font-family: Ghost; src: url("./nao-existe-neste-repo.woff2") format("woff2"); }',
+      ].join('\n'),
+    },
+  ];
+  const found = facesIn(planted);
+
+  expect(
+    found.map((f) => f.url),
+    'the extractor did not read two `src` out of two @font-face rules — it has stopped seeing faces at all, ' +
+      'and everything it protects would be green by blindness',
+  ).toHaveLength(2);
+  expect(
+    pointingOffTheApp(found),
+    'a face on fonts.gstatic was NOT caught: the rule that keeps this screen off somebody else’s server is dead',
+  ).toHaveLength(1);
+  expect(
+    namingNothing(found),
+    'a face naming a file that is not in the tree was NOT caught: the rule that keeps a declaration honest is dead',
+  ).toHaveLength(2);
+});
+
+test('★★★ the app declares NO face and ships NO font file — and those two facts have to agree', () => {
+  // ⛔ THIS IS THE STATEMENT OF WHERE v2 STANDS, and it is red from either side. A face appearing with no file
+  // beside it is caught by the rules above; a FILE appearing with no face is caught here — and that is the
+  // shape of the mistake somebody makes when they bring a font back: drop the woff2 in, wire it later,
+  // ship a directory of dead weight in the image. Either way this line stops being true and says so.
+  //
+  // ⚠️ When a face DOES come back, this test is the one to delete — not the licence rule, not the anti-vacuum.
   expect(
     fontSources.map((f) => `${f.where}: ${f.url}`),
-    'no @font-face anywhere in the block: the self-hosting rules above assert nothing',
-  ).not.toEqual([]);
+    'this app declares an @font-face again: that is allowed, but then the paragraph at the head of this file ' +
+      'and this test are both out of date — the licence rule below applies and this line should go',
+  ).toEqual([]);
+
+  const FACE_FILES = ['.woff', '.woff2', '.ttf', '.otf', '.eot'];
+  const shipped = filesUnder(root, FACE_FILES).map((path) => path.slice(root.length + 1));
+  expect(
+    shipped,
+    'this app ships a font file and declares no @font-face for it — dead weight in the image at best, and at ' +
+      'worst half of a face somebody meant to finish wiring',
+  ).toEqual([]);
 });
 
 /**
  * ★ THE RULE IS «THIS DECLARATION CANNOT NEED A FONT THAT IS NOT ALREADY THERE», not «the word inherit».
  *
- * ⚠️ IT USED TO BE THE WORD, and pk35/d1 met the wall the word built: the hub prints each tenant's
- * admin HOSTNAME in monospace (`design-base/gate.dc.html` does), and `ui-monospace, SFMono-Regular, Menlo,
+ * ⚠️ IT USED TO BE THE WORD, and pk35/d1 met the wall the word built: the hub printed each tenant's
+ * admin HOSTNAME in monospace, and `ui-monospace, SFMono-Regular, Menlo,
  * monospace` is not a bespoke face — every token in it is either a generic CSS family or a face the operating
  * system already ships. Nothing is bundled and nothing is fetched, which is what DoD #5 is actually about, and
  * the two tests above are what enforce that half (`@font-face` and the CDNs).

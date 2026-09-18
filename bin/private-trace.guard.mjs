@@ -119,7 +119,7 @@ test('★★★ THE SCAN REACHES THE WHOLE DELIVERY — counted, not assumed', (
     'compose.yml',
     'seed/commerce.mjs',
     'storefront-coffee/src/middleware.ts',
-    'apps/demo-gate/block/hub.tsx',
+    'apps/demo-gate/block/gate.tsx',
   ]) {
     assert.ok(scanned.includes(landmark), `${landmark} is delivered and was not read`);
   }
