@@ -13,17 +13,21 @@
 // mark its own box told it to draw, and before this file nothing anywhere said so. Not the build, not the
 // suite, not the box's own verifier, not a log line at runtime.
 //
-// ★★ pk35/d7 — AND THE CAFÉ'S HALF OF THAT IS NOW DECIDED RATHER THAN PENDING: `seed/demo-setup.json` says
-// `"cafe": null`, so the instance places nothing there at all. The fork draws its own mark and its account
+// ★★ pk35/d7 — AND THE CAFÉ'S PLACEMENT HALF IS DECIDED RATHER THAN PENDING: `seed/demo-setup.json` says
+// `"cafe": null`, so the instance places no MARK there at all. The fork draws its own mark and its account
 // screens draw `chrome`'s — measured, zero `demo-setup-*` marks on either — which is the rule this house
-// keeps: A FORK BELONGS TO THE CUSTOMER, so the instance removes that store's placement. What this
-// file still grades is the OTHER question, and it is not about stores: the fork cannot reach this app's CODE
-// at all, so the day a café operator drops one of these blocks in Compose it would still draw nothing.
+// keeps: A FORK BELONGS TO THE CUSTOMER, so the instance removes that store's placement.
 //
-// ★ THAT IS THE DEFECT, AND IT IS THE DEFECT EVEN IF THE FORK DOES NOT WANT THE BLOCK. The café has chrome of
-// its own (`CoffeeChrome`) and draws a mark by its own hand — so nothing on screen looks wrong. The placement
-// still exists, is still enabled, is still published by the port, and the fork's owner is still entitled to
-// DECIDE. What nobody is entitled to is NOT TO KNOW; the `DIVERGENCES` list below is where a decision goes.
+// ★★★ v0.4 — AND THE REACH HALF IS CLOSED, WHICH IS A DIFFERENT SENTENCE. The fork COMPOSES `demo-setup` now
+// (dependency, `transpilePackages`, tracing root, and a REGENERATED `generated/registry.tsx`), because the
+// app stopped being only marks: it carries the demonstration ribbon, and the café's vitrine is one of the
+// four shop windows that owe a visitor that sentence. ⚠️ REACH AND PLACEMENT ARE NOT THE SAME QUESTION and
+// this file only ever asked the first: «can this front DRAW it», never «did somebody ASK for it».
+//
+// ★ THE DEFECT IS THE DEFECT EVEN IF THE FORK DOES NOT WANT THE BLOCK. A fork that cannot import an app draws
+// nothing the day an operator drops one of its blocks in Compose — the placement exists, the port publishes
+// it, the admin shows the app's card, and the page is silently empty. The fork's owner is entitled to DECIDE;
+// what nobody is entitled to is NOT TO KNOW, and the `DIVERGENCES` list below is where a decision goes.
 //
 // ★★ AND WHY THE RULE IS THIS REPOSITORY'S, not the product's: IF THE APP IS THE INSTANCE'S AND THE FRONT IS
 // THE INSTANCE'S, THE INSTANCE IS WHAT HAS TO DECLARE IT — the product has no way of knowing.
@@ -77,39 +81,42 @@ const say = (line) => console.error(`[front-app-reach] ${line}`);
  * it prints is a reason a run can still disprove.
  */
 const DIVERGENCES = [
-  {
-    fork: 'storefront-coffee',
+  // ⛔⛔ AQUI VIVIA A DISPENSA `storefront-coffee × demo-setup`, E ELA MORREU NA v0.4 (a faixa).
+  // Ela dizia que o café não alcançava este app e que fechar o buraco era DECISÃO do dono do fork, porque o
+  // fork desenha a própria marca (`CoffeeChrome`) — e enquanto o app só tinha marcas, isso estava certo.
+  // ★ O QUE MUDOU É QUE O APP DEIXOU DE SER SÓ MARCAS. O aviso de demonstração (`demo_ribbon`) não é conteúdo
+  // do cliente: é esta caixa dizendo em voz alta que os preços não são reais, e a vitrine do café é uma das
+  // quatro que o devem. Então o fork passou a COMPOR o app (dependência + `transpilePackages` + a raiz do
+  // tracer que já tinha) e `npm run codegen` reescreveu `src/lib/extensions/generated/registry.tsx`.
+  // ⚠️ O PLACEMENT CONTINUA SENDO GESTO DE OPERAÇÃO, e é outra questão: `seed/demo-setup.json` segue com
+  // `"cafe": null` para as marcas. Alcance é «este front CONSEGUE desenhar»; placement é «alguém pediu».
+
+  // ── ★ O CONTADOR NÃO TEM VITRINE, E AS TRÊS MARCAS NÃO TÊM ONDE CAIR NELE ────────────────────────────
+  //
+  // O totem é corte de superfície NENHUMA, então sua jurisdição são os apps que ele NOMEIA — e ele nomeia
+  // este, porque desenha a faixa. Isso põe os quatro componentes do app na conta dele, e três deles são
+  // marcas de vitrine: cabeçalho, gaveta do celular, coluna do rodapé. O totem não tem nenhum dos três.
+  //
+  // ⛔ É DECISÃO, NÃO ESPERA — daí `waitsOn: null`. A mesma decisão que `seed/demo-setup.json` já escreve com
+  // `"balcao": null`: «o balcão não tem vitrine nenhuma», e três placements ali seriam três linhas que um
+  // operador arrasta sem nunca ver efeito. Uma entrada por COMPONENTE, e não uma por app, porque a faixa —
+  // o quarto — é justamente o que o totem TEM de alcançar: uma dispensa no nível do app a cobriria também,
+  // em silêncio, no dia em que o import sumisse.
+  ...['header_brand', 'drawer_brand', 'footer_brand'].map((component) => ({
+    fork: 'totem',
     app: 'demo-setup',
-    // ★ pk35, the cut — THIS ENTRY IS NOT WAITING ON ANYTHING IN THIS REPOSITORY. The tool landed (d3) and
-    // the café stopped receiving the marks (d7): what is left is the fork owner's DECISION, since the fork
-    // draws its own mark. ⛔ That is why it carries no `until`: an `until` here would promise a death no
-    // condition on disk can deliver.
+    component,
     waitsOn: null,
     why:
-      'THE TOOL LANDED AND THIS ONE IS NOW A DECISION, WHICH IS THE OPPOSITE OF WHAT THIS ENTRY USED TO SAY. ' +
-      'It used to blame a missing product artifact ("the tool is owed by the product and is being fiado by ' +
-      'pk32/p1-parto"); that tool SHIPPED — `@forgeco/surface-codegen` is in the release, the fork ' +
-      'installs it and carries its own `composition.json` since pk35/d3. What holds this open is nobody\'s ' +
-      'oversight: the café draws its mark BY ITS OWN HAND (`CoffeeChrome`), so composing `demo-setup` here ' +
-      'would draw a second one. The rule decides it — A FORK BELONGS TO THE CUSTOMER, so when ' +
-      'a fork draws for itself what a declared block would draw, the INSTANCE removes the placement (the ' +
-      'shape `seed/outlet.mjs` already uses). ⇒ the fix is a seed change, not three gestures, and it is not ' +
-      'this slice\'s to make. ★ pk35/d7 MADE IT: `seed/demo-setup.json` now declares `"cafe": null`, after ' +
-      'MEASURING that the three marks drew on ZERO screens there — the checkout account layout replaces both ' +
-      'regions, so the reference chrome only ever arrives as a fallback that never renders. ⇒ this costs a ' +
-      'shopper nothing today, and the entry stays because the REACH is still absent: the day an operator ' +
-      'drops one of these blocks on the café in Compose it would draw nothing, and nobody is entitled to ' +
-      'not know that.',
-  },
-  // ⛔ AQUI VIVIA A DIVERGÊNCIA `storefront-coffee × demo-gate`, E ELA MORREU EM 14/09 (pk35).
-  // Ela dizia que o fork não alcançava a portaria porque `src/lib/extensions/generated/` é superfície GERADA e
-  // a ferramenta que a escreve não conseguia rodar contra um fork que instala os tarballs do RELEASE — o
-  // gerador do lado FRONT exigia os exports do lado KERNEL, que o tarball de front tira de propósito.
-  // ★ Os muros caíram na mesma leva (pk35/p6, no produto), o fork ganhou `composition.json` + `codegen` +
-  // dependência de verdade (pk35/d3), `npm run codegen` escreveu `generated/gate-registry.tsx`, e
-  // `src/lib/extensions/gate.ts` o lê antes do registro soldado. ⇒ o alcance existe, e uma dispensa que
-  // sobrevive ao próprio motivo é a tampa que este arquivo inteiro existe para impedir.
-  // ⚠️ Se o café voltar a não desenhar a portaria, a regra abaixo fica VERMELHA sozinha — que é o certo.
+      'THE COUNTER HAS NO SHOP WINDOW, so this mark has nowhere to be drawn there and this is a DECISION ' +
+      'rather than a gap. The totem is a whole-host app of its own (caddy `:82`, no store in the URL) that ' +
+      "mounts neither the kit's chrome nor our account screens: there is no header bar, no mobile drawer and " +
+      'no footer column on that screen at all. `seed/demo-setup.json` already writes the same decision from ' +
+      'the other end — `"balcao": null` — because three placements there would be three rows an operator can ' +
+      'drag and never see the effect of. ⚠️ THE FOURTH BLOCK OF THIS APP IS NOT WAIVED AND MUST NOT BE: the ' +
+      'demonstration ribbon IS drawn by the counter (`totem/src/components/DemoNotice.tsx`), and an app-level ' +
+      'waiver here would have covered it too, in silence, on the day that import disappeared.',
+  })),
 ];
 
 /**

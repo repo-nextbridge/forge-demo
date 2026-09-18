@@ -55,8 +55,8 @@
 //
 // The rename that this fence alone would NOT catch is `s/@forge/@forgeco/`. It is green above and it is
 // wrong: `@forge/*` is the INTERNAL scope, it is never published, and the distinction is the whole reason a
-// reader can tell which side of the border a package is on. This box owns three apps under it
-// (`@forge/ext-demo-gate`, `@forge/ext-demo-setup`, `@forge/ext-payment-pos`) and composes seven more of the
+// reader can tell which side of the border a package is on. This box owns two apps under it
+// (`@forge/ext-demo-setup`, `@forge/ext-payment-pos`) and composes seven more of the
 // product's that are also internal. Renaming them would make `composition.json` name packages no release
 // carries, and `bin/build-local.sh`'s list comparison would go red against the monorepo — after the fact.
 // The counter-fence says so BEFORE.

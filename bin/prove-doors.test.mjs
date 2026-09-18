@@ -11,9 +11,8 @@
 //   node --test bin/prove-doors.test.mjs      (or: bash bin/test.sh)
 
 import { execFile } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -66,53 +65,22 @@ const CAFE_STORES = [
 const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: true }));
 
 /**
- * ── ★★★ pk33 · THE GATE, AS THIS BOX WOULD ANSWER IT ────────────────────────────────────────────────────
+ * ── ★★★ v0.4 · THE GATE, AS THIS BOX ANSWERS IT: NOBODY FILLS IT ────────────────────────────────────────
  *
- * `seed/box.json` declares every store gated unless it says `gate: false`, and a healthy box therefore
- * answers `demo-gate` on `read.extensions` for EVERY store of every tenant.
+ * ⛔ THE DEFAULT TURNED OVER WITH THE RULE. It used to be «every store answers the demo's gate app on
+ * `read.extensions`», because every store was gated; a healthy box now answers an EMPTY list, on every store,
+ * and the step's job is to prove that and to name whoever appears there.
  *
- * ★★★ pk36/d1 — AND «EVERY» IS NEW. Until today `cafe` was the one exception, because its forked vitrine
- * resolved `storefront:gate` through the kit's registry and that map is `{}` by design. pk35/d2 gave the fork
- * its own `composition.json` and `codegen` script, so `storefront-coffee/src/lib/extensions/generated/
- * gate-registry.tsx` exists and resolves `demo-gate` to both of its faces — the café DRAWS the gate, the
- * removal gesture in `seed/coffee.mjs` is gone and so is the key. ⇒ this function stopped carrying a store
- * name, which is the shape it should always have had.
- *
- * ★ THE MARKS ARE THE REAL ONES. `data-testid="demo-gate"` is what `apps/demo-gate/block/gate.tsx` renders and
- * `apps/demo-gate/block/marks.test.tsx` pins to the manifest id; `data-testid="composition-gap"` is the
- * PRODUCT's visible refusal of a structural slot a build cannot draw. A fixture that invented its own strings
- * would grade the probe against a box no deployable can be.
+ * ★ THE MARKS ARE STILL THE REAL ONES. `data-testid="composition-gap"` is the PRODUCT's visible refusal of a
+ * structural slot a build cannot draw — the shape a half-removed gate takes, and the only one of these two
+ * strings this repository does not own. The intruder's id is a fixture name on purpose: no app of this box
+ * may fill that slot, so an id that matched one of ours would be a fixture that cannot happen.
  */
-const GATE_APP = 'demo-gate';
 const GATE_TARGET = 'storefront:gate';
-const DEFAULT_GATES = () => GATE_APP;
-
-/**
- * ── ⛔⛔ pk36/d1 · THE GATELESS RULE OUTLIVED ITS LAST SUBJECT, AND THIS IS WHAT KEEPS IT GRADED ──────────
- *
- * `gate: false` is how ANY store of ANY future box says it has no front door, and `bin/prove-doors.mjs` owns
- * four behaviours for it: the announced ⓘ green, the red when the port gates a store the file says is
- * gateless, the permanent negative control (a gate SCREEN reaching such a store), and the structural-gap
- * refusal reaching it. Today no real store declares it.
- *
- * ⛔ THE TEMPTING MOVE WAS TO DELETE THOSE TESTS, and it is the wrong one: the rule survives its subject, and
- * the day somebody declares a store gateless is exactly the day nobody is looking. ⇒ THE TESTS GET A BOX OF
- * THEIR OWN — a store that exists nowhere but here, in a `seed/box.json` written to a temp root next to THIS
- * REPOSITORY'S OWN STEP. The declaration is a fixture; the code being graded is the shipped file.
- *
- * ⚠️ AND IT IS NOT A HAND-WRITTEN BOX: the fixture is the real `seed/box.json`, parsed, with ONE store added.
- * A box typed out here would stop resembling this repository's the first time the shape changed.
- */
-const GATELESS = {
-  tenant: CAFE_TENANT,
-  handle: 'fixture-gateless',
-  id: 'sto_FIXTURE_GATELESS',
-};
-/** ⚠️ ASSERTED END TO END — the step must print THIS string, so the reason really travels file → screen. */
-const GATELESS_WHY =
-  'A STORE THAT EXISTS ONLY IN bin/prove-doors.test.mjs. It declares `gate: false` so the four gateless ' +
-  'behaviours of this step stay graded after pk36/d1 took the last real declaration out of seed/box.json. ' +
-  'It is never seeded: no birth ever reads the box this fixture writes.';
+/** ⛔ A GATE THAT IS NOT OURS, which is the only kind that can still turn up on this box: an app installed by
+ *  a hand, restored with a backup, or left behind by an image pinned before the removal. */
+const INTRUDER_APP = 'some-gate-app';
+const DEFAULT_GATES = () => null;
 
 const gateBody = (app) =>
   `<html><body><div data-testid="${app}"><h1>Loja demo.</h1></div></body></html>`;
@@ -122,20 +90,13 @@ const gapBody = (app) =>
  * The shop. DIFFERENT per door on purpose: two doors answering the same bytes would hide a probe that
  * compared the wrong pair.
  *
- * ★★★ AND IT CARRIES THE RIBBON, WHICH IS THE POINT OF THIS FUNCTION AND NOT DECORATION. A store whose gate
- * is DISMISSED renders the gate app's persistent bar at the foot of the page, and its mark is
- * `data-testid="demo-gate-ribbon"` — the interstitial's mark plus a suffix. ⛔ A probe that looked for
- * `data-testid="demo-gate` without the CLOSING QUOTE would match it, conclude the gate is unescapable, and
- * redden every door of a perfectly healthy box. (This house has paid for that class of bug twice this week:
- * `/jq/` matched inside a temp path, `/demo/` matched `demorou`.) Every green below is therefore also a
- * standing proof that the match is exact.
+ * ⚠️ IT CARRIES NO RIBBON, AND THAT IS A DECISION THIS FIXTURE HAS TO STATE. The demonstration ribbon is a
+ * BLOCK now, and a block is placed in Compose — per store, by an operator. A probe that demanded it of every
+ * door would be asserting an operator's gesture as if it were an invariant of the box, and would redden a
+ * shop whose owner simply has not dropped it yet. What this step owes is the opposite sentence: that nothing
+ * STANDS IN FRONT of the shop.
  */
 const shopBody = (handle, path) =>
-  `<html><body><main data-testid="shop">${handle}${path || '/'}</main>` +
-  `<form data-testid="${GATE_APP}-ribbon"></form></body></html>`;
-/** ⛔ THE SAME SHOP WITH THE RIBBON GONE — a front that mounts the interstitial and not the bar under it.
- *  Byte-identical otherwise, so what the step reddens for can only be the ribbon. See SABOTAGE below. */
-const shopBodyWithoutRibbon = (handle, path) =>
   `<html><body><main data-testid="shop">${handle}${path || '/'}</main></body></html>`;
 
 /**
@@ -160,11 +121,11 @@ function fakeBox({
   stillServes = [],
   pageServedBy = {},
   gates = DEFAULT_GATES,
-  ignoresCookie = false,
-  neverLetsGo = false,
-  /** Doors (by path, `''` for the vitrine) whose front draws the shop and NOT the demo ribbon. */
-  noRibbon = [],
+  /** Stores whose front REFUSES the page with the structural-gap notice — a build that still believes the
+   *  slot is filled. */
   refusesGate = [],
+  /** Stores whose front still draws a gate SCREEN although the port names nobody: an image pinned before the
+   *  removal, or a registry entry somebody welded by hand. */
   leaksGate = [],
   extensionsRefuses = false,
   /**
@@ -273,27 +234,25 @@ function fakeBox({
       return;
     }
     const by = mislead.includes(path) ? 'storefront' : path === '' ? 'storefront' : 'checkout';
-    // ── ★★★ pk33 · THE GATE, AND THE SHAPE IS THE ONE MEASURED ON THE LIVE DEMO (2026-09-11) ──────────────
+    // ── ★★★ v0.4 · THE GATE, AND THE SHAPE IS THE ONE MEASURED ON THE LIVE DEMO (2026-09-11) ─────────────
     //
-    // With no dismissal cookie the interstitial COVERS the route — including `/account`, which answers 200
-    // with the gate instead of its 307, because the page component (and its `redirect()`) never renders. With
-    // the cookie the door answers exactly what it always did. Both facts were curled against
-    // https://demo.forgecommerce.pro before this fixture was written; see `bin/prove-doors.mjs`'s header.
+    // An interstitial COVERS the route — including `/account`, which answers 200 with the gate instead of its
+    // 307, because the page component (and its `redirect()`) never renders. That is what makes the BODY the
+    // only thing that can see one, and it is why the fixture serves it at the head of every door.
     const app = gates(store?.handle);
-    const dismissed = /(^|;\s*)forge_gate_dismissed=1(;|$)/.test(req.headers.cookie ?? '');
     // A gate SCREEN on a store the port says nobody gates: a front pinned to an image whose registry still
     // welds the entry, or a placement removed in the data and cached in the front. Nothing about the
     // declaration can see it — only the body can.
     if (!app && leaksGate.includes(store?.handle)) {
-      res.writeHead(200, { 'x-forge-served-by': by }).end(gateBody(GATE_APP));
+      res.writeHead(200, { 'x-forge-served-by': by }).end(gateBody(INTRUDER_APP));
       return;
     }
-    if (app && refusesGate.includes(store?.handle)) {
-      // The front cannot DRAW the gate the port declares: the structural-gap refusal, on every door.
-      res.writeHead(200, { 'x-forge-served-by': by }).end(gapBody(app));
+    if (refusesGate.includes(store?.handle)) {
+      // The front cannot DRAW the slot it believes is filled: the structural-gap refusal, on every door.
+      res.writeHead(200, { 'x-forge-served-by': by }).end(gapBody(app ?? INTRUDER_APP));
       return;
     }
-    if (app && (!dismissed || neverLetsGo) && !ignoresCookie) {
+    if (app) {
       res.writeHead(200, { 'x-forge-served-by': by }).end(gateBody(app));
       return;
     }
@@ -303,8 +262,7 @@ function fakeBox({
         .end(shopBody(store?.handle ?? '?', path));
       return;
     }
-    const shop = noRibbon.includes(path) ? shopBodyWithoutRibbon : shopBody;
-    res.writeHead(200, { 'x-forge-served-by': by }).end(shop(store?.handle ?? '?', path));
+    res.writeHead(200, { 'x-forge-served-by': by }).end(shopBody(store?.handle ?? '?', path));
   });
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
@@ -321,65 +279,6 @@ const step = (api, tenant = TENANT, script = STEP) =>
     (r) => ({ code: 0, out: r.stdout }),
     (e) => ({ code: e.code ?? 1, out: `${e.stdout ?? ''}${e.stderr ?? ''}` }),
   );
-
-/**
- * ── ★★★ pk36/d1 · A ROOT OF ONE'S OWN: THIS REPOSITORY'S STEP, OVER A DECLARATION OF THE CASE'S CHOOSING ──
- *
- * `bin/prove-doors.mjs` reads `seed/box.json` RELATIVE TO ITSELF (`dirname(dirname(import.meta.url))`), which
- * is the right design — a probe that took the declaration as an argument could be pointed at a box it is not
- * grading. So a case that needs a different declaration needs a different ROOT, and this builds one: the real
- * step and every module it imports, copied beside a `seed/box.json` this suite wrote. It is the shape
- * `bin/box-config.guard.mjs` and `bin/promotion-faces.guard.mjs` already use, for the same reason they give:
- * ⛔ the SCRIPTS are the shipped ones, never stubs, or the green would be about a step this box does not ship.
- *
- * ⚠️ THE IMPORT LIST IS DERIVED FROM THE SOURCE, never typed. A hand-written list of `bin/` neighbours would
- * rot the day the step grew a fourth import — and it would rot LOUDLY here (a missing module is a crash), but
- * loudly in a way that reads as "the fixture is broken" rather than "the list was a copy".
- */
-function fixtureRoot(mutate) {
-  const dir = mkdtempSync(join(tmpdir(), 'forge-doors-box-'));
-  mkdirSync(join(dir, 'bin'), { recursive: true });
-  mkdirSync(join(dir, 'seed'), { recursive: true });
-  const copied = new Set();
-  const copy = (rel) => {
-    if (copied.has(rel)) return;
-    copied.add(rel);
-    const src = readFileSync(join(ROOT, rel), 'utf8');
-    writeFileSync(join(dir, rel), src);
-    for (const m of src.matchAll(/from '\.\/([^']+)'/g)) copy(join('bin', m[1]));
-  };
-  copy('bin/prove-doors.mjs');
-  assert.ok(
-    copied.size >= 2,
-    `the fixture root copied ${copied.size} file(s): bin/prove-doors.mjs imports neighbours of its own and ` +
-      'this derivation found none, so it is about to run a step with modules missing.',
-  );
-  const box = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
-  mutate(box);
-  writeFileSync(join(dir, 'seed/box.json'), JSON.stringify(box, null, 2));
-  return join(dir, 'bin/prove-doors.mjs');
-}
-
-/** The real box plus one store nobody seeds, declaring itself without a front door. */
-const withGatelessStore = (extra = {}) =>
-  fixtureRoot((box) => {
-    const tenant = box.tenants.find((t) => t.id === GATELESS.tenant);
-    assert.ok(tenant, `seed/box.json declares no tenant "${GATELESS.tenant}" to hang the fixture store on.`);
-    tenant.stores.push({
-      handle: GATELESS.handle,
-      name: 'Fixture · gateless',
-      gate: false,
-      _gate_why: GATELESS_WHY,
-      ...extra,
-    });
-  });
-
-/** The port's answer for that box: the tenant's real stores, plus the fixture one, gated by everything but it. */
-const GATELESS_STORES = [
-  ...CAFE_STORES,
-  { id: GATELESS.id, handle: GATELESS.handle, name: 'Fixture · gateless', storefront_enabled: true },
-];
-const GATELESS_GATES = (handle) => (handle === GATELESS.handle ? null : GATE_APP);
 
 test('every door open ⇒ green, and it says which front answered', async () => {
   const box = await fakeBox();
@@ -668,240 +567,100 @@ test('★★★ SABOTAGE, THE PURE VACUUM: a run that graded ZERO doors is not a
 });
 
 // ────────────────────────────────────────────────────────────────────────────────────────────────────────
-// ★★★ pk33 · THE GATE — BOTH SIDES OF THE DISMISSAL COOKIE
+// ★★★ v0.4 · THE GATE — AND THE RULE IS THE OPPOSITE ONE NOW
 //
-// ⛔ THE SILENCE THIS ENDS, MEASURED 2026-09-11: `apps/demo-gate` was installed by NO step of the birth, and
-// had not been for days, with every birth green. Nothing anywhere verified that the gate APPEARS — this step
-// graded the status code and the container, and both are identical whether a visitor meets the "Loja demo."
-// screen or walks straight into the shop.
+// ⛔ WHAT THIS BLOCK USED TO PROVE, AND WHY IT WAS TURNED AROUND. Until this slice it demanded that every
+// store SHOW a front door, and opened every door twice to compare the two sides of the kit's dismissal
+// cookie. The rule was right about the screen and blind about what the screen cost: an app merely INSTALLED
+// on `storefront:gate` is asked about at the edge of every store route, so it took the whole box off the
+// cacheable tree — `private, no-cache, no-store` on every route, and an interstitial with no `<title>` handed
+// to every robot at every URL. The sentence a visitor is owed is a BLOCK now, and nothing may fill that slot.
 //
-// ★ EVERY TEST BELOW GRADES A BODY, never a status. That is not a preference: the gate answers 200 from the
+// ★ EVERY TEST BELOW GRADES A BODY, never a status. That is not a preference: a gate answers 200 from the
 // same container as the shop, so a status code cannot see the difference at all.
 // ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test('★★★ the gate is proved on BOTH sides — the ✓ line says so, door by door', async () => {
+test('★★★ no door serves a gate — the ✓ line says so, door by door', async () => {
   const box = await fakeBox();
   const { code, out } = await step(box.api);
   await box.close();
   assert.equal(code, 0, out);
   // Not "somewhere in the report": the verdict has to be readable per door, or a reader cannot tell which
-  // doors were proved and which were merely opened.
+  // doors had their body read and which were merely opened.
   for (const door of ['/', '/checkout', '/account', '/account/login']) {
     const label = `forge${door}`;
     const line = out.split('\n').find((l) => l.includes(`✓ ${label} `));
     assert.ok(line, `no ✓ line for ${label}:\n${out}`);
-    assert.match(line, /gate ✓ \(demo-gate without the cookie, the shop with it\)/, line);
+    assert.match(line, /no gate ✓ \(the port names none, the body shows none\)/, line);
   }
-  assert.match(out, /door\(s\) proved on BOTH sides of `forge_gate_dismissed`/, out);
+  assert.match(out, /door\(s\) proved free of a gate/, out);
 });
 
-test('★★★ SABOTAGE — THE GATE IS NOT INSTALLED ⇒ red naming every store, which is the defect that ran for days', async () => {
-  // Exactly the box of 2026-09-11: the app composed into the image, filling nothing, and four shops open to
-  // the street. Every other step on this box was green through all of it.
-  const box = await fakeBox({ gates: () => null });
+test('★★★ SABOTAGE — AN APP IS INSTALLED ON `storefront:gate` ⇒ red naming the app and every store', async () => {
+  // ⛔ THE STATE THIS WHOLE SLICE EXISTS TO KEEP AWAY: one `extension.install` — by a hand, by a restored
+  // backup, by a seed somebody adds back — and every route of every store of this tenant is dynamic again.
+  // Nothing else on this box would say so: the status codes, the containers and the page bodies of a gated
+  // box and a cacheable one are the same until you read the markup.
+  const box = await fakeBox({ gates: () => INTRUDER_APP });
   const { code, out } = await step(box.api);
   await box.close();
   assert.equal(code, 1, out);
   for (const handle of ['forge', 'outlet']) {
-    const line = out.split('\n').find((l) => l.includes(`✗ ${handle} `) && l.includes('NO APP FILLS'));
-    assert.ok(line, `the store with no front door is not named: ${handle}\n${out}`);
-    assert.match(line, /storefront:gate/, `the red does not name the slot: ${line}`);
-    assert.match(line, /seed\/box\.json/, `the red does not name the declaration it disagrees with: ${line}`);
+    const line = out.split('\n').find((l) => l.includes(`✗ ${handle} `) && l.includes('FILLS'));
+    assert.ok(line, `no ✗ naming ${handle}:\n${out}`);
+    assert.ok(line.includes(INTRUDER_APP), `the red does not name the app it found: ${line}`);
+    assert.ok(line.includes('storefront:gate'), `the red does not name the slot: ${line}`);
   }
-  assert.doesNotMatch(out, /VERDICT: every door of forgeco answers as it must/);
+  // ⚠️ AND IT SAYS WHAT THE INSTALL COSTS, not only that it happened. A red that names a slot and not the
+  // consequence reads as tidiness, and tidiness is what gets waived.
+  assert.match(out, /no-cache, no-store/, out);
 });
 
-test('★★★ SABOTAGE — THE BOX IGNORES THE COOKIE (the shop on both sides) ⇒ red: a visitor meets no gate', async () => {
-  // ⚠️ THIS IS ALSO THE SHAPE OF A PROBE THAT SENT THE DISMISSAL COOKIE ON BOTH SIDES. Graded from the
-  // outside the two are the same box: both sides answer the shop. If this went green, the whole two-sided
-  // proof would be one side twice.
-  const box = await fakeBox({ ignoresCookie: true });
+test('★★ SABOTAGE — a gate SCREEN reaches a door the port says nobody gates ⇒ red (the negative control)', async () => {
+  // The other half, and the one the port cannot see per store: the data says nobody gates THIS shop and its
+  // front draws a gate anyway — an image pinned before the removal, or a registry entry welded by hand in a
+  // fork. This is why the step reads bodies at all and does not stop at `read.extensions`.
+  //
+  // ⚠️ THE FIXTURE GATES THE SIBLING, AND THAT IS NOT A CONVENIENCE — IT IS THE LIMIT OF THIS CHECK, STATED.
+  // The step knows the name of no app; the only ids it can look for in a body are the ones the PORT just
+  // named somewhere on this tenant. So a box where NOTHING is installed anywhere and a front draws a gate out
+  // of a stale image is invisible to this arm — what catches that box is the ✗ above, on whichever store the
+  // port does answer for, and the structural-gap arm below. Writing the fixture the other way round would
+  // have produced a green that proved the opposite of what it claimed.
+  const box = await fakeBox({ gates: (h) => (h === 'outlet' ? INTRUDER_APP : null), leaksGate: ['forge'] });
   const { code, out } = await step(box.api);
   await box.close();
   assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
-  assert.ok(line, `the door that shows no gate is not named:\n${out}`);
-  assert.match(line, /NO GATE ON THIS DOOR/, line);
-  assert.match(line, /forge_gate_dismissed/, `the red does not name the cookie it sent: ${line}`);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/ ') && l.includes('reached this door'));
+  assert.ok(line, `no ✗ for the leaking door:\n${out}`);
+  assert.ok(line.includes(INTRUDER_APP), `the red does not name the screen it found: ${line}`);
+  assert.match(line, /no route of this box may serve one/, line);
 });
 
-test('★★★ SABOTAGE — THE GATE WILL NOT LET GO (the gate on both sides) ⇒ red: the shop is unreachable', async () => {
-  // The mirror, and the reason rule 1 alone is not enough: a probe that only demanded the gate would sign a
-  // green over a demo nobody can get INTO.
-  const box = await fakeBox({ neverLetsGo: true });
-  const { code, out } = await step(box.api);
-  await box.close();
-  assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
-  assert.ok(line, `the door that never opens is not named:\n${out}`);
-  assert.match(line, /THE GATE WILL NOT LET GO/, line);
-});
-
-test('★★★ SABOTAGE — THE FRONT DROPS THE RIBBON ⇒ red, naming the door and the front that served it', async () => {
-  // ⛔ THE SILENCE THIS CLOSES: the gate draws a small bar in the footer of every front it hands a visitor
-  // to, and nothing checked that the bar reached all four. Until pk35/d1 the cookie
-  // side was graded only for what it must NOT contain, so a front that mounted the interstitial and not the
-  // bar under it was a GREEN birth with no way back to the gate. The box below is byte-identical to a healthy
-  // one except for that one element on ONE door, which is what makes this a statement about the ribbon.
-  const box = await fakeBox({ noRibbon: ['/checkout'] });
-  const { code, out } = await step(box.api);
-  await box.close();
-  assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ forge/checkout'));
-  assert.ok(line, `the door with no ribbon is not named:\n${out}`);
-  assert.match(line, /THE WAY BACK IS MISSING/, line);
-  assert.match(line, /demo-gate-ribbon/, `the red does not name the mark it looked for: ${line}`);
-  assert.match(line, /checkout/, `the red does not name the front that served it: ${line}`);
-  // …and the doors that DO draw it are untouched in the same run, so this is not a step that simply broke.
-  assert.match(out, /✓ forge\/ .* gate ✓/, out);
-});
-
-test('★★ SABOTAGE — the front CANNOT DRAW the declared gate ⇒ its own red, not "no gate"', async () => {
-  // A different failure and it needs a different sentence: the port declares a gate, the front has no
-  // implementation, and `storefront:gate` is STRUCTURAL, so the page is refused rather than opened
-  // (`CompositionGapNotice`). Telling an operator "no gate on this door" here would send them to fix the
-  // seed, which is the one thing that is right.
+test('★★ SABOTAGE — the front REFUSES the page with the structural-gap notice ⇒ its own red', async () => {
+  // A DIFFERENT FAILURE AND IT DESERVES ITS OWN SENTENCE. `composition-gap` is what a front draws when a
+  // STRUCTURAL slot IS filled and this build cannot draw it: the shop answers 200 and shows «Esta loja está
+  // temporariamente indisponível». It is the shape a HALF-removed gate takes, and a status code cannot see it.
   const box = await fakeBox({ refusesGate: ['forge'] });
   const { code, out } = await step(box.api);
   await box.close();
   assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes('✗ forge/ '));
-  assert.ok(line, `the refused door is not named:\n${out}`);
-  assert.match(line, /CANNOT DRAW the gate the port declares/, line);
-  assert.doesNotMatch(line, /NO GATE ON THIS DOOR/, `two different defects must not share one sentence: ${line}`);
-  // …and the store whose front is fine is untouched in the same run.
-  assert.match(out, /✓ outlet\/ .* gate ✓/, out);
+  const line = out.split('\n').find((l) => l.includes('✗ forge/ ') && l.includes('structural-gap'));
+  assert.ok(line, `no ✗ naming the structural-gap refusal:\n${out}`);
+  assert.match(line, /believes a slot is filled/, line);
 });
 
-test('★★★ pk36/d1 — THE CAFÉ IS GATED, like every other store: the exception is over, in the file and on the screen', async () => {
-  // ★ THE CAFÉ GETS THE GATE TOO — decided in pk36/d1, ending the one exception this step used to carry.
-  // What made it possible is pk35/d2: the fork regenerates its own surfaces, so it owns a gate registry and
-  // DRAWS the slot.
-  // A test that only read the probe's output would stay green if the key came back and the whole shop went
-  // quietly back to having no front door — so the FILE is asserted here too, and it is asserted as an ABSENCE.
-  const box = await fakeBox({ credentialTenant: CAFE_TENANT, stores: CAFE_STORES });
-  const { code, out } = await step(box.api, CAFE_TENANT);
-  await box.close();
-  assert.equal(code, 0, out);
-  assert.match(out, /✓ cafe\/ .* gate ✓ \(demo-gate without the cookie, the shop with it\)/, out);
-  assert.match(out, /✓ cafe\/checkout .* gate ✓ \(demo-gate/, out);
-  assert.match(out, /✓ cafe\/account\/login .* gate ✓ \(demo-gate/, out);
-  // ⛔ AND NOT A WORD OF THE OLD EXCEPTION ABOUT THIS STORE.
-  assert.ok(
-    !out.split('\n').some((l) => l.includes('ⓘ cafe ') && l.includes('no gate')),
-    `the café is still announced as gateless:\n${out}`,
-  );
-  // …and the COUNTER, whose front is the totem, keeps its gate on the three doors it still serves.
-  assert.match(out, /✓ balcao\/account\/login .* gate ✓ \(demo-gate/, out);
-  // ⚠️ AND ITS VITRINE PAGE IS EXEMPT, NOT GATED: `requirePublicStorefront` refuses above the slot.
-  assert.match(out, /⊘ balcao\/ .* gate n\/a \(refused above the slot\)/, out);
-
-  const declared = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'))
-    .tenants.find((t) => t.id === CAFE_TENANT)
-    .stores.find((s) => s.handle === 'cafe');
-  assert.ok(
-    !('gate' in declared),
-    'seed/box.json declares a `gate` key on the café again. The store is gated by the DEFAULT now; a key ' +
-      'here is a second author for a decision the absence already states.',
-  );
-  // ★ THE REASON STAYS, AND THAT IS DELIBERATE: an exception that ended leaves a reader nothing to read, and
-  // "no line at all" is indistinguishable from "nobody ever thought about it".
-  assert.match(declared._gate_why ?? '', /gate-registry/, 'the café carries no note of why the exception ended.');
-});
-
-// ── ⛔⛔ THE GATELESS RULE, ON A BOX OF ITS OWN ──────────────────────────────────────────────────────────
-//
-// Everything below grades the same shipped step against a `seed/box.json` this suite writes, holding one
-// store that declares `gate: false`. See `fixtureRoot` for why the declaration — and only the declaration —
-// is a fixture.
-
-test('★★★ a store DECLARED gateless is a green, announced, with the reason from the FILE', async () => {
-  // A green that said nothing about it would be indistinguishable from a gate that went missing. And the
-  // reason is not paraphrased by the step: it is printed, so the sentence a reader meets is the one the
-  // person who made the exception wrote.
-  const script = withGatelessStore();
-  const box = await fakeBox({
-    credentialTenant: CAFE_TENANT,
-    stores: GATELESS_STORES,
-    gates: GATELESS_GATES,
-  });
-  const { code, out } = await step(box.api, CAFE_TENANT, script);
-  await box.close();
-  assert.equal(code, 0, out);
-  const line = out.split('\n').find((l) => l.includes(`ⓘ ${GATELESS.handle} `) && l.includes('no gate'));
-  assert.ok(line, `the gateless store is not announced:\n${out}`);
-  assert.match(line, /BY DECLARATION/, line);
-  assert.ok(line.includes(GATELESS_WHY), `the announcement does not carry the file's own reason: ${line}`);
-  // …and the stores that DO want one are graded exactly as they are on the real box.
-  assert.match(out, /✓ cafe\/ .* gate ✓ \(demo-gate/, out);
-});
-
-test('★★ SABOTAGE — a store is declared gateless and the PORT gates it anyway ⇒ red', async () => {
-  // The seed module that owns the store never removed the placement, or a reinstall put it back. If the front
-  // cannot draw the slot the screen is the structural-gap refusal on every page, and the declaration is the
-  // only thing on this box that knows better.
-  const script = withGatelessStore();
-  const box = await fakeBox({
-    credentialTenant: CAFE_TENANT,
-    stores: GATELESS_STORES,
-    gates: () => GATE_APP,
-  });
-  const { code, out } = await step(box.api, CAFE_TENANT, script);
+test('⛔ ANTI-VACUUM — a run that read NO body is a RED, not a quiet green', async () => {
+  // ⛔ THE ONE THE OLD RULE DID NOT NEED AND THIS ONE CANNOT LIVE WITHOUT. «Every store has a gate» is
+  // falsified by looking; «no store has one» is SATISFIED by not looking. So a box where the port answers
+  // nothing for anybody must not produce a report of ✓ lines — and the step says so in its own words rather
+  // than leaving the absence to be noticed.
+  const box = await fakeBox({ extensionsRefuses: true });
+  const { code, out } = await step(box.api);
   await box.close();
   assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes(`✗ ${GATELESS.handle} `) && l.includes('gate: false'));
-  assert.ok(line, `the disagreement between the file and the port is not named:\n${out}`);
-  assert.ok(line.includes(GATELESS_WHY), `the red does not carry the declaration it is contradicting: ${line}`);
-  assert.match(line, new RegExp(`"${GATE_APP}" fills`), `the red does not name what the port answered: ${line}`);
-});
-
-test('★★ SABOTAGE — a gate SCREEN reaches a store the port says nobody gates ⇒ red (the negative control)', async () => {
-  // ⚠️ THE CONTROL IS DERIVED, not typed: the mark it looks for is every gate this TENANT really carries,
-  // learned from the port in the same run (here, the café's and the counter's). Nothing in the declaration can
-  // see this — the port says "no gate on this store" and the store serves one anyway, which is a front pinned
-  // to an image that still welds the entry.
-  const script = withGatelessStore();
-  const box = await fakeBox({
-    credentialTenant: CAFE_TENANT,
-    stores: GATELESS_STORES,
-    gates: GATELESS_GATES,
-    leaksGate: [GATELESS.handle],
-  });
-  const { code, out } = await step(box.api, CAFE_TENANT, script);
-  await box.close();
-  assert.equal(code, 1, out);
-  const line = out.split('\n').find((l) => l.includes(`✗ ${GATELESS.handle}/ `));
-  assert.ok(line, `the gate that leaked onto a gateless store is not named:\n${out}`);
-  assert.match(line, /declared gateless and a gate screen/, line);
-  assert.match(line, /demo-gate/, `the red does not name the screen it found: ${line}`);
-});
-
-test('⛔ ANTI-VACUUM — the fixture really DECLARES the thing it is grading, and the real box really does not', () => {
-  // ★ THE TWO WAYS THIS WHOLE SECTION GOES QUIET, and neither of them is loud on its own:
-  //   · the fixture store loses its `gate: false` ⇒ the three tests above grade an ordinary store and the
-  //     gateless branch of `bin/prove-doors.mjs` is never entered by anything, anywhere;
-  //   · a real store declares `gate: false` again ⇒ the fixture is redundant and, worse, the café's own
-  //     exception may have come back through some other door.
-  // Both are derived here, from the same field of the same files the step reads.
-  const declaring = (box) =>
-    (box.tenants ?? []).flatMap((t) => (t.stores ?? []).filter((s) => s.gate === false).map((s) => `${t.id}/${s.handle}`));
-
-  const real = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
-  assert.deepEqual(
-    declaring(real),
-    [],
-    'seed/box.json declares a store gateless again. That is allowed — it is what the key is for — but the ' +
-      'section above then grades a FIXTURE where a real subject exists: point those tests at the real store, ' +
-      'or say here why the fixture is still the honest subject.',
-  );
-
-  const fixture = JSON.parse(readFileSync(join(dirname(withGatelessStore()), '../seed/box.json'), 'utf8'));
-  assert.deepEqual(
-    declaring(fixture),
-    [`${GATELESS.tenant}/${GATELESS.handle}`],
-    'the fixture box does not declare exactly one gateless store, so the four gateless behaviours of ' +
-      '`bin/prove-doors.mjs` are exercised by NOTHING — neither a real store nor a fake one.',
-  );
+  assert.match(out, /✗ forge .*read\.extensions could not be asked anonymously/, out);
+  assert.match(out, /NO DOOR OF .* WAS PROVED FREE OF A GATE/, out);
 });
 
 test('★★ the port refusing `read.extensions` is a RED that names the store, never a silent abstention', async () => {
@@ -912,57 +671,24 @@ test('★★ the port refusing `read.extensions` is a RED that names the store, 
   await box.close();
   assert.equal(code, 1, out);
   assert.match(out, /✗ forge .*read\.extensions could not be asked anonymously/, out);
-});
-
-// ── ★★ THE COOKIE NAME IS THE KIT'S, AND IT IS DERIVED FROM THE KIT ─────────────────────────────────────
-//
-// `bin/prove-doors.mjs` writes `forge_gate_dismissed` out as a literal — `bin/` runs on bare node and cannot
-// import from a package the forks install as a tarball. A literal that nothing compares is a guess with a
-// shelf life: the probe would keep sending a cookie nothing reads, BOTH sides would answer the gate, and rule
-// 2 would go red naming the wrong thing. So the string is compared against the kit's own frozen constant.
-test('★★ the dismissal cookie this probe sends IS the kit\'s frozen name', (t) => {
-  const base = candidates().map((c) => checkout(c)).find(Boolean);
-  if (!base) {
-    t.skip(
-      'no Forge checkout on this machine — set FORGE_MONOREPO=<a forge checkout>. Without it the cookie name ' +
-        'in bin/prove-doors.mjs is compared against nothing, which is how a frozen constant drifts in silence.',
-    );
-    return;
+  for (const door of ['/', '/checkout']) {
+    const line = out.split('\n').find((l) => l.includes(`✓ forge${door} `));
+    assert.ok(line, `no ✓ line for forge${door}:\n${out}`);
+    assert.match(line, /gate NOT ASKED \(see the ✗ above\)/, line);
   }
-  const kit = readFileSync(join(base.path, 'packages/storefront-kit/src/cookies.ts'), 'utf8');
-  const declared = kit.match(/GATE_DISMISSED_COOKIE\s*=\s*'([^']+)'/)?.[1];
-  assert.ok(
-    declared,
-    `packages/storefront-kit/src/cookies.ts declares no GATE_DISMISSED_COOKIE at ${base.path}. This guard ` +
-      'derives its whole answer from that line; without it there is nothing to compare and a green would mean ' +
-      'nothing.',
-  );
-  const mine = readFileSync(STEP, 'utf8').match(/GATE_DISMISSED_COOKIE\s*=\s*'([^']+)'/)?.[1];
-  assert.equal(
-    mine,
-    declared,
-    `bin/prove-doors.mjs sends \`${mine}\` and the kit sets \`${declared}\`. A probe whose cookie nothing ` +
-      'reads grades the gate on both sides and calls the gate unescapable.',
-  );
 });
 
-test('★★★ the RIBBON is not the GATE — the match is exact, and a healthy box stays green because of it', async () => {
-  // ⛔ THE SUBSTRING TRAP, ASSERTED RATHER THAN REASONED ABOUT. `demo-gate-ribbon` starts with `demo-gate`,
-  // and the two marks are the OPPOSITE states: the interstitial means "this visitor has not been through",
-  // the ribbon means "this visitor has". A probe matching the id without its closing quote would read every
-  // dismissed page as the gate refusing to let go.
-  const box = await fakeBox();
-  // ⛔ ANTI-VACUUM FIRST: the fixture must really be serving the ribbon, or the green below means nothing.
-  const dismissed = await fetch(`${box.api}/s/sto_FORGE/checkout`, {
-    headers: { cookie: 'forge_gate_dismissed=1' },
-  }).then((r) => r.text());
-  assert.match(dismissed, /data-testid="demo-gate-ribbon"/, `the fixture serves no ribbon:\n${dismissed}`);
-  assert.doesNotMatch(dismissed, /data-testid="demo-gate"/, 'the dismissed page must not carry the gate mark');
-
-  const { code, out } = await step(box.api);
-  await box.close();
-  assert.equal(code, 0, out);
-  assert.doesNotMatch(out, /THE GATE WILL NOT LET GO/, out);
+test('⛔ ANTI-VACUUM — the marks this suite serves really are the ones the step looks for', () => {
+  // A fixture that invented its own strings would grade the probe against a box no deployable can be. Both
+  // halves are read from the shipped step rather than retyped here.
+  const source = readFileSync(STEP, 'utf8');
+  assert.match(source, /data-testid="\$\{id\}"/, 'the step no longer builds its marks from a `data-testid`');
+  assert.match(source, /composition-gap/, 'the step no longer knows the product’s structural-gap mark');
+  assert.match(
+    gapBody(INTRUDER_APP),
+    /data-testid="composition-gap"/,
+    'this suite stopped serving the mark it claims to be grading',
+  );
 });
 
 // ── ★★★ pk34/d1 · THE ADDRESS EACH STORE IS PUBLISHED AT ─────────────────────────────────────────────────

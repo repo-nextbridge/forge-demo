@@ -24,12 +24,12 @@ const standalone = process.env.FORGE_BUILD_STANDALONE === '1';
 //
 // ── ★★ pk35/d3 — AND THE COPY'S HALF IS NO LONGER `.`, BECAUSE THIS COPY REACHES A SIBLING DIRECTORY ─────
 //
-// This box writes apps of its own (`apps/demo-gate`), and a front renders an app by IMPORTING it: the
-// dependency is `"@forge/ext-demo-gate": "file:../apps/demo-gate"`, which npm installs as a SYMLINK pointing
+// This box writes apps of its own (`apps/demo-setup`), and a front renders an app by IMPORTING it: the
+// dependency is `"@forge/ext-demo-setup": "file:../apps/demo-setup"`, which npm installs as a SYMLINK pointing
 // OUT of this directory. The standalone tracer never copies a file from above its root, so with the root at
 // `.` the build stays green and the IMAGE is short a module — the failure `bin/front-apps.mjs` calls
 // `untraced`, and the one that is invisible until a container runs. `totem/next.config.mjs` reached the same
-// answer first, for the same app, and this is the same value said the same way.
+// answer first, for an app of this box, and this is the same value said the same way.
 //
 // ⚠️ IT MOVES THE STANDALONE ENTRY, AND THE DOCKERFILE CARRIES THE OTHER HALF. With the root one directory
 // up, the server lands at `.next/standalone/storefront-coffee/server.js` and the workspace's node_modules
@@ -53,12 +53,12 @@ const tracingRoot = fileURLToPath(
 // token" on the first `export type`, then on the first CSS Module import). With it, the copy is born
 // correct. Proven on a Next app outside this monorepo: scripts/publishing/front-consumer.guard.test.ts.
 //
-// ★ pk35/d3 — AND `@forge/ext-demo-gate` IS HERE FOR THE SAME REASON, arriving a different way. It is an app
-// THIS BOX wrote, so it travels as a DIRECTORY of source (`file:../apps/demo-gate`, a symlink) rather than as
-// a tarball; either way it is .tsx + CSS Modules under `node_modules`, which is exactly what Next skips
-// unless it is listed here.
+// ★ AND `@forge/ext-demo-setup` IS HERE FOR THE SAME REASON, arriving a different way. It is an app THIS BOX
+// wrote, so it travels as a DIRECTORY of source (`file:../apps/demo-setup`, a symlink) rather than as a
+// tarball; either way it is .tsx + CSS Modules under `node_modules`, which is exactly what Next skips unless
+// it is listed here.
 const transpilePackages = [
-  '@forge/ext-demo-gate',
+  '@forge/ext-demo-setup',
   '@forgeco/ext-banners',
   '@forgeco/ext-feed',
   '@forgeco/ext-leads',

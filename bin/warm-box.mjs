@@ -284,6 +284,11 @@ const declared = new Map((spec.stores ?? []).map((s) => [s.handle, s]));
 /**
  * ── ★★★ pk33 · DOES THIS STORE HAVE A GATE IN FRONT OF IT, AND WHAT DOES THAT COST THE WARMING? ─────────
  *
+ * ⚠️ SINCE v0.4 NOTHING OF THIS BOX FILLS THAT SLOT — the demonstration notice is a BLOCK now — so on a
+ * healthy box this whole section is quiet. It is kept, and kept DERIVED from the port rather than from a
+ * name, for the reason the check was written in the first place: an app installed on that slot by a hand or
+ * by a restored backup makes every number below a lie, and «quiet» is what that lie looks like.
+ *
  * ⛔ THE MEASUREMENT, AND IT IS A DEFECT OF THE PRODUCT RATHER THAN OF THIS BOX. The warmer runs INSIDE the
  * vitrine (`POST /api/warm` → `apps/storefront/src/lib/warm/run.ts` in the Forge monorepo) and its fetcher
  * sets exactly ONE header — `user-agent: <the warmer's>` (`withWarmerUserAgent`, and `runPass` beside it).

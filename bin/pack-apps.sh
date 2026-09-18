@@ -8,9 +8,9 @@
 # `FORGE_EXTENSIONS_DIR` mounts and the kernel scans at boot.
 #
 # ⚠️ THE TWO ARE NOT INTERCHANGEABLE, and mounting the wrong one fails in a way that reads like a broken app
-# rather than a missing step. Measured on this bench, with `apps/demo-gate` mounted directly:
+# rather than a missing step. Measured on this bench, with an app of this box mounted directly from `apps/`:
 #
-#     /health → "invalid manifest: ENOENT … open '/app/extensions/demo-gate/forge-extension.json'"
+#     /health → "invalid manifest: ENOENT … open '/app/extensions/<id>/forge-extension.json'"
 #
 # The kernel READS manifests, it never RUNS them: an extension directory is scanned at boot, long before
 # anybody installs anything, so nothing in it may execute at that moment. A `.ts` manifest is refused with a
@@ -54,7 +54,7 @@ require_node || exit 1
 # `@forgeco/contracts`, which inside the monorepo is a workspace link and in this repository is
 # nothing at all. Measured, before this block existed:
 #
-#     Cannot find package '@forgeco/contracts' imported from …/apps/demo-gate/manifest.ts
+#     Cannot find package '@forgeco/contracts' imported from …/apps/<id>/manifest.ts
 #
 # So it is linked at this repo's root, where Node's upward resolution finds it from any app. It is
 # GITIGNORED and rebuilt by this script every run: it points into a checkout on THIS machine and would be a

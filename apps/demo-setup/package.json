@@ -26,16 +26,23 @@
           "module": "./block/marks",
           "export": "FooterBrand",
           "props": ["config", "storeHref"]
+        },
+        "demo_ribbon": {
+          "surface": "storefront",
+          "module": "./block/ribbon",
+          "export": "DemoRibbon",
+          "props": ["locale"]
         }
       }
     }
   },
   "exports": {
     "./block/marks": "./block/marks.tsx",
+    "./block/ribbon": "./block/ribbon.tsx",
     "./icon": "./icon.ts",
     "./manifest": "./manifest.ts"
   },
-  "files": ["block/marks.tsx", "block/marks.module.css"],
+  "files": ["block/marks.tsx", "block/marks.module.css", "block/ribbon.tsx", "block/ribbon.module.css"],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

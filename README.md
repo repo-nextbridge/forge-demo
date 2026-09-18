@@ -25,10 +25,10 @@ composition.json       WHICH APPS the images compose. An instance's answer, not 
                        reason; `bin/composition.guard.mjs` grades that against the monorepo.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
-apps/                  the apps THIS box wrote: `demo-gate` (§4), `demo-setup` (§4b) and `payment-pos` (§4c).
-                       Composed into the images.
-extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since the gate became
-                       composed (§4); `bin/pack-apps.sh` still produces this form for one that needs it.
+apps/                  the apps THIS box wrote: `demo-setup` (§4b) and `payment-pos` (§4c). Composed into
+                       the images. §4 is where the third one went.
+extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since this box's own
+                       apps became composed; `bin/pack-apps.sh` still produces this form for one that needs it.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
 seed/                  the birth data: the stores, the coffee and counter catalogues, the photos — and the
                        STOCK POOL (`catalog.json` → `stock_pool`), products this brand owns that no store
@@ -1011,7 +1011,7 @@ parallelism of `node --test` mostly absorbs on an idle machine and does not on a
 not installed is reported **NOT CHECKED**, never quietly passed.
 
 ⚠️ **And it is also who runs THIS BOX'S OWN APPS.** `apps/payment-pos/` (the counter's payment driver) and
-`apps/demo-gate/` (the demo interstitial) are loaded by the kernel itself, and until 2026-09-08 nothing here
+`apps/demo-setup/` (the shop's marks and the demonstration ribbon) are loaded by the kernel itself, and until 2026-09-08 nothing here
 compiled or ran them: not `bin/test.sh`, which scanned `bin/` and `seed/`; not the fork guards, which only see
 a directory that depends on the storefront kit; not `bin/pack-apps.sh`, which packs the artifact without
 reading it; not `bin/build-local.sh`, which copies it into the oven. An app of this instance could be written,
@@ -1020,8 +1020,8 @@ closes that: it derives the list from `forge.origin: "instance"` (the property t
 links each app's declared dependencies out of a Forge checkout the way the oven does, runs `tsc` and the app's
 own suite — 35 tests that had never run — and finally asserts that the `instanceApps` list `composition.json`
 hands the bake is exactly the set it just compiled and ran. The first run found both apps unloadable, for the
-same reason twice: `apps/*/tsconfig.json` extended `../../tsconfig.base.json` and
-`apps/demo-gate/vitest.config.ts` imported `../../vitest.shared`, two files of the MONOREPO that this
+same reason twice: `apps/*/tsconfig.json` extended `../../tsconfig.base.json` and an app's
+`vitest.config.ts` imported `../../vitest.shared`, two files of the MONOREPO that this
 repository has never had. Without a Forge checkout on the machine it reports **NOT CHECKED**, never a silent
 green.
 
@@ -1330,7 +1330,7 @@ Installing the app is one call on the same credential:
 ```bash
 curl -X POST "$FORGE_PUBLIC_ORIGIN/v1/commands/extension.install" \
   -H "authorization: Bearer $FORGE_OPERATOR_TOKEN" -H "x-forge-tenant: $FORGE_REF_TENANT" \
-  -H 'content-type: application/json' -d '{"extension_id":"demo-gate"}'
+  -H 'content-type: application/json' -d '{"extension_id":"demo-setup"}'
 ```
 
 ⚠️ **THE REFUSAL THAT WILL COST YOU AN HOUR IF NOBODY WARNS YOU.** The write face takes the tenant as a
@@ -1499,68 +1499,48 @@ than laying a second past on top. Wipe and re-run to rebuild it.
 
 ---
 
-## 4. The gate — this box's own app, with two screens
+## 4. The gate — RETIRED in v0.4, and the measurement that retired it
 
-`demo-gate` is this box's own app: the first one, and the reason the species exists. It fills
-`storefront:gate` with the full-screen interstitial — a HUB over the faces this box publishes — and the
-ribbon under it. It renders on **the reference storefront the Outlet runs unforked, and since pk36/d1 on the
-coffee shop's FORK too**, which regenerates a gate registry of its own.
+⛔⛔ **This box used to have a front door: a full-screen interstitial every visitor met before the shop, drawn
+by an app of its own on the neutral theme slot `storefront:gate`. It is gone, and what removed it was not the
+screen — it was the ROUTING.**
 
-**It has TWO screens since pk30.** The first says what to open; the second — *"A arquitetura da demo"*, opened
-by the affordance at its foot and closed by the one at its own — says **why that is hard**, for a visitor who
-has never heard the word multi-tenant: the two tenants side by side with their two shops each (which storefront
-is forked, which theme each wears), one admin under both, and the stack they all stand on (API · CLI · MCP ·
-SDK · Docs → the single command port → the kernel → PostgreSQL/Redis → infra). Both screens are PT/EN/ES, on
-the one selector the gate already had, and both are embedded copy — `config_schema` stays `[]`.
+The product asks, at the edge of **every** store route, whether an **installed** app fills that slot
+(`packages/storefront-kit/src/gate/directory.ts`) and routes by the answer. So the mere INSTALL — not the
+placement, not a click, not a visitor — took the whole store off the cacheable tree. Measured on the deployed
+box, 2026-09-18:
 
-**SINCE pk35 THE FIRST SCREEN IS A HUB over the six faces this box publishes** — two tenant cards, each with
-its shops and, at its foot, the row that opens that tenant's admin at `/enter`. ⛔ **Not one address is
-written in the app.** `seed/box.json` declares them (one `domain` per store, one `admin_domain`
-per tenant — a hostname is DATA, §"the six addresses"), `bin/gate-faces.mjs` renders that declaration into
-`apps/demo-gate/faces.generated.ts`, and `bin/gate-faces.guard.mjs` refuses to let the two drift: a fifth store
-is a fifth card with no edit to the screen, and a store whose `domain` is deleted is a card that SAYS SO rather
-than one that disappears. The destination the visitor is already on is the `dismiss` form (the deep link
-survives); every other one is an ordinary link. On a host this box does not declare — a bench, a tailnet — no
-card matches and the door moves to a row at the foot of the hub, which names the host it is talking about.
+- every route answered `private, no-cache, no-store`, on every face;
+- a robot asking for **any** URL was handed the interstitial, **with no `<title>`**.
 
-⚠️ **WHAT THE PORT DID NOT BRING, AND IT IS THE PRODUCT'S.** This screen used to wait on a contract, and only
-half of that reason fell. `dismissGate()` now takes a destination (`packages/storefront-kit/src/gate/actions.ts:53`,
-in the Forge monorepo, since pk33), but `safeNextPath` admits **same-origin paths only** and five of the six
-faces are other hostnames. And the dismissal cookie is still written with **no `domain` attribute** (same file,
-`:57-64`), so it is host-only: a visitor who came through the gate here meets it again on the next face that has
-one. Measured on the bench, 2026-09-13: the two admins have no gate by decision (pk33), the café declared
-`gate: false`, and the outlet and the counter did show one — **two second gates, not five**. ⚠️ **Since pk36/d1
-that count is THREE:** the café's exception is gone (its fork regenerates its own gate registry), so four of the
-six faces carry a gate and only the two admins do not. The decided shape — **one dismissal may count for all
-six** ⇒ a `.forgecommerce.pro` cookie, and a ribbon that reopens all six — is a change to the **kit**,
-and this repository can only name it; the change above makes it worth one more face.
+⇒ **The screen was not worth the tree.** The sentence a visitor is owed — *this is a demonstration, nothing is
+charged and nothing is shipped* — is a **block** now: `demo_ribbon`, in `demo-setup` (§4b). A block is
+rendered by the slot it was dropped into, like every other block, and the store went back to the cacheable
+tree **with no change in the product**, which stays pinned at the release `forge.lock` names.
 
-**That last sentence used to say the opposite, and the fix was upstream.** Until Forge P1 an app belonging to
-ONE box could not be on a composition list at all, and both front registries are built from that list — so
-this app could load, install and fill its slot in the data, and show nothing. The Outlet had no gate. The
-refusal that caused it was wider than its own reason ("does not offer it to ANOTHER box" — and the box that
-OWNS the app is not another box), and P1 split it into two axes: the platform's OFFER stays exactly as shut,
-the instance's own LIST opens.
+**What went with it**, so nobody goes looking: the app directory, its two faces (the hub of this box's
+addresses and the ribbon under it), the whole dismissal machinery (the cookie, the "Abrir a loja" form, the
+browser-BACK reopen), `bin/gate-faces.mjs` and its guard (which rendered `seed/box.json`'s addresses into the
+app), `bin/gate-at-birth.guard.mjs` (which demanded that some seed INSTALL it), and the `gate:` field of
+`seed/box.json` that let one store opt out. The forks lost their entries too: the café's composed gate
+registry is **regenerated empty** and the counter's hand-welded `src/lib/gate/` is deleted.
 
-**How it reaches the image now.** It is on `instanceApps` in `composition.json`, NOT on `apps` — the second
-list is what the platform offers and this box chose, the first is what this repository wrote.
-`bin/build-local.sh` copies it into the Forge build context and the oven adopts it: it checks the app declares
-`forge.origin: "instance"`, composes it like any other app, and links its dependencies from what the image
-already carries. **No install runs and no lockfile line moves.**
+**What stayed, and is now the opposite rule.** `storefront:gate` is still the product's slot and both fronts
+still mount its machinery — nothing of this box fills it, so it resolves to nothing and the route is served
+as-is. Two things grade that:
 
-⚠️ **It is no longer mounted through `FORGE_EXTENSIONS_DIR`, and it must never be both.** A composed app is
-already in the image; mounting the same id on top of it is a duplicate the kernel refuses at boot. The mount
-seam is still there for an app of ACTIONS ONLY, which needs no rebuild.
+- **`bin/no-gate.guard.mjs`** (static, in `bash bin/test.sh`) — no app on `instanceApps` may declare a hook on
+  that target, read from each manifest's **code** with the comments stripped first, and no tracked file of
+  this repository may still name the retired app.
+- **step 14-bis** (`bin/prove-doors.mjs`, on a running box) — `read.extensions` must name **nobody** filling
+  it, for every store, and no door's body may carry a gate screen or the product's structural-gap refusal.
+  ⚠️ A run that read **no body at all** is RED: *"no store has one"* is a rule satisfied by not looking.
 
-⚠️ **The images this box builds are stamped NOT OFFERABLE, on purpose.** An image carrying one customer's app
-may never be promoted as a Forge release artifact — `forge.lock` says so in `offerable`, and Forge's own
-release gate refuses it. This is a property of what this box asked for, not a defect.
+⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URLS` still exist and feed NOBODY.** They were that app's
+wiring. They stay declared because the promotion machinery writes and grades them (`bin/box-up.sh`,
+`bin/verify-config.mjs`, `bin/box-config.guard.mjs`, `bin/birth-remote.sh`), and unpicking that is a slice of
+its own. ⛔ Do not infer a consumer from a variable.
 
-⚠️ **`FORGE_GATE_SITE_URL` / `FORGE_GATE_ADMIN_URLS` are now read by the FRONTS, not by the kernel.** The gate's
-entry is a Server Component in the storefront and the checkout, so its wiring lives where the component runs
-(`compose.yml` sets both on those two services). They never reach the browser.
-
----
 
 ## 4b. `demo-setup` — the shop's own MARK, and the app that exists to be looked at
 
@@ -1618,7 +1598,7 @@ coffee store's PIX (the live "aguardando pagamento" the demo exists to show), an
 `provider_ref` its own `initiate` never returns. `payment-pos` returns the ref inside its own `next_action`,
 which is the whole difference, and it cost zero kernel.
 
-It reaches the image exactly like `demo-gate`: `instanceApps` in `composition.json`, staged into the build
+It reaches the image exactly like `demo-setup`: `instanceApps` in `composition.json`, staged into the build
 context by `bin/build-local.sh`, and the image it composes is stamped not offerable.
 
 The capability page is `docs/capabilities/payment-pos.md`; the field-level contract is the app's own README.

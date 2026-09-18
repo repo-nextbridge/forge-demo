@@ -1,8 +1,8 @@
 // payment-pos — the app's icon, shipped as a BUNDLED MODULE (like the manifest): no asset file reaches the
 // runtime, the kernel serves these bytes at /v1/extensions/payment-pos/icon.
 //
-// ⛔ IT IS A MODULE BECAUSE THIS APP IS COMPOSED, and the app that learned it the expensive way is next door.
-// `demo-gate` declared `icon: 'icon.png'` and shipped the file, which is what a MOUNTED app is read by — an
+// ⛔ IT IS A MODULE BECAUSE THIS APP IS COMPOSED, and this box learned it the expensive way on another of its
+// own apps: it declared `icon: 'icon.png'` and shipped the file, which is what a MOUNTED app is read by — an
 // artifact directory, where the declared PATH is the icon. Composed, the image is soldered from the package's
 // EXPORTS (`packages/codegen/src/composition.ts:550`), which never opens the manifest to notice the
 // disagreement: the declared icon 404'd on every visit to /apps, nothing was red, and the admin's Apps area

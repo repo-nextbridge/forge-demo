@@ -57,8 +57,8 @@ also carries a sentence.
 
 There is no path from a page to the vitrine's mark: the only access is the slot, and the shops that wear this
 run the **vanilla** storefront image, unforked. A page would either mirror what the seed already writes or
-invite a visitor to edit what the weekly reset erases. Page administers, block renders. `demo-gate`, this
-box's other UI app, has never needed one either.
+invite a visitor to edit what the weekly reset erases. Page administers, block renders. The gate app this box
+retired had never needed one either.
 
 ## Running its suite
 

@@ -8,7 +8,7 @@
 // as many words, in each app's `why`: *"Composed, not mounted"*. The kernel scans `$FORGE_EXTENSIONS_DIR` at
 // boot and REFUSES TO START if it finds an app the platform already provides:
 //
-//     Error: refusing to boot: the extension at /app/extensions/demo-gate claims id "demo-gate",
+//     Error: refusing to boot: the extension at /app/extensions/<id> claims id "<id>",
 //     which is already provided by the platform. An external extension may not shadow another.
 //
 // The sequence that took the public demo down had three steps, and not one of them is obviously wrong alone:
@@ -90,7 +90,7 @@ test('⛔ ANTI-VACUUM — the composition really lists apps, and the disk read r
     `composition.json declares ${composed.length} app(s) — the list shrank or was not read, and the rule\n` +
       '     above would be comparing against almost nothing',
   );
-  for (const id of ['demo-gate', 'demo-setup', 'payment-pos']) {
+  for (const id of ['demo-setup', 'payment-pos']) {
     assert.ok(composed.includes(id), `${id} left the composition — it is an app of THIS box`);
   }
   assert.ok(Array.isArray(mountedIds()), 'the read of extensions/ did not return a list');

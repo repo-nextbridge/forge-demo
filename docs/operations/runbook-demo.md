@@ -873,7 +873,7 @@ dentro do fork). Um app **desta caixa** viaja como **diretório de fonte** (`com
 que ele não importa é um bloco que ele silenciosamente não desenha.
 
 ⇒ **O que o operador precisa saber, e são TRÊS gestos, não um.** Derivados do fork que já faz isto: o `totem/`
-alcança o `apps/demo-gate` com os três, e cada um tem um jeito próprio de falhar:
+alcança o `apps/demo-setup` com os três, e cada um tem um jeito próprio de falhar:
 
 | gesto | onde | o que acontece sem ele |
 |---|---|---|
@@ -890,33 +890,28 @@ commitada e travada no `totem/package-lock.json`. ⇒ **o gêmeo front-side do `
 de empacotar: não há o que empacotar.** O kernel precisa de artefato porque **lê** manifestos de um diretório
 montado no boot; um front precisa de um **módulo que o bundler resolva**, e isso são as quatro linhas acima.
 
-★★★ **pk36/d1 — O CAFÉ GANHOU PORTARIA, e agora as QUATRO lojas nascem com ela.** Decisão de produto
-(13/09, confirmada em 14/09), e o que a destravou foi a pk35/d2.
-⚠️ **O arranjo anterior está descrito aqui porque ele explica o mecanismo, não porque ainda valha:**
-`extension.install` é **por TENANT** e o kernel coloca o bloco **em toda loja do tenant**, então instalar para o
-`forgecafe` alcança o **café** e o **balcão** — e até a pk35 só um dos dois sabia desenhar (o balcão é o totem,
-que solda o registro dele; o café é o `storefront-coffee`, que resolvia pelo registro do kit, `{}` por desenho).
-Como `storefront:gate` é alvo **estrutural**, o fork **RECUSAVA a página** em voz alta (*"Esta loja está
-temporariamente indisponível"*), então `seed/coffee.mjs` **removia a colocação do café** e `seed/box.json`
-declarava `"gate": false` + o motivo. ⇒ **As duas coisas morreram juntas nesta fatia**, porque a pk35/d2 deu ao
-fork um `composition.json` próprio, um script `codegen` e a dependência real do `@forgeco/surface-codegen`:
-`storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` **existe** e resolve o `demo-gate` nas duas
-faces. ⛔ **E a divergência declarada saiu junto** — o `bin/front-app-reach.guard.mjs` agora **grada** o par
-`storefront-coffee × demo-gate` em vez de dispensá-lo, e fica vermelho no dia em que o fork deixar de alcançar
-o app. 📌 **A chave `gate: false` continua existindo** — é como qualquer loja de qualquer caixa declara que não
-tem portaria — e as quatro reações do 14-bis a ela continuam gradadas: como nenhuma loja real a declara,
-`bin/prove-doors.test.mjs` as grada contra uma **caixa de fixture própria**, com uma loja que só existe lá.
-⚠️ **A colocação só chega no NASCIMENTO** (`extension.install` materializa as colocações), então uma caixa já de
-pé **não** ganha a portaria do café por esta mudança: ela chega no próximo nascimento.
+★★★ **v0.4 — O CAFÉ PASSOU A COMPOR O `demo-setup`, e é o que faz a faixa desenhar na vitrine dele.**
+Até esta fatia o `storefront-coffee` **não alcançava** este app: nem dependência, nem `transpilePackages`, nem
+import em registro nenhum — e a divergência estava declarada no topo do `bin/front-app-reach.guard.mjs` como
+**decisão do dono do fork**, porque o app só tinha marcas e o fork desenha a própria (`CoffeeChrome`).
+⇒ **O que mudou é que o app deixou de ser só marcas.** O aviso de demonstração não é conteúdo do cliente: é
+esta caixa dizendo em voz alta que os preços não são reais, e a vitrine do café é uma das quatro que o devem.
+Então o fork ganhou os quatro gestos (dependência `file:../apps/demo-setup`, `transpilePackages`, a raiz do
+tracer que já tinha, e `npm run codegen` reescrevendo `src/lib/extensions/generated/registry.tsx`) e **a
+dispensa saiu junto** — o guard **grada** o par agora e fica vermelho no dia em que o fork deixar de alcançar.
+⚠️ **ALCANCE NÃO É COLOCAÇÃO.** «Este front CONSEGUE desenhar» e «alguém PEDIU» são perguntas diferentes:
+`seed/demo-setup.json` segue com `"cafe": null` para as três MARCAS, e a faixa é gesto de Compose (§6.2).
 
-⚠️ **O que ainda NÃO fecha, e está dito em voz alta:** o gesto 4 é uma **superfície gerada** e **nada neste
-repositório a regera** — `bin/build-coffee.sh` e `bin/build-totem.sh` não mencionam codegen, e entre os 18
-tarballs de `storefront-coffee/vendor/` não há `codegen`. Então o `storefront-coffee` hoje **não alcança** o
-`demo-setup` (as três marcas da loja) nem o `demo-gate` (a portaria), e as duas coisas estão **declaradas como
-divergência** no topo de `bin/front-app-reach.guard.mjs`, com o motivo e quem deve a ferramenta. A divergência é
-**impressa em toda rodada** e uma que deixar de casar com um achado **fica vermelha** — é por isso que ela não
-consegue virar permanente em silêncio. ⛔ Soldar o import à mão **não** é o conserto: foi o que
-`totem/src/lib/gate/registry.tsx` fez, e a prosa daquele arquivo já estava mentindo quando a pk31/d1 a leu.
+⛔⛔ **E O QUE SAIU DAQUI FOI A PORTARIA INTEIRA.** O `storefront:gate` continua sendo um slot do produto e os
+dois fronts continuam montando a maquinaria dele — mas **nenhum app desta caixa o preenche**, então ele
+resolve para nada e a rota é servida como é. O registro composto do café
+(`src/lib/extensions/generated/gate-registry.tsx`) foi **regerado vazio** pela própria ferramenta, e o totem
+perdeu `src/lib/gate/` por completo. `bin/no-gate.guard.mjs` é o que impede que volte.
+
+⚠️ **O que ainda NÃO fecha, e está dito em voz alta:** a superfície gerada do fork é regerada **à mão**
+(`npm run codegen` dentro de `storefront-coffee/`) — `bin/build-coffee.sh` e `bin/build-totem.sh` não chamam
+codegen. ⛔ Soldar o import à mão **não** é o conserto: foi o que o registro soldado do totem fez para a
+portaria, e a prosa daquele arquivo já estava mentindo quando a pk31/d1 a leu.
 
 ★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**
 A sonda dos dois (`totem/Dockerfile`, `storefront-coffee/Dockerfile`) descartava a resposta —
@@ -997,57 +992,77 @@ carregam como **solda** (`src/lib/ceiling-digest.ts`), com um guard que os prova
 a cada corrida e fica **vermelho no dia em que o kit publicar o subcaminho** — que é o dia de apagar a solda.
 ⛔ Isso é conserto no **outro repositório**, de uma linha, e uma fatia nomeia um repo só.
 
-### 6.2 ★★★ A PORTARIA — o que o operador vê quando ela está de pé, e o que mudou no 14-bis
+### 6.2 ★★★ A FAIXA — e por que a PORTARIA foi aposentada (v0.4)
 
-**O que a portaria É, para quem opera.** Uma tela cheia que **cobre** a rota pedida (nunca redireciona), em
-**PT/EN/ES** com seletor no rodapé, e ela tem **duas telas**, não uma:
+⛔⛔ **A portaria não existe mais, e o que a matou não foi a tela: foi o ROTEAMENTO.** Até esta fatia todo
+visitante encontrava uma tela cheia antes da loja — o app `storefront:gate` desta caixa. O que ninguém tinha
+medido é o que a **simples INSTALAÇÃO** de um app naquele slot custa: o produto pergunta, **na borda de toda
+rota de loja**, se algum app instalado o preenche (`packages/storefront-kit/src/gate/directory.ts`) e roteia
+por essa resposta. Medido na caixa implantada em **18/09**:
 
-1. **O hub** — a primeira. Manchete em quatro orações (*"Dois tenants. Quatro lojas. Dois admins."* + *"Mesmo
-   kernel!"* no acento), **dois cartões de tenant** com as lojas de cada um e, no pé de cada cartão, a linha
-   *"Admin do tenant"*. Fecha com o aviso *"Tudo fictício: nada é cobrado, nada é enviado…"*.
-2. **A arquitetura** — *"A arquitetura da demo"*, aberta pelo botão *"Entenda a arquitetura"* e fechada por
-   *"Voltar para as demos"*. Ela **substitui** o hub em tela cheia; não há navegação, então a URL não muda e
-   o idioma escolhido viaja junto.
+- **todas** as rotas respondiam `private, no-cache, no-store` — a loja inteira fora da árvore cacheável;
+- um **robô** recebia a tela da portaria em **qualquer** URL, **sem `<title>`**.
 
-⚠️ **Não procure um `<h1>` dizendo que é uma loja demo:** o herói que ficava acima do hub **saiu na pk38/d7**,
-com a segunda moldura e com o botão *"seguir nesta janela"*. ⇒ **o hub É a escolha**, e a única porta que
-sobrou fora dos cartões é a linha de rodapé desenhada só quando o host não casa com nenhum destino declarado
-(*"Esta janela está num endereço que esta demo não publica:"* + *"entrar assim mesmo"*) — que é **sempre** o
-caso na bancada. 📌 Para gradar *"a portaria apareceu"* numa sonda, o handle é o corpo, não o texto:
-`data-testid` de `apps/demo-gate/block/marks.ts` (e `data-hub-faces=<n>` conta os cartões).
+⇒ **A frase que o visitante merece não precisava de porta nenhuma para ser dita.** Ela virou um **bloco** —
+`demo-setup/demo_ribbon` — desenhado pelo slot em que foi solto, como qualquer outro bloco. A loja voltou à
+árvore cacheável **sem uma linha de mudança no produto**, que segue pinado em `release/v0.3.0`.
 
-⛔ **Até 11/09 NADA verificava que a portaria APARECE, e foi assim que ela ficou desinstalada por dias.** O app
-`apps/demo-gate` — a tela cheia que todo visitante encontra antes da loja — não era instalado por
-**passo nenhum** do nascimento: nem `bin/seed-box.mjs`, nem `seed/vitrine.mjs`, nem `seed/coffee.mjs`, nem
-`seed/outlet.mjs`. O README do próprio app dizia *"Install the app for the tenant"*, ou seja: **um gesto de
-mão** que alguém tinha de lembrar. Ninguém lembrou, e **toda corrida de nascimento ficou verde** durante todo
-esse tempo — porque o passo 14-bis gradava o **status** e o **contêiner**, e os dois são idênticos quer o
-visitante encontre a portaria, quer entre direto na loja: **a portaria responde 200 e a loja também**.
+**O que a faixa É, para quem opera.** Uma barra fina vermelha, largura inteira, dizendo que a loja é de
+demonstração (PT/EN/ES, escolhido pelo `locale` do front) e com um link para `https://forgecommerce.pro/demo`
+que abre em aba nova. Ela **aparece ao rolar**: o servidor a entrega VISÍVEL (sem JS ela simplesmente está
+lá), e quando o JS monta ela se esconde e reaparece **1 s** depois de entrar na viewport, uma vez só.
+📌 Para gradar *"a faixa apareceu"* numa sonda, o handle é o corpo: `data-testid="demo-setup-ribbon"`.
 
-**O que o operador vê hoje, com a caixa de pé:**
+⚠️ **ELA NÃO DISPENSA NADA.** Não lê cookie, não tem botão, não reabre portaria nenhuma — todo o maquinário de
+dispensa/reabertura saiu com o app que o tinha. Uma faixa que se pode fechar é uma faixa que o visitante não
+vê de novo.
 
-| onde | sem o cookie (1º visitante) | com o cookie (já entrou) |
+#### ⇒ O QUE PRECISA SER CLICADO — a faixa é um bloco, e bloco se coloca no Compose
+
+⛔ **Nenhum seed coloca esta faixa.** Colocação é **gesto de operação**, por loja, exatamente como as três
+marcas: o app declara o bloco e quem decide onde ele cai é o operador no Compose. Por loja:
+
+1. Admin do tenant → **Apps** → confirmar que **Demo setup** está *instalado* (ele já vem: `seed/vitrine.json`
+   para o `forgeco`, `seed/box.json → tenants[forgecafe].apps` para o café).
+2. Admin → **Compose** → escolher a loja → **Rodapé** (`footer`).
+3. Arrastar **“Aviso de demonstração · faixa”** para o slot **`footer.end`** e salvar.
+
+| loja | onde arrastar | o que passa a mostrar |
 |---|---|---|
-| `/s/<forge>/`, `/s/<outlet>/` e as três portas de checkout de cada uma | a **portaria** (tela cheia, PT/EN/ES, o **hub** dos seis destinos) | a **loja**, com a **faixa** vermelha no rodapé que reabre a portaria |
-| `/s/<balcao>/checkout`, `/account`, `/account/login` | a **portaria** (quem serve é o `checkout`, que compõe o app) | a porta de sempre |
-| `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão, e essa recusa é **acima** da portaria | **404**, idêntico |
-| `/s/<cafe>/…` | a **portaria** — desde a pk36/d1 o café é gradado como as outras três (§6.1 acima) | a **loja**, com a **faixa** no rodapé |
+| `forge` | `footer.end` | toda página da vitrine **e** as telas de conta/login/pedido do checkout (elas vestem a chrome da LOJA) |
+| `outlet` | `footer.end` | idem |
+| `cafe` | `footer.end` | idem — o fork **compõe** o app desde esta fatia, então ele consegue desenhar |
+| `balcao` | — | **nada a clicar**: o totem não tem Compose. A faixa é montada à mão em `totem/src/components/DemoNotice.tsx` |
 
-★★★ **DESDE pk35 A PRIMEIRA TELA É O HUB DOS SEIS DESTINOS** (o layout é o do artboard,
-`apps/demo-gate/design-base/gate.dc.html`, e `block/hub.test.tsx` segura os dois juntos): dois cartões de tenant,
-cada um com as suas lojas e, no pé, a linha que abre o admin daquele tenant. ⛔ **Nenhum endereço está escrito no
-app** — quem os declara é `seed/box.json` (`domain` por loja, `admin_domain` por tenant), `bin/gate-faces.mjs`
-renderiza essa declaração em `apps/demo-gate/faces.generated.ts` e `bin/gate-faces.guard.mjs` impede as duas
-pontas de divergirem. **Uma loja que perder o `domain` continua na tela, NOMEADA**, dizendo que não tem endereço
-publicado; ela nunca some em silêncio.
+⛔ **E O FUNIL DO CHECKOUT NÃO TEM ONDE RECEBÊ-LA — isto é um achado, não um esquecimento.** As telas de
+`/account*` vestem a `StorefrontChrome` (a chrome da loja), então `footer.end` já as cobre. Os **passos do
+funil** (`/checkout`) vestem a `CheckoutChrome`, e os dois únicos slots dela — `checkout.header` e
+`checkout.footer` — **SUBSTITUEM** a composição de referência (`packages/storefront-kit/src/chrome/
+CheckoutChrome.tsx`): soltar a faixa no rodapé do funil apaga a tarja de meios de pagamento e a linha legal.
+⇒ **Um slot ADITIVO no funil é dívida do PRODUTO**, não desta caixa; enquanto não existir, o funil fica sem a
+faixa e isso está dito aqui em voz alta em vez de ser comprado com a chrome de quem digita um cartão.
 
-⇒ **O destino em que o visitante JÁ ESTÁ** é o único que grava o cookie `forge_gate_dismissed=1` (botão, não
-link): a **MESMA url** passa a servir a página pedida — a portaria **cobre** a rota, nunca redireciona, então um
-link fundo (`/s/<loja>/account/orders/<id>`) continua valendo depois de passar por ela. Os outros cinco são
-links comuns para outras origens, e a linha do admin abre o `/enter`, que resgata a chave de operador **no
-servidor**. ⚠️ **Na bancada NENHUM dos seis casa com o host** (a caixa nasce em `localhost` e a promoção é passo
-à parte), então o hub desenha, no pé, **a sua própria porta**, dizendo em que host ela está — sem isso a caixa
-recém-nascida seria uma loja em que ninguém consegue entrar.
+#### ★ O que o 14-bis grada agora — e é a regra INVERTIDA
+
+`bin/prove-doors.mjs` gradava *"toda loja tem portaria"*, abrindo cada porta **dos dois lados** do cookie de
+dispensa. Agora grada o contrário, e em duas perguntas derivadas:
+
+- **a PORTA** — `read.extensions` (a mesma leitura anônima que o layout da loja faz) não pode nomear
+  **ninguém** preenchendo `storefront:gate`, em loja nenhuma. Um preenchedor é um ✗ que **nomeia o app** e diz
+  o que a instalação custa;
+- **a TELA** — nenhum corpo pode trazer uma tela de portaria nem a recusa estrutural do produto
+  (`data-testid="composition-gap"`), que é o que um front desenha quando o slot **está** preenchido e ele não
+  sabe desenhá-lo: 200 na cabeça e *"Esta loja está temporariamente indisponível"* no corpo.
+
+⚠️ **E o vácuo virou ✗.** *"Toda loja tem portaria"* é falsificada por olhar; *"nenhuma tem"* é **satisfeita
+por não olhar**. Então uma corrida que não leu corpo nenhum é **vermelha**, com essa frase.
+
+| onde | o que o 14-bis exige |
+|---|---|
+| `/s/<forge>/`, `/s/<outlet>/`, `/s/<cafe>/` e as três portas de checkout de cada uma | a **loja**, sem portaria e sem a recusa estrutural |
+| `/s/<balcao>/checkout`, `/account`, `/account/login` | a porta de sempre |
+| `/s/<balcao>/` | **404** — a vitrine recusa a loja do balcão |
+
 
 #### ★★★ A PORTA DO ADMIN — a chave nasce com a caixa, e são DUAS (pk38/d8)
 
@@ -1083,66 +1098,45 @@ nomeando a marca.
 re-run não tem como reaproveitá-la). ⛔ **O valor nunca é impresso**: o script escreve a chave crua em `stdout`,
 o `box-up.sh` arquiva e destrói o arquivo temporário, e o que aparece na tela é o **id** (`oak_…`).
 
-⚠️ **O admin NÃO tem portaria, e isso é decisão de produto** (11/09): quem abre a url do admin cai no login
-normal. E como a loja e o admin são **origens diferentes**, o cookie de dispensa **não** acompanha esse salto. Isso é correto e esperado.
+⚠️ **O admin nunca teve portaria, e isso era decisão de produto** (11/09): quem abre a url do admin cai no
+login normal. ⛔ **A questão inteira morreu na v0.4**, com o app: não há cookie de dispensa a propagar entre
+origens, nem entre as seis faces. A decisão de 13/09 que ainda estava aberta — *"o cookie pode valer para todas
+⇒ cookie de domínio `.forgecommerce.pro`"* — **deixou de ter assunto**, e a dívida que ela representava no kit
+do outro repositório sai da conta desta caixa.
 
-⛔ **E O MESMO VALE ENTRE AS SEIS LOJAS, o que AINDA não é o que está decidido.** O cookie de dispensa é escrito
-**sem atributo `domain`** (`packages/storefront-kit/src/gate/actions.ts:57-64`, no monorepo do Forge), logo é
-*host-only*: quem passou pela portaria em `store.forgecommerce.pro` encontra portaria de novo em cada uma das
-outras (medido 13/09: os dois admins não têm portaria por decisão, e desde a pk36/d1 o café tem — então são
-**três** fronts de loja, não dois). A decisão de 13/09 — o cookie **pode** valer para todas ⇒ cookie de domínio
-`.forgecommerce.pro`, e a barrinha reabrindo nas seis — é mudança **no kit**, ou seja, **no outro repositório**;
-uma fatia nomeia um repo só.
-
-★★ **O QUE MUDOU NO PASSO 14-bis, e ele ficou MELHOR, não mais frouxo.** Ele continua exigindo as mesmas 16
+★★ **O QUE MUDOU NO PASSO 14-bis (v0.4), e a regra virou do avesso.** Ele continua exigindo as mesmas 16
 portas, a mesma regra de *"a loja e não um pedido de desculpas"*, e o mesmo `⊘` deliberado do balcão. O que
-ganhou: **toda porta é aberta DUAS vezes**, sem o cookie e com ele, e as duas respostas são gradadas uma contra
-a outra — **sem** o cookie o corpo tem de **ser a portaria**; **com** o cookie tem de ser a **loja**; e os dois
-corpos têm de **diferir**, afirmado diretamente. ⚠️ **Ele grada o CORPO, nunca o status**, pela mesma razão da
-§6.1: a portaria responde **200** do mesmo contêiner que a loja, então um código não enxerga a diferença. A
-marca é `data-testid="<o id do app que a porta declara>"` — o passo **não digita** o nome do app: pergunta ao
-`read.extensions` quem preenche `storefront:gate` e monta o atributo com a resposta.
-
-★★★ **E DESDE pk35 ELE COBRA TAMBÉM A VOLTA — a barrinha.** Toda porta **gradada que renderizou página** (2xx;
-um `307` não tem corpo e é dito, não exigido) tem de trazer `data-testid="<id do app>-ribbon"` **com** o cookie.
-Era a metade que ninguém tinha: o lado do cookie só era gradado pelo que **não** podia conter, então um front
-que montasse a tela cheia e **não** a barrinha era uma perda silenciosa numa corrida verde. Medido na bancada
-em 13/09, no outlet: `/` → `200 · storefront` (barrinha), `/checkout` → `200 · checkout` (barrinha),
-`/account` → `307 · checkout` (sem corpo, correto), `/account/login` → `200 · checkout` (barrinha). O vermelho
-**nomeia a porta e o front que a serviu**.
-
-★ **Quais lojas DEVEM ter portaria: todas, por padrão.** Nada em lugar nenhum lista as lojas com portaria — uma
-lista envelheceria calada na quinta loja. O que é declarado é a **exceção**, em `seed/box.json`, com o motivo ao
-lado (`"gate": false` + `_gate_why`), e desde a pk36/d1 **não há nenhuma** — o `cafe` era a última.
-`bin/gate-at-birth.guard.mjs` fecha o
-outro lado no laço de testes: *todo tenant cujas lojas querem portaria tem um seed que a INSTALA* — derivado do
-manifesto do app, do `seed/box.json` e das quatro listas de `extension.install` deste repo, sem nome digitado.
+mudou é a metade da portaria: cada porta é aberta **uma vez** (não há segundo lado, porque não há cookie que
+front nenhum leia para isto) e o que se exige dela é o **contrário** do que se exigia. Veja a §6.2 para a
+tabela e para as duas perguntas derivadas.
 
 ⛔ **Como isto fica vermelho — e cada linha nomeia a loja:**
 
 | o que aconteceu | o que o 14-bis imprime |
 |---|---|
-| ninguém instalou a portaria | `✗ <loja> — NO APP FILLS storefront:gate FOR THIS STORE` |
-| a portaria está declarada e a frente **não sabe desenhá-la** | `✗ <loja>/<porta> — the front that answers this door CANNOT DRAW the gate…` (recusa estrutural: a loja não abre) |
-| a porta serve a loja **sem** a portaria | `✗ <loja>/<porta> — NO GATE ON THIS DOOR` |
-| a portaria **não solta** nem com o cookie | `✗ <loja>/<porta> — THE GATE WILL NOT LET GO` |
-| a loja é declarada sem portaria e uma portaria aparece nela | `✗ <loja>/<porta> — declared gateless and a gate screen … reached this door anyway` |
+| alguém INSTALOU um app em `storefront:gate` | `✗ <loja> — "<app>" FILLS storefront:gate FOR THIS STORE…` + o que a instalação custa (`no-cache, no-store`) |
+| a frente desenha uma portaria que a porta não declara | `✗ <loja>/<porta> — a gate screen (…) reached this door, and no route of this box may serve one` |
+| a frente **recusa a página** com a nota estrutural | `✗ <loja>/<porta> — the front REFUSED this page with the structural-gap notice…` |
+| a corrida **não leu corpo nenhum** | `✗ NO DOOR OF <tenant> WAS PROVED FREE OF A GATE` (o vácuo virou vermelho: *"nenhuma tem portaria"* é satisfeita por não olhar) |
 
-⛔⛔ **E UM CUSTO NOVO, MEDIDO, QUE É DEFEITO DO PRODUTO E NÃO DESTA CAIXA: com a portaria de pé, o passo 14
-(aquecimento) AQUECE A PORTARIA, não a loja.** O aquecedor roda **dentro** da vitrine (`POST /api/warm` →
-`apps/storefront/src/lib/warm/run.ts`, no monorepo) e o fetcher dele manda **um header só** —
-`user-agent: <o do aquecedor>` (`withWarmerUserAgent` + `runPass`). **Cookie nenhum.** ⇒ toda página que ele
-visita numa loja com portaria responde **a portaria**: 200, do mesmo contêiner, e **sem um `next/image`
-dentro** — então o cache de rota, as entradas de ISR e as ~20 400 derivadas de imagem **não são preenchidas**, e
-a passada de imagens (que deriva a lista do `imageUrlsFrom(corpo)`) encontra **zero**. ⚠️ **E a corrida volta
-verde**: cada visita é 200 e o relatório diz *"warm"*, porque nada nele distingue os dois corpos. ⇒ **desde a
-pk33 o passo 14 NOMEIA cada loja com portaria** e diz, na linha, que aquela loja deve ser tratada como **FRIA**
-qualquer que seja o número. ⛔ **O conserto é um header no fetcher do aquecedor, no OUTRO repositório** — uma
-fatia nomeia um repo só. O que foi consertado aqui é o **silêncio**. 📌 **E desde a pk36/d1 isso vale para as
-TRÊS lojas de vitrine** — `forge`, `outlet` e agora o `cafe`, que deixou de ser a única a aquecer de verdade.
-O passo 14 deriva a lista do `read.extensions`, então ele já nomeia o café sozinho: nenhuma lista a atualizar.
+★ **E o guard estático que fecha o outro lado é o `bin/no-gate.guard.mjs`**, no laço de testes: *nenhum app do
+`instanceApps` declara hook em `storefront:gate`* — derivado do `composition.json` e dos manifestos que ele
+aponta, com os comentários **removidos antes de julgar** (uma regra que lê fonte tem de ler CÓDIGO: a prosa que
+explica a regra contém a string que a regra procura). Ele também recusa **citação órfã**: nenhum arquivo
+versionado deste repositório pode nomear o app aposentado.
+⛔ **O que ele aposentou junto com o app**: `bin/gate-at-birth.guard.mjs` (que exigia o inverso — *"algum app
+instala a portaria no nascimento"* — e ficaria **vermelho por falta de sujeito**) e o par
+`bin/gate-faces.mjs` / `bin/gate-faces.guard.mjs` (que gerava e conferia a lista de destinos dentro do app).
 
-⇒ **Na prática, para quem opera:** se a demo aparecer **sem** a portaria, o nascimento já vai ter
-dito qual loja e por quê, antes de a caixa ser entregue. E se você precisar ver a loja **sem** a portaria para
-conferir alguma coisa, é um cookie: `curl -H 'Cookie: forge_gate_dismissed=1' <url>` — é exatamente o que o
-passo 14-bis faz no segundo lado.
+⛔⛔ **O CUSTO NO AQUECIMENTO SAIU JUNTO — e a cerca ficou.** Com uma portaria de pé, o passo 14 aquecia **a
+portaria**, não a loja: o aquecedor roda dentro da vitrine (`apps/storefront/src/lib/warm/run.ts`, no monorepo)
+e o fetcher dele manda **um header só**, cookie nenhum — então toda página visitada respondia a tela cheia,
+200, sem um `next/image` dentro, e o cache de rota, o ISR e as ~20 400 derivadas **não** eram preenchidos,
+**com a corrida voltando verde**. Sem portaria, o passo 14 aquece a loja. ⚠️ **A cerca continua no
+`bin/warm-box.mjs`, e continua DERIVADA do `read.extensions`**: ela fica quieta numa caixa saudável e nomeia a
+loja no dia em que alguém instalar um app naquele slot — que é exatamente quando todos os números do passo 14
+voltam a ser mentira.
+
+⇒ **Na prática, para quem opera:** a demo não tem porta de entrada. Se aparecer uma, o nascimento e o passo
+14-bis dizem **qual loja, qual app e o que a instalação custa**, antes de a caixa ser entregue.
+

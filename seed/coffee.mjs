@@ -58,24 +58,18 @@ const STORE_HANDLE = 'cafe';
  * had answered 200. Composed is not installed, and the admin's "Available / Install" was telling the
  * truth nobody read.
  *
- * ★★★ pk33 — `demo-gate` JOINED THIS LIST, and it is a DECISION rather than a tidy-up: the gate arrives
- * INSTALLED at the demo's birth, and the demo is the four shops — shoes, outlet, café, totem — the whole of
- * it, the counter included. Until this slice NOTHING in the birth installed it: not `bin/seed-box.mjs`, not
- * `seed/vitrine.mjs`, not `seed/outlet.mjs`, not this file. The app's own README said "Install the app for the
- * tenant", i.e. a HAND GESTURE somebody had to remember, and on the bench of 11/09 nobody had — the demo had
- * been served with its front door wide open for days with every birth green underneath.
+ * ⛔⛔ THE GATE APP USED TO BE ON THIS LIST AND IT LEFT WITH THE APP (v0.4). It filled `storefront:gate`, and
+ * what that slot costs is not a screen — it is the ROUTING. The product asks, at the edge of every store
+ * route, whether an INSTALLED app fills it, so the mere install put every store of this box on the dynamic
+ * tree: measured on the deployed box, every route answered `private, no-cache, no-store` and a robot got the
+ * interstitial at every URL, with no `<title>`. The sentence a visitor is owed is a BLOCK now
+ * (`demo-setup/demo_ribbon`), which is rendered by the slot it was dropped into and costs the cache nothing.
  *
- * ⚠️ IT IS HERE AND NOT IN `seed/box.json` FOR THE REASON `payment-pos` IS: installing is per TENANT, and this
- * is the only file that installs anything for `forgecafe`.
- *
- * ★★★ pk36/d1 — AND WHAT USED TO FOLLOW THIS INSTALL IS GONE, which is the whole of that slice. Until today a
- * `dropGateOnTheCafe` ran in the same breath and took the gate's placement back off the café, because the fork
- * resolved `storefront:gate` through the kit's registry (`{}` by design) and a STRUCTURAL slot it cannot draw
- * REFUSES the page. pk35/d2 gave the fork a composition of its own and a `codegen` script, so
- * `storefront-coffee/src/lib/extensions/generated/gate-registry.tsx` exists and resolves `demo-gate` to both
- * of its faces — the café DRAWS the gate now, and `bin/front-app-reach.guard.mjs` grades that pair instead of
- * waiving it. ⇒ the install below is the whole gesture: every store of this tenant keeps what it places. */
-export const APPS = ['subscriptions', 'reviews', 'payment-pos', 'demo-gate'];
+ * ⚠️ `demo-setup` IS NOT ON THIS LIST EITHER, AND THAT IS THE OLDER DECISION OF THE TWO: a fork belongs to the
+ * customer, and this tenant's vitrine is a fork that draws its own chrome. The café's copy of the ribbon is
+ * the fork's to place, which is why `storefront-coffee` COMPOSES the app (so the block can be drawn at all)
+ * while the instance places nothing there — the shape `seed/demo-setup.json` already writes with `"cafe": null`. */
+export const APPS = ['subscriptions', 'reviews', 'payment-pos'];
 
 /** ★ THE CURATION. Five in, one out, and the one that is out is out ON PURPOSE (`seed/catalog.json` calls it
  *  a rotating lot). Written as the handles that ARE subscribable rather than as the one that is not: a

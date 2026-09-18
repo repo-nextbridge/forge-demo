@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@fontsource/urbanist": "^5.2.5",
-    "@forge/ext-demo-gate": "file:../apps/demo-gate",
+    "@forge/ext-demo-setup": "file:../apps/demo-setup",
     "@forgeco/ext-banners": "file:vendor/forgeco-ext-banners-0.3.0.tgz",
     "@forgeco/ext-feed": "file:vendor/forgeco-ext-feed-0.3.0.tgz",
     "@forgeco/ext-leads": "file:vendor/forgeco-ext-leads-0.3.0.tgz",

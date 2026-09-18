@@ -4,8 +4,8 @@
 //
 // ⛔ THE DEFECT THIS HOLDS, MEASURED ON THIS TREE 2026-09-16. A plain run of `bash bin/test.sh` ended with
 // `ℹ pass 1145 · ℹ fail 0 · ℹ skipped 45` and exited 0. Forty-five rules had REPORTED instead of running —
-// among them every rule that compiles this box's own apps (`apps/demo-gate`, `apps/demo-setup`,
-// `apps/payment-pos`) — and their names were scattered through nine hundred lines above a summary that ended
+// among them every rule that compiles this box's own apps (`apps/demo-setup`, `apps/payment-pos`)
+// — and their names were scattered through nine hundred lines above a summary that ended
 // in `fail 0`. Thirty-six of the forty-five had ONE cause, and nothing at the end of the run named it.
 //
 // ★ NOT CHECKED STAYS A LEGITIMATE ANSWER on a developer's machine — `bin/test.sh` says at length why, and
@@ -65,7 +65,7 @@ const run = ({ tests, pass, skipped, skips = [] }) =>
 
 test('★★★ a run with NOT CHECKED tests ends with the COUNT, and the count is not the pass count', () => {
   const { out } = census(
-    run({ tests: 1190, pass: 1145, skipped: 45, skips: ['★★ apps/demo-gate COMPILES where it lives # NOT CHECKED — no checkout'] }),
+    run({ tests: 1190, pass: 1145, skipped: 45, skips: ['★★ apps/demo-setup COMPILES where it lives # NOT CHECKED — no checkout'] }),
   );
   assert.match(out, /NOT CHECKED · 45 of 1190/, `the census does not state how many of how many:\n${out}`);
   assert.match(out, /GRADED 1145\/1190 · NOT CHECKED 45/, `the closing line does not separate graded from reported:\n${out}`);
@@ -80,10 +80,10 @@ test('★★★ …and it NAMES them, one by one — a count with no names is a 
       tests: 3,
       pass: 1,
       skipped: 2,
-      skips: ['★★ apps/demo-gate COMPILES where it lives # NOT CHECKED — no checkout', '★★ totem’s OWN suite passes # NOT CHECKED — not installed'],
+      skips: ['★★ apps/demo-setup COMPILES where it lives # NOT CHECKED — no checkout', '★★ totem’s OWN suite passes # NOT CHECKED — not installed'],
     }),
   );
-  assert.match(out, /apps\/demo-gate COMPILES where it lives/, `the skipped tests are counted and not named:\n${out}`);
+  assert.match(out, /apps\/demo-setup COMPILES where it lives/, `the skipped tests are counted and not named:\n${out}`);
   assert.match(out, /totem’s OWN suite passes/, out);
 });
 

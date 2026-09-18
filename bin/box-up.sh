@@ -523,9 +523,12 @@ admin_siblings_json() { # [host] [overrides-json]
                                   else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]' "$BOX"
 }
 
-# THE GATE'S ADMIN LINK PER TENANT, DERIVED FROM THE SAME DECLARATION (pk38/d8).
+# THE ADMIN LINK PER TENANT, DERIVED FROM THE SAME DECLARATION (pk38/d8).
 #
-# `{"<tenant id>": "<absolute origin>"}` — what `apps/demo-gate` opens each tenant's `/enter` on. It is the
+# `{"<tenant id>": "<absolute origin>"}` — the origin whose `/enter` route redeems each tenant's operator
+# access key. ⚠️ ITS ONE CONSUMER LEFT THIS REPOSITORY IN v0.4 (it was the gate app's hub screen); the
+# variable is still written because the admin origins are a fact about this box and `bin/box-domains.guard.mjs`
+# grades them, and because a box that stops declaring them cannot be promoted. It is the
 # sibling switcher's map with the entries flattened to origins, and it is a FUNCTION of the same two inputs
 # for the same reason: a hostname is data this box declares once, and a third tenant must arrive in both
 # without a second edit.

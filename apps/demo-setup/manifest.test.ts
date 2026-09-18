@@ -10,11 +10,20 @@ import { manifest } from './manifest';
 import pkg from './package.json' with { type: 'json' };
 
 const blocks = manifest.contact?.blocks ?? [];
+
+/** The MARKS, and the slot each one is meant for. ⛔ `demo_ribbon` is deliberately NOT here: it is not a mark
+ *  and it names no `area`, which is the whole difference between the two kinds of block this app declares. */
 const SLOT_OF = {
   header_brand: 'storefront:header.brand',
   drawer_brand: 'storefront:header.drawer_brand',
   footer_brand: 'storefront:footer.brand',
 } as const;
+
+const MARKS = Object.keys(SLOT_OF);
+const marks = blocks.filter((b) => MARKS.includes(b.component));
+
+/** The demonstration notice — one block, and the rules that hold for it are the opposite of the marks'. */
+const RIBBON = 'demo_ribbon';
 
 // ⛔ THE FOURTH MARK LEFT IN pk28 AND THE SLOT DID NOT. `storefront:account.brand` — the login box — is drawn
 // by the CHECKOUT, which we host and nobody forks, so a mark there must be configurable without a fork: it is
@@ -31,23 +40,50 @@ describe('demo-setup manifest', () => {
     expect(manifest.kind).toBe('app');
   });
 
-  it('★★ declares THREE blocks — one per place the VITRINE shows a mark, never one placed three times', () => {
+  it('★★ declares THREE marks — one per place the VITRINE shows one, never one placed three times', () => {
     // ⛔ THE RULE THE PREVIOUS DESIGN BROKE, and it is the kernel's: `placement: 'single'` is enforced per
     // (store, app, component), so one component in two slots is refused with `conflict`. A component per
     // place is what lets a store put its mark in each of them at all — and what makes the board say which.
-    expect(blocks.map((b) => b.component).sort()).toEqual(Object.keys(SLOT_OF).sort());
-    expect(new Set(blocks.map((b) => b.component)).size).toBe(3);
-    for (const block of blocks) {
+    expect(marks.map((b) => b.component).sort()).toEqual(MARKS.slice().sort());
+    expect(new Set(blocks.map((b) => b.component)).size).toBe(blocks.length);
+    for (const block of marks) {
       expect(block.placement).toBe('single');
-      expect(block.surface).toBe('storefront');
     }
+    // …and every block of this app, mark or not, renders on the storefront surface. `admin` is the only
+    // other value the contract offers, and this app draws nothing in the operator's face.
+    for (const block of blocks) expect(block.surface).toBe('storefront');
+  });
+
+  it('★★★ the demo NOTICE is a BLOCK — never a gate, which is what filling `storefront:gate` would be', () => {
+    // ⛔ THE MEASUREMENT THIS SLICE WAS BORN FROM. An app INSTALLED on `storefront:gate` takes the whole
+    // store off the cacheable tree — the product asks at the edge of every store route whether an installed
+    // app fills it — so the deployed box answered `private, no-cache, no-store` on every route and served a
+    // robot the interstitial, with no `<title>`, at every URL. This block costs none of that: it renders
+    // where it was dropped, and a store with nothing placed renders exactly what it rendered before.
+    // ⇒ SABOTAGE: give this app a hook on that target and `bin/no-gate.guard.mjs` names it.
+    const ribbon = blocks.find((b) => b.component === RIBBON);
+    expect(ribbon, 'the app declares no demo notice at all').toBeTruthy();
+    for (const hook of manifest.contact?.hooks ?? []) expect(hook.target).not.toBe('storefront:gate');
+  });
+
+  it('★★ the notice names NO `area` and is `repeatable` — the two ways it is not a mark', () => {
+    const ribbon = blocks.find((b) => b.component === RIBBON);
+    // An absent `area` is the contract's own way of saying «no page constraint»: the notice belongs wherever
+    // a store is looked at, and WHICH slot that is gets decided in Compose, not here.
+    expect(ribbon?.area).toBeUndefined();
+    // It cedes no node — it stands beside whatever is in the slot — and the box needs it in more than one
+    // place per store, because the shop's chrome and the funnel's chrome are two different pairs of slots.
+    expect(ribbon?.placement).toBe('repeatable');
+    // ⛔ And it takes no config: a sentence an operator can edit is a sentence an operator can EMPTY, and an
+    // emptied honesty notice looks exactly like a shop that never had one.
+    expect(ribbon?.config_schema).toBeUndefined();
   });
 
   it("★★ every block's `area` is the PREFIX of the slot it is meant for — the kernel validates by prefix", () => {
     // The kernel never learns a theme's slot set (trava 7): it checks the surface prefix and, when the block
     // declares one, the page prefix. An `area` that disagrees with the slot the seed places into is a
     // placement refused at birth — which is a red nobody sees until a box is being born.
-    for (const block of blocks) {
+    for (const block of marks) {
       const slot = SLOT_OF[block.component as keyof typeof SLOT_OF];
       expect(slot, `block ${block.component} is not one this test knows a slot for`).toBeTruthy();
       expect(block.area).toBe(slot.slice('storefront:'.length).split('.')[0]);
@@ -90,7 +126,7 @@ describe('demo-setup manifest', () => {
   it('★ the TAGLINE is on the footer block and on NO other — the asymmetry is the point', () => {
     // Only `footer.brand`'s fallback cedes a sentence along with the mark, so only that block has to be able
     // to say one. A tagline offered on the header would be a field that renders nowhere.
-    for (const block of blocks) {
+    for (const block of marks) {
       const fields = (block.config_schema ?? []).map((f) => f.name);
       expect(fields).toEqual(
         block.component === 'footer_brand'
@@ -101,7 +137,7 @@ describe('demo-setup manifest', () => {
   });
 
   it('★ the logo is a `type:id` ref — which is what buys the asset picker for zero lines of admin', () => {
-    for (const block of blocks) {
+    for (const block of marks) {
       const logo = (block.config_schema ?? []).find((f) => f.name === 'logo');
       expect(logo?.type).toBe('id');
       // Every field is optional: a freshly dropped block is a legal state, and a required field would make
@@ -134,13 +170,19 @@ describe('demo-setup manifest', () => {
     // is a block that renders nothing. Both halves are declared in this one file, so both are graded here.
     const wiring = (pkg as { forge: { wiring: { blocks: Record<string, { module: string; export: string; props: string[]; surface: string }> } } }).forge.wiring.blocks;
     const exports = (pkg as { exports: Record<string, string> }).exports;
-    expect(Object.keys(wiring).sort()).toEqual(Object.keys(SLOT_OF).sort());
+    // The two halves are DERIVED from each other rather than typed twice: every block the manifest declares
+    // is wired, and every wired component is declared. A wiring entry for a block nobody declares is a
+    // component the composition would solder and the kernel would never place.
+    expect(Object.keys(wiring).sort()).toEqual(blocks.map((b) => b.component).sort());
     for (const [component, entry] of Object.entries(wiring)) {
       expect(entry.surface).toBe('storefront');
       expect(exports[entry.module], `${component} points at ${entry.module}, which is not exported`).toBeTruthy();
-      // ⚠️ `storeHref` IS NOT OPTIONAL. Without it the mark's anchor is a bare `/`, which walks a shopper
-      // straight out of the store they are in under `/s/<id>`.
-      expect(entry.props).toEqual(['config', 'storeHref']);
+      // ⚠️ `storeHref` IS NOT OPTIONAL FOR A MARK. Without it the mark's anchor is a bare `/`, which walks a
+      // shopper straight out of the store they are in under `/s/<id>`. ⛔ And the notice asks for NEITHER of
+      // the mark's props: it renders no config and its one link deliberately LEAVES the store, so a
+      // `storeHref` there would be a function with nothing to apply to. What it asks for is `locale`, which
+      // is what picks between the three languages its copy ships in.
+      expect(entry.props).toEqual(component === RIBBON ? ['locale'] : ['config', 'storeHref']);
     }
   });
 });

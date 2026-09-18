@@ -62,8 +62,8 @@ bash "$here/bin/install-storefront.sh" totem
 ( cd "$app" && FORGE_BUILD_STANDALONE=1 npm run build )
 
 # ⚠️ THE ENTRY IS NESTED, AND IT IS NOT THE VITRINE'S PATH. `totem/next.config.mjs` sets
-# `outputFileTracingRoot` to the REPOSITORY root, because the demo gate this app renders lives one directory
-# up (`apps/demo-gate/`) and the tracer has to be allowed to reach it. Next then mirrors the path from that
+# `outputFileTracingRoot` to the REPOSITORY root, because the instance app this front renders lives one
+# directory up (`apps/demo-setup/`) and the tracer has to be allowed to reach it. Next then mirrors the path from that
 # root into the output, so the server lands at `.next/standalone/totem/server.js` — the coffee vitrine, whose
 # tracing root is the app itself, gets `.next/standalone/server.js`. The Dockerfile's CMD says the same thing
 # from the other side; checking the wrong one here would let a broken image build.
