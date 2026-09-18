@@ -31,6 +31,7 @@
 
 import { useEffect, useState } from 'react';
 import { GATE_TENANTS, type GateFace, type GateTenant } from '../faces.generated';
+import { ADMIN_ART, CARD_ART } from './art';
 import { GATE_LANG_COOKIE, HUB, HUB_MARKS, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import styles from './gate.module.css';
 import { GATE_MARK } from './marks';
@@ -123,7 +124,7 @@ function GlobeIcon() {
 function CardBody({ face, lang, accent }: { face: GateFace; lang: Lang; accent: string }) {
   const copy = HUB[lang].faces[face.key];
   const mark = HUB_MARKS[face.key];
-  const art = `./art/card-${face.store ?? 'store'}.webp`;
+  const art = CARD_ART[face.key];
   return (
     <>
       <span className={styles.cardMark}>
@@ -144,7 +145,12 @@ function CardBody({ face, lang, accent }: { face: GateFace; lang: Lang; accent: 
       <span className={styles.hairline} />
       <span className={styles.cardPlace}>{copy?.place ?? ''}</span>
       {/* eslint-disable-next-line @next/next/no-img-element -- the gate ships its own art and no optimiser */}
-      <img className={styles.cardArt} src={art} alt="" />
+      {/* ⚠️ A face with no art draws the card WITHOUT a picture rather than an <img> pointing nowhere: a
+          broken image is a worse answer than no image, and `art.test.ts` is where that is caught as a defect
+          instead of being discovered here as a hole. */}
+      {art ? (
+        <img className={styles.cardArt} src={art.src} width={art.width} height={art.height} alt="" />
+      ) : null}
       <span className={styles.cardFoot}>
         <span>{copy?.foot ?? ''}</span>
         <ArrowOut />
@@ -232,7 +238,7 @@ function ShopCard({
 function AdminWindow({ tenant, lang, adminUrls }: { tenant: GateTenant; lang: Lang; adminUrls?: Readonly<Record<string, string>> }) {
   const copy = HUB[lang].tenants[tenant.id];
   const href = adminHrefOf(tenant, adminUrls);
-  const shot = `./art/admin-dashboard${tenant.id === GATE_TENANTS[0]?.id ? '' : '-cafe'}.webp`;
+  const shot = ADMIN_ART[tenant.id];
   return (
     <div className={styles.window} data-admin={tenant.id}>
       <div className={styles.windowBar}>
@@ -245,7 +251,9 @@ function AdminWindow({ tenant, lang, adminUrls }: { tenant: GateTenant; lang: La
       </div>
       <div className={styles.screen}>
         {/* eslint-disable-next-line @next/next/no-img-element -- the gate ships its own art and no optimiser */}
-        <img className={styles.screenShot} src={shot} alt="" />
+        {shot ? (
+          <img className={styles.screenShot} src={shot.src} width={shot.width} height={shot.height} alt="" />
+        ) : null}
         <div className={styles.screenFade} />
         {/* ⚠️ An admin with no address is a declaration nobody finished. The window still draws — the visitor
             is told this tenant HAS an admin — and the button simply is not a link. */}
