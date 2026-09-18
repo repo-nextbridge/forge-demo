@@ -1,0 +1,24 @@
+# ⛔⛔ ESTE DIRETÓRIO TEM DE EXISTIR E TEM DE FICAR VAZIO. As duas metades são load-bearing e cada uma já
+# custou uma caixa.
+#
+# ── POR QUE TEM DE EXISTIR ────────────────────────────────────────────────────────────────────────────────
+# `bin/deploy.sh` o entrega (DELIVER) e recusa o deploy inteiro se o caminho não existir: `this repository has
+# no 'extensions'`. Git não versiona diretório vazio, então sem este arquivo um CLONE NOVO não o tem — e a
+# recusa do deploy é a primeira coisa que alguém encontra.
+#
+# ── POR QUE TEM DE FICAR VAZIO ────────────────────────────────────────────────────────────────────────────
+# Os três apps desta caixa (`demo-gate`, `demo-setup`, `payment-pos`) são COMPOSTOS DENTRO DAS IMAGENS desde
+# `fd018ff` — é literalmente o commit que apagou o conteúdo daqui. O kernel escaneia este diretório no boot e
+# RECUSA SUBIR se encontrar um app que a plataforma já provê:
+#
+#     Error: refusing to boot: the extension at /app/extensions/demo-gate claims id "demo-gate",
+#     which is already provided by the platform. An external extension may not shadow another.
+#
+# ⛔ MEDIDO 2026-09-18, EM PRODUÇÃO. O `deploy.sh` recusou por falta do diretório; a reação natural foi rodar
+# `bin/pack-apps.sh`, que o encheu com os três apps; o deploy entregou; e o kernel entrou em LOOP DE REINÍCIO
+# com `store` e `outlet` em 500. A demo pública ficou fora do ar. O diretório vazio não é housekeeping: é a
+# diferença entre a caixa subir e não subir.
+#
+# ⚠️ E `bin/pack-apps.sh` NÃO DEVE SER RODADO PARA ESTA CAIXA. Ele produz exatamente o artefato que o kernel
+# recusa. Ele continua existindo para o modelo de instância que MONTA apps em vez de compor — ver o cabeçalho
+# dele. `bin/composed-apps-not-mounted.guard.mjs` é o vermelho que impede a repetição.

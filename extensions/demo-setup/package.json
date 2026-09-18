@@ -1,9 +1,0 @@
-{
-  "name": "@forge/ext-demo-setup",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "forge": {
-    "manifest": "./forge-extension.json"
-  }
-}
