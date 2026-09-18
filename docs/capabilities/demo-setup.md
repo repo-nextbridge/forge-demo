@@ -3,14 +3,20 @@
 **What this box can do that it could not before:** put its own name and logo in each of the three places its
 **shop window** shows one, **separately**, from an app that lives in this repository and in no Forge release.
 
+★★★ **AND SINCE v0.4 IT CARRIES ONE MORE BLOCK THAT IS NOT A MARK: the demonstration ribbon** — the bar that
+tells a visitor nothing here is charged or shipped. It arrived here because the box's other UI app was
+retired: that one filled `storefront:gate`, and an app merely INSTALLED on that slot takes every store off the
+cacheable tree (`private, no-cache, no-store` on every route, and an interstitial handed to every robot at
+every URL, with no `<title>` — measured on the deployed box, 18/09). A block costs the cache nothing.
+
 ---
 
 ## The capability, in one paragraph
 
 A Forge storefront draws a wordmark in four places: the header bar, the mobile drawer's head, the footer's
 brand column and the login box of the account screens. Out of the box all four say `forge.`, and the footer
-adds *"Leve. Inteligente. Sua."* under it. `demo-setup` declares **three blocks** — the three the **vitrine**
-draws — each placed and configured on its own in Compose. Every one of them draws either a **logo** picked
+adds *"Leve. Inteligente. Sua."* under it. `demo-setup` declares **three marks** — the three the **vitrine**
+draws — each placed and configured on its own in Compose, plus the **demonstration ribbon**. Every one of them draws either a **logo** picked
 from the asset library or a **wordmark** — a name plus a tail painted with the theme's accent — and the
 footer's block also carries the shop's own **tagline**.
 
@@ -30,8 +36,8 @@ and nothing else; the block that fills them belongs to whoever wants a mark. Thi
 wrote it. It is composed into this instance's images (`instanceApps` in `composition.json`), stamped not
 offerable, and a fleet list that named it would be refused with rule `not-carried`.
 
-★ **That is the demonstration, and it is deliberate.** The app is small on purpose: three blocks, one shared
-render, no admin page, no scope, no table, no migration. A customer asking *"how do I extend Forge?"* is shown
+★ **That is the demonstration, and it is deliberate.** The app is small on purpose: four blocks, two shared
+renders, no admin page, no scope, no table, no migration. A customer asking *"how do I extend Forge?"* is shown
 this directory, and the answer is a package and a declaration.
 
 ## A block per place and not one for all — what changed and why
@@ -54,6 +60,14 @@ the logo in each place is a fair price, and it buys more freedom.
 | `header_brand` | `storefront:header.brand` | the shop's top bar |
 | `drawer_brand` | `storefront:header.drawer_brand` | the mobile drawer's head |
 | `footer_brand` | `storefront:footer.brand` | the footer's brand column (**+ the tagline**) |
+| `demo_ribbon` | *(no `area` — any slot of the surface)* | wherever an operator drops it; `footer.end` covers every vitrine page **and** the account screens |
+
+★ **The fourth one breaks two of this app's own rules, and both on purpose.** It declares **no `area`**,
+because a notice belongs wherever a store is looked at and WHICH slot that is gets decided in Compose; and it
+is **`repeatable`** where the marks are `single`, because a mark CEDES a node the front would otherwise draw
+itself (two in one header is two wordmarks) while this one stands beside whatever is there. It also takes
+**no config**: a sentence an operator can edit is a sentence an operator can empty, and an emptied honesty
+notice looks exactly like a shop that never had one.
 
 ⚠️ `storefront:account.brand` — the login box — is the **fourth slot and not a fourth block here**. The slot
 did not move and still cedes its whole node; what changed in pk28 is who fills it.
@@ -151,11 +165,11 @@ what rotted through four repairs.
 a fork draws by itself what a declared block would draw, the instance removes that
 store's placement.** `seed/outlet.mjs` uses the same pattern for the PLP shelf.
 
-⚠️ **This line used to cite `seed/coffee.mjs::dropGateOnTheCafe` as the other example and that function no
-longer exists (pk36/d1).** The café's gate was removed for a different reason — the fork could not DRAW the
-structural slot — and once it learned to regenerate its own registry the removal and the `gate: false` that
-declared it went together. ⇒ ★ **The two cases were never the same rule**: this one is a fork that draws the
-thing ITSELF, that one was a fork that could draw NOTHING. Only this one is the 100%-freedom rule.
+⚠️ **The other example this line used to cite was the café's gate, and there is no gate any more (v0.4).**
+That removal was never the same rule as this one: this is a fork that draws the thing ITSELF, that was a fork
+that could draw NOTHING. Only this one is the 100%-freedom rule. ⛔ **And the ribbon is neither**: it is not
+the customer's content, it is this box saying out loud that its prices are not real — so the café's vitrine
+COMPOSES it (see below) and whether it is PLACED is the operator's gesture, per store, in Compose.
 
 ⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
 placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,
@@ -178,49 +192,48 @@ which is the sentence this box already writes for the counter.
 its own copy of the same drawing. The art is still this repository's and still graded by
 `bin/chrome-logo-crop.guard.mjs`.
 
-## ⚠️ AND THE FORK STILL CANNOT REACH THIS APP'S CODE — measured 2026-09-11 (pk32/d1)
+## ★★★ AND THE FORK REACHES THIS APP NOW — the other half, closed in v0.4
 
-That is a different question from which store is dressed, and removing the placements does not answer it. The
-café is served by `storefront-coffee/`, a **fork** of the reference vitrine, and a fork reaches an app of this
-box only if somebody wires the two together. It is not wired: the fork's `package.json` does not name
-`@forge/ext-demo-setup`, its `next.config.mjs` does not transpile it, and no file of it imports
-`@forge/ext-demo-setup/block/marks`.
+That was always a different question from which store is DRESSED, and removing the placements never answered
+it. The café is served by `storefront-coffee/`, a **fork** of the reference vitrine, and a fork reaches an app
+of this box only if somebody wires the two together. Until this slice it was not wired — no dependency, no
+`transpilePackages`, no import — and `bin/front-app-reach.guard.mjs` said so on every run as a **declared
+divergence**, because whoever owns a fork is entitled to decide against a block and nobody is entitled to not
+know.
 
-★ **It is still a defect even though the page looks right.** The café has chrome of its own (`CoffeeChrome`)
-and a mark of its own, so the shop is not visibly broken; whoever owns the fork is entitled to *decide* against
-this block. What nobody is entitled to is not knowing. Since pk32/d1 `bin/front-app-reach.guard.mjs` says
-it by name on every run, and the decision is written there as a declared divergence rather than implied by
-silence.
+⇒ **What changed is that the app stopped being only marks.** The demonstration ribbon is not the customer's
+content, and the café's shop window is one of the four that owe a visitor that sentence. So the fork took all
+four gestures — the `file:../apps/demo-setup` dependency, `transpilePackages`, the tracing root it already
+had, and **`npm run codegen`**, which rewrote `src/lib/extensions/generated/registry.tsx` from the fork's own
+`composition.json`. The waiver went with the gap: the guard **grades** the pair now and goes red the day the
+fork stops reaching the app.
 
-★ **E desde a pk35/d7 nada é colocado no café** — `seed/demo-setup.json` declara `"cafe": null`, porque as
-três marcas foram **medidas desenhando em zero telas** ali: o layout de conta do checkout **substitui as duas
-regiões**, e o chrome de referência só chega como *fallback* que nunca renderiza. ⇒ hoje isto **não custa nada
-a um comprador**, e continua declarado porque o ALCANCE ainda falta: no dia em que um operador arrastar um
-destes blocos para o café no Compose, ele **não desenharia nada**.
+⛔ **It is still a GENERATED surface, and it is still not regenerated by anything in this repository.**
+`bin/build-coffee.sh` mentions no codegen, so the command is a hand gesture inside `storefront-coffee/`.
+Welding the import by hand is not the fix — that is what the counter's old gate registry did, and that file's
+prose had already rotted by the time pk31/d1 read it.
 
-⚠️ **Why it is not simply wired yet:** the file that connects an app to a front is
-`storefront-coffee/src/lib/extensions/generated/registry.tsx`, a **generated** surface (its own first line says
-*do not edit*), and nothing in this repository regenerates it — `bin/build-coffee.sh` mentions no codegen.
-Welding the import by hand is what `totem/src/lib/gate/registry.tsx` did, and that file's prose had already
-rotted by the time pk31/d1 read it.
-
-⛔ **And the sentence that used to end this paragraph — "the tool is owed by the product (pk32/p1-parto)" — is
-false, measured 13/09.** `@forgeco/surface-codegen` is a package of the pinned release *and* on its
-publishable list, so `bin/vendor-packages.sh` already writes its tarball into `storefront-coffee/vendor/` on
-every build, and the fork's `package.json` already pins it under `overrides`. What is missing is **this
-repository's**: the fork carries no `composition.json` list of its own, no `codegen` script, and no dependency
-on the tool. Run against the fork it answers `6 generated file(s) do not match composition.json` — so wiring
-this app is one slice with the café's gate and with the fork's five other generated surfaces, not three lines
-in a package.json. The declared divergence in `bin/front-app-reach.guard.mjs` now carries those three
-conditions as `until`, and goes **red** the day they are all met and the entry is still there.
+★ **THE COUNTER IS THE EXCEPTION, AND IT IS DECLARED PER COMPONENT.** `totem/` is a cut of no Forge surface,
+so its jurisdiction is the apps it NAMES — and it names this one, because it draws the ribbon
+(`totem/src/components/DemoNotice.tsx`, mounted in its own layout: the counter has no Compose board). The
+three MARKS are waived there, one entry each, with `waitsOn: null` — the counter has no header bar, no mobile
+drawer and no footer column, which is the same decision `seed/demo-setup.json` already writes as
+`"balcao": null`. ⚠️ **One waiver per component and not one per app**, so the day the ribbon's import
+disappears the guard is red instead of covered.
 
 ## Graded by
 
-- `apps/demo-setup/manifest.test.ts` — three blocks, their areas, no default hook, no scope, the tagline on
-  one block only, the wiring against the package's own exports, and the login box being **absent** from all
-  three of the places that would have to name it.
-- `apps/demo-setup/block/marks.test.tsx` — what the three actually draw, including the exclusivity, the trim,
-  the store-scoped link, the tagline having exactly one home, and no export claiming the `account` place.
+- `apps/demo-setup/manifest.test.ts` — three marks and their areas, the ribbon declaring neither an `area` nor
+  a config, no default hook, no hook on `storefront:gate`, no scope, the tagline on one block only, the wiring
+  derived against the blocks the manifest declares, and the login box being **absent** from all three of the
+  places that would have to name it.
+- `apps/demo-setup/block/marks.test.tsx` — what the three marks actually draw, including the exclusivity, the
+  trim, the store-scoped link, the tagline having exactly one home, and no export claiming the `account` place.
+- `apps/demo-setup/block/ribbon.test.tsx` — the sentence being present with **no observer at all** (arming is
+  what hides it, so a client that cannot reveal must never arm), the beat measured by the clock at **1000 ms**
+  (999 ms still hidden), the reveal firing once and only on scroll, and no form, no button and no cookie.
+- `bin/no-gate.guard.mjs` — that no app of this box declares a hook on `storefront:gate`, read from each
+  manifest's CODE with the comments stripped first.
 - `seed/demo-setup.test.mjs` — the declaration and the whole seed driven over a fake port: install, upload,
   place, and the filename becoming an asset id.
 - `bin/chrome-logo-crop.guard.mjs` — every declared logo in **both** declarations, by proportion, off the
@@ -229,7 +242,7 @@ conditions as `until`, and goes **red** the day they are all met and the entry i
   address while holding the catalog key it stamped beside it. Jurisdiction derived from the manifests, both
   spellings of the sidecar name (written out and composed), and the scanner proven to read code rather than
   the prose that explains it.
-- `bin/front-app-reach.guard.mjs` — whether a front of this box can actually DRAW each of the three, derived
+- `bin/front-app-reach.guard.mjs` — whether a front of this box can actually DRAW each of the four, derived
   from `composition.json` + `forge.wiring` against each front's manifest, Next config and source. The rule
   itself is graded on fixtures in `bin/front-apps.test.mjs`, because this tree is healthy wherever its
   declared divergences are and a rule proven only against a healthy tree is a rule proven to be quiet.
