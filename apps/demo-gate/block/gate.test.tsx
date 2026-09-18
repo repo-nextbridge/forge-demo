@@ -1,240 +1,206 @@
-// The gate block's PAGE — the masthead (wordmark, headline), the foot (notice, language selector),
-// the way back, and the switch into the architecture screen. jsdom smoke test; the visual fidelity is the human
-// gate (screenshots vs design-base/gate.dc.html).
+// THE GATE'S ONE SCREEN, HELD AGAINST THE ARTBOARD IT WAS DRAWN FROM.
 //
-// ★ pk35/d1 — THE DESTINATIONS THEMSELVES ARE `hub.test.tsx`'s, not this file's. What used to be asserted here
-// ("Abrir a loja", "Abrir o admin", the `/enter` href) was the two-card screen that PRECEDED the hub; those
-// statements moved WITH the cards, and they are stronger there because they are held against `seed/box.json`
-// instead of against strings. This file keeps what wraps the hub.
+// ★★★ WHAT THIS FILE IS FOR, AND IT IS NOT "does it render". The copy on this screen is TYPED rather than
+// derived (see the head of `../i18n`'s HUB section for why that is right HERE and wrong on a customer's box),
+// and typed copy is copy that can drift from the design silently. So the sentences are held against
+// `../design-base/gate-v2.dc.html` — the artboard itself, shipped beside the implementation for exactly this.
 //
-// ★★★ pk38/d7 — AND THE FIRST GROUP BELOW IS THE SLICE'S OWN RULE: THE HUB *IS* THE FIRST SCREEN. The hub was
-// added to a hero instead of replacing it, so a test that only looked for the hub stayed green over both. Each
-// assertion here names what must be GONE — the eyebrow, the "Loja demo." heading, the intro paragraph, the
-// second frame, the "carry on in this window" button — beside what must be there. The same shape as the
-// screen-switch test below, and for the same reason.
-//
-// ⚠️ AND THE LANGUAGE LIST IS NEVER TYPED: the per-language cases walk `LANGS` and take their expected words from
-// `STRINGS`/`ARCH`/`HUB`.
+// ⛔ AND THE OTHER HALF IS THE DERIVATION. The destinations are NOT typed: they come from
+// `../faces.generated.ts`, which `bin/gate-faces.mjs` renders out of `seed/box.json`. The tests below assert
+// that the screen draws what the DECLARATION carries — every shop, every tenant, every admin — because the
+// failure this app has already had once is a face that exists in the box and on no screen.
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test, vi } from 'vitest';
-import { GATE_FACES, GATE_TENANTS } from '../faces.generated';
-import { ARCH, HUB, LANGS, STRINGS } from '../i18n';
+import { GATE_TENANTS } from '../faces.generated';
+import { HUB, HUB_MARKS, LANGS, STRINGS } from '../i18n';
 import { GateBlock } from './gate';
-import { hubTally } from './hub';
+import { GATE_MARK } from './marks';
 
-const noop = async () => {};
-/** The tenant an admin override is handed to — read off the declaration, never a typed id. */
-const FIRST_TENANT = GATE_TENANTS[0]?.id ?? '';
-const tally = hubTally();
-/** The three LINES of the heading — the fourth clause rides the last one, in the accent. */
-const headlineLines = (lang: 'pt' | 'en' | 'es') => {
-  const [first, second, third] = HUB[lang].headline;
-  return [first, second, `${third} ${HUB[lang].headlineAccent}`] as const;
-};
-/** The heading's accessible name: those lines, as the browser reads one block per line. */
-const headline = (lang: 'pt' | 'en' | 'es') => headlineLines(lang).join(' ');
+const ARTBOARD = readFileSync(join(__dirname, '..', 'design-base', 'gate-v2.dc.html'), 'utf8');
 
-test('★★★ the first screen IS the hub — the hero it replaced is not drawn anywhere', () => {
-  const { container } = render(
+const shopsOf = (t: (typeof GATE_TENANTS)[number]) => t.faces.filter((f) => f.kind === 'shop');
+const allShops = GATE_TENANTS.flatMap(shopsOf);
+
+function draw(props: Partial<Parameters<typeof GateBlock>[0]> = {}) {
+  return render(
     <GateBlock
       siteUrl="https://forgecommerce.pro"
-      adminUrls={{ [FIRST_TENANT]: 'https://admin.demo.example' }}
       initialLang="pt"
-      dismiss={noop}
+      dismiss={props.dismiss ?? (() => Promise.resolve())}
+      {...props}
     />,
   );
-  // What the design puts there: the wordmark, the count as the headline, the cards, the notice.
-  expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
-  expect(screen.getByText(HUB.pt.notice)).toBeTruthy();
-  expect(screen.getByText('← voltar para forgecommerce.pro')).toBeTruthy();
-  expect(
-    container.querySelectorAll('[data-face]').length,
-    'the gate rendered no destination at all — the hub is not mounted',
-  ).toBe(GATE_FACES.length);
-
-  // ⛔ And what the 10/09 layout replaced. Held by TEXT, because the hero's strings are the only trace it can
-  // leave once its CSS classes are gone: a screen that drew it again would print one of these three.
-  for (const dead of ['Ambiente de demonstração', 'Demo environment', 'Entorno de demostración']) {
-    expect(screen.queryByText(dead), `the eyebrow "${dead}" is back above the hub`).toBeNull();
-  }
-  expect(
-    screen.queryByRole('heading', { name: /^(Loja|Demo store|Tienda) demo\.$/ }),
-    'the hero heading is back above the hub',
-  ).toBeNull();
-});
-
-test('★★ ONE frame on the screen, and it belongs to the tenant card', () => {
-  // The page used to wear a border of its own with the cards' borders inside it. The wrapper that carried it
-  // was `.frame`, and this runner keeps CSS-module class names unscoped (`vitest.config.ts`), so the element
-  // is nameable: a page that grows a second frame again is named here rather than found in a screenshot.
-  const { container } = render(
-    <GateBlock
-      siteUrl="https://x"
-      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
-      initialLang="pt"
-      dismiss={noop}
-    />,
-  );
-  expect(
-    container.querySelectorAll('[data-tenant]').length,
-    'no tenant card drawn — this rule has no subject',
-  ).toBe(GATE_TENANTS.length);
-  expect(
-    container.querySelector('[class*="frame"]'),
-    'the page wears a frame of its own again, with the cards’ frames inside it',
-  ).toBeNull();
-});
-
-test('⛔ there is no "carry on in this window" button on a face the box publishes', () => {
-  // The cards ARE the choice: the one the visitor is standing on is a dismiss form, and a seventh button
-  // offering the same thing in words is what this slice took away.
-  const here = GATE_FACES.find((face) => face.kind === 'shop' && face.host)?.host as string;
-  const { container } = render(
-    <GateBlock siteUrl="https://x" here={here} initialLang="pt" dismiss={noop} />,
-  );
-  expect(container.querySelector('[data-here-row]')).toBeNull();
-  expect(screen.queryByRole('button', { name: /continuar nesta janela/i })).toBeNull();
-});
-
-test('the footer selector switches the copy live (PT → EN → ES)', () => {
-  render(
-    <GateBlock
-      siteUrl="https://x"
-      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
-      initialLang="pt"
-      dismiss={noop}
-    />,
-  );
-  expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'en' }));
-  expect(screen.getByText(HUB.en.notice)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'es' }));
-  expect(screen.getByText(HUB.es.notice)).toBeTruthy();
-});
-
-test('★★ the headline is the DESIGN’s sentence — four clauses, three declared lines', () => {
-  render(<GateBlock siteUrl="https://x" initialLang="pt" dismiss={noop} />);
-  const heading = screen.getByRole('heading', { level: 1 });
-  const lines = headlineLines('pt');
-  expect(heading.textContent).toBe(lines.join(''));
-  // ⛔ ONE ELEMENT PER LINE — three, not four. Leaving the break to a character measure is what broke it into
-  // "2 tenants. 4 / lojas. 2 admins." in a real render, and the fourth clause makes the last line the longest
-  // of the three in every language, so a measure would cut THAT one now.
-  expect([...heading.children].map((line) => line.textContent)).toEqual([...lines]);
-  // …and the fourth clause is the accented one, inside the LAST line rather than a line of its own.
-  const accent = heading.querySelector('strong');
-  expect(accent?.textContent, 'the fourth clause is not drawn in the accent').toBe(
-    HUB.pt.headlineAccent,
-  );
-  expect(
-    [...heading.children].at(-1)?.contains(accent as Node),
-    'the accented clause is not on the last line',
-  ).toBe(true);
-  // …and the words really are the artboard's — that rule lives in `hub.test.tsx`, over every sentence.
-  expect(tally.shops + tally.admins, 'the declaration carries no face at all').toBeGreaterThan(1);
-});
-
-test('⛔ the masthead carries NO lede — the headline says it, and says it once', () => {
-  // The screen was read as too crowded to scan, and the paragraph opposite the headline was the first thing
-  // out: thirteen words of "what a tenant is" against the four the headline now ends with. Held by TEXT in
-  // all three languages, because a copy edit that put it back would put it back as a sentence, not as a class.
-  const { container } = render(<GateBlock siteUrl="https://x" initialLang="pt" dismiss={noop} />);
-  for (const dead of [
-    /Cada tenant é uma conta isolada/i,
-    /Each tenant is an isolated account/i,
-    /Cada tenant es una cuenta aislada/i,
-  ]) {
-    expect(dead.test(container.textContent ?? ''), `the lede "${dead.source}" is back`).toBe(false);
-  }
-  // …and the masthead is one column now: the wordmark and the heading, nothing beside them.
-  const masthead = container.querySelector('[class*="masthead"]');
-  expect(masthead?.querySelector('p'), 'the masthead grew a paragraph again').toBeNull();
-  expect(masthead?.querySelector('h1'), 'the masthead lost its heading').toBeTruthy();
-});
-
-test('the admin origin this box was promoted to reaches the hub, and lands on /enter', () => {
-  const { container } = render(
-    <GateBlock
-      siteUrl="https://x"
-      adminUrls={{ [FIRST_TENANT]: 'https://admin.demo.example/' }}
-      initialLang="en"
-      dismiss={noop}
-    />,
-  );
-  // Which face it applies to, and why only the first, is hub.test.tsx's. Here: the wiring reaches the screen.
-  const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
-  expect(hrefs).toContain('https://admin.demo.example/enter');
-});
-
-test("the footer selector is the app's own language list, not a copy of it", () => {
-  // `LANGS` is the one list; the screen used to transcribe it as `['pt','en','es']` beside it.
-  render(
-    <GateBlock
-      siteUrl="https://x"
-      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
-      initialLang="pt"
-      dismiss={noop}
-    />,
-  );
-  for (const code of LANGS) expect(screen.getByRole('button', { name: code })).toBeTruthy();
-  expect(LANGS.length, 'a one-language app would make the loop above vacuous').toBeGreaterThan(2);
-});
-
-test('the gate switches to the architecture screen and back, and each screen HIDES the other', () => {
-  const scrollTo = vi.fn();
-  window.scrollTo = scrollTo;
-  render(
-    <GateBlock
-      siteUrl="https://x"
-      adminUrls={{ [FIRST_TENANT]: 'https://a' }}
-      initialLang="pt"
-      dismiss={noop}
-    />,
-  );
-
-  // On the gate: its own headline is there and the architecture's is NOT (the control, before any click).
-  expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
-  expect(screen.queryByRole('heading', { name: ARCH.pt.title })).toBeNull();
-
-  fireEvent.click(screen.getByRole('button', { name: ARCH.pt.open }));
-  expect(screen.getByRole('heading', { name: ARCH.pt.title })).toBeTruthy();
-  expect(
-    screen.queryByRole('heading', { name: headline('pt') }),
-    'the gate is still rendered under the architecture screen',
-  ).toBeNull();
-  // The second screen is a whole page tall: it has to start at its own top.
-  expect(scrollTo, 'the switch did not scroll back to the top').toHaveBeenCalledWith(0, 0);
-
-  // And it knows the way back.
-  fireEvent.click(screen.getByRole('button', { name: ARCH.pt.back }));
-  expect(screen.getByRole('heading', { name: headline('pt') })).toBeTruthy();
-  expect(screen.queryByRole('heading', { name: ARCH.pt.title })).toBeNull();
-  expect(scrollTo).toHaveBeenCalledTimes(2);
-});
-
-for (const lang of LANGS) {
-  test(`[${lang}] the architecture screen opens in the language the gate is in`, () => {
-    // The selector is the GATE's language and the shops stay PT-BR, so the second screen has to travel in
-    // whichever language the visitor chose, and it has no selector of its own.
-    window.scrollTo = vi.fn();
-    render(
-      <GateBlock
-        siteUrl="https://x"
-        adminUrls={{ [FIRST_TENANT]: 'https://a' }}
-        initialLang={lang}
-        dismiss={noop}
-      />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: ARCH[lang].open }));
-    expect(screen.getByRole('heading', { name: ARCH[lang].title })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: headline(lang) })).toBeNull();
-  });
 }
 
-// ⚠️ `STRINGS` still carries the way back and the ribbon; if it ever stops, the line above that asserts the
-// back link would be asserting a string typed in two places.
-test('the way back is the app’s own string', () => {
-  render(<GateBlock siteUrl="https://x" initialLang="es" dismiss={noop} />);
-  expect(screen.getByText(STRINGS.es.back)).toBeTruthy();
+// ── ⟂ THE ARTBOARD IS THE SOURCE ───────────────────────────────────────────────────────────────────────────
+
+test('★★★ every sentence on the screen is the ARTBOARD’s, word for word', () => {
+  const pt = HUB.pt;
+  // The headline, in two pieces, exactly as the artboard writes them.
+  expect(ARTBOARD).toContain(pt.headline);
+  expect(ARTBOARD).toContain(pt.headlineAccent);
+  expect(ARTBOARD).toContain(pt.notice);
+  expect(ARTBOARD).toContain(pt.kernel.name);
+  expect(ARTBOARD).toContain(pt.kernel.blurb);
+
+  for (const tenant of GATE_TENANTS) {
+    const copy = pt.tenants[tenant.id];
+    expect(copy, `no PT copy for tenant ${tenant.id}`).toBeDefined();
+    expect(ARTBOARD, `the chip of ${tenant.id} is not in the artboard`).toContain(copy?.chip);
+    expect(ARTBOARD, `the window title of ${tenant.id} is not in the artboard`).toContain(copy?.window);
+    expect(ARTBOARD, `the admin button of ${tenant.id} is not in the artboard`).toContain(copy?.enter);
+  }
+
+  for (const face of allShops) {
+    const copy = pt.faces[face.key];
+    expect(copy, `no PT copy for ${face.key}`).toBeDefined();
+    expect(ARTBOARD, `the blurb of ${face.key} is not in the artboard`).toContain(copy?.blurb);
+    expect(ARTBOARD, `the place of ${face.key} is not in the artboard`).toContain(copy?.place);
+    expect(ARTBOARD, `the foot of ${face.key} is not in the artboard`).toContain(copy?.foot);
+  }
+});
+
+test('★★ ANTI-VACUUM — the artboard really is the v2 one, and it really carries the diagram', () => {
+  // Were this reading the wrong file, or an empty one, every `toContain` above would still have to pass
+  // against something — so the file is asserted to be the screen this slice is about.
+  expect(ARTBOARD.length).toBeGreaterThan(20_000);
+  expect(ARTBOARD, 'not the v2 artboard: the light ground is missing').toContain('linear-gradient(180deg,#EDEDED,#FFFFFF)');
+  expect(ARTBOARD, 'the diagram’s live dot is missing — this is not the screen with the kernel on it').toContain('#5CBF5C');
+  expect(ARTBOARD, 'the mobile branch is missing').toContain('scroll-snap-type:x mandatory');
+});
+
+test('⛔ the wordmarks are the artboard’s, including the counter’s two-tone one', () => {
+  for (const [key, mark] of Object.entries(HUB_MARKS)) {
+    expect(ARTBOARD, `the wordmark tail of ${key} is not in the artboard`).toContain(mark[2]);
+    if (mark[3]) expect(ARTBOARD, `the aside of ${key} is not in the artboard`).toContain(mark[3]);
+  }
+  // The counter is the one face with an aside, and that is the fact the artboard draws in two colours.
+  expect(HUB_MARKS['forgecafe/balcao']?.[3]).toBe('balcão');
+});
+
+// ── ⟂ THE SCREEN DRAWS WHAT THE BOX DECLARES ───────────────────────────────────────────────────────────────
+
+test('★★★ every declared shop is on the screen, and every declared tenant has its admin', () => {
+  draw({ adminUrls: {} });
+  for (const face of allShops) {
+    expect(document.querySelector(`[data-face="${face.key}"]`), `${face.key} is declared and not drawn`).not.toBeNull();
+  }
+  for (const tenant of GATE_TENANTS) {
+    expect(document.querySelector(`[data-admin="${tenant.id}"]`), `${tenant.id} has no admin window`).not.toBeNull();
+  }
+});
+
+test('★★ the screen carries the mark a probe outside the browser looks for', () => {
+  draw();
+  expect(screen.getByTestId(GATE_MARK)).toBeTruthy();
+});
+
+test('⛔ there is no second screen to switch to', () => {
+  draw();
+  // The architecture screen was a whole second view with its own way back. v2 has one screen, so nothing on
+  // it may offer to leave for another one — and this is the assertion that would catch it coming back.
+  expect(screen.queryByText(HUB.pt.kernel.name)).toBeTruthy();
+  expect(document.querySelectorAll('[data-testid]')).toHaveLength(1);
+});
+
+// ── ⟂ THE WAYS THROUGH ─────────────────────────────────────────────────────────────────────────────────────
+
+test('★★★ the card of the face the visitor is ON posts the dismissal, and does not navigate', () => {
+  const here = allShops.find((f) => f.host)?.host ?? undefined;
+  expect(here, 'the declaration carries no addressed shop to stand on').toBeTruthy();
+  draw({ here });
+  const cell = document.querySelector(`[data-face="${allShops.find((f) => f.host === here)?.key}"]`);
+  // A form, so it works with no JavaScript at all: this is the FIRST screen of the demo and it may not
+  // depend on a bundle having arrived.
+  expect(cell?.querySelector('form')).not.toBeNull();
+  expect(cell?.querySelector('a')).toBeNull();
+});
+
+test('★★★ a card of ANOTHER face dismisses FIRST and then navigates — measured 2026-09-17', () => {
+  const here = allShops[0]?.host ?? undefined;
+  const other = allShops.find((f) => f.host && f.host !== here);
+  expect(other, 'the declaration carries no second addressed shop').toBeTruthy();
+  const dismiss = vi.fn(() => Promise.resolve());
+  const assign = vi.fn();
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true });
+
+  draw({ here, dismiss });
+  const link = document.querySelector(`[data-face="${other?.key}"] a`) as HTMLAnchorElement;
+  expect(link).not.toBeNull();
+  fireEvent.click(link);
+  // ⛔ THE ORDER IS THE WHOLE POINT. Dismissing and letting the browser leave is a race the cookie loses, and
+  // the defect this replaced was a bare link that navigated and told nobody: the next face greeted again.
+  expect(dismiss).toHaveBeenCalledTimes(1);
+});
+
+test('★★ a modifier-click is left to the browser, and the dismissal still goes out', () => {
+  const here = allShops[0]?.host ?? undefined;
+  const other = allShops.find((f) => f.host && f.host !== here);
+  const dismiss = vi.fn(() => Promise.resolve());
+  draw({ here, dismiss });
+  const link = document.querySelector(`[data-face="${other?.key}"] a`) as HTMLAnchorElement;
+  const event = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+  link.dispatchEvent(event);
+  expect(dismiss).toHaveBeenCalledTimes(1);
+  expect(event.defaultPrevented, 'the browser’s own "open in a new tab" is not ours to cancel').toBe(false);
+});
+
+test('the admin opens that tenant’s /enter, in a new tab, at the origin the box was PROMOTED to', () => {
+  const tenant = GATE_TENANTS[0];
+  draw({ adminUrls: { [tenant?.id ?? '']: 'https://admin.promovido.example' } });
+  const link = document.querySelector(`[data-admin="${tenant?.id}"] a`) as HTMLAnchorElement;
+  expect(link.getAttribute('href')).toBe('https://admin.promovido.example/enter');
+  // An admin is a side trip from the tour, not the next step of it.
+  expect(link.getAttribute('target')).toBe('_blank');
+});
+
+// ── ⟂ THE TWO SENTENCES THE ARTBOARD HAS NO PLACE FOR ──────────────────────────────────────────────────────
+
+test('⛔ a face the box declares with NO address is DRAWN and NAMED, never hidden', () => {
+  // The declaration this box ships addresses every shop, so the case is constructed — and it has to be
+  // testable, because a half-written declaration is exactly when nobody is looking.
+  draw();
+  const unaddressed = allShops.filter((f) => !f.host);
+  for (const face of unaddressed) {
+    const cell = document.querySelector(`[data-unaddressed="${face.key}"]`);
+    expect(cell, `${face.key} has no address and vanished from the screen`).not.toBeNull();
+  }
+  // And the affordance exists in the copy even when this box never draws it.
+  expect(HUB.pt.noAddress.length).toBeGreaterThan(4);
+});
+
+test('⛔ a host no face declares gets a NAMED way in, rather than a screen with no door', () => {
+  draw({ here: 'bancada.local' });
+  const line = document.querySelector('[data-here="bancada.local"]');
+  expect(line, 'a bench has no way through the gate').not.toBeNull();
+  expect(line?.textContent).toContain('bancada.local');
+  expect(line?.querySelector('form')).not.toBeNull();
+});
+
+test('…and on a host the box DOES declare, that line is not drawn', () => {
+  const here = allShops.find((f) => f.host)?.host ?? undefined;
+  draw({ here });
+  expect(document.querySelector('[data-here]')).toBeNull();
+});
+
+// ── ⟂ THE LANGUAGE ─────────────────────────────────────────────────────────────────────────────────────────
+
+test('the footer selector switches the copy live, and is the app’s own list', () => {
+  draw();
+  expect(screen.getByText(HUB.pt.notice)).toBeTruthy();
+  fireEvent.click(screen.getByText('en'));
+  expect(screen.getByText(HUB.en.notice)).toBeTruthy();
+  fireEvent.click(screen.getByText('es'));
+  expect(screen.getByText(HUB.es.notice)).toBeTruthy();
+  // Derived from LANGS, never a second list: a language added to the app appears here without an edit.
+  for (const code of LANGS) expect(screen.getByText(code)).toBeTruthy();
+});
+
+test('the way back is the app’s own string, pointing at the site it was given', () => {
+  draw({ siteUrl: 'https://exemplo.test' });
+  const back = screen.getByText(STRINGS.pt.back) as HTMLAnchorElement;
+  expect(back.getAttribute('href')).toBe('https://exemplo.test');
 });

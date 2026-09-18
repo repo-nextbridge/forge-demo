@@ -1,80 +1,48 @@
 'use client';
 
-// The demo-gate block — the full-screen demo interstitial, and the switch into the SECOND screen
-// (`./arch`, "A arquitetura da demo"). A client component so the footer PT/EN/ES selector switches live, so
-// `?lang=` on the URL can win over the server's Accept-Language guess, and so the two screens can trade places
-// without a navigation (`view` below). Responsive is pure CSS, with no breakpoint of the page's own.
+// THE DEMO GATE — one screen, and it is the whole app's face.
 //
-// ★★★ THE FIRST SCREEN IS THE LAYOUT IN `design-base/gate.dc.html` AND NOTHING ELSE. It is a HUB over every
-// face this box publishes (`./hub`), and this file is the page it sits on: the ground, the `forge.demo`
-// wordmark, the headline, the notice and the language selector at the foot, the way back, and the switch
-// into the architecture screen.
+// ★★★ v2 REPLACED THREE SCREENS WITH ONE, AND THAT IS THE POINT RATHER THAN A TIDY-UP. The gate used to be a
+// page holding a hub, with a switch into a second screen that EXPLAINED the architecture in prose. The v2
+// artboard shows the architecture instead: four shops across the top, each tenant's admin gathered under a
+// bracket, and both brackets running down to one kernel. A visitor sees the claim being made rather than
+// reading it, which is the only reason a demo exists at all. `./arch` and its copy left with the screen.
 //
-// ⛔ THE MASTHEAD NO LONGER CARRIES A LEDE, and the artboard was redrawn in the same slice that took it out.
-// A paragraph explaining what a tenant is sat opposite the headline and said, in thirteen words, what the
-// headline's fourth clause now says in two — "Mesmo kernel!", in the accent, on the last line of the title.
-// One claim, one place. Everything the pass took off this screen, and why, is listed at the head of the
-// `HUB` section of `../i18n`.
+// ── WHAT IS DERIVED AND WHAT IS TYPED, because the line matters here more than anywhere ────────────────────
 //
-// ⛔ pk38/d7 — WHAT THIS SCREEN NO LONGER DRAWS, because "replaces" had been read as "as well as". A framed
-// hero stood above the hub — an eyebrow, `<h1>Loja demo.</h1>` and a paragraph — so the first screen said the
-// same thing twice and the page wore two nested borders. All of it is gone, and with it:
-//   · the SECOND FRAME. One border on this screen, and it belongs to the tenant card.
-//   · the "carry on in this window" BUTTON. This window only exists while there is no dismissal cookie, so
-//     the six cards ARE the choice and "carry on here" names nothing. What is left of that door is a foot
-//     line drawn only on a host the box does not declare (`./hub`).
-// The headline that took the hero's place, and the size on each shop's card, are the DESIGN's own words —
-// typed, on purpose, because this screen is the demo's own front door and not an app a customer installs.
-// The reasoning, and what was removed with the port reading that used to produce those numbers, is at the
-// head of the `HUB` section of `../i18n`.
+// DERIVED, always: the destinations. `seed/box.json` declares them, `bin/gate-faces.mjs` renders that into
+// `../faces.generated.ts`, and this file renders whatever that carries — tenants in declaration order, their
+// shops, their admin. A fifth shop appears on this screen by being declared, and nothing here is edited.
 //
-// The destinations are not written anywhere near here — `seed/box.json` declares them and `bin/gate-faces.mjs`
-// renders that declaration into `../faces.generated.ts`. The two paths a visitor has are the hub's:
-//   · the destination the visitor is ALREADY on → a <form> posting the `dismiss` Server Action (sets the
-//     dismissal cookie); the SAME route then renders the real store, deep link preserved (the gate covers the
-//     route, it never redirects to home). When no declared face matches the host — a bench, a tailnet — that
-//     door moves to a line at the foot of the hub, which names the host it is talking about.
-//   · every other destination → a top-level link to that face's own origin; an admin row goes to its `/enter`
-//     route, which redeems the operator access key server-side and lands signed in (the key never touches the
-//     browser; SameSite=Lax allows the nav).
-// The page and the cards are the two CSS modules. Text rides the theme's own stack (Urbanist, self-hosted by
-// the storefront); the one face this app ships is the serif the design gives the coffee brand's card, which
-// travels with the app rather than being fetched from a CDN — see `./hub.module.css` and the font guard.
+// TYPED, on purpose: the copy (`../i18n`). This screen is the public demo's own front door, not an app a
+// customer installs — the head of the HUB section says why a figure typed here is right and would be wrong
+// on a customer's box.
 //
-// ⚠️ WHAT THIS PORT DID *NOT* BRING, AND THE REASON IS A REPOSITORY BOUNDARY. The head of this file used to
-// say the hub "needs a decision nobody in this repository can take alone", because `dismissGate()` set a
-// cookie and returned void. HALF of that fell: since pk33 the action takes a destination
-// (`dismissGate(to?)`, packages/storefront-kit/src/gate/actions.ts:53 in the Forge monorepo) — but
-// `safeNextPath` admits SAME-ORIGIN PATHS only, and five of the six faces are other HOSTNAMES, so that
-// argument cannot carry a visitor to the outlet. The other half did NOT fall: the dismissal cookie is written
-// with no `domain` attribute (same file, :57-64; the name is `GATE_DISMISSED_COOKIE` in
-// packages/storefront-kit/src/cookies.ts), so it is host-only and a visitor who came through here meets the
-// gate again on the next face that has one.
+// ── THE TWO WAYS THROUGH THE GATE ──────────────────────────────────────────────────────────────────────────
 //
-// ⇒ MEASURED, NOT ESTIMATED (bench `forge-preseed`, 2026-09-13): of the six, the two admins have no gate by
-// decision (pk33: an admin needs no front door), the café declared `gate: false`, and the outlet and the
-// counter DO show one. So it was two second gates, not five. ⚠️ THAT COUNT MOVED TO **THREE** IN pk36/d1 and
-// the sentence is corrected rather than left standing: the café's exception is gone — its fork regenerates a
-// gate registry of its own now — so four of the six faces carry a gate and only the two admins do not. A
-// cookie scoped to the whole `.forgecommerce.pro` zone — decided on 13/09, one dismissal for all six faces,
-// with a ribbon that reopens any of them — is a change to the KIT and belongs to the product; this
-// repository names it rather than remedying it from here, and the change above makes it worth one more face.
+//  · the face the visitor is ALREADY on → a <form> posting the `dismiss` Server Action. The same route then
+//    renders the real store with the deep link intact (the gate covers the route; it never redirects home).
+//  · every other face → its own origin, and the click dismisses FIRST (see `ShopCard`).
+//  · an admin → that tenant's `/enter`, which redeems the operator access key server-side and lands signed
+//    in. It opens in a NEW TAB: an admin is a side trip from the tour, not the next step of it.
+//
+// The page is one CSS module read off the artboard value by value. Text rides the theme's Urbanist; v2 sets
+// the coffee brand in it too, so this app ships no font at all now — see `./gate.font-guard.test.ts`.
 
 import { useEffect, useState } from 'react';
-import { ARCH, GATE_LANG_COOKIE, HUB, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
-import { ArchScreen, ArchSwitch } from './arch';
+import { GATE_TENANTS, type GateFace, type GateTenant } from '../faces.generated';
+import { GATE_LANG_COOKIE, HUB, HUB_MARKS, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import styles from './gate.module.css';
-import { GateHub } from './hub';
 import { GATE_MARK } from './marks';
 
 export type GateBlockProps = {
   /** The "← back" target (the marketing site). */
   siteUrl: string;
   /** The admin origins this box really publishes (`FORGE_GATE_ADMIN_URLS`), one PER TENANT and keyed by
-   *  tenant id; a tenant's row opens `${origin}/enter`, the server-side redeem handoff. Every face whose
-   *  tenant is absent from the map keeps the address the declaration gives it. */
+   *  tenant id; a tenant's window opens `${origin}/enter`. A tenant absent from the map keeps the address
+   *  the declaration gives it. */
   adminUrls?: Readonly<Record<string, string>>;
-  /** The host the browser asked for, as the server saw it — which of the hub's faces is "here". */
+  /** The host the browser asked for, as the server saw it — which face is "here". */
   here?: string;
   /** The server's Accept-Language guess (PT default). `?lang=` on the URL overrides it on mount. */
   initialLang: Lang;
@@ -82,118 +50,374 @@ export type GateBlockProps = {
   dismiss: () => Promise<void>;
 };
 
-/** Which of the gate's two screens is on. One at a time: the other is unmounted, so each fades itself in. */
-type View = 'gate' | 'arch';
+/** The narrow arrangement is a different LAYOUT, not the same one squeezed: per-tenant carousels instead of
+ *  one row of four. The artboard branches at 760 and so does this. */
+const NARROW = 760;
 
-export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: GateBlockProps) {
-  const [lang, setLang] = useState<Lang>(initialLang);
-  const [view, setView] = useState<View>('gate');
+/** ★ THE ACCENT IS THE BRAND'S, AND THE OUTLET IS THE ONE FACE THAT CARRIES ITS OWN.
+ *
+ * The artboard gives tenant 1 the product's orange and its outlet a rose; tenant 2 is sand on both faces.
+ * Keyed by POSITION rather than by store handle — a table keyed by `outlet` is a list that rots the day a
+ * shop is renamed, and position is what the declaration actually guarantees. ⚠️ A third tenant falls back to
+ * the neutral brand accent rather than inventing a colour nobody drew. */
+function accentOf(tenantIndex: number, shopIndex: number): string {
+  if (tenantIndex === 0) return shopIndex === 0 ? '#C2410C' : '#E11D48';
+  return '#A9793F';
+}
 
-  /** Move between the screens. The new screen is a whole page tall, so the visitor has to start at ITS top —
-   *  without this, opening the architecture from the foot of the gate lands mid-diagram. */
-  const show = (next: View) => {
-    setView(next);
-    window.scrollTo(0, 0);
-  };
+/** The destination of one shop face, carrying the chosen language across the origin hop. */
+function urlOf(face: GateFace, lang: Lang): string {
+  const base = face.host ? `https://${face.host}` : '/';
+  return `${base}?lang=${lang}`;
+}
 
-  // `?lang=` on the URL wins (the marketing site links with the locale). Read it on mount; the strings are all
-  // embedded, so the switch is instant (no network).
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get('lang');
-    if (q) setLang(resolveLang(q));
-  }, []);
+/** A tenant's admin origin: what the box was PROMOTED to wins over what the declaration guessed. */
+function adminHrefOf(tenant: GateTenant, adminUrls: Readonly<Record<string, string>> | undefined): string | null {
+  const promoted = adminUrls?.[tenant.id];
+  const face = tenant.faces.find((f) => f.kind === 'admin');
+  const origin = promoted ?? (face?.host ? `https://${face.host}` : null);
+  return origin ? `${origin.replace(/\/+$/, '')}/enter` : null;
+}
 
-  // PERSIST the chosen language so it survives the gate → ribbon → re-opened gate (the server reads this cookie
-  // for its initialLang, instead of re-guessing Accept-Language). Written on every lang change (mount, ?lang=,
-  // footer selector). Client-side document.cookie — a non-secret UI preference, 1-year, path=/.
-  useEffect(() => {
-    // The rule's alternative is the CookieStore API, which Safari and Firefox do not ship — and this gate is
-    // the FIRST thing a visitor meets, so it cannot depend on a Chromium-only API. The value is a non-secret UI
-    // preference (the chosen language); the server only ever reads it as a hint for initialLang.
-    // biome-ignore lint/suspicious/noDocumentCookie: CookieStore is Chromium-only; this is a non-secret UI pref.
-    document.cookie = `${GATE_LANG_COOKIE}=${lang};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-  }, [lang]);
+function ArrowOut() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 7h10v10" />
+      <path d="M7 17 17 7" />
+    </svg>
+  );
+}
 
-  const t = STRINGS[lang];
-  const hub = HUB[lang];
+function AdminIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M9 3v18" />
+      <path d="M13 8h5" />
+      <path d="M13 12h5" />
+    </svg>
+  );
+}
 
-  // The second screen REPLACES the first rather than sitting under it: the switch is a move between two
-  // full-height pages, and the language the visitor chose travels with them.
-  if (view === 'arch') return <ArchScreen lang={lang} onClose={() => show('gate')} />;
+function ArrowRight() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+/** The card's own contents — identical whether it ends up inside a link or inside a form's button, which is
+ *  why it is a function and not two copies. */
+function CardBody({ face, lang, accent }: { face: GateFace; lang: Lang; accent: string }) {
+  const copy = HUB[lang].faces[face.key];
+  const mark = HUB_MARKS[face.key];
+  const art = `./art/card-${face.store ?? 'store'}.webp`;
+  return (
+    <>
+      <span className={styles.cardMark}>
+        {/* A face nobody wrote a mark for still draws its key: an unnamed card is a declaration nobody
+            finished, and drawing nothing would hide it. */}
+        <span className={styles.wordmarkStrong}>
+          {mark?.[0] ?? face.key}
+          <span className={styles.dot} style={{ color: accent }}>
+            {mark?.[1] ?? ''}
+          </span>
+        </span>
+        <span className={styles.cardMarkTail} style={{ color: accent }}>
+          {mark?.[2] ?? ''}
+        </span>
+        {mark?.[3] ? <span className={styles.cardMarkAside}>{mark[3]}</span> : null}
+      </span>
+      <span className={styles.cardBlurb}>{copy?.blurb ?? ''}</span>
+      <span className={styles.hairline} />
+      <span className={styles.cardPlace}>{copy?.place ?? ''}</span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- the gate ships its own art and no optimiser */}
+      <img className={styles.cardArt} src={art} alt="" />
+      <span className={styles.cardFoot}>
+        <span>{copy?.foot ?? ''}</span>
+        <ArrowOut />
+      </span>
+    </>
+  );
+}
+
+function ShopCard({
+  face,
+  accent,
+  lang,
+  here,
+  dismiss,
+}: {
+  face: GateFace;
+  accent: string;
+  lang: Lang;
+  here: string | undefined;
+  dismiss: () => Promise<void>;
+}) {
+  const isHere = Boolean(here && face.host && here === face.host);
+  const url = urlOf(face, lang);
+  const addressed = Boolean(face.host);
 
   return (
-    // ⚠️ `data-testid` IS LOAD-BEARING HERE, not test scaffolding: it is the only handle a probe on the other
-    // side of the wire has for "the visitor met the gate" (the class names are build hashes). See `./marks`.
-    <div className={styles.backdrop} data-testid={GATE_MARK}>
-      <div className={styles.shell}>
-        <div className={styles.masthead}>
-          <div className={styles.brand}>
-            <span className={styles.brandName}>
-              forge<span className={styles.brandDot}>.</span>
-            </span>
-            <span className={styles.brandDemo}>demo</span>
+    <div className={styles.shopCell} data-face={face.key}>
+      <div className={styles.shopFrame}>
+        <div className={styles.pocket} />
+        {!addressed ? (
+          // ⛔ NAMED, NEVER HIDDEN. The box DECLARES this destination and declares no address for it, and a
+          // card that vanished would make a half-finished declaration look like a complete one. It is drawn
+          // exactly like its siblings and is not a link, because there is nowhere to go.
+          <div className={styles.card} data-unaddressed={face.key}>
+            <CardBody face={face} lang={lang} accent={accent} />
+            <span className={styles.unaddressed}>{HUB[lang].noAddress}</span>
           </div>
-          {/* ★ THE HEADLINE IS THE DESIGN'S, word for word ("Dois tenants. Quatro lojas. Dois admins. Mesmo
-              kernel!"). FOUR clauses on THREE lines: the fourth rides the last one, in the accent, and the
-              break is DECLARED rather than left to a character measure — see `.title`. */}
-          <h1 className={styles.title}>
-            {hub.headline.map((clause, i) => (
-              <span key={clause} className={styles.titleLine}>
-                {clause}
-                {i === hub.headline.length - 1 ? (
-                  <>
-                    {' '}
-                    <strong className={styles.titleAccent}>{hub.headlineAccent}</strong>
-                  </>
-                ) : null}
-              </span>
-            ))}
-          </h1>
-        </div>
-
-        <GateHub lang={lang} here={here} adminUrls={adminUrls} dismiss={dismiss} />
-
-        <div className={styles.foot}>
-          <p className={styles.notice}>{hub.notice}</p>
-          <div className={styles.langWrap}>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#6E6A63"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M2 12h20" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-            {LANGS.map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={`${styles.langBtn} ${lang === code ? styles.langActive : ''}`}
-              >
-                {code}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.backRow}>
-          <a className={styles.backLink} href={siteUrl}>
-            {t.back}
+        ) : isHere ? (
+          // The face the visitor is standing on. A form, so the way in survives with no JavaScript at all —
+          // this is the first screen of the demo and it may not depend on a bundle having arrived.
+          <form action={dismiss} className={styles.cardForm}>
+            <button type="submit" className={styles.card}>
+              <CardBody face={face} lang={lang} accent={accent} />
+            </button>
+          </form>
+        ) : (
+          // ── ★★ CLICKING A CARD *IS* PASSING THROUGH THE GATE ────────────────────────────────────────────
+          //
+          // ⛔ MEASURED 2026-09-17: dismissing here and THEN opening the outlet worked, but pressing the
+          // outlet's own card inside this screen opened it still gated. The dismissal was only ever written
+          // by the card the visitor stood on; every other card was a bare link that navigated and told
+          // nobody. The cards ARE the choice, so a cross-origin card has to keep that.
+          //
+          // ⚠️ IT WORKS ONLY BECAUSE THE COOKIE IS ZONE-SCOPED. `deploy/box.env` declares the suffix, so a
+          // dismissal written on THIS origin is sent by the browser to the one we are about to open. On a
+          // bench, where the kit correctly falls back to host-only, this click dismisses here and the next
+          // face still greets — honest behaviour for a box whose addresses share no suffix, not a regression.
+          //
+          // ⚠️ AND THE NAVIGATION WAITS FOR THE ACTION. Firing it and letting the browser leave is a race the
+          // cookie usually loses; `finally` keeps the visitor moving even when the dismissal fails, because a
+          // shop that greets twice is better than a shop nobody reaches. A modifier-click is left alone: the
+          // browser's own "open in a new tab" is not ours to cancel, and the dismissal still goes out.
+          <a
+            className={styles.card}
+            href={url}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                void dismiss();
+                return;
+              }
+              event.preventDefault();
+              void dismiss().finally(() => {
+                window.location.assign(url);
+              });
+            }}
+          >
+            <CardBody face={face} lang={lang} accent={accent} />
           </a>
-        </div>
-
-        <ArchSwitch label={ARCH[lang].open} direction="open" onClick={() => show('arch')} />
+        )}
       </div>
     </div>
   );
 }
 
-export default GateBlock;
+function AdminWindow({ tenant, lang, adminUrls }: { tenant: GateTenant; lang: Lang; adminUrls?: Readonly<Record<string, string>> }) {
+  const copy = HUB[lang].tenants[tenant.id];
+  const href = adminHrefOf(tenant, adminUrls);
+  const shot = `./art/admin-dashboard${tenant.id === GATE_TENANTS[0]?.id ? '' : '-cafe'}.webp`;
+  return (
+    <div className={styles.window} data-admin={tenant.id}>
+      <div className={styles.windowBar}>
+        <span className={styles.lights}>
+          <span className={`${styles.light} ${styles.lightRed}`} />
+          <span className={`${styles.light} ${styles.lightAmber}`} />
+          <span className={`${styles.light} ${styles.lightGreen}`} />
+        </span>
+        <span className={styles.windowTitle}>{copy?.window ?? tenant.name}</span>
+      </div>
+      <div className={styles.screen}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- the gate ships its own art and no optimiser */}
+        <img className={styles.screenShot} src={shot} alt="" />
+        <div className={styles.screenFade} />
+        {/* ⚠️ An admin with no address is a declaration nobody finished. The window still draws — the visitor
+            is told this tenant HAS an admin — and the button simply is not a link. */}
+        {href ? (
+          <a className={styles.enter} href={href} target="_blank" rel="noreferrer">
+            <AdminIcon />
+            {copy?.enter ?? 'admin'}
+            <ArrowRight />
+          </a>
+        ) : (
+          <span className={styles.enter}>
+            <AdminIcon />
+            {copy?.enter ?? 'admin'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: GateBlockProps) {
+  const [lang, setLang] = useState<Lang>(initialLang);
+  const [narrow, setNarrow] = useState(false);
+
+  // `?lang=` on the URL wins (the marketing site links with the locale). Read on mount; every string is
+  // embedded, so the switch is instant and touches no network.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('lang');
+    if (q) setLang(resolveLang(q));
+  }, []);
+
+  // PERSIST the choice so it survives the gate → ribbon → re-opened gate (the server reads this cookie for
+  // its initialLang instead of re-guessing Accept-Language).
+  useEffect(() => {
+    // biome-ignore lint/suspicious/noDocumentCookie: CookieStore is Chromium-only; this is a non-secret UI pref.
+    document.cookie = `${GATE_LANG_COOKIE}=${lang};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+  }, [lang]);
+
+  // ⚠️ THE BRANCH IS MEASURED ON THE CLIENT AND STARTS FALSE, which is deliberate: the server cannot know the
+  // viewport, and rendering the carousel first would make every desktop visitor watch a layout swap. The wide
+  // arrangement is the one that reads acceptably at both widths for the instant before this runs.
+  useEffect(() => {
+    const read = () => setNarrow(window.innerWidth < NARROW);
+    read();
+    window.addEventListener('resize', read);
+    return () => window.removeEventListener('resize', read);
+  }, []);
+
+  const t = STRINGS[lang];
+  const hub = HUB[lang];
+  const shopsOf = (tenant: GateTenant) => tenant.faces.filter((f) => f.kind === 'shop');
+
+  return (
+    // ⚠️ `data-testid` IS LOAD-BEARING, not test scaffolding: it is the only handle a probe outside the
+    // browser has to tell "the visitor met the gate" from "the visitor walked into the shop" — both answer
+    // 200. `bin/prove-doors.mjs` builds the attribute from the id the PORT answers, never from a literal.
+    <div className={styles.page} data-testid={GATE_MARK}>
+      <div className={styles.column}>
+        <div className={styles.masthead}>
+          <div className={styles.wordmark}>
+            <span className={styles.wordmarkStrong}>
+              forge<span className={styles.dot}>.</span>
+            </span>
+            <span className={styles.wordmarkTail}>demo</span>
+          </div>
+          <h1 className={styles.headline}>
+            {hub.headline} <em className={styles.headlineAccent}>{hub.headlineAccent}</em>
+          </h1>
+        </div>
+
+        {narrow ? (
+          <div className={styles.mobile}>
+            {GATE_TENANTS.map((tenant, ti) => (
+              <div key={tenant.id} className={styles.mobile}>
+                <div className={`${styles.tenantChip} ${styles.mobileChip}`}>{hub.tenants[tenant.id]?.chip ?? tenant.name}</div>
+                <div className={styles.rail}>
+                  {shopsOf(tenant).map((face, si) => (
+                    <div key={face.key} className={styles.railItem}>
+                      <ShopCard face={face} accent={accentOf(ti, si)} lang={lang} here={here} dismiss={dismiss} />
+                    </div>
+                  ))}
+                  <div className={styles.railTail} />
+                </div>
+                <AdminWindow tenant={tenant} lang={lang} adminUrls={adminUrls} />
+                <div className={styles.mobileGap} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className={styles.shops}>
+              {GATE_TENANTS.flatMap((tenant, ti) =>
+                shopsOf(tenant).map((face, si) => (
+                  <ShopCard key={face.key} face={face} accent={accentOf(ti, si)} lang={lang} here={here} dismiss={dismiss} />
+                )),
+              )}
+            </div>
+
+            <div className={styles.admins}>
+              {GATE_TENANTS.map((tenant) => (
+                <div key={tenant.id} className={styles.adminCell}>
+                  <div className={styles.bracketRow}>
+                    <div className={styles.bracket} />
+                    <div className={styles.bracketStem} />
+                  </div>
+                  <div className={styles.tenantChip}>{hub.tenants[tenant.id]?.chip ?? tenant.name}</div>
+                  <div className={styles.dashDown} />
+                  <AdminWindow tenant={tenant} lang={lang} adminUrls={adminUrls} />
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.trunk}>
+              <div className={`${styles.trunkUp} ${styles.trunkUpLeft}`} />
+              <div className={`${styles.trunkUp} ${styles.trunkUpRight}`} />
+              <div className={styles.trunkAcross} />
+              <div className={styles.trunkDown} />
+              <div className={styles.live} />
+            </div>
+
+            <div className={styles.kernel}>
+              <span className={styles.kernelTile}>
+                <span className={styles.kernelTileMark}>
+                  f<span className={styles.dot}>.</span>
+                </span>
+              </span>
+              <span className={styles.kernelText}>
+                <span className={styles.kernelName}>{hub.kernel.name}</span>
+                <span className={styles.kernelBlurb}>{hub.kernel.blurb}</span>
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* ⚠️ ONLY ON A BOX WHOSE ADDRESS NOBODY DECLARED. On the public demo the visitor is always standing
+            on a face and this never draws; on a bench or a tailnet it is the only way in, and it NAMES the
+            host rather than pretending the box knows where it is. */}
+        {here && !GATE_TENANTS.some((t) => t.faces.some((f) => f.host === here)) ? (
+          <div className={styles.hereLine} data-here={here}>
+            <span className={styles.notice}>
+              {hub.hereNote} <strong>{here}</strong>
+            </span>
+            <form action={dismiss}>
+              <button type="submit" className={styles.hereCta}>
+                {hub.hereCta}
+              </button>
+            </form>
+          </div>
+        ) : null}
+
+        <div className={styles.foot}>
+          <div className={styles.footLeft}>
+            <div className={styles.langs}>
+              <GlobeIcon />
+              {LANGS.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={`${styles.lang} ${code === lang ? styles.langOn : ''}`}
+                  onClick={() => setLang(code)}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+            <span className={styles.notice}>{hub.notice}</span>
+          </div>
+          <a className={styles.back} href={siteUrl}>
+            {t.back}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
