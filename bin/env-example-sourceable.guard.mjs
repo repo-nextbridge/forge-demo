@@ -6,7 +6,7 @@
 // quotes. Every script in this repository that reads the box's configuration does it with `set -a; . ./.env`,
 // and bash then reads the second word as a COMMAND:
 //
-//     /home/.../forge-demo/.env: line 117: Alves: command not found
+//     <this box>/.env: line 117: Alves: command not found
 //
 // ⚠️ IT IS NOT FATAL, AND THAT IS THE WHOLE PROBLEM. The variable still ends up holding `Marina`, the script
 // carries on, and the birth goes green. What it costs is not correctness, it is SIGNAL: an operator who runs
