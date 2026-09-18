@@ -1549,11 +1549,26 @@ question rather than to fill a hole: **how does a customer extend Forge?** It ex
 they can write apps freely — the platform's main form of extension — through the simplest visible example
 there is: one logo turning into another.
 
-It declares **three blocks — one per place the SHOP WINDOW shows a name**: the header bar
+It declares **three MARK blocks — one per place the SHOP WINDOW shows a name**: the header bar
 (`storefront:header.brand`), the mobile drawer (`header.drawer_brand`) and the footer's brand column
 (`footer.brand`). Each is placed and configured on its own in Compose; each draws either a logo from the asset
 library or a wordmark whose tail takes the theme's accent, so the SAME three configs make the Outlet look like
 the Outlet without a line of code.
+
+★★★ **And a fourth block that is not a mark: `demo_ribbon`, the demonstration notice** — the bar that tells a
+visitor nothing here is charged or shipped. It arrived in v0.4 when the gate app was retired (§6.2 of the
+runbook), it declares **no `area`** (a notice belongs wherever a store is looked at) and **no `config_schema`**
+(a sentence an operator can edit is a sentence an operator can empty).
+
+⛔ **And nothing placed it, which was the defect of 11/09 in another coat.** The block was declared and both
+forks were wired to draw it, but the PLACEMENT was a `hook_placement` row somebody wrote in Compose — a row
+that survives a deploy and does **not** survive a reset, and this box resets itself. Since v0.4/F5
+`seed/demo-setup.json` declares it in `storefront:footer.end` for every store this box keeps **on the street**,
+so a birth from zero writes it with no gesture of hand. `bin/ribbon-at-birth.guard.mjs` is what holds that on a
+laptop where no box is running: it derives the block (the only one of this app with no `config_schema`) and the
+stores (the kernel's own servability rule, `bin/servable.mjs`), and types neither a component nor a handle. The
+counter is the exclusion, by its `status: "private"` and not by its name — the vitrine 404s it, and `totem/`
+carries the same sentence by hand.
 
 ⛔ **The login box (`account.brand`) is NOT one of them, and the line is the DEPLOYABLE (trava 4).** That
 screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable

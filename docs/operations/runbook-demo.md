@@ -1017,24 +1017,42 @@ lá), e quando o JS monta ela se esconde e reaparece **1 s** depois de entrar na
 dispensa/reabertura saiu com o app que o tinha. Uma faixa que se pode fechar é uma faixa que o visitante não
 vê de novo.
 
-#### ⇒ O QUE PRECISA SER CLICADO — a faixa é um bloco, e bloco se coloca no Compose
+#### ⇒ ★★★ NADA PRECISA SER CLICADO — a faixa NASCE COLOCADA (v0.4/F5)
 
-⛔ **Nenhum seed coloca esta faixa.** Colocação é **gesto de operação**, por loja, exatamente como as três
-marcas: o app declara o bloco e quem decide onde ele cai é o operador no Compose. Por loja:
+⛔⛔ **E isto aqui dizia o contrário, com todas as letras: *“nenhum seed coloca esta faixa; colocação é gesto
+de operação”*.** Era **o defeito de 11/09 outra vez, com outra roupa.** A portaria também *“não era instalada
+por passo nenhum do nascimento”*: o README dela mandava instalar à mão, ninguém lembrou, e a demo serviu as
+lojas sem porta **por dias, com todo nascimento reportando verde**. A cerca que nasceu daquilo
+(`bin/gate-at-birth.guard.mjs`) foi aposentada junto com o app — e **a faixa herdou o buraco sem herdar a
+cerca**. Uma colocação feita à mão vive em `hook_placement`, **sobrevive a um deploy e NÃO sobrevive a um
+reset**; e esta caixa se regenera.
 
-1. Admin do tenant → **Apps** → confirmar que **Demo setup** está *instalado* (ele já vem: `seed/vitrine.json`
-   para o `forgeco`, `seed/box.json → tenants[forgecafe].apps` para o café).
-2. Admin → **Compose** → escolher a loja → **Rodapé** (`footer`).
-3. Arrastar **“Aviso de demonstração · faixa”** para o slot **`footer.end`** e salvar.
+⇒ **A faixa é declarada em `seed/demo-setup.json`, como as três marcas**, e o mesmo passo do nascimento que
+coloca as marcas coloca a faixa (`seedDeclaredBlocks`, `seed/blocks.mjs`). **Não há gesto de mão nenhum.**
 
-| loja | onde arrastar | o que passa a mostrar |
+| loja | o que o nascimento escreve | o que passa a mostrar |
 |---|---|---|
-| `forge` | `footer.end` | toda página da vitrine **e** as telas de conta/login/pedido do checkout (elas vestem a chrome da LOJA) |
-| `outlet` | `footer.end` | idem |
-| `cafe` | `footer.end` | idem — o fork **compõe** o app desde esta fatia, então ele consegue desenhar |
-| `balcao` | — | **nada a clicar**: o totem não tem Compose. A faixa é montada à mão em `totem/src/components/DemoNotice.tsx` |
+| `forge` | `demo_ribbon` → `storefront:footer.end` | toda página da vitrine **e** as telas de conta/login/pedido do checkout (elas vestem a chrome da LOJA) |
+| `outlet` | `demo_ribbon` → `storefront:footer.end` | idem |
+| `cafe` | `demo_ribbon` → `storefront:footer.end` | idem — o fork **compõe** o app, então ele consegue desenhar, e `footer.end` está no catálogo de slots dele |
+| `balcao` | — (**nada**, e a exclusão é derivada) | o totem não tem Compose e a vitrine **404** esta loja (`status: "private"`). O visitante dela recebe a mesma frase pelo front que a loja realmente tem: `totem/src/components/DemoNotice.tsx`, montado à mão |
 
-⛔ **E O FUNIL DO CHECKOUT NÃO TEM ONDE RECEBÊ-LA — isto é um achado, não um esquecimento.** As telas de
+⚠️ **A marca e a faixa são decisões DIFERENTES, e o café é onde isso aparece.** O café continua **sem marca
+nenhuma** desta declaração — a vitrine dele é um fork que desenha a própria chrome (medição de 14/09 no
+`seed/demo-setup.json`) e marca é conteúdo do cliente, com 100% de liberdade. A **faixa não é conteúdo do
+cliente**: é esta caixa dizendo em voz alta que os preços não são reais. Por isso o café está declarado com a
+faixa e com nenhuma marca.
+
+★ **Quem segura isso quando ninguém está olhando:** `bin/ribbon-at-birth.guard.mjs`. Ele **deriva** o bloco
+(o único do app que o manifesto declara **sem `config_schema`** — o app dizendo «este existe para ser
+verdadeiro, não para ser preenchido») e **deriva** as lojas (toda loja que o `seed/box.json` mantém **na
+rua**, pela regra do próprio kernel em `bin/servable.mjs`). Nenhum nome de componente e nenhum handle de loja
+está digitado nele. Apagar a declaração de uma loja deixa a suíte **vermelha nomeando aquela loja**.
+
+📌 **O que ainda é gesto de operação:** *reconfigurar* qualquer coisa no Compose. A edição de um operador
+sobrevive **até o próximo nascimento**, que é o mesmo contrato de tudo que é declarado nesta caixa.
+
+⛔ **E O FUNIL DO CHECKOUT NÃO TEM ONDE RECEBÊ-LA — isto é um achado, não um esquecimento, e continua de pé.** As telas de
 `/account*` vestem a `StorefrontChrome` (a chrome da loja), então `footer.end` já as cobre. Os **passos do
 funil** (`/checkout`) vestem a `CheckoutChrome`, e os dois únicos slots dela — `checkout.header` e
 `checkout.footer` — **SUBSTITUEM** a composição de referência (`packages/storefront-kit/src/chrome/

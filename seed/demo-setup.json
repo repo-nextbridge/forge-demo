@@ -27,7 +27,34 @@
     "    drawer_brand   → storefront:header.drawer_brand   the mobile drawer's head                 `forge.`",
     "    footer_brand   → storefront:footer.brand          the footer's brand column     `forge.` + a tagline",
     "",
-    "★★ AND THERE WAS A FOURTH UNTIL pk28 — `account_brand` → `storefront:account.brand`, the login box — WHICH",
+    "★★★ AND A FOURTH ENTRY THAT IS NOT A MARK: `demo_ribbon` → `storefront:footer.end`, THE DEMONSTRATION",
+    "NOTICE — AND IT IS DECLARED HERE BECAUSE NOTHING ELSE PLACED IT. The bar that tells a visitor nothing is",
+    "charged or shipped became a block in v0.4 (it was one face of the gate app until then, and merely filling",
+    "`storefront:gate` took every store off the cacheable tree). The block was declared and both forks were",
+    "wired to draw it — and NO STEP OF THE BIRTH PLACED IT: the placement lived in `hook_placement`, written by",
+    "a hand in Compose, surviving a deploy and NOT surviving a reset.",
+    "⛔ THAT IS THE DEFECT OF 11/09 IN ANOTHER COAT. `bin/gate-at-birth.guard.mjs` was written because the front",
+    "door «was installed by no step of the birth» and the demo served its shops without one for days, with every",
+    "birth reporting green. That fence retired with the app it graded and the notice inherited the hole without",
+    "inheriting the fence. The three marks above were never exposed to it because they are declared HERE; the",
+    "notice is declared here too now, and `bin/ribbon-at-birth.guard.mjs` is the fence that holds it.",
+    "",
+    "★ THE SLOT IS `footer.end`, AND IT IS THE ONE THAT REACHES EVERYTHING A VISITOR OPENS: every page of the",
+    "vitrine wears the shop's footer, and so do the account screens of the checkout — they mount the STORE's",
+    "chrome. ⛔ AND THE FUNNEL'S OWN STEPS ARE OUT OF REACH, WHICH IS SAID RATHER THAN QUIETLY MISSED: the two",
+    "slots of `CheckoutChrome` (`checkout.header`, `checkout.footer`) REPLACE the reference composition, so",
+    "dropping the notice into the funnel's footer would delete the payment-methods strip and the legal line. An",
+    "ADDITIVE slot in the funnel is the PRODUCT's debt and not this box's; until it exists the funnel has no",
+    "notice, said out loud here instead of bought with the chrome of somebody typing a card number.",
+    "",
+    "⛔ AND IT CARRIES NO CONFIG, WHICH IS WHY `markless()` HAD TO LEARN WHAT A MARK IS. That refusal — «a block",
+    "with no logo and no word» — is about a slot that CEDES its whole node and draws nothing when it is empty.",
+    "The notice cedes nothing and is not configurable AT ALL (the app ships the sentence in three languages on",
+    "purpose: a sentence an operator can edit is a sentence an operator can empty). So the refusal asks its",
+    "question of the blocks whose own `config_schema` offers somewhere to put a mark, read off the manifest —",
+    "never of a list of component names written beside it, which is what would have let a fifth block through.",
+    "",
+    "★★ AND THERE WAS A FOURTH MARK UNTIL pk28 — `account_brand` → `storefront:account.brand`, the login box — WHICH",
     "LEFT THIS FILE ON THE AXIS OF THE DEPLOYABLE. The login box's mark belongs to the OOTB `chrome` app; the",
     "demo's config keeps only the other three — the top bar, the mobile drawer and the footer — because those",
     "three are the STOREFRONT's and the login box is the CHECKOUT's. The rule under it is trava 4 of",
@@ -70,9 +97,16 @@
     "a `logo` — it is the app's `type:'id'` field, drawn through the front's own media door — and in every",
     "block the two are EXCLUSIVE: a picture replaces the words, and `text` becomes its accessible name.",
     "",
-    "⛔⛔ AND THE CAFÉ IS `null` SINCE pk35/d7 — THE INSTANCE REMOVED THE PLACEMENTS, UNDER THIS REPOSITORY'S",
-    "OWN RULE: a fork belongs to the customer, with 100% freedom ⇒ when a fork draws by itself what a declared block",
-    "would draw, the INSTANCE removes that store's placement (the pattern `seed/outlet.mjs:816` already uses).",
+    "⛔⛔ AND THE CAFÉ WEARS NO MARK SINCE pk35/d7 — THE INSTANCE REMOVED THOSE PLACEMENTS, UNDER THIS",
+    "REPOSITORY'S OWN RULE: a fork belongs to the customer, with 100% freedom ⇒ when a fork draws by itself what",
+    "a declared block would draw, the INSTANCE removes that store's placement (the pattern `seed/outlet.mjs:816`",
+    "already uses).",
+    "",
+    "⚠️ IT STOPPED BEING `null` ALL THE SAME, AND THE DIFFERENCE IS EXACTLY THE NOTICE. The 100%-freedom rule is",
+    "about the customer's CONTENT: the café's fork draws its own mark, so the mark is the fork's. The",
+    "demonstration notice is not the café's content — it is THIS BOX saying out loud that its prices are not",
+    "real — and the fork draws nothing of the kind. So the café's entry declares the notice and no mark: one",
+    "block, and the store is named in the declaration rather than skipped by it.",
     "",
     "⚠️ IT WAS DRESSED IN ALL THREE UNTIL THEN, AND THE SENTENCE THAT JUSTIFIED IT HAD BECOME FALSE. It read:",
     "«the ACCOUNT screens are OURS for every store … `StorefrontChrome` … is where `header.brand` and",
@@ -99,28 +133,41 @@
     "⛔ AND THE COUNTER GETS NOTHING, NAMED RATHER THAN SILENTLY SKIPPED — the same rule `seed/chrome.json`",
     "writes for the same store, and for a stronger reason here: the totem is a whole-host app of its own",
     "(caddy `:82`, no store in the URL) that mounts neither the kit's chrome nor our account screens. Three",
-    "placements there would be three rows an operator can drag and never see the effect of."
+    "placements there would be three rows an operator can drag and never see the effect of.",
+    "",
+    "⚠️ AND THAT COVERS THE NOTICE TOO, WITH THE PORT'S OWN REASON RATHER THAN THIS FILE'S. The counter is the",
+    "one store this box keeps OFF THE STREET (`\"status\": \"private\"` in `seed/box.json`), so the vitrine 404s",
+    "it and there is no footer of ours anywhere to hang a bar in. Its visitor is owed the same sentence and gets",
+    "it from the front that store really has: `totem/src/components/DemoNotice.tsx`, mounted by hand, because a",
+    "whole-host app has no Compose. `bin/ribbon-at-birth.guard.mjs` derives that exclusion from the store's",
+    "status and never from a handle typed here."
   ],
   "app": "demo-setup",
   "slots": {
     "header_brand": "storefront:header.brand",
     "drawer_brand": "storefront:header.drawer_brand",
-    "footer_brand": "storefront:footer.brand"
+    "footer_brand": "storefront:footer.brand",
+    "demo_ribbon": "storefront:footer.end"
   },
   "stores": {
     "forge": {
       "_why": "The reference shoe store, on the vanilla storefront image — which is what makes it the honest demonstration: no fork, no theme fork, one app placed three times and the shop is its own. The mark is TEXT (`forge` + `.store`, the tail in the theme's copper accent) and it is the same mark `seed/chrome.json` puts in the funnel's two bars as a PICTURE. ★ The footer says the sentence out loud: until pk26 it inherited «Leve. Inteligente. Sua.» from the Forge fallback, and a placed mark would have deleted it.",
       "header_brand": { "text": "forge", "tail": ".store" },
       "drawer_brand": { "text": "forge", "tail": ".store" },
-      "footer_brand": { "text": "forge", "tail": ".store", "tagline": "Leve. Inteligente. Sua." }
+      "footer_brand": { "text": "forge", "tail": ".store", "tagline": "Leve. Inteligente. Sua." },
+      "demo_ribbon": {}
     },
     "outlet": {
       "_why": "The same brand under its own theme, and the mark is where that stops being a claim: `tail` is drawn in the theme's accent — carmine here, copper on the reference — so the SAME three configs make the outlet look like the outlet without a line of code. ⚠️ THE TAIL IS `.outlet`, WITH A POINT, AND THAT IS LOAD-BEARING: it used to be `\" Outlet\"` and the header read `ForgeOutlet`, glued, because every configured word is trimmed before it is drawn and the two halves are concatenated with nothing between them. The separator has to be a printable CHARACTER. ★ The tagline is here because this is the second of the two shops named for it.",
       "header_brand": { "text": "forge", "tail": ".outlet" },
       "drawer_brand": { "text": "forge", "tail": ".outlet" },
-      "footer_brand": { "text": "forge", "tail": ".outlet", "tagline": "Leve. Inteligente. Sua." }
+      "footer_brand": { "text": "forge", "tail": ".outlet", "tagline": "Leve. Inteligente. Sua." },
+      "demo_ribbon": {}
     },
-    "cafe": null,
+    "cafe": {
+      "_why": "THE ONE SHOP OF THIS DECLARATION THAT WEARS THE NOTICE AND NO MARK, and the two halves have different owners. ⛔ NO MARK: its vitrine is a FORK that draws its own chrome and its account screens draw the `chrome` app's, so the three marks rendered on no screen of this store — measured on the bench 2026-09-14, and the `_readme` above carries the whole measurement. A fork belongs to the customer, so the mark there is the customer's. ★★★ AND THE NOTICE ALL THE SAME, because it is not the customer's content: it is this box saying out loud that its prices are not real, the fork draws nothing of the kind by itself, and `storefront-coffee` COMPOSES this app precisely so that this block can be drawn. Its `footer.end` is published by the fork's own slot catalogue (`storefront-coffee/src/lib/slots/generated/sibling-slots.ts`), which is what makes this row a bar a visitor sees rather than a row nobody can find the effect of.",
+      "demo_ribbon": {}
+    },
     "balcao": null
   }
 }

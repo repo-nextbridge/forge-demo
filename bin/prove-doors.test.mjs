@@ -90,11 +90,17 @@ const gapBody = (app) =>
  * The shop. DIFFERENT per door on purpose: two doors answering the same bytes would hide a probe that
  * compared the wrong pair.
  *
- * ⚠️ IT CARRIES NO RIBBON, AND THAT IS A DECISION THIS FIXTURE HAS TO STATE. The demonstration ribbon is a
- * BLOCK now, and a block is placed in Compose — per store, by an operator. A probe that demanded it of every
- * door would be asserting an operator's gesture as if it were an invariant of the box, and would redden a
- * shop whose owner simply has not dropped it yet. What this step owes is the opposite sentence: that nothing
- * STANDS IN FRONT of the shop.
+ * ⚠️ IT CARRIES NO RIBBON, AND THAT IS A DECISION THIS FIXTURE HAS TO STATE. What this step owes is the
+ * opposite sentence — that nothing STANDS IN FRONT of the shop — and a body that also carried the notice
+ * would let a probe silently start grading two rules through one fixture.
+ *
+ * ⛔ AND THE REASON WRITTEN HERE UNTIL v0.4/F5 IS NO LONGER THE TRUE ONE. It said the ribbon «is placed in
+ * Compose, per store, by an operator», so demanding it of every door would assert a gesture as if it were an
+ * invariant. It IS an invariant now: `seed/demo-setup.json` declares it and the birth places it in every
+ * store this box keeps on the street. What holds that is `bin/ribbon-at-birth.guard.mjs`, statically, on a
+ * laptop with no box running — which is where the defect actually arrives (one line deleted from a
+ * declaration). ⇒ A LIVE probe of the ribbon at every door is a rule this step COULD now carry and does not,
+ * said out loud rather than left as a fixture that looks like a decision.
  */
 const shopBody = (handle, path) =>
   `<html><body><main data-testid="shop">${handle}${path || '/'}</main></body></html>`;

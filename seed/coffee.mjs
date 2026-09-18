@@ -65,10 +65,16 @@ const STORE_HANDLE = 'cafe';
  * interstitial at every URL, with no `<title>`. The sentence a visitor is owed is a BLOCK now
  * (`demo-setup/demo_ribbon`), which is rendered by the slot it was dropped into and costs the cache nothing.
  *
- * ⚠️ `demo-setup` IS NOT ON THIS LIST EITHER, AND THAT IS THE OLDER DECISION OF THE TWO: a fork belongs to the
- * customer, and this tenant's vitrine is a fork that draws its own chrome. The café's copy of the ribbon is
- * the fork's to place, which is why `storefront-coffee` COMPOSES the app (so the block can be drawn at all)
- * while the instance places nothing there — the shape `seed/demo-setup.json` already writes with `"cafe": null`. */
+ * ⚠️ `demo-setup` IS NOT ON THIS LIST BECAUSE ITS INSTALL HAS ANOTHER OWNER, AND THAT IS ALL IT MEANS.
+ * `seedDemoSetup` installs it for whatever tenant `bin/seed.mjs` is pointed at, before it places anything, so
+ * a second install written here would be one gesture with two owners.
+ *
+ * ⛔ AND «NOT INSTALLED HERE» NEVER MEANT «NOT PLACED HERE» — the sentence that used to stand on this line
+ * said the café's copy of the ribbon was «the fork's to place», and a fork cannot place anything: a placement
+ * is a `hook_placement` row and only the port writes one. What the fork does is COMPOSE the app so the block
+ * can be DRAWN; what places it is `seed/demo-setup.json`, which declares the café wearing the notice. The
+ * café wears no MARK from that declaration (its fork draws its own chrome, and a mark is the customer's
+ * content) — the notice is not the customer's content, it is this box saying its prices are not real. */
 export const APPS = ['subscriptions', 'reviews', 'payment-pos'];
 
 /** ★ THE CURATION. Five in, one out, and the one that is out is out ON PURPOSE (`seed/catalog.json` calls it
