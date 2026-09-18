@@ -905,7 +905,13 @@ say '8 · the curated data (once per tenant)'
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
   eval "tokval=\${$tokvar:-}"
+  # ★★ `FORGE_MEDIA_BASE_URL` TRAVELS WITH THE SEED since 2026-09-18, and it is not decoration.
+  # `seed/outlet.mjs` decides whether to re-upload a picture by asking THE DESTINATION whether the bytes
+  # are there — the asset library only records that a key was once minted, which survives a bucket being
+  # emptied or swapped. Without this address the step cannot ask, falls back to trusting the row, and says
+  # so out loud. `env-source.sh` exports it; handing it over here is what closes the question.
   FORGE_OPERATOR_TOKEN="$tokval" FORGE_REVALIDATE_SECRET="$BOX_REVALIDATE" \
+    FORGE_MEDIA_BASE_URL="${FORGE_MEDIA_BASE_URL:-}" \
     node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" \
     || die "the curated seed failed for \"$t\". Its own output is above; nothing further has run."
 done

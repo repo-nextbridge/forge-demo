@@ -74,3 +74,69 @@ test('⛔ ANTI-VACUUM — the two maps are not empty, and the box really declare
   expect(Object.keys(CARD_ART).length, 'no card art is declared').toBeGreaterThan(1);
   expect(Object.keys(ADMIN_ART).length, 'no admin art is declared').toBeGreaterThan(1);
 });
+
+// ── ⟂ THE PICTURE HAS TO KEEP THE SHAPE THE DESIGN GAVE IT (2026-09-18) ────────────────────────────────────
+//
+// ⛔ WHAT BOUGHT THIS, and it reached production. Making the art an `import` (the slice above) also put
+// `width`/`height` attributes on the `<img>` — the bundler's intrinsic size, which is what stops the card
+// reflowing when the photograph arrives. Those attributes are PRESENTATIONAL HINTS: `height` lands as a
+// specified `height: 900px`, and `aspect-ratio` computes a dimension only when the OTHER one is `auto`. So
+// the `aspect-ratio: 1 / 1` in the stylesheet was silently ignored and every card drew 100% wide by 900px
+// tall — a stretched photograph in a card the design gives a square, seen on the deployed box before any test
+// had anything to say about it.
+//
+// ⚠️ AND NO TEST IN THIS APP COULD HAVE SEEN IT. The suite asserts copy against the artboard and destinations
+// against the declaration — both true the whole time. Nothing asserted SHAPE, because shape lives in CSS and
+// CSS is where this house had no rule. This is that rule, and it is narrow on purpose: it does not try to
+// judge a design, it holds ONE invariant that the markup and the stylesheet have to agree on.
+
+import { readFileSync as readCss } from 'node:fs';
+
+/** Every class this component renders with an intrinsic `height` attribute on it. Derived from the component,
+ *  never typed: an `<img>` added tomorrow with the same shape is in scope by existing. */
+function classesWithIntrinsicHeight(): string[] {
+  const tsx = readCss(join(__dirname, 'gate.tsx'), 'utf8');
+  const found = new Set<string>();
+  for (const tag of tsx.match(/<img[^>]*>/g) ?? []) {
+    if (!/height=\{/.test(tag)) continue;
+    const cls = tag.match(/className=\{styles\.(\w+)\}/)?.[1];
+    if (cls) found.add(cls);
+  }
+  return [...found].sort();
+}
+
+/** ⛔⛔ CSS WITH THE COMMENTS TAKEN OUT, and this is not tidiness — the first version of the rule below was
+ *  GREEN AGAINST THE VERY DEFECT IT DESCRIBES. The comment explaining why `height: auto` is load-bearing
+ *  contains the string `height: auto`, so the declaration could be deleted and the prose alone satisfied the
+ *  match. Measured 2026-09-18 by sabotage: the stylesheet was broken on purpose and the test passed.
+ *
+ *  It is the third time in one day that a rule in this house was satisfied by text ABOUT the rule (the
+ *  owner-voice guard and the recorder guard were the other two). A rule that reads source has to read CODE. */
+const codeOf = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+test('★★★ a picture with an intrinsic HEIGHT also declares `height: auto` — or `aspect-ratio` is dead letter', () => {
+  const css = codeOf(readCss(join(__dirname, 'gate.module.css'), 'utf8'));
+  const guilty: string[] = [];
+  for (const cls of classesWithIntrinsicHeight()) {
+    const rule = css.match(new RegExp(`\\.${cls}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+    const hasRatio = /aspect-ratio\s*:/.test(rule);
+    const hasAuto = /height\s*:\s*auto/.test(rule);
+    if (hasRatio && !hasAuto) guilty.push(cls);
+  }
+  expect(
+    guilty,
+    'this class sets `aspect-ratio` and the component gives its <img> a `height` attribute, which wins as a ' +
+      'presentational hint — the ratio never applies and the picture draws at its full intrinsic height. ' +
+      'Add `height: auto` to the rule. (Measured in production 2026-09-18.)',
+  ).toEqual([]);
+});
+
+test('⛔ ANTI-VACUUM — there really ARE pictures carrying an intrinsic height to judge', () => {
+  // The rule above passes perfectly against a component with no <img> at all, which is the state a refactor
+  // could produce while the cards still draw through some other element.
+  expect(
+    classesWithIntrinsicHeight().length,
+    'no <img> in gate.tsx carries a height attribute — either the art stopped being imported, or the rule ' +
+      'above is now judging nothing',
+  ).toBeGreaterThan(1);
+});

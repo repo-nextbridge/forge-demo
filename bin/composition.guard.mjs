@@ -12,6 +12,23 @@
 // is this: the demo composes everything the product offers, and an app it does NOT compose is named in
 // `notComposed` with a reason.
 //
+// ── ⚠️ AND `infra/fleet/lists/demo-instance.json` IS A COPY OF THIS BOX'S LIST, DELIBERATELY UNGUARDED ─────
+//
+// The product carries a file with this box's composition in it. Measured 2026-09-18: the two app lists are
+// IDENTICAL today. Nothing enforces that, and nothing is going to — decision of 2026-09-18, and the reason is
+// the boundary rather than the effort:
+//
+//   · this repository is the INSTANCE. Its composition is its own answer, and `image = release × list` exists
+//     precisely so an instance can answer differently from anybody else.
+//   · the product's copy is a FIXTURE. It is what lets the fleet oven prove that a real-shaped list bakes,
+//     next to `lean-instance.json` (a smaller one) and `instance-own-app.json`. A fixture that had to track a
+//     customer's live list would make the product depend on the customer.
+//
+// ⇒ THEY ARE EXPECTED TO AGREE AND ALLOWED TO DRIFT, and when they drift the product's copy is the one that
+// is merely stale — this file is the truth about what this box composes. ⛔ Do not add a guard that compares
+// them: it would be a product asserting a fact about an instance, which is the coupling `DEMO-SAI-DO-PRODUTO`
+// exists to undo, not to formalise.
+
 // ⚠️ WHAT MAKES THIS A GUARD ON THE RESULT AND NOT ON THE INTENTION. It does not check that somebody
 // remembered to update this list; it derives the ANSWER from the monorepo — the OOTB list, and every app
 // directory under `extensions/` — and fails naming the app. A product app added upstream tomorrow turns this

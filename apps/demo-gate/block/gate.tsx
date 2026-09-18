@@ -32,6 +32,7 @@
 import { useEffect, useState } from 'react';
 import { GATE_TENANTS, type GateFace, type GateTenant } from '../faces.generated';
 import { ADMIN_ART, CARD_ART } from './art';
+import { markLeavingGate } from './return-to-gate';
 import { GATE_LANG_COOKIE, HUB, HUB_MARKS, LANGS, type Lang, resolveLang, STRINGS } from '../i18n';
 import styles from './gate.module.css';
 import { GATE_MARK } from './marks';
@@ -191,7 +192,7 @@ function ShopCard({
         ) : isHere ? (
           // The face the visitor is standing on. A form, so the way in survives with no JavaScript at all —
           // this is the first screen of the demo and it may not depend on a bundle having arrived.
-          <form action={dismiss} className={styles.cardForm}>
+          <form action={dismiss} className={styles.cardForm} onSubmit={() => markLeavingGate()}>
             <button type="submit" className={styles.card}>
               <CardBody face={face} lang={lang} accent={accent} />
             </button>
@@ -218,10 +219,15 @@ function ShopCard({
             href={url}
             onClick={(event) => {
               if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                // ⚠️ NO MARK ON A MODIFIER-CLICK, and that is the point of handling it apart: the visitor is
+                // opening a TAB and staying here. Marking would arm a reopen on a back they never took.
                 void dismiss();
                 return;
               }
               event.preventDefault();
+              // The mark goes down BEFORE the navigation, next to the dismissal it belongs with: this is the
+              // gate sending the visitor away, and `./return-to-gate` is what lets back undo it.
+              markLeavingGate();
               void dismiss().finally(() => {
                 window.location.assign(url);
               });
@@ -396,7 +402,7 @@ export function GateBlock({ siteUrl, adminUrls, here, initialLang, dismiss }: Ga
             <span className={styles.notice}>
               {hub.hereNote} <strong>{here}</strong>
             </span>
-            <form action={dismiss}>
+            <form action={dismiss} onSubmit={() => markLeavingGate()}>
               <button type="submit" className={styles.hereCta}>
                 {hub.hereCta}
               </button>
