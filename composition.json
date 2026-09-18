@@ -164,7 +164,7 @@
       "id": "demo-gate",
       "package": "@forge/ext-demo-gate",
       "source": "./apps/demo-gate",
-      "why": "the demo's own gate: the full-screen interstitial — a HUB over the faces this box publishes, plus a second screen explaining the demo's architecture — and the ribbon under it. Composed, not mounted, since Forge P1 — which is what gives it a screen on the reference storefront the Outlet runs."
+      "why": "the demo's own gate: the full-screen interstitial — ONE screen that draws this box as a diagram (every published shop as a card, gathered under its tenant, each tenant's admin beside it, all tied to one kernel) — and the ribbon under it. ⛔ v2 retired the second, prose screen that explained the architecture: the diagram demonstrates it. Composed, not mounted, since Forge P1 — which is what gives it a screen on the reference storefront the Outlet runs."
     },
     {
       "id": "demo-setup",

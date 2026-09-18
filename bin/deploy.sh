@@ -458,9 +458,42 @@ ship_image() { # <ref>
 
   # Does the far side already have it? A deploy that re-sent ~180 MB per image on every pin bump would make
   # the cheap gesture the expensive one, and people would stop making it.
+  #
+  # ⛔⛔ AND "HAS IT" MEANS THE SAME BYTES, NOT THE SAME NAME — measured 2026-09-18, in production.
+  #
+  # For a DIGEST-pinned ref this was always true by construction: different bytes are a different digest, so
+  # `docker image inspect` simply does not find it and the image ships. The header above says exactly that,
+  # and it is right about the four images `forge.lock` pins.
+  #
+  # It was NOT true for the two FORK images. `storefront-coffee` and `totem` are pinned by TAG
+  # (`:local`), because they have no upstream and `forge.lock` has nothing true to say about them — that is
+  # `bin/build-coffee.sh`'s own decision and it is correct. But a tag exists on the far side from the FIRST
+  # deploy that ever sent it, so `inspect <tag>` answered yes forever after, and a freshly baked fork was
+  # silently never delivered. Measured: the demo's café and counter ran an 18-hour-old front while the two
+  # product-image storefronts carried the new one — half the box updated, no error, no line in the log.
+  #
+  # So a tag-only ref is compared by CONTENT. The far side's image id for that tag against this daemon's;
+  # equal means have, different means ship. One extra ssh round trip per tag-pinned image, and it closes a
+  # hole that only ever showed up as "the change did not take" long after the deploy said it was done.
   if "${SSH[@]}" "docker image inspect '$ref' >/dev/null 2>&1"; then
-    note "have      $ref"
-    return 0
+    # A digest ref that resolves over there IS the bytes, by construction — nothing further to ask.
+    if [ -n "$digest" ]; then
+      note "have      $ref"
+      return 0
+    fi
+    # A TAG that resolves says only that the name exists. Ask both daemons what it points AT.
+    local there here
+    there="$("${SSH[@]}" "docker image inspect '$ref' --format '{{.Id}}' 2>/dev/null" </dev/null || true)"
+    here="$(docker image inspect "$ref" --format '{{.Id}}' 2>/dev/null || true)"
+    # ⚠️ AN UNREADABLE ID IS TREATED AS "HAVE", DELIBERATELY. If the far side resolved the tag but will not
+    # say what it points at, we know less than nothing new — and the old behaviour (trust the name) is the
+    # conservative one: shipping ~180 MB per image on every deploy because a daemon answered oddly would make
+    # the cheap gesture the expensive one, which is the failure this whole check exists to avoid.
+    if [ -z "$there" ] || [ "$there" = "$here" ]; then
+      note "have      $ref"
+      return 0
+    fi
+    note "stale     $ref on the host is $there, this daemon has $here — re-sending"
   fi
 
   # A registry in the ref means the host can fetch it itself, which is the finished shape.
