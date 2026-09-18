@@ -475,20 +475,25 @@ ship_image() { # <ref>
   # So a tag-only ref is compared by CONTENT. The far side's image id for that tag against this daemon's;
   # equal means have, different means ship. One extra ssh round trip per tag-pinned image, and it closes a
   # hole that only ever showed up as "the change did not take" long after the deploy said it was done.
-  if [ -n "$digest" ]; then
-    if "${SSH[@]}" "docker image inspect '$ref' >/dev/null 2>&1"; then
+  if "${SSH[@]}" "docker image inspect '$ref' >/dev/null 2>&1"; then
+    # A digest ref that resolves over there IS the bytes, by construction — nothing further to ask.
+    if [ -n "$digest" ]; then
       note "have      $ref"
       return 0
     fi
-  else
+    # A TAG that resolves says only that the name exists. Ask both daemons what it points AT.
     local there here
     there="$("${SSH[@]}" "docker image inspect '$ref' --format '{{.Id}}' 2>/dev/null" </dev/null || true)"
     here="$(docker image inspect "$ref" --format '{{.Id}}' 2>/dev/null || true)"
-    if [ -n "$there" ] && [ "$there" = "$here" ]; then
-      note "have      $ref (same bytes)"
+    # ⚠️ AN UNREADABLE ID IS TREATED AS "HAVE", DELIBERATELY. If the far side resolved the tag but will not
+    # say what it points at, we know less than nothing new — and the old behaviour (trust the name) is the
+    # conservative one: shipping ~180 MB per image on every deploy because a daemon answered oddly would make
+    # the cheap gesture the expensive one, which is the failure this whole check exists to avoid.
+    if [ -z "$there" ] || [ "$there" = "$here" ]; then
+      note "have      $ref"
       return 0
     fi
-    [ -z "$there" ] || note "stale     $ref on the host is $there, this daemon has $here — re-sending"
+    note "stale     $ref on the host is $there, this daemon has $here — re-sending"
   fi
 
   # A registry in the ref means the host can fetch it itself, which is the finished shape.
