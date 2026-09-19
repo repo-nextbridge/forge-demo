@@ -39,6 +39,8 @@ import {
   removeLineAction,
   updateLineAction,
 } from '@/lib/cart-actions';
+import { ExtensionOutlet } from '@/lib/extensions/ExtensionOutlet';
+import { Slot } from '@/lib/slots/Slot';
 import logoNegative from './forge-co-logo-negativo.png';
 import logo from './forge-co-logo.png';
 import { Icon } from './icons';
@@ -183,6 +185,66 @@ export function CoffeeChrome({
             <Icon name="lock" size={13} strokeWidth={1.5} />
             Compra segura
           </div>
+        </div>
+
+        {/* ★★★ v04/F6 — THE ONE CHROME SLOT THIS FORK PUBLISHES, AND THE DECISION ABOUT THE TEN IT DOES NOT.
+         *
+         * ── ⛔ WHAT WAS MEASURED, 18/09, ON THE DEPLOYED BOX ───────────────────────────────────────────────
+         *
+         * The owner placed `demo-setup/demo_ribbon` — the bar that tells a visitor nothing here is charged or
+         * shipped — in `storefront:footer.end` on the three shops, from Compose. The row exists and is enabled
+         * on all three. THE SHOE SHOP AND THE OUTLET DREW IT; THIS ONE DID NOT. Both of those run the vanilla
+         * image, whose `FooterDefault` places this slot at the foot of the footer; this shop replaced that
+         * whole chrome with the file you are reading, and the replacement never republished the slot. The
+         * block was installed, composed (`lib/extensions/generated/registry.tsx` resolves `demo-setup` /
+         * `demo_ribbon`) and PLACED — and there was no render site anywhere in this app for it to land in.
+         * A placement pointing at a slot the front does not draw is silent from every side: the port answers
+         * it, the admin lists it, and the page simply does not have it.
+         *
+         * ⚠️ AND THE COUNT IN THE DATABASE SAYS IT TWICE: this store carries ONE placement row where its two
+         * siblings carry four. The other three are the marks, and they were never placed here on purpose —
+         * see the group below.
+         *
+         * ── ★ THE FORM IS THE REFERENCE'S, AND IT IS THE REFERENCE'S ON PURPOSE ────────────────────────────
+         *
+         * `StorefrontChrome` → `FooterDefault` (@forgeco/storefront-kit) closes its footer with exactly this:
+         * a `<Slot name="footer.end">` whose child is the deployable's own `<ExtensionOutlet name="footer.end">`,
+         * as the LAST thing inside the `<footer>`, after everything the footer draws itself. Same name, same
+         * position, same additive semantics (it cedes nothing — it stands after the shop's own last line).
+         * A slot that carried this name and meant something else would be worse than not having it: Compose's
+         * board is a map of PLACES, and a block an operator drops into "the foot of the footer" has to arrive
+         * at the foot of the footer.
+         *
+         * ── ⛔ AND THE OTHER TEN CHROME SLOTS STAY UNPUBLISHED, EACH FOR A STATED REASON ────────────────────
+         *
+         * The kit's header and footer declare eleven between them. Republishing all of them because they
+         * exist upstream would be the same defect from the other end — a render site nobody looked at, in a
+         * position nobody chose.
+         *
+         *   · `footer.brand` · `header.brand` · `header.announcement` — THEY CEDE, AND THIS SHOP IS THE
+         *     AUTHOR. The kit's own manifests say a block in these REPLACES what the chrome draws (the
+         *     footer's cedes mark AND signature as one node). Here that is `forge-co-logo.png` and the
+         *     announcement band above — this fork's own content. The instance has already ruled on it:
+         *     `seed/demo-setup.json` REMOVED this store's three mark placements, under this repository's own
+         *     rule that a fork belongs to the customer, and the `_why` there carries the measurement. And the
+         *     sentence in the band is held by `CoffeeChrome.announcement.guard.test.tsx` beside this file.
+         *     Publishing them would hand back the exact power the instance took away, and an empty config in
+         *     one of them draws a shop with NO mark at all — the state `markless()` refuses one file over.
+         *   · `header.drawer_brand` · `header.minicart` · `footer.aside` — THE PLACE DOES NOT EXIST HERE.
+         *     There is no mobile drawer (the nav is two links and is always visible), no minicart drawer (the
+         *     bag is a LINK to the checkout and `SacolaBadge` is the only feedback — the head of this file
+         *     says why), and no footer top band with link columns for `footer.aside` to be the column BESIDE.
+         *   · `header.start` · `header.end` · `header.account` · `footer.start` — AND THIS GROUP IS A
+         *     JUDGEMENT, SAID OUT LOUD AS ONE. Each is additive and each would have a plausible place in this
+         *     chrome. They are left out because nothing of this box places anything in them, and the rule this
+         *     slice adopts is PUBLISH ON EVIDENCE: `bin/fork-slot-reach.guard.mjs` derives what the declared
+         *     blocks point at against what this fork renders and turns red naming the target and the store the
+         *     day one of them is placed. Four outlets standing empty in the chrome of every page for years is
+         *     the worse of the two states, and it is the one with nothing watching it. */}
+        <div className={styles.footerEnd}>
+          <Slot name="footer.end">
+            <ExtensionOutlet name="footer.end" store={store} storeBase={base} />
+          </Slot>
         </div>
       </footer>
     </MinicartProvider>

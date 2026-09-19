@@ -30,14 +30,22 @@
     "★★★ AND A FOURTH ENTRY THAT IS NOT A MARK: `demo_ribbon` → `storefront:footer.end`, THE DEMONSTRATION",
     "NOTICE — AND IT IS DECLARED HERE BECAUSE NOTHING ELSE PLACED IT. The bar that tells a visitor nothing is",
     "charged or shipped became a block in v0.4 (it was one face of the gate app until then, and merely filling",
-    "`storefront:gate` took every store off the cacheable tree). The block was declared and both forks were",
-    "wired to draw it — and NO STEP OF THE BIRTH PLACED IT: the placement lived in `hook_placement`, written by",
+    "`storefront:gate` took every store off the cacheable tree). The block was declared and both forks could",
+    "IMPORT it — and NO STEP OF THE BIRTH PLACED IT: the placement lived in `hook_placement`, written by",
     "a hand in Compose, surviving a deploy and NOT surviving a reset.",
     "⛔ THAT IS THE DEFECT OF 11/09 IN ANOTHER COAT. `bin/gate-at-birth.guard.mjs` was written because the front",
     "door «was installed by no step of the birth» and the demo served its shops without one for days, with every",
     "birth reporting green. That fence retired with the app it graded and the notice inherited the hole without",
     "inheriting the fence. The three marks above were never exposed to it because they are declared HERE; the",
     "notice is declared here too now, and `bin/ribbon-at-birth.guard.mjs` is the fence that holds it.",
+    "⛔⛔ AND THAT LINE READ «both forks were WIRED TO DRAW IT» UNTIL v0.4/F6, WHICH WAS FALSE OF ONE OF THE",
+    "TWO. The word is corrected above rather than deleted, because the difference IS this slice. Reaching an",
+    "app — the dependency, the transpile, the tracing root, the generated registry — is not the same fact as",
+    "publishing the SLOT its block is placed in. `storefront-coffee` had all four and its own chrome drew no",
+    "`footer.end` at all, so the café was the one shop of the three that did not wear the bar: placed,",
+    "enabled, answered by the port, rendered by nothing — measured on the deployed box 18/09.",
+    "`bin/front-app-reach.guard.mjs` grades the first fact and was right to be green;",
+    "`bin/fork-slot-reach.guard.mjs` is the one that grades the second, and it names the target and the shop.",
     "",
     "★ THE SLOT IS `footer.end`, AND IT IS THE ONE THAT REACHES EVERYTHING A VISITOR OPENS: every page of the",
     "vitrine wears the shop's footer, and so do the account screens of the checkout — they mount the STORE's",
@@ -165,7 +173,7 @@
       "demo_ribbon": {}
     },
     "cafe": {
-      "_why": "THE ONE SHOP OF THIS DECLARATION THAT WEARS THE NOTICE AND NO MARK, and the two halves have different owners. ⛔ NO MARK: its vitrine is a FORK that draws its own chrome and its account screens draw the `chrome` app's, so the three marks rendered on no screen of this store — measured on the bench 2026-09-14, and the `_readme` above carries the whole measurement. A fork belongs to the customer, so the mark there is the customer's. ★★★ AND THE NOTICE ALL THE SAME, because it is not the customer's content: it is this box saying out loud that its prices are not real, the fork draws nothing of the kind by itself, and `storefront-coffee` COMPOSES this app precisely so that this block can be drawn. Its `footer.end` is published by the fork's own slot catalogue (`storefront-coffee/src/lib/slots/generated/sibling-slots.ts`), which is what makes this row a bar a visitor sees rather than a row nobody can find the effect of.",
+      "_why": "THE ONE SHOP OF THIS DECLARATION THAT WEARS THE NOTICE AND NO MARK, and the two halves have different owners. ⛔ NO MARK: its vitrine is a FORK that draws its own chrome and its account screens draw the `chrome` app's, so the three marks rendered on no screen of this store — measured on the bench 2026-09-14, and the `_readme` above carries the whole measurement. A fork belongs to the customer, so the mark there is the customer's. ★★★ AND THE NOTICE ALL THE SAME, because it is not the customer's content: it is this box saying out loud that its prices are not real, the fork draws nothing of the kind by itself, and `storefront-coffee` COMPOSES this app precisely so that this block can be drawn. \u26d4\u26d4 AND THE SENTENCE THAT STOOD HERE WAS FALSE, WHICH IS WHY THIS ROW DREW NOTHING FOR A WEEK. It read: \u00abIts `footer.end` is published by the fork's own slot catalogue (`storefront-coffee/src/lib/slots/generated/sibling-slots.ts`)\u00bb. That file is GENERATED and it lists the slots of the SIBLING deployable (`apps/checkout`), which this fork republishes at `GET /api/slots` on the sibling's behalf \u2014 it is not a render site in this fork and never was. Measured on the deployed box 18/09: the shoe shop and the outlet drew the bar and the caf\u00e9 did not, because `CoffeeChrome` replaced the reference chrome and did not republish the slot it was publishing. \u2605 v04/F6 CLOSED IT: the fork's own footer now carries `<Slot name=\"footer.end\">` in the place `FooterDefault` carries it, and `bin/fork-slot-reach.guard.mjs` derives what this declaration points at against what each fork really draws, so a target no front of ours draws is red in the loop, naming the pair.",
       "demo_ribbon": {}
     },
     "balcao": null

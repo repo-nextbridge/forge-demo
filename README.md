@@ -1561,7 +1561,7 @@ runbook), it declares **no `area`** (a notice belongs wherever a store is looked
 (a sentence an operator can edit is a sentence an operator can empty).
 
 ⛔ **And nothing placed it, which was the defect of 11/09 in another coat.** The block was declared and both
-forks were wired to draw it, but the PLACEMENT was a `hook_placement` row somebody wrote in Compose — a row
+forks could IMPORT it, but the PLACEMENT was a `hook_placement` row somebody wrote in Compose — a row
 that survives a deploy and does **not** survive a reset, and this box resets itself. Since v0.4/F5
 `seed/demo-setup.json` declares it in `storefront:footer.end` for every store this box keeps **on the street**,
 so a birth from zero writes it with no gesture of hand. `bin/ribbon-at-birth.guard.mjs` is what holds that on a
@@ -1569,6 +1569,18 @@ laptop where no box is running: it derives the block (the only one of this app w
 stores (the kernel's own servability rule, `bin/servable.mjs`), and types neither a component nor a handle. The
 counter is the exclusion, by its `status: "private"` and not by its name — the vitrine 404s it, and `totem/`
 carries the same sentence by hand.
+
+⛔⛔ **AND «both forks were WIRED TO DRAW IT» IS WHAT THAT PARAGRAPH SAID UNTIL v0.4/F6 — false of one of the
+two, and it cost this box a shop.** Reaching an app (the `file:../apps/demo-setup` dependency,
+`transpilePackages`, the tracing root, the generated registry) is not the same fact as publishing the **slot**
+its block is placed in. `storefront-coffee` had all four and its own chrome, `CoffeeChrome`, published no
+`footer.end` at all — so with the placement made, enabled and answered by the port on all three shops, the
+shoe shop and the Outlet drew the bar and **the café did not**. Measured on the deployed box, 18/09; in the
+database that store carried one placement row where its siblings carried four. ★ **v0.4/F6** publishes the slot
+in the fork's own footer, in the place `FooterDefault` publishes it, and adds the fence that was missing:
+`bin/fork-slot-reach.guard.mjs` compares what this box's declarations POINT AT against what each of its forks
+really DRAWS, per shop, and reddens naming the pair. `bin/front-app-reach.guard.mjs` grades the other half and
+was correctly green the whole time — which is exactly why nothing said anything.
 
 ⛔ **The login box (`account.brand`) is NOT one of them, and the line is the DEPLOYABLE (trava 4).** That
 screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable
