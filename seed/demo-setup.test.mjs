@@ -9,7 +9,16 @@
 //     that only counted placements would stay green on exactly that;
 //   · the mark is the SAME mark the funnel wears, spelled the same way. Two files, one shop: a shopper
 //     crossing from the header to the checkout does not change brand;
-//   · a store the file has never heard of is NAMED, never skipped.
+//   · a store the file has never heard of is NAMED, never skipped;
+//   · ★★★ and since v0.4 the declaration carries a block that is NOT a mark — the demonstration notice —
+//     so every rule here that says «every block of a dressed store» had to say which KIND it means. The one
+//     that must not be weakened by that is `markless()`: it stays red for a mark with no mark in it, and it
+//     is silent about a block that cannot carry one. Both halves are asserted below, the second as the
+//     control that proves the first is still looking.
+//
+// ⚠️ WHERE THE NOTICE'S OWN RULE LIVES, AND IT IS NOT HERE: «every store on the street is born wearing it»
+// is `bin/ribbon-at-birth.guard.mjs`, because its subject is the BOX (`seed/box.json`) and not this
+// declaration. What is graded here is what is true of this file's blocks.
 //
 // ⚠️ THE ENGINE ITSELF IS TESTED IN `seed/chrome.test.mjs`, which drives the same `seed/blocks.mjs` over the
 // other declaration. What is here is what is true of THESE blocks.
@@ -19,62 +28,136 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { blocksOf, configKeysOf, surfaceSlots } from '../bin/app-manifest.mjs';
 import { blocksFor, imagesOf } from './blocks.mjs';
-import { markless, seedDemoSetup } from './demo-setup.mjs';
+import { markComponents, markless, seedDemoSetup } from './demo-setup.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 const DATA = JSON.parse(readFileSync(join(SEED, 'demo-setup.json'), 'utf8'));
 const CHROME = JSON.parse(readFileSync(join(SEED, 'chrome.json'), 'utf8'));
 
-/** The three blocks the app declares and the slot each is allowed in — read off
- *  `apps/demo-setup/manifest.ts`, whose own suite holds the same table against the manifest.
+/**
+ * ★★★ THE APP'S OWN DECLARATION, READ — never a table re-typed beside it.
  *
- *  ★★ THERE WAS A FOURTH UNTIL pk28 — `account_brand` → `storefront:account.brand`, the login box — and it
- *  left on the axis of the DEPLOYABLE, not because anything about it was wrong. The vitrine is FORKABLE and a
- *  customer makes it theirs, so identity there may live in an app of that customer's own; the CHECKOUT is
- *  hosted by us and nobody forks it, so identity there has to be configurable without a fork and is the
- *  PRODUCT's: those three blocks are the STOREFRONT's and the login box is the CHECKOUT's. */
-const MANIFEST_SLOTS = {
-  header_brand: 'storefront:header.brand',
-  drawer_brand: 'storefront:header.drawer_brand',
-  footer_brand: 'storefront:footer.brand',
-};
+ * ⛔ WHAT USED TO BE HERE: `MANIFEST_SLOTS` and `CONFIG_KEYS`, two hand copies of `apps/demo-setup/manifest.ts`.
+ * The same shape cost five edits in this repository when ONE block moved between two apps (pk29/D1 measured
+ * it), and one of those edits failed as `TypeError` rather than as a sentence naming the block. Adding the
+ * fourth block here would have been the same bill again: a list that is a copy of a declaration disagrees
+ * with it silently, and always in the direction of grading LESS.
+ *
+ * ⚠️ AND IT NEEDS NO CHECKOUT. `demo-setup` is an app of THIS box — `apps/demo-setup/manifest.ts` is right
+ * here — so `blocksOf` always answers, and no rule in this file has a NOT CHECKED branch to take. The one
+ * question that does leave this repository is «does the surface really publish that slot», and only that
+ * rule waits for the pinned tree.
+ */
+const APP = blocksOf('demo-setup');
+const CONFIG_KEYS = configKeysOf(APP.blocks);
 
-/** The block that moved to the product in pk28. Named here so that putting it back is RED in the declaration
- *  as well as in the manifest — a store that declared it again would place a block this app no longer ships,
- *  and `composition.place` would refuse the birth with `no block 'account_brand' declared by extension`. */
+/** The components that ARE the shop's mark, derived by `seed/demo-setup.mjs` off the same manifest: a block
+ *  whose `config_schema` offers somewhere to put a logo or a word. The notice is not one of them. */
+const MARKS = markComponents('demo-setup');
+
+/**
+ * ★★ THE FOURTH MARK, WHICH LEFT IN pk28 — `account_brand` → `storefront:account.brand`, the login box. It
+ * went on the axis of the DEPLOYABLE and not because anything about it was wrong: the vitrine is FORKABLE and
+ * a customer makes it theirs, so identity there may live in an app of that customer's own; the CHECKOUT is
+ * hosted by us and nobody forks it, so identity there has to be configurable without a fork and is the
+ * PRODUCT's. Named here so that putting it back is RED in the declaration as well as in the manifest — a
+ * store that declared it again would place a block this app no longer ships, and `composition.place` would
+ * refuse the birth with `no block 'account_brand' declared by extension`.
+ */
 const GONE_TO_THE_PRODUCT = 'account_brand';
-
-/** Which config keys each block declares (`config_schema`). A key this file invents is dropped by the
- *  kernel's own validation, so it would be a sentence nobody ever reads. Only the footer has a tagline. */
-const CONFIG_KEYS = {
-  header_brand: ['logo', 'text', 'tail'],
-  drawer_brand: ['logo', 'text', 'tail'],
-  footer_brand: ['logo', 'text', 'tail', 'tagline'],
-};
 
 /** THE INSTRUCTION, verbatim: a content block saying «Leve. Inteligente. Sua.» under the footer's logo, in
  *  the shoe shop and the outlet. */
 const TAGLINE = 'Leve. Inteligente. Sua.';
 const SIGNS = ['forge', 'outlet'];
 
+/** Every store this declaration writes rows for. Since v0.4 that is not the same set as the one below. */
 const dressed = Object.entries(DATA.stores).filter(([, spec]) => spec !== null);
 
-test('★★ the slot map is the app’s own — a slot this file invented would be refused at place time', () => {
-  assert.deepEqual(DATA.slots, MANIFEST_SLOTS);
+/** ★★★ THE STORES THAT WEAR A MARK, which is the subject of almost every rule in this file and stopped being
+ *  «the dressed ones» when the café came back for the notice alone. Derived from the declaration against the
+ *  manifest's own idea of a mark, so a shop that arrives or vanishes changes this and nothing else. */
+const marked = dressed.filter(([, spec]) => MARKS.some((component) => component in spec));
+
+/** The MARK blocks one store declares — what «every block of this shop» used to mean, said explicitly now
+ *  that a dressed shop may also be wearing something that is not a mark. */
+const marksOf = (handle) => blocksFor(DATA, handle).filter((b) => MARKS.includes(b.component));
+
+test('★★ the slot map names the app’s OWN blocks — a component it does not ship is refused at place time', () => {
+  // `composition.place` validates the component against the INSTALLED manifest and refuses one it does not
+  // know, which costs a birth to find out. This is that refusal, read off the same manifest, in milliseconds.
   assert.equal(DATA.app, 'demo-setup');
+  assert.deepEqual(
+    Object.keys(DATA.slots).sort(),
+    APP.blocks.map((b) => b.component).sort(),
+    'seed/demo-setup.json places components apps/demo-setup/manifest.ts does not declare, or misses one it ' +
+      'does. A block the app ships and this file never places is a block no store of this box can ever wear.',
+  );
 });
 
-test('★★★ every dressed store declares ALL THREE marks — a shop with two is a place that lost its name', () => {
+test('★★★ each slot is in the AREA its block declares — and the notice declares none, which is the point', () => {
+  // ⛔ AREAS CONFINE BY PREFIX (trava 7): a block with `area: 'header'` may only be placed in a slot whose
+  // page prefix is `header`, and the kernel enforces it. So the three marks' slots are not free choices —
+  // they are the only ones their own manifest allows — and `demo_ribbon` declaring NO area is what lets the
+  // notice be placed in a footer slot at all. A block that grew an `area` tomorrow would pin itself here.
+  let confined = 0;
+  for (const block of APP.blocks) {
+    const declared = DATA.slots[block.component];
+    const [surface, name] = String(declared).split(':');
+    assert.equal(
+      surface,
+      block.surface,
+      `${block.component} is placed on the "${surface}" surface and the app declares "${block.surface}"`,
+    );
+    if (block.area === undefined) continue;
+    confined += 1;
+    assert.equal(
+      name.split('.')[0],
+      block.area,
+      `${block.component} declares \`area: "${block.area}"\` and this file places it in "${declared}", ` +
+        'whose page prefix is something else. The kernel confines a block to its area by that prefix, so ' +
+        'this placement is refused at birth.',
+    );
+  }
+  assert.ok(confined > 0, 'no block of this app declares an area, so the rule above graded nothing at all');
+});
+
+test('★★ …and every slot it names is a slot the SURFACE really publishes', (t) => {
+  // ⛔ THE HALF THAT LEAVES THIS REPOSITORY. A slot string is `<surface>:<name>`: the surface is the block's
+  // own, the name belongs to the deployable that draws it — the catalogue the admin's Composição reads. A
+  // name nothing publishes places a block that is stored and drawn by nobody: 200 everywhere, invisible.
+  // ⚠️ AND THIS IS THE RULE THE NOTICE NEEDED MOST. `footer.end` is a slot no block of this app used before
+  // v0.4, and «the operator drags it there» was, until this slice, the only thing that had ever checked it.
+  const catalogue = surfaceSlots();
+  if (catalogue.tried) return t.skip(`NOT CHECKED — the pinned slot catalogue: ${catalogue.tried.join(' · ')}`);
+  for (const [component, declared] of Object.entries(DATA.slots)) {
+    const name = String(declared).split(':')[1];
+    assert.ok(
+      catalogue.slots.includes(name),
+      `${component} is placed in "${declared}" and the storefront surface publishes no slot called ` +
+        `"${name}". The block would be stored, and drawn by nobody.`,
+    );
+  }
+});
+
+test('★★★ every MARKED store declares ALL the marks — a shop missing one lost its name in that place', () => {
   // ⛔ ONE COMPONENT PER PLACE, WHICH IS THE KERNEL'S RULE AND NOT A PREFERENCE: `placement: 'single'` is per
   // (store, app, component), so the three places can only be filled by three components. A store that
   // declared two would have one of them wearing the FORGE fallback — the exact half-substitution («`acme.` at
   // the top and `forge.` at the bottom of the same page») that pk26 exists to end.
-  for (const [handle] of dressed) {
+  // ⚠️ NO NUMBER IN THE TITLE OR IN THE BODY, and there used to be one («ALL THREE»). What this grades is
+  // «every mark this app ships, in every shop that wears one», and that sentence has no number in it — the
+  // number was a second thing to edit the day a mark arrived or left.
+  for (const [handle] of marked) {
     assert.deepEqual(
-      blocksFor(DATA, handle).map((b) => b.component).sort(),
-      Object.keys(MANIFEST_SLOTS).sort(),
-      `store "${handle}" does not declare all three marks`,
+      blocksFor(DATA, handle)
+        .map((b) => b.component)
+        .filter((component) => MARKS.includes(component))
+        .sort(),
+      [...MARKS].sort(),
+      `store "${handle}" does not declare every mark this app ships`,
     );
   }
   // ⛔ TWO SINCE pk35/d7, AND THE NUMBER IS THE DECISION. The café's vitrine is a FORK that draws its own
@@ -84,13 +167,16 @@ test('★★★ every dressed store declares ALL THREE marks — a shop with two
   // freedom — says the INSTANCE removes the placement of a store whose fork draws it.
   // `seed/demo-setup.json` carries the measurement in full. ⇒ a THIRD dressed shop here is a shop somebody
   // dressed without saying why.
-  assert.equal(dressed.length, 2, 'two shops wear a mark — a different count is a shop that arrived or vanished');
-  assert.equal(
-    DATA.stores.cafe,
-    null,
-    'the café is dressed again. Its vitrine is a fork with its own chrome and its account screens draw the ' +
-      '`chrome` app\u2019s instead of the kit\u2019s, so these three rows render on no screen of that store — ' +
-      'three rows an operator can drag and never see the effect of.',
+  assert.equal(marked.length, 2, 'two shops wear a mark — a different count is a shop that arrived or vanished');
+  // ⚠️ AND THE CAFÉ IS NO LONGER `null` — IT IS DRESSED IN THE NOTICE AND IN NO MARK, which is a stronger
+  // statement than absence and is why this rule is spelled this way rather than `stores.cafe === null`.
+  assert.deepEqual(
+    MARKS.filter((component) => component in (DATA.stores.cafe ?? {})),
+    [],
+    'the café wears a mark again. Its vitrine is a fork with its own chrome and its account screens draw the ' +
+      '`chrome` app\u2019s instead of the kit\u2019s, so those rows render on no screen of that store — ' +
+      'rows an operator can drag and never see the effect of. The NOTICE is the exception and the reason is ' +
+      'in the declaration: it is not the customer\u2019s content, it is this box saying its prices are not real.',
   );
 });
 
@@ -119,6 +205,10 @@ test('★★ the LOGIN BOX is not this file’s — the block moved to the produ
 });
 
 test('★★ no config key is invented — every one is in the block’s own `config_schema`', () => {
+  // ⛔ AND THE NOTICE IS THE HARD CASE THIS COVERS FOR FREE: its `config_schema` is EMPTY, on purpose (a
+  // sentence an operator can edit is a sentence an operator can empty), so ANY key written under it here is
+  // a key the kernel drops on the floor — a sentence nobody ever reads, written in a file that looks like it
+  // said something. The derived table is what makes that an assertion instead of a hope.
   for (const [handle] of dressed) {
     for (const block of blocksFor(DATA, handle)) {
       for (const key of Object.keys(block.config ?? {})) {
@@ -135,12 +225,13 @@ test('★★ no config key is invented — every one is in the block’s own `co
 
 test('⛔ a mark with neither a logo nor a word would DELETE the shop’s name from that place', () => {
   assert.deepEqual(markless(DATA), []);
-  // …and the refusal is capable of red, which is the only reason to trust it. It asks the question of EVERY
-  // block, not of three component names — a fifth mark added tomorrow is covered without anybody remembering.
+  // …and the refusal is capable of red, which is the only reason to trust it. It asks the question of every
+  // block that CAN carry a mark, not of component names written here — a fifth mark added tomorrow is
+  // covered without anybody remembering, and that is what `markComponents` buys.
   assert.deepEqual(
     markless({
       app: 'demo-setup',
-      slots: MANIFEST_SLOTS,
+      slots: DATA.slots,
       stores: {
         x: { header_brand: {} },
         y: { footer_brand: { tail: '   ' } },
@@ -150,6 +241,50 @@ test('⛔ a mark with neither a logo nor a word would DELETE the shop’s name f
       },
     }),
     ['x/header_brand', 'y/footer_brand', 'z/footer_brand'],
+  );
+});
+
+test('★★★ …and it is SILENT about the block that cannot carry a mark — the control that proves it looks', () => {
+  // ⛔ THE PRECISION THIS SLICE HAD TO GET RIGHT. Before v0.4 every block of this declaration was a mark, so
+  // «refuse a block with no config» and «refuse a MARK with no mark» were the same sentence. The notice broke
+  // that: it declares NO `config_schema` at all — the app ships its sentence in three languages precisely so
+  // an operator cannot empty it — so `{}` is the only config it can ever have, and the reason the refusal
+  // states («a header, a drawer or a footer column with NO MARK AT ALL») is not a sentence about it.
+  //
+  // ⚠️ THE TWO HALVES ARE ASSERTED IN ONE SPEC, ON PURPOSE. A loosened refusal and a refusal that stopped
+  // looking are the same green if you only check the notice; here the SAME store carries an empty notice and
+  // an empty mark, and exactly one of them comes back.
+  const notice = APP.blocks.find((b) => b.config_schema.length === 0);
+  assert.ok(notice, 'this app ships no unconfigurable block, so the control below is grading nothing.');
+  assert.ok(!MARKS.includes(notice.component), `${notice.component} is counted as a MARK — the derivation is wrong`);
+  assert.deepEqual(
+    markless({
+      app: 'demo-setup',
+      slots: DATA.slots,
+      stores: { x: { [notice.component]: {} }, y: { [notice.component]: {}, header_brand: {} } },
+    }),
+    ['y/header_brand'],
+    'the refusal either accused the notice — which would make the birth fail on a block that is correct — ' +
+      'or it stopped accusing an empty mark, which is the defect it exists for standing right beside it.',
+  );
+});
+
+test('★★ and WHICH blocks are marks comes off the manifest — hand it another answer and the subject moves', () => {
+  // ⛔ THE VÁCUO THE DERIVATION COULD HIDE. `markless` returning `[]` is the right answer for this file and
+  // also the answer a refusal that looks at NOTHING gives. So it is driven here with the subject supplied
+  // explicitly: told the notice is a mark, it accuses the notice; told nothing is, it accuses nobody — which
+  // is what the anti-vacuum in `markComponents` refuses to let the real call reach.
+  const notice = APP.blocks.find((b) => b.config_schema.length === 0);
+  const spec = { app: 'demo-setup', slots: DATA.slots, stores: { x: { [notice.component]: {} } } };
+  assert.deepEqual(markless(spec, [notice.component]), [`x/${notice.component}`]);
+  assert.deepEqual(markless(spec, []), []);
+  // …and the real subject is the manifest's, which is the same list `seed/demo-setup.mjs` derives.
+  assert.deepEqual(
+    [...MARKS].sort(),
+    APP.blocks
+      .filter((b) => b.config_schema.some((f) => ['logo', 'text', 'tail'].includes(f.name)))
+      .map((b) => b.component)
+      .sort(),
   );
 });
 
@@ -217,11 +352,11 @@ test('★★ in every mark the picture and the words are EXCLUSIVE, so each shop
   const WORDMARK = { forge: true, outlet: true };
   assert.deepEqual(
     Object.keys(WORDMARK).sort(),
-    dressed.map(([handle]) => handle).sort(),
-    'this table and the dressed shops disagree, so the loop below is grading something else',
+    marked.map(([handle]) => handle).sort(),
+    'this table and the shops that wear a mark disagree, so the loop below is grading something else',
   );
-  for (const [handle] of dressed) {
-    for (const block of blocksFor(DATA, handle)) {
+  for (const [handle] of marked) {
+    for (const block of marksOf(handle)) {
       const config = block.config ?? {};
       if (WORDMARK[handle]) {
         assert.equal(
@@ -276,9 +411,9 @@ test('★★★ one shop, ONE mark — the three places of a store all spell it 
   // ⇒ SABOTAGE: change the tail of one of the three and this names the shop and the two spellings. The
   //   liberty pk26 bought is the liberty to put a DIFFERENT mark in each place; this box does not want one,
   //   and the difference between "we may" and "we did by accident" is this rule.
-  for (const [handle] of dressed) {
+  for (const [handle] of marked) {
     const marks = new Set(
-      blocksFor(DATA, handle).map((b) => {
+      marksOf(handle).map((b) => {
         const c = b.config ?? {};
         return JSON.stringify([c.logo ?? null, c.text ?? null, c.tail ?? null]);
       }),
@@ -286,7 +421,7 @@ test('★★★ one shop, ONE mark — the three places of a store all spell it 
     assert.equal(
       marks.size,
       1,
-      `store "${handle}" spells its mark ${marks.size} different ways across its three places: ` +
+      `store "${handle}" spells its mark ${marks.size} different ways across its places: ` +
         `${[...marks].join(' vs ')}. A component per place is what lets a shop CHOOSE that; this box did not.`,
     );
   }
@@ -298,7 +433,7 @@ test('★★★ the mark the vitrine wears is the mark the FUNNEL wears — two 
   // ties them: `seed/chrome.json`'s account footer SIGNS the shop, and it must sign with the name the mark
   // spells. A shopper crossing from the header to the footer does not change page.
   let signed = 0;
-  for (const [handle] of dressed) {
+  for (const [handle] of marked) {
     const mark = blocksFor(DATA, handle).find((b) => b.component === 'header_brand')?.config ?? {};
     const word = `${(mark.text ?? '').trim()}${(mark.tail ?? '').trim()}`;
     assert.ok(word.length > 0, `store "${handle}" has no word in its mark to sign anything with`);
@@ -408,25 +543,46 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
     assert.deepEqual(uploaded, []);
 
     const placed = calls.filter((c) => c.name === 'composition.place');
-    assert.equal(placed.length, 6, 'two dressed shops × three marks');
+    // ⛔ THE EXACT ROWS, NAMED, RATHER THAN A COUNT. A number said «two dressed shops × three marks» and was
+    //   a second thing to edit the day a block arrived; worse, it cannot tell «the café got the notice» from
+    //   «the shoe shop got one row too many». This is the whole plan of a birth, spelled out.
     assert.deepEqual(
-      [...new Set(placed.map((c) => c.input.store))].sort(),
-      ['sto_forge', 'sto_outlet'],
-      'the café, the counter and a store this file has never heard of are NOT dressed',
+      placed.map((c) => `${c.input.store}/${c.input.component}`).sort(),
+      [
+        'sto_cafe/demo_ribbon',
+        'sto_forge/demo_ribbon',
+        'sto_forge/drawer_brand',
+        'sto_forge/footer_brand',
+        'sto_forge/header_brand',
+        'sto_outlet/demo_ribbon',
+        'sto_outlet/drawer_brand',
+        'sto_outlet/footer_brand',
+        'sto_outlet/header_brand',
+      ],
+      'the birth does not write exactly the rows this declaration states',
     );
-    // ⛔ AND THE CAFÉ IS SKIPPED AS A DECLARED DECISION, never as an absence — `null` is this box saying
-    //   «this shop wears none», which is what its fork made true.
-    assert.equal(
-      placed.filter((c) => c.input.store === 'sto_cafe').length,
-      0,
-      'the café was dressed by the seed. Its fork draws its own mark and its account screens draw the ' +
-        '`chrome` app\u2019s, so every one of these rows would land on a screen that never renders it.',
+    // ★★★ AND THE CAFÉ IS THE ROW THIS SLICE IS ABOUT: the NOTICE and no mark. Its fork draws its own chrome
+    //   and its account screens draw the `chrome` app's, so a mark there would land on a screen that never
+    //   renders it — but the notice is not the fork's content to opt out of, it is this box saying out loud
+    //   that its prices are not real, and the fork COMPOSES this app precisely so it can be drawn.
+    const notice = APP.blocks.find((b) => b.config_schema.length === 0).component;
+    assert.deepEqual(
+      placed.filter((c) => c.input.store === 'sto_cafe').map((c) => c.input.component),
+      [notice],
+      'the café is dressed in something other than the notice alone',
+    );
+    // ⛔ AND THE COUNTER, AND A STORE THIS FILE HAS NEVER HEARD OF, GET NOTHING.
+    assert.deepEqual(
+      placed.filter((c) => ['sto_balcao', 'sto_ghost'].includes(c.input.store)),
+      [],
+      'the counter has no shop window and `ghost` is a store this declaration has never heard of; a birth ' +
+        'that dressed either of them wrote rows nobody can find the effect of.',
     );
     for (const call of placed) {
       assert.equal(call.input.extension_id, 'demo-setup');
       assert.equal(
         call.input.slot,
-        MANIFEST_SLOTS[call.input.component],
+        DATA.slots[call.input.component],
         `${call.input.component} was placed in ${call.input.slot}, which is not the slot it declares`,
       );
     }

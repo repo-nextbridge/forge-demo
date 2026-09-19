@@ -60,7 +60,7 @@ the logo in each place is a fair price, and it buys more freedom.
 | `header_brand` | `storefront:header.brand` | the shop's top bar |
 | `drawer_brand` | `storefront:header.drawer_brand` | the mobile drawer's head |
 | `footer_brand` | `storefront:footer.brand` | the footer's brand column (**+ the tagline**) |
-| `demo_ribbon` | *(no `area` — any slot of the surface)* | wherever an operator drops it; `footer.end` covers every vitrine page **and** the account screens |
+| `demo_ribbon` | `storefront:footer.end` *(no `area` — the block accepts any slot of the surface)* | every vitrine page **and** the account screens of the checkout, which wear the STORE's chrome |
 
 ★ **The fourth one breaks two of this app's own rules, and both on purpose.** It declares **no `area`**,
 because a notice belongs wherever a store is looked at and WHICH slot that is gets decided in Compose; and it
@@ -113,6 +113,29 @@ A birth writes all of it: **the app is born installed, placed AND configured**, 
 declaration. An operator's own edit in Compose survives until the next birth — the same contract every other
 declared thing in this box has.
 
+### ★★★ …and the NOTICE is in that sentence since v0.4/F5, because it was not
+
+⛔ **The block was declared, both forks were wired to draw it, and NO STEP OF THE BIRTH PLACED IT.** The
+placement was a `hook_placement` row an operator wrote in Compose: it survives a deploy and does **not**
+survive a reset, and this box resets itself. That is the defect of 11/09 in another coat — the gate app *"was
+installed by no step of the birth"* and the demo served its shops without one for days with every birth
+reporting green. `bin/gate-at-birth.guard.mjs` retired with the app it graded, and the notice inherited the
+hole without inheriting the fence.
+
+⇒ `seed/demo-setup.json` declares `demo_ribbon` in `storefront:footer.end`, per store, and
+`bin/ribbon-at-birth.guard.mjs` is the fence. Both halves of that fence are **derived**: the block is the one
+this app's manifest ships with **no `config_schema`** (the app's own way of saying *this exists to be true,
+not to be filled in*), and the stores are every store `seed/box.json` keeps **on the street** — the kernel's
+own rule, spelled once in `bin/servable.mjs`. The counter is the exclusion, and it is excluded by its
+`status: "private"` rather than by its handle: the vitrine 404s it, and `totem/` carries the notice by hand.
+
+⛔ **And `markless()` had to get more precise rather than more permissive.** Its refusal — *a block with no
+logo and no word* — is about a slot that **cedes its whole node** and draws nothing when empty. The notice
+cedes nothing and takes no config at all, so an empty config is the only one it can have. The refusal now
+asks its question of the blocks whose own `config_schema` offers somewhere to put a mark, read off the
+manifest: a fifth mark is covered without anybody remembering, and a second notice is left alone without a
+list to maintain.
+
 ## What `chrome` still is
 
 The platform's `chrome` app keeps its honest OOTB blocks — the checkout header and footer and the account
@@ -161,15 +184,20 @@ what rotted through four repairs.
 
 ## ⛔ THE CAFÉ WEARS NONE OF THESE — the instance removed them (pk35/d7)
 
-`seed/demo-setup.json` says `"cafe": null`. The rule: **a fork is the customer's, with 100% freedom** ⇒ **when
+`seed/demo-setup.json` declares the café wearing the notice and **no mark**. The rule behind the missing mark:
+**a fork is the customer's, with 100% freedom** ⇒ **when
 a fork draws by itself what a declared block would draw, the instance removes that
 store's placement.** `seed/outlet.mjs` uses the same pattern for the PLP shelf.
 
 ⚠️ **The other example this line used to cite was the café's gate, and there is no gate any more (v0.4).**
 That removal was never the same rule as this one: this is a fork that draws the thing ITSELF, that was a fork
-that could draw NOTHING. Only this one is the 100%-freedom rule. ⛔ **And the ribbon is neither**: it is not
-the customer's content, it is this box saying out loud that its prices are not real — so the café's vitrine
-COMPOSES it (see below) and whether it is PLACED is the operator's gesture, per store, in Compose.
+that could draw NOTHING. Only this one is the 100%-freedom rule.
+
+⛔ **And the ribbon is neither, which is why `"cafe"` stopped being `null` in v0.4/F5.** It is not the
+customer's content — it is this box saying out loud that its prices are not real — and the fork draws nothing
+of the kind by itself. So the café's vitrine COMPOSES the app (see below), its own slot catalogue publishes
+`footer.end`, and **the birth places the notice there**. The café's entry now declares one block and no mark:
+the mark is the fork's, the notice is the box's.
 
 ⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
 placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,
