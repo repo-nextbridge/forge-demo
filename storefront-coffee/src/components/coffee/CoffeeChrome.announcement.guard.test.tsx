@@ -34,8 +34,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { CoffeeChrome } from './CoffeeChrome';
+
+// ★ v04/F6 — THE CHROME PUBLISHES `footer.end` NOW, AND ITS OUTLET IS AN ASYNC SERVER COMPONENT. React cannot
+// render one under `@testing-library/react` ("async/await is not yet supported in Client Components"), and
+// without this stub the chrome above renders no `<footer>` at all — so every assertion in this file would
+// fail for a reason that has nothing to do with what it grades. The stub is the one `app/chrome-identity.
+// test.tsx` already uses: the slot's name, marked, so a test that cares can see WHICH outlet was mounted.
+vi.mock('@/lib/extensions/ExtensionOutlet', () => ({
+  ExtensionOutlet: ({ name }: { name: string }) => <i data-outlet={name} />,
+}));
 
 const CAFE = 'sto_01M1DE555TJ36TQB6E9PR5VSJ4';
 

@@ -195,9 +195,31 @@ that could draw NOTHING. Only this one is the 100%-freedom rule.
 
 ⛔ **And the ribbon is neither, which is why `"cafe"` stopped being `null` in v0.4/F5.** It is not the
 customer's content — it is this box saying out loud that its prices are not real — and the fork draws nothing
-of the kind by itself. So the café's vitrine COMPOSES the app (see below), its own slot catalogue publishes
-`footer.end`, and **the birth places the notice there**. The café's entry now declares one block and no mark:
-the mark is the fork's, the notice is the box's.
+of the kind by itself. So the café's vitrine COMPOSES the app (see below), **its own chrome publishes
+`footer.end`** (v0.4/F6), and **the birth places the notice there**. The café's entry now declares one block and
+no mark: the mark is the fork's, the notice is the box's.
+
+⛔⛔ **AND THAT LINE SAID «its own slot catalogue publishes `footer.end`» UNTIL v0.4/F6, WHICH WAS FALSE — and
+it is the reason this shop wore no bar for a week.** The file it pointed at,
+`storefront-coffee/src/lib/slots/generated/sibling-slots.ts`, is GENERATED and holds the slots of the **sibling
+deployable** (`apps/checkout`), which this fork republishes at `GET /api/slots` on the sibling's behalf. It is
+not a render site in this fork and never was. Measured on the deployed box, **18/09**: the placement exists and
+is enabled on all three shops, the shoe shop and the outlet drew the bar, **the café did not** — because
+`CoffeeChrome` replaced `StorefrontChrome` and never republished the slot `FooterDefault` publishes. In the
+database the café carried **one** placement row where its two siblings carried four.
+
+★ **v0.4/F6 closed it, and left a fence behind.** `CoffeeChrome` now carries
+`<Slot name="footer.end"><ExtensionOutlet name="footer.end" …/></Slot>` as the last thing inside its
+`<footer>`, after everything the footer draws — the same name, the same position and the same additive
+semantics the kit's own `FooterDefault` gives it. The ten other chrome slots stay unpublished, each with its
+reason written where the decision is (the head of that footer in `CoffeeChrome.tsx`): four of them **cede** the
+node this fork draws itself, three have **no place** in this chrome at all, and the last four are a judgement
+— nothing places anything in them, and `bin/fork-slot-reach.guard.mjs` is what turns red the day something
+does.
+
+⛔ **Reaching an app is not the same fact as publishing the slot its block is placed in.**
+`bin/front-app-reach.guard.mjs` grades the first (dependency, `transpilePackages`, tracing root, the import)
+and was correctly green throughout; nothing graded the second. That is the whole seam this slice closed.
 
 ⚠️ **And the sentence that used to justify dressing it had become false.** It said the café's three
 placements *"render on the screens the café's buyers reach through us"*. Measured against the pinned release,
@@ -270,7 +292,20 @@ disappears the guard is red instead of covered.
   address while holding the catalog key it stamped beside it. Jurisdiction derived from the manifests, both
   spellings of the sidecar name (written out and composed), and the scanner proven to read code rather than
   the prose that explains it.
-- `bin/front-app-reach.guard.mjs` — whether a front of this box can actually DRAW each of the four, derived
+- `bin/front-app-reach.guard.mjs` — whether a front of this box can actually IMPORT each of the four, derived
   from `composition.json` + `forge.wiring` against each front's manifest, Next config and source. The rule
   itself is graded on fixtures in `bin/front-apps.test.mjs`, because this tree is healthy wherever its
   declared divergences are and a rule proven only against a healthy tree is a rule proven to be quiet.
+  ⚠️ **It says nothing about the SLOT**, which is the sibling rule below — and the difference cost this box a
+  shop with no demonstration notice on it.
+- `bin/fork-slot-reach.guard.mjs` (v0.4/F6) — whether the front that serves a given shop DRAWS the target each
+  of this box's own blocks is placed at. Both sides derived and nothing typed: which front serves which shop
+  from `seed/box.json`'s `domain.env` × the `forge_shop_host` argument in `caddy/Caddyfile`; which fronts are
+  ours from `bin/forks.mjs`; what is placed where from every `seed/*.json` declaring an app on `instanceApps`;
+  which deployable owes a target from the app's own `forge.wiring`; and what a fork publishes from the
+  `<Slot>` / `<ExtensionOutlet>` render sites in its `src`, **comments stripped** (this chrome's own decision
+  comment names nine slots it does not publish). A finding is the PAIR — the target and the shop.
+- `storefront-coffee/src/components/coffee/CoffeeChrome.footer-end.guard.test.tsx` — the other half of the
+  same claim, from inside the fork: the chrome both of its trees mount really renders the `footer.end` outlet,
+  and renders it AFTER the footer's own last line. The `bin/` rule reads source and cannot say the file is
+  mounted; `bin/fork-chrome-drift.guard.mjs` says which chrome each tree mounts. Three rules, one claim.

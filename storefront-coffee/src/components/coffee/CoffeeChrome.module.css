@@ -252,6 +252,23 @@
   color: color-mix(in srgb, var(--color-canvas) 45%, transparent);
 }
 
+/* ★ v04/F6 — the band the `footer.end` slot lands in: the centred column again, so a block placed at the foot
+ * of this footer lines up with the row above it instead of running to the page gutter. The kit puts the slot
+ * inside its own `.inner` for the same reason.
+ *
+ * ⚠️ THE SPACING IS ON `:not(:empty)` AND THAT IS THE WHOLE POINT OF WRITING IT THAT WAY. Nothing placed in
+ * the slot ⇒ the outlet renders null ⇒ this div has no children, and a bare `margin-top` would then be a gap
+ * under the footer of every store that placed nothing — a visible change bought by a slot that draws nothing.
+ * `.footer` is a block container, so the empty div itself costs no height. */
+.footerEnd {
+  max-width: var(--size-container);
+  margin: 0 auto;
+}
+
+.footerEnd:not(:empty) {
+  margin-top: clamp(20px, 3vw, 28px);
+}
+
 /* ── ⚠️ THE MOTION RULE, AND IT IS NOT OPTIONAL ─────────────────────────────────────────────────────────
  * Both of this shop's animations respect it. What must NOT disappear with them is the FEEDBACK: the badge's
  * number still changes, and the buy button still says "Adicionado". Removing the motion is a preference;

@@ -11,10 +11,18 @@
 // reported green. That fence retired in v0.4 together with the app it graded.
 //
 // The sentence the door used to carry did not retire. It became a BLOCK — the app declares it, both forks
-// were wired to draw it — and the PLACEMENT was left to a hand in Compose, per store. A `hook_placement` row
+// could IMPORT it — and the PLACEMENT was left to a hand in Compose, per store. A `hook_placement` row
 // survives a deploy and does NOT survive a reset, and this box resets itself: the notice would be there until
 // the next reset and then silently not, on shops a customer is looking at, with every birth reporting green.
 // ⇒ THE HOLE WAS INHERITED WITHOUT THE FENCE. This file is the fence, standing where the other one stood.
+//
+// ⛔⛔ AND THAT LINE READ «both forks were WIRED TO DRAW IT» UNTIL v0.4/F6, WHICH WAS FALSE OF ONE OF THEM.
+// Reaching an app — the dependency, the transpile, the tracing root, the generated registry — is not the same
+// fact as publishing the SLOT its block is placed in. `storefront-coffee` had all four and its own chrome
+// (`CoffeeChrome`) published no `footer.end` at all, so the café was the one shop of the three that did not
+// wear the bar: placed, enabled, answered by the port, rendered by nothing. Measured on the deployed box,
+// 18/09. This guard was right about what it grades — the birth PLACES the notice — and could never have seen
+// it; `bin/fork-slot-reach.guard.mjs` is the sibling that does, and it names the target and the shop.
 //
 // ── WHAT IS DERIVED, AND EVERYTHING HERE IS ─────────────────────────────────────────────────────────────
 //
