@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": "demo",
   "name": "Loja Demo (calcados, PT-BR)",
-  "baseUrl": "https://storage.googleapis.com/forge-500319-media/demo-catalog",
+  "baseUrl": "https://media.forgecommerce.pro/demo-catalog",
   "catalog": {
     "version": "c3962ed84cb2ffc8",
     "count": 26,
