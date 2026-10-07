@@ -222,7 +222,7 @@ and whether every shop can be signed in to is not.
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **admin home's widget order**, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
-| 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
+| 12 | **`verify-seed.mjs` + `verify-content.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds* (and, since v031/G, on the CONTENT of `seed/dataset/`: the seven checks that left the product); a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
 | 14 | **`warm-box.mjs` × tenant** | every store the **port** says has a public page (`storefront_enabled`), warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
 | 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |

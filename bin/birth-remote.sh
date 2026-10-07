@@ -85,7 +85,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?) — an
 10|the past (seed-history — 180 days), once per tenant
 10b|waiting for the dispatcher to drain
 11|the shop window (--phase window), once per tenant
-12|the verdict over the DATA (verify-seed), once per tenant
+12|the verdict over the DATA (verify-seed + verify-content), once per tenant
 13|the edge and the bucket (what only exists online)
 14|warming every store the port says has a public page
 14-bis|opening every door of every store
@@ -1116,7 +1116,7 @@ done
 # input: green through any road back to the same state. ⚠️ It does not stop the script where it fails — the
 # box is fully standing by now, and the addresses below are what an operator needs especially when a tenant
 # did not settle. The exit code is collected and spent at the very end.
-say '12 · the verdict over the DATA (verify-seed), once per tenant'
+say '12 · the verdict over the DATA (verify-seed + verify-content), once per tenant'
 UNSETTLED=''
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
@@ -1126,6 +1126,15 @@ for t in $TENANTS; do
   else
     UNSETTLED="$UNSETTLED $t"
     note "⛔ $t did NOT settle — the ✗ lines above say which check."
+  fi
+  # ★ v031/G — AND THE CONTENT. The seven checks that asserted THIS demo's content lived in the product until
+  # v0.3.1 (`*.demo.test.ts`); they ask the dataset this repository tracks AND this box now. Same token, same
+  # tenant, same exit-code policy: a ✗ leaves the tenant UNSETTLED and the run ends non-zero naming it.
+  if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-content.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t content is what seed/dataset declares"
+  else
+    case " $UNSETTLED " in *" $t "*) ;; *) UNSETTLED="$UNSETTLED $t" ;; esac
+    note "⛔ $t's CONTENT is not what seed/dataset declares — the ✗ lines above name the check (bin/verify-content.mjs)."
   fi
 done
 

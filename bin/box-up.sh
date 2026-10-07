@@ -56,7 +56,7 @@
 #                                about. A dataset belongs to a brand; see $DATASET_TENANTS below.
 #  10. seed-history  × TENANT   the PAST — 180 days of it, and it runs INSIDE the mail silence, never after
 #  11. seed.mjs       × TENANT   the WINDOW (--phase window): promotions, blocks, cache bust, and the RE-ARM
-#  12. verify-seed   × TENANT   the verdict over the DATA — does the box HOLD what this repository declares?
+#  12. verify-seed + verify-content × TENANT   the verdict over the DATA — does the box HOLD what this repository declares?
 #  13. online-only               the edge and the bucket: what only exists online. AFTER the rebirth (13–15
 #                                are the reset's own tail, and purging BEFORE it refills from a dying origin)
 #  14. warm-box      × TENANT    every store the PORT says has a public page, warmed and MEASURED. ★ A REPORT, not a gate: warmth
@@ -184,7 +184,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 10|the past (seed-history — 180 days), once per tenant
 10b|waiting for the dispatcher to drain
 11|the shop window (--phase window), once per tenant
-12|the verdict over the DATA (verify-seed), once per tenant
+12|the verdict over the DATA (verify-seed + verify-content), once per tenant
 13|the edge and the bucket (what only exists online)
 14|warming every store the port says has a public page
 14-bis|opening every door of every store
@@ -2384,7 +2384,7 @@ done
 # now, so there is nothing to protect by dying early — and the addresses below are what an operator needs even
 # (especially) when a tenant did not settle. So the verdict is collected here, the bench is printed, and the
 # script exits non-zero at the very end naming the tenants that came out wrong.
-say '12 · the verdict (verify-seed, once per tenant)'
+say '12 · the verdict (verify-seed + verify-content, once per tenant)'
 UNSETTLED=''
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
@@ -2395,6 +2395,15 @@ for t in $TENANTS; do
   else
     UNSETTLED="$UNSETTLED $t"
     note "⛔ $t did NOT settle — the ✗ lines above say which check, and each one names what to look at."
+  fi
+  # ★ v031/G — AND THE CONTENT. The seven checks that asserted THIS demo's content lived in the product until
+  # v0.3.1 (`*.demo.test.ts`); they ask the dataset this repository tracks AND this box now. Same token, same
+  # tenant, same exit-code policy: a ✗ leaves the tenant UNSETTLED and the run ends non-zero naming it.
+  if FORGE_OPERATOR_TOKEN="$tokval" host_node "$HERE/bin/verify-content.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t content is what seed/dataset declares"
+  else
+    case " $UNSETTLED " in *" $t "*) ;; *) UNSETTLED="$UNSETTLED $t" ;; esac
+    note "⛔ $t's CONTENT is not what seed/dataset declares — the ✗ lines above name the check (bin/verify-content.mjs)."
   fi
 done
 

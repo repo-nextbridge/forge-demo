@@ -45,6 +45,8 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { runStepTwelve } from './step-twelve.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const BOX_UP = read('bin/box-up.sh');
@@ -383,4 +385,21 @@ test('★★ the stamp is taken by `say` itself — nothing keeps a second list 
   const sayFn = BOX_UP.match(/^say\(\) \{[\s\S]*?^\}/m);
   assert.ok(sayFn, 'bin/box-up.sh has no `say()` — the stamps have nowhere to come from.');
   assert.match(sayFn[0], /STEPS_RAN/, '`say` no longer stamps the step it announces.');
+});
+
+// ── ★★ v031/G — STEP 12 ASKS THE CONTENT TOO, ONCE PER TENANT, AND ITS RED REACHES THE EXIT CODE ──────────────
+// The seven checks that asserted this demo's content left the product in v0.3.1 and became
+// `bin/verify-content.mjs`; a birth that never called it would carry them as decoration. So the step is RUN
+// (`bin/step-twelve.mjs`: cut out of `bin/box-up.sh`, comments stripped, helpers stubbed) and what is held is
+// behaviour: both verifiers, for every tenant, and a content ✗ leaves exactly that tenant UNSETTLED.
+test('★★ step 12 runs verify-seed AND verify-content for every tenant, and a content ✗ leaves that tenant unsettled', () => {
+  const script = readFileSync(join(ROOT, 'bin/box-up.sh'), 'utf8');
+  const green = runStepTwelve(script);
+  assert.deepEqual(green.calls, ['verify-seed:alpha', 'verify-content:alpha', 'verify-seed:beta', 'verify-content:beta'], green.out);
+  assert.deepEqual(green.unsettled, [], green.out);
+  const red = runStepTwelve(script, { fails: { content: ['beta'] } });
+  assert.deepEqual(red.unsettled, ['beta'], red.out);
+  // ⟂ and a tenant red on BOTH is named once, not twice.
+  const both = runStepTwelve(script, { fails: { seed: ['alpha'], content: ['alpha'] } });
+  assert.deepEqual(both.unsettled, ['alpha'], both.out);
 });
