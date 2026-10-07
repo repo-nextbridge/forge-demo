@@ -402,12 +402,20 @@ function datasetHome() {
     whyNoDataset = `${DATASET_DIR_ENV}=${dir} holds no readable storefront.json (${error?.code ?? error?.message ?? 'unreadable'})`;
     return null;
   }
-  if (typeof declared?.store !== 'string') {
-    whyNoDataset = `${join(dir, 'storefront.json')} names no \`store\`, so nothing says whose window it is`;
+  // ⛔ v031/G — THIS READ `declared.store` UNTIL 2026-10-07, AND THAT IS AN OBJECT. The contract
+  // (`DatasetStorefront` in the product's `packages/seed-dataset/src/types.ts`) has `store: { name }` — the
+  // DISPLAY name the seed creates a shop with — and `owner`, the HANDLE of the shop the window belongs to.
+  // Measured on the real file (`seed/dataset/storefront.json`: `owner: "forge"`, `store: {"name":"Loja
+  // Demo"}`): `typeof store !== 'string'` was ALWAYS true, so this returned null on every run and the shoe
+  // shop's window was "reported, not judged" — in silence, with a mounted dataset that declared it. The
+  // suite stayed green because its fixture spelled the same wrong key. Reading `store` again turns
+  // `bin/verify-seed.test.mjs` "the REAL tracked dataset is JUDGED" red.
+  if (typeof declared?.owner !== 'string' || declared.owner === '') {
+    whyNoDataset = `${join(dir, 'storefront.json')} names no \`owner\`, so nothing says whose window it is`;
     return null;
   }
   return {
-    store: declared.store,
+    store: declared.owner,
     blocks: [
       ...(declared.banners ?? []).map((b) => ({ app: 'banners', component: 'banner', slot: b.slot })),
       ...(declared.shelves ?? []).map((b) => ({ app: 'shelves', component: 'shelf', slot: b.slot })),
