@@ -36,7 +36,16 @@ import { dirname, join } from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { POINTER_FILE, boxSide, lockSide, provenanceVerdict } from './dataset-provenance.mjs';
+import { execFileSync } from 'node:child_process';
+
+import {
+  POINTER_FILE,
+  TRACKED_DATASET_DIR,
+  boxSide,
+  lockSide,
+  mountedDir,
+  provenanceVerdict,
+} from './dataset-provenance.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -230,4 +239,53 @@ test('a dataset MISSING a file the pointer lists is stale too, and the file is n
 test('★ anti-vacuity — a dataset that agrees with its own pointer is NOT called stale', () => {
   // Without this, the assertion above passes for a `boxSide` that calls everything stale.
   assert.equal(boxSide(writeDataset(BAKED)).state, 'mounted');
+});
+
+// ── ★★ v031/G — THE DATASET IS TRACKED HERE, AND THE TRACKED POINTER IS THE THIRD PARTY ─────────────────────
+// `seed/dataset/` is this instance's own copy (byte-for-byte `release/v0.3.0@706701262`). The lock says what
+// the images were baked with; the tracked pointer says what this repository OWNS; the mount says what the box
+// would seed. All three must name one tree.
+
+test('★★★ THIS repo — the TRACKED dataset describes itself, and it is the tree forge.lock was baked with', () => {
+  const tracked = boxSide(join(ROOT, TRACKED_DATASET_DIR));
+  assert.equal(tracked.state, 'mounted', `${TRACKED_DATASET_DIR} does not describe itself: ${tracked.why ?? tracked.state}`);
+  const verdict = provenanceVerdict(lockSide(join(ROOT, 'forge.lock')), tracked, tracked);
+  assert.equal(verdict.verdict, 'match', verdict.message);
+});
+
+test('★★ a mount that is NOT the tracked tree is refused even when the LOCK agrees with it', () => {
+  // The bench `.env` still pointing at an old monorepo checkout whose stamp happens to match an old lock: the
+  // two-sided comparison says "match", and the box would seed a catalogue this repository no longer owns.
+  const lock = lockSide(writeLock(stampFor(MOUNTED)));
+  const mounted = boxSide(writeDataset(MOUNTED));
+  const tracked = boxSide(writeDataset(BAKED));
+  assert.equal(provenanceVerdict(lock, mounted).verdict, 'match', '⟂ control: the two-sided question cannot see it');
+  const verdict = provenanceVerdict(lock, mounted, tracked);
+  assert.equal(verdict.verdict, 'diverged');
+  assert.match(verdict.message, /NOT the one this repository tracks/);
+  assert.ok(verdict.message.includes(BAKED.catalog) && verdict.message.includes(MOUNTED.catalog), verdict.message);
+});
+
+test('★ the same stamp at another PATH is the same dataset — a copy elsewhere is not refused', () => {
+  const verdict = provenanceVerdict(lockSide(writeLock(stampFor(BAKED))), boxSide(writeDataset(BAKED)), boxSide(writeDataset(BAKED)));
+  assert.equal(verdict.verdict, 'match', verdict.message);
+});
+
+test('★★ unset means what COMPOSE means — the tracked tree, resolved against this repository', () => {
+  // `compose.yml` mounts `${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}`; reading unset as "no dataset" here
+  // would grade a box that compose never builds.
+  assert.equal(mountedDir(undefined), join(ROOT, TRACKED_DATASET_DIR));
+  assert.equal(mountedDir('  '), join(ROOT, TRACKED_DATASET_DIR));
+  assert.equal(mountedDir('./seed/dataset'), join(ROOT, TRACKED_DATASET_DIR));
+  assert.equal(mountedDir('/abs/elsewhere'), '/abs/elsewhere');
+});
+
+test('★★ the CLI, run for real with NOTHING set, grades the tracked tree against this lock — and agrees', () => {
+  const env = { ...process.env };
+  delete env.FORGE_SEED_DATASET_HOST_DIR;
+  const out = execFileSync(process.execPath, [join(ROOT, 'bin/dataset-provenance.mjs'), join(ROOT, 'forge.lock')], {
+    env,
+    encoding: 'utf8',
+  });
+  assert.match(out, /the same tree the images were built from/, out);
 });

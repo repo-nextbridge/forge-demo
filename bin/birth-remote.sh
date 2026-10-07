@@ -433,14 +433,17 @@ fi
 # ⚠️⚠️ TWO VARIABLES WITH ONE NAME, AND THEY ARE ON TWO MACHINES. `FORGE_SEED_DATASET_HOST_DIR` means «the
 # path this box's compose mounts the dataset from» — and `deploy/box.env` declares the BOX's answer
 # (`./seed/dataset`, relative to the deploy directory), while this laptop's `.env` holds the OPERATOR's
-# (a checkout of the monorepo). `remote_box_load` sourced the first into this shell, so the second has to be
+# (since v031/G the same tracked tree by default; a monorepo checkout before). `remote_box_load` sourced the first into this shell, so the second has to be
 # read out of the file explicitly rather than inherited. It is the same class of confusion `bin/box-up.sh`
 # built `host_node` to prevent — one variable name serving two filesystems — arriving from the other side.
 say '0c · the dataset (is it the one these images were built with?) — and it is DELIVERED'
+# ★ v031/G — THE DATASET IS THIS REPOSITORY'S OWN (`seed/dataset/`, tracked), so a machine that says nothing
+# carries THAT tree — the same default `compose.yml` mounts. A `.env` or FORGE_SEED_DATASET_SOURCE may still
+# name another one, and step 0c grades it against the lock AND against the tracked pointer before a byte moves.
+# A relative value is relative to this repository, as compose reads it.
 DATASET_SRC="${FORGE_SEED_DATASET_SOURCE:-$(grep -m1 '^FORGE_SEED_DATASET_HOST_DIR=' "$HERE/.env" 2>/dev/null | cut -d= -f2-)}"
-[ -n "$DATASET_SRC" ] || die "this machine does not say where the dataset is. The birth carries it to the box, so it has to
-     exist here: put FORGE_SEED_DATASET_HOST_DIR in .env (the bench's own value is the same tree), or name it
-     for this run with FORGE_SEED_DATASET_SOURCE=<path> bash bin/birth-remote.sh $ENV_NAME."
+DATASET_SRC="${DATASET_SRC:-./seed/dataset}"
+case "$DATASET_SRC" in /*) ;; *) DATASET_SRC="$HERE/${DATASET_SRC#./}" ;; esac
 [ -d "$DATASET_SRC" ] || die "the dataset source \"$DATASET_SRC\" is not a directory on this machine."
 provenance="$(FORGE_SEED_DATASET_HOST_DIR="$DATASET_SRC" node "$HERE/bin/dataset-provenance.mjs" "$HERE/forge.lock" 2>&1)" || {
   printf '%s\n' "$provenance" >&2

@@ -16,7 +16,7 @@
 //
 // So the dataset arrives by PATH, and the path is configuration:
 //
-//     FORGE_SEED_DATASET_DIR=<monorepo>/instances/demo/dataset  node bin/seed.mjs
+//     FORGE_SEED_DATASET_DIR=./seed/dataset  node bin/seed.mjs        (tracked here since v031/G)
 //
 // That is the same gesture `bin/build-local.sh <path to the forge monorepo>` already asks of whoever runs
 // this box before the demo has content of its own, and the same variable NAME the platform's own seeder
@@ -324,7 +324,7 @@ export async function seedForge(port) {
     log(
       `forge — no ${DATASET_DIR_ENV}; the sports store stays empty. That is a legitimate state (an ` +
         'instance that mounts no example data has nothing to seed), not a misconfiguration. Point it at ' +
-        '<monorepo>/instances/demo/dataset to fill this store — see the README.',
+        'this repository\'s seed/dataset (tracked since v031/G) to fill this store — see the README.',
     );
     return;
   }
