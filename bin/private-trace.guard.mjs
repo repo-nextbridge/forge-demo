@@ -421,6 +421,17 @@ test('★★ CONTROL — the fictional addresses, phones and placeholder paths t
   }
 });
 
+test('★★ CONTROL — RFC 2606 reserves example.com/.net/.org: a shopper there is fiction; one LABEL further is not', () => {
+  // v031/G: the tracked dataset's shoppers live at `@example.com`. The reservation is exactly the three
+  // second-level names — so the same local part at `example.com.br`, or at a real provider, stays red.
+  for (const src of ['  "email": "ana.souza@example.com",\n', "const to = 'x@mail.example.org';\n"]) {
+    assert.deepEqual(scan(src), [], `a reserved fictional address was refused:\n${shown(src)}`);
+  }
+  for (const src of ['  "email": "ana.souza@example.com.br",\n', '  "email": "ana.souza@exampleco.com",\n']) {
+    assert.equal(scan(src).length, 1, `an address OUTSIDE the reservation passed:\n${shown(src)}`);
+  }
+});
+
 test('★★ CONTROL — the name is matched as a WORD: it does not fire inside a longer one', () => {
   // ⛔ `\brenan\b`-without-a-boundary matching inside `drenando` is the shape that makes a guard untrustworthy:
   //    one absurd finding and the next reader stops reading the rest.
