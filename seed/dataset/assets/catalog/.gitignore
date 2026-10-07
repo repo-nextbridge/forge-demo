@@ -1,0 +1,9 @@
+# DEMO-SEED-FINAL (Part A) — the ~4 GB of curated product photos are NOT committed. They live in a bucket the
+# seed pulls at runtime (dev↔Staging share the code path, resolving bytes from a local cache dir the seed
+# populates); local dev regenerates them from the curation source via tools/convert-catalog.ts. The photo
+# manifest (catalog-manifest.json — the CONTRACT the seed reads) IS committed and stays tracked.
+#
+# Only the per-product image directories (assets/catalog/<handle>/) are ignored. The shared art (brand logos,
+# category icons, home banners) lives one level up in assets/{brands,categories,banners} and is unaffected.
+*/
+!.gitignore

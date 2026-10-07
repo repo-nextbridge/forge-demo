@@ -1,0 +1,97 @@
+{
+  "_readme": "A curadoria de vitrine da loja demo: quem e o heroi, e o que se vende junto com o que. Conteudo desta instancia — os apps de reviews/recomendacoes so sabem APLICAR isto. NOTA: dois handles curados (womens-columbia-arcadia-ii-jacket, womens-hanky-panky-signature-lace-original-rise-thong) foram removidos ao extrair esta lista do codigo: nao existem no catalogo. Enquanto a lista morava dentro do ext-reviews ninguem percebia, porque o plano iterava o CATALOGO e consultava a curadoria — um handle curado ausente nunca era visitado, logo nunca era orfao. O pack:dataset checa o outro sentido e os nomeou.",
+  "reviews": {
+    "nike-kids-cosmic-runner-swoosh-little-kid": 128,
+    "nike-kids-flex-runner-4-little-kid": 41,
+    "unisex-new-balance-classics-530": 34,
+    "womens-adidas-adizero-evo-sl-running-shoes": 23,
+    "keen-kids-jasper-ii-toddler-little-kid": 19,
+    "womens-sam-edelman-hazel": 16,
+    "womens-nike-flex-train": 14,
+    "womens-marc-joseph-new-york-east-village-loafers": 11,
+    "womens-frye-and-co-miranda-14": 10,
+    "mens-under-armour-blur-pro-football-cleats": 9,
+    "womens-michael-michael-kors-alina-flex-pumps": 8,
+    "womens-solei-sea-indie": 8,
+    "mens-marc-joseph-new-york-edison-street-oxford-hands-free-technology": 8,
+    "unisex-vans-authentic": 7,
+    "mens-bogs-spruce-chelsea": 7,
+    "womens-vionic-evie-knit-slide-sandals": 7,
+    "womens-keen-jasper-zionic-sneakers": 6,
+    "rothys-kids-mary-jane-toddler-little-kid-big-kid": 6,
+    "mens-keen-targhee-apex-waterproof-hiking-boots": 6,
+    "unisex-feetures-elite-light-cushion-tab": 6,
+    "womens-nike-free-metcon-7": 5,
+    "floafers-kids-prodigy-driver-big-kid": 5,
+    "bogs-kids-essential-rain-mid-toddler-little-kid-big-kid": 5,
+    "bogs-kids-essential-rain-tall-toddler-little-kid-big-kid": 5,
+    "crocs-kids-classic-clogs-little-kid-big-kid": 5,
+    "crocs-jibbitz-characters": 5,
+    "unisex-vans-old-skool": 4,
+    "mens-under-armour-harper-10-baseball-cleats": 4,
+    "womens-sam-edelman-bianka-sling": 4,
+    "mens-florsheim-rucci-lug-plain-toe-chelsea-boots": 4,
+    "womens-jack-rogers-jacks-flat-sandal": 4,
+    "callaway-v-logo-web-belt": 4,
+    "womens-columbia-konos-trs-outdry": 3,
+    "florsheim-kids-supacush-plain-toe-ox-jr-toddler-little-kid-big-kid": 3,
+    "mens-dingo-night-shift": 3,
+    "keen-kids-zionic-mid-height-waterproof-all-terrain-easy-on-hiking-boots-little-kid-big-kid": 3,
+    "mens-lacoste-serve-slides-1-0": 3,
+    "herschel-supply-co-chapter-travel-kit": 3,
+    "footmates-emma-toddler-little-kid": 2,
+    "womens-teva-hurricane-xlt3": 2,
+    "unisex-feetures-elite-ultra-light-tab": 2
+  },
+  "pairs": [
+    {
+      "base": "nike-kids-cosmic-runner-swoosh-little-kid",
+      "paired": "unisex-feetures-elite-light-cushion-tab",
+      "position": 1
+    },
+    {
+      "base": "nike-kids-cosmic-runner-swoosh-little-kid",
+      "paired": "aetrex-speed-orthotic",
+      "position": 2
+    },
+    {
+      "base": "unisex-new-balance-classics-530",
+      "paired": "unisex-feetures-elite-ultra-light-tab",
+      "position": 1
+    },
+    {
+      "base": "mens-marc-joseph-new-york-edison-street-oxford-hands-free-technology",
+      "paired": "callaway-v-logo-web-belt",
+      "position": 1
+    },
+    {
+      "base": "womens-marc-joseph-new-york-east-village-loafers",
+      "paired": "farm-rio-classic-leather-belt",
+      "position": 1
+    },
+    {
+      "base": "womens-frye-and-co-miranda-14",
+      "paired": "aetrex-work-orthotic",
+      "position": 1
+    },
+    {
+      "base": "keen-kids-jasper-ii-toddler-little-kid",
+      "paired": "unisex-nike-elevated-ankle-3-pairs",
+      "position": 1
+    }
+  ],
+  "pairing": {
+    "rules": [
+      {
+        "when": "^sapatos\\.(social|mocassim)",
+        "with": "^acessorios\\.cintos",
+        "seed": "belt"
+      },
+      {
+        "when": "^(tenis|botas|sapatos|sandalias)",
+        "with": "^acessorios\\.(meias|palmilhas)",
+        "seed": "sock"
+      }
+    ]
+  }
+}

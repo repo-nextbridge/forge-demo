@@ -1,0 +1,480 @@
+{
+  "origin": {
+    "name": "CD Barueri",
+    "city": "Barueri",
+    "region": "SP"
+  },
+  "hero": {
+    "email": "hero.demo@example.com",
+    "name": "Marina Alves",
+    "phone": "11987654321",
+    "address": {
+      "line1": "Rua Oscar Freire",
+      "number": "827",
+      "neighborhood": "Jardins",
+      "city": "São Paulo",
+      "region": "SP",
+      "postal_code": "01426001"
+    },
+    "orders": [
+      {
+        "advance_to": "paid",
+        "method": "pix",
+        "request_cancellation": {
+          "reason": "Comprei o tamanho errado"
+        }
+      },
+      {
+        "advance_to": "paid",
+        "method": "card"
+      },
+      {
+        "advance_to": "preparing",
+        "method": "pix"
+      },
+      {
+        "advance_to": "shipped",
+        "method": "card",
+        "tracking": {
+          "code": "BR584201377SP",
+          "carrier": "LOGGI"
+        }
+      },
+      {
+        "advance_to": "delivered",
+        "method": "pix",
+        "tracking": {
+          "code": "BR112233445SP",
+          "carrier": "LOGGI"
+        }
+      }
+    ]
+  },
+  "shoppers": [
+    {
+      "email": "ana.souza@example.com",
+      "name": "Ana Souza",
+      "phone": "11991234501",
+      "address": {
+        "line1": "Rua Augusta",
+        "number": "1200",
+        "neighborhood": "Consolação",
+        "city": "São Paulo",
+        "region": "SP",
+        "postal_code": "01304001"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "pix",
+          "items": 2
+        },
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "bruno.oliveira@example.com",
+      "name": "Bruno Oliveira",
+      "phone": "21992345602",
+      "address": {
+        "line1": "Avenida Atlântica",
+        "number": "3400",
+        "neighborhood": "Copacabana",
+        "city": "Rio de Janeiro",
+        "region": "RJ",
+        "postal_code": "22070002"
+      },
+      "orders": [
+        {
+          "state": "shipped",
+          "method": "card",
+          "items": 1
+        },
+        {
+          "state": "placed",
+          "method": "pix",
+          "items": 3
+        },
+        {
+          "state": "delivered",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "carla.pereira@example.com",
+      "name": "Carla Pereira",
+      "phone": "31993456703",
+      "address": {
+        "line1": "Avenida Afonso Pena",
+        "number": "867",
+        "neighborhood": "Centro",
+        "city": "Belo Horizonte",
+        "region": "MG",
+        "postal_code": "30130003"
+      },
+      "orders": [
+        {
+          "state": "canceled",
+          "method": "pix",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "diego.santos@example.com",
+      "name": "Diego Santos",
+      "phone": "41994567804",
+      "address": {
+        "line1": "Rua XV de Novembro",
+        "number": "540",
+        "neighborhood": "Centro",
+        "city": "Curitiba",
+        "region": "PR",
+        "postal_code": "80020004"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "card",
+          "items": 2
+        },
+        {
+          "state": "shipped",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 1
+        },
+        {
+          "state": "placed",
+          "method": "pix",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "email": "eduarda.lima@example.com",
+      "name": "Eduarda Lima",
+      "phone": "51995678905",
+      "address": {
+        "line1": "Avenida Ipiranga",
+        "number": "2100",
+        "neighborhood": "Praia de Belas",
+        "city": "Porto Alegre",
+        "region": "RS",
+        "postal_code": "90160005"
+      },
+      "orders": [
+        {
+          "state": "paid",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "delivered",
+          "method": "card",
+          "items": 3
+        }
+      ]
+    },
+    {
+      "email": "felipe.costa@example.com",
+      "name": "Felipe Costa",
+      "phone": "71996789006",
+      "address": {
+        "line1": "Avenida Sete de Setembro",
+        "number": "1000",
+        "neighborhood": "Vitória",
+        "city": "Salvador",
+        "region": "BA",
+        "postal_code": "40080006"
+      },
+      "orders": [
+        {
+          "state": "shipped",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "gabriela.almeida@example.com",
+      "name": "Gabriela Almeida",
+      "phone": "81997890107",
+      "address": {
+        "line1": "Avenida Boa Viagem",
+        "number": "4200",
+        "neighborhood": "Boa Viagem",
+        "city": "Recife",
+        "region": "PE",
+        "postal_code": "51021007"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "placed",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "henrique.rodrigues@example.com",
+      "name": "Henrique Rodrigues",
+      "phone": "85998901208",
+      "address": {
+        "line1": "Avenida Beira Mar",
+        "number": "2300",
+        "neighborhood": "Meireles",
+        "city": "Fortaleza",
+        "region": "CE",
+        "postal_code": "60165008"
+      },
+      "orders": [
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 2
+        },
+        {
+          "state": "shipped",
+          "method": "pix",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "isabela.martins@example.com",
+      "name": "Isabela Martins",
+      "phone": "61999012309",
+      "address": {
+        "line1": "SQS 108 Bloco C",
+        "number": "204",
+        "neighborhood": "Asa Sul",
+        "city": "Brasília",
+        "region": "DF",
+        "postal_code": "70347009"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "joao.ferreira@example.com",
+      "name": "João Ferreira",
+      "phone": "19990123410",
+      "address": {
+        "line1": "Rua Barão de Jaguara",
+        "number": "1500",
+        "neighborhood": "Centro",
+        "city": "Campinas",
+        "region": "SP",
+        "postal_code": "13015010"
+      },
+      "orders": [
+        {
+          "state": "canceled",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 2
+        },
+        {
+          "state": "delivered",
+          "method": "pix",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "larissa.gomes@example.com",
+      "name": "Larissa Gomes",
+      "phone": "48991234511",
+      "address": {
+        "line1": "Avenida Beira-Mar Norte",
+        "number": "900",
+        "neighborhood": "Centro",
+        "city": "Florianópolis",
+        "region": "SC",
+        "postal_code": "88015011"
+      },
+      "orders": [
+        {
+          "state": "shipped",
+          "method": "card",
+          "items": 2
+        },
+        {
+          "state": "placed",
+          "method": "pix",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "marcelo.ribeiro@example.com",
+      "name": "Marcelo Ribeiro",
+      "phone": "62992345612",
+      "address": {
+        "line1": "Avenida Goiás",
+        "number": "750",
+        "neighborhood": "Setor Central",
+        "city": "Goiânia",
+        "region": "GO",
+        "postal_code": "74005012"
+      },
+      "orders": [
+        {
+          "state": "paid",
+          "method": "pix",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "natalia.carvalho@example.com",
+      "name": "Natália Carvalho",
+      "phone": "92993456713",
+      "address": {
+        "line1": "Avenida Eduardo Ribeiro",
+        "number": "620",
+        "neighborhood": "Centro",
+        "city": "Manaus",
+        "region": "AM",
+        "postal_code": "69010013"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "card",
+          "items": 1
+        },
+        {
+          "state": "paid",
+          "method": "pix",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "email": "otavio.barbosa@example.com",
+      "name": "Otávio Barbosa",
+      "phone": "27994567814",
+      "address": {
+        "line1": "Avenida Nossa Senhora dos Navegantes",
+        "number": "1100",
+        "neighborhood": "Enseada do Suá",
+        "city": "Vitória",
+        "region": "ES",
+        "postal_code": "29050014"
+      },
+      "orders": [
+        {
+          "state": "placed",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "shipped",
+          "method": "card",
+          "items": 3
+        }
+      ]
+    },
+    {
+      "email": "priscila.rocha@example.com",
+      "name": "Priscila Rocha",
+      "phone": "65995678915",
+      "address": {
+        "line1": "Avenida Getúlio Vargas",
+        "number": "480",
+        "neighborhood": "Centro-Norte",
+        "city": "Cuiabá",
+        "region": "MT",
+        "postal_code": "78005015"
+      },
+      "orders": [
+        {
+          "state": "delivered",
+          "method": "pix",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "email": "rafael.azevedo@example.com",
+      "name": "Rafael Azevedo",
+      "phone": "98996789016",
+      "address": {
+        "line1": "Avenida dos Holandeses",
+        "number": "2000",
+        "neighborhood": "Calhau",
+        "city": "São Luís",
+        "region": "MA",
+        "postal_code": "65071016"
+      },
+      "orders": [
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 1
+        },
+        {
+          "state": "delivered",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "canceled",
+          "method": "card",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "email": "sabrina.dias@example.com",
+      "name": "Sabrina Dias",
+      "phone": "84997890117",
+      "address": {
+        "line1": "Avenida Engenheiro Roberto Freire",
+        "number": "3200",
+        "neighborhood": "Ponta Negra",
+        "city": "Natal",
+        "region": "RN",
+        "postal_code": "59090017"
+      },
+      "orders": [
+        {
+          "state": "shipped",
+          "method": "pix",
+          "items": 1
+        },
+        {
+          "state": "paid",
+          "method": "card",
+          "items": 2
+        }
+      ]
+    }
+  ]
+}
