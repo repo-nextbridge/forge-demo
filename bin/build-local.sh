@@ -85,34 +85,21 @@ node_range="$(forge_node_engines "$forge/package.json")"
 node_major="$(forge_node_min_major "$node_range")"
 echo "[build-local] host node floor: $node_range (major $node_major) — from $forge/package.json" >&2
 
-# THE LIST THE IMAGES ARE BAKED FROM. It is `composition.json` in THIS repo — and the build reads the COPY of
-# it that lives in the monorepo, because `apply-composition.ts` runs inside the build context and can only
-# see paths under it. That copy is `infra/fleet/lists/demo-instance.json`, and the `fleet-oven` job bakes it
-# on every push to main so this combination is proven before a release is offered.
+# THE LIST THE IMAGES ARE BAKED FROM is `composition.json` in THIS repo, and only that.
 #
-# ⚠️ THE TWO COPIES ARE KEPT IN STEP BY HAND. Nothing crosses repositories. This check is the cheap half —
-# it compares the app sets and refuses to build images from a list that is not the one this repo maintains.
+# ★ v031/G — THE MIRROR IS GONE. Until 2026-10-07 this script baked the monorepo's COPY of this list
+# (`infra/fleet/lists/demo-instance.json`) and refused to build unless the two agreed — two copies of one
+# decision kept in step by hand across repositories. The product stops carrying that copy in v0.3.1 (its
+# fleet list becomes `full-instance`, the PRODUCT's own proof that a large list bakes). So the list is now
+# written INTO the build context from here, every time (below), and the comparison is with THIS repo's own
+# list: what the oven is handed must be, entry for entry and in order, what `composition.json` says.
+# `bin/build-local-own-list.guard.mjs` holds the property (no path into `infra/fleet/lists/` in this script).
 composition_id='demo-instance'
-composition_path='infra/fleet/lists/demo-instance.json'
-mine="$(jq -S '[.apps[] | {id, package}]' "$here/composition.json")"
-theirs="$(jq -S '[.apps[] | {id, package}]' "$forge/$composition_path" 2>/dev/null || echo 'null')"
-if [ "$mine" != "$theirs" ]; then
-  echo "[build-local] THE LIST IN THE MONOREPO IS NOT THE LIST THIS REPO MAINTAINS." >&2
-  echo "[build-local]   here:  composition.json" >&2
-  echo "[build-local]   there: $forge/$composition_path" >&2
-  echo "[build-local] They are two copies of one decision and CI cannot compare them — it does not cross" >&2
-  echo "[build-local] repositories. Copy this repo's list over that one (and commit it there), or fix this" >&2
-  echo "[build-local] one if the monorepo's is the newer. Building now would bake apps this box never asked" >&2
-  echo "[build-local] for, and \`bin/verify-composition.sh\` would only tell you after the fact." >&2
-  exit 1
-fi
-
 # ★★ THE APPS THIS REPOSITORY WROTE, HANDED TO THE OVEN (Forge P1).
 #
 # `composition.json` has two lists and they answer two different questions. `apps` is what the PLATFORM offers
-# and this box chose — that is the list the monorepo mirrors and the fleet oven bakes over there. `instanceApps`
-# is OUR OWN CODE, which no release of theirs has ever seen; it cannot be on the mirrored list, and the check
-# above deliberately compares only `apps`.
+# and this box chose. `instanceApps` is OUR OWN CODE, which no release of theirs has ever seen; it is adopted by
+# the oven, never composed.
 #
 # It reaches the bake by being COPIED INTO THE BUILD CONTEXT, because `docker build` cannot see a path outside
 # it. `.instance-apps/` in the Forge checkout is the landing strip (gitignored there, and NOT in
@@ -140,15 +127,27 @@ if [ "$instance_count" -gt 0 ]; then
   done < <(jq -r '.instanceApps[].source' "$here/composition.json")
 fi
 
-# THE LIST THE OVEN READS is the mirrored one PLUS this box's own apps, written into the context next to them.
-# It is generated rather than committed: the platform half must stay byte-comparable with the monorepo's copy
-# (that is what the check above is for), and the instance half is this file's to add.
-composition_arg="$composition_path"
-if [ "$instance_count" -gt 0 ]; then
-  jq -s '{version: 1, apps: (.[1].instanceApps | map({id, package})) + .[0].apps}' \
-    "$forge/$composition_path" "$here/composition.json" > "$staging/composition.json"
-  composition_arg='.instance-apps/composition.json'
+# THE LIST THE OVEN READS is this repo's `apps` PLUS its own apps, written into the context next to them (the
+# oven can only read paths inside the context). Generated on every build, never committed anywhere.
+# ⚠️ BETWEEN MARKERS so `bin/build-local-own-list.guard.mjs` can run THIS block over a fabricated list without
+# docker or a Forge checkout — the trick `bin/test.sh` uses for its census.
+# >>> THE LIST HANDED TO THE OVEN
+jq '{version: 1, apps: ((.instanceApps // []) | map({id, package})) + (.apps | map({id, package}))}' \
+  "$here/composition.json" > "$staging/composition.json"
+composition_arg='.instance-apps/composition.json'
+composition_path="$composition_arg"
+# ★ THE COMPARISON, WITH THE OWN LIST: the platform half of what the oven reads is THIS repo's `apps`, as a
+# SEQUENCE (order is part of the list), and the instance half is its `instanceApps`. Cheap, and it is what
+# catches a jq edit above that drops or reorders an app before an hour of docker does.
+mine="$(jq -c '[(.instanceApps // [])[] | {id, package}] + [.apps[] | {id, package}]' "$here/composition.json")"
+handed="$(jq -c '[.apps[] | {id, package}]' "$staging/composition.json")"
+if [ "$mine" != "$handed" ]; then
+  echo "[build-local] THE LIST HANDED TO THE OVEN IS NOT composition.json." >&2
+  echo "[build-local]   composition.json: $mine" >&2
+  echo "[build-local]   handed:           $handed" >&2
+  exit 1
 fi
+# <<< THE LIST HANDED TO THE OVEN
 
 echo "[build-local] instance apps: $(jq -r '[.instanceApps[].id] | join(", ") // "(none)"' "$here/composition.json")" >&2
 
@@ -195,9 +194,13 @@ STAMP_SHA="${sha}${dirty:+-dirty}"
 # ⚠️ NOTHING IS STAMPED BY HAND. `forge-seed-dataset.json` already carries a content hash per payload
 # (`packages/seed-dataset/src/pointer.ts`, written by `pnpm pack:dataset`); this reads it where the images are
 # baked and copies it into the lock. `generatedAt` is left out on purpose — it is a clock, not content.
-dataset_pointer="$forge/instances/demo/dataset/forge-seed-dataset.json"
+#
+# ★ v031/G — THE POINTER IS READ FROM THIS REPOSITORY. The dataset is tracked at `seed/dataset/` (the product
+# stops carrying `instances/demo` in v0.3.1), so the stamp recorded in the lock is the stamp of the tree this
+# box mounts by default — `source` names it as a path of THIS repo, no longer one inside the release.
+dataset_pointer="$here/seed/dataset/forge-seed-dataset.json"
 if [ -f "$dataset_pointer" ]; then
-  dataset_json="$(jq --arg source 'instances/demo/dataset' \
+  dataset_json="$(jq --arg source 'seed/dataset' \
     '{source: $source, id, catalog: {version: .catalog.version, totalBytes: .catalog.totalBytes},
       photos: {version: .photos.version, totalBytes: .photos.totalBytes}}' "$dataset_pointer")"
 else
