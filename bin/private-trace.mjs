@@ -335,8 +335,13 @@ const ATTRIBUTED_DECISION = new RegExp(
 /** A person's e-mail is one that is neither a role mailbox nor at an address reserved for fiction. */
 const MAILBOX_ROLE =
   /^(hi|hello|ola|olá|oi|contato|contact|support|suporte|sac|help|ajuda|no-?reply|admin|administrator|operator|operador|balcao|balcão|vendas|sales|info|dev|team|equipe|postmaster|webmaster|billing|financeiro|press|imprensa|jobs|rh|security|abuse|root|user|test|example|demo|forge)$/i;
+// ★ v031/G — AND THE THREE SECOND-LEVEL NAMES RFC 2606 §3 RESERVES (`example.com`, `.net`, `.org`). Measured
+// 2026-10-07: the dataset this repository started tracking (`seed/dataset/customers.json`, byte-for-byte the
+// product's) names its 18 fictional shoppers at `@example.com`, and the TLD-only rule above read every one of
+// them as somebody's address. Exactly those three — `example.com.br` is NOT reserved and stays red
+// (`bin/private-trace.guard.mjs`, the control beside the fictional addresses).
 const RESERVED_DOMAIN =
-  /(^|\.)(example|exemplo|test|invalid|localhost|local|demo|fake|dummy)$/i;
+  /(^|\.)(example|exemplo|test|invalid|localhost|local|demo|fake|dummy)$|(^|\.)example\.(com|net|org)$/i;
 /** ⚠️ The last label must be ALPHABETIC: without that, `react@18.3.1` in a bundled support file is an address. */
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
 

@@ -1,0 +1,191 @@
+{
+  "_readme": "A VITRINE DESTA INSTANCIA, e o que o dado sozinho nao conta. Esta e a curadoria da DEMO, que e outra loja com outro publico: o que estiver escrito aqui vale so para ela. A curadoria do PRODUTO e outro dataset, com o proprio _readme — os dois foram desoldados de proposito (pk25/p5), entao decisao de um NAO se copia para o outro. (E por isso que esta frase nao escreve o caminho do irmao: `dataset-instances.guard.test.ts` proibe conteudo de uma instancia nomear arquivo de outra, e so `README.md` esta isento.)\n\nO WIDGET DE ASSINATURAS FICA NO FIM do painel do admin, nos DOIS tenants. Decisao de curadoria em 09/09, alinhando a demo com o que ja valia no produto e na loja de cafe: as ultimas assinaturas vao para o fim do painel nos dois tenants. admin_widgets e um PREFIXO — o que esta na lista vem PRIMEIRO — entao ela NAO nomeia subscriptions/latest_subscriptions: nomeia os sete widgets do painel na ordem decidida, e assinaturas cai no fim sozinha. Por subscriptions/latest_subscriptions aqui o manda para o TOPO, que e o oposto do pedido.\n\nO SEGUNDO QUADRO DO CARROSSEL DA HOME TROCOU DE ARTE. `grande-rosa` deixou de ser o banner de futebol e passou a ser a arte infantil de aventura, e o destino do clique saiu de /sandalias para /tenis/trilha/keen-kids-jasper-ii-toddler-little-kid (conferido 200 na bancada em 15/09/2026). Tres coisas ficaram registradas de proposito: (a) AS DUAS PECAS foram trocadas, a desktop e a -M. A arte de celular e um arquivo separado (o sufixo -M), e a troca que pega so o lado desktop deixa o telefone no banner velho — modo de falha ja observado nesta casa. (b) O NOME LOGICO `grande-rosa` FICOU. Ele e o id do ESPACO, nao a descricao da arte: a chave da biblioteca e `banner-<nome>.<hash>.jpg` e o hash sai dos bytes, entao a arte nova ja minta um asset novo sozinha e nada fica pendurado no id antigo. O preco e que o nome passou a dizer uma cor que a arte nao tem; renomear e mudanca de curadoria e cabe numa fatia propria, porque o nome aparece no manifesto, no gerador do manifesto, na ficha da biblioteca do admin (`Banner <nome>.jpg`) e em tres testes. (c) A ARTE CHEGOU EM PNG E FOI CONVERTIDA PARA JPEG (qualidade 90, sRGB, sem entrelacamento — o mesmo encode do arquivo que ela substituiu). O caminho do banner de home e JPEG POR CONSTRUCAO: apps/api/src/seed-media.ts declara mime image/jpeg e nome `Banner <nome>.jpg`, e a chave montada em packages/seed-dataset/src/media.ts termina em .jpg. Um .png entraria com a extensao mentindo sobre os bytes, e o conserto dessa mentira e mudanca de kernel, nao de dataset.\n\nPOR QUE OS DOIS TENANTS DIVERGIAM: este arquivo e aplicado pelo seed do tenant de SAPATO; o cafe e semeado pelo caminho proprio do repo da demo, que nao aplica o prefixo — entao o cafe ficou com a ordem de instalacao, que por acaso era a desejada. O cafe estava certo por nao ter recebido a instrucao errada.",
+  "store": {
+    "name": "Loja Demo"
+  },
+  "banners": [
+    {
+      "slot": "storefront:home.hero",
+      "style": "carousel",
+      "media": [
+        {
+          "banner": "grande-jordan",
+          "duration": 6,
+          "link": "/tenis"
+        },
+        {
+          "banner": "grande-rosa",
+          "duration": 6,
+          "link": "/tenis/trilha/keen-kids-jasper-ii-toddler-little-kid"
+        }
+      ]
+    },
+    {
+      "slot": "storefront:home.below_categories",
+      "style": "mosaic",
+      "media": [
+        {
+          "banner": "social2-quadrado",
+          "width": 33.33,
+          "height": 413,
+          "duration": 20,
+          "link": "/sapatos"
+        },
+        {
+          "banner": "sportswear",
+          "width": 33.33,
+          "height": 413,
+          "duration": 20,
+          "link": "/tenis/corrida"
+        },
+        {
+          "banner": "bota",
+          "width": 33.33,
+          "height": 413,
+          "duration": 6,
+          "link": "/botas"
+        }
+      ]
+    }
+  ],
+  "shelves": [
+    {
+      "slot": "storefront:home.below_shelf",
+      "config": {
+        "layout": "carousel",
+        "title": "Corra para não perder",
+        "source": "category",
+        "source_category": "tenis.corrida",
+        "item_count": 5
+      }
+    },
+    {
+      "slot": "storefront:home.below_shelf",
+      "config": {
+        "layout": "carousel",
+        "title": "Seus pequenos vão amar",
+        "source": "search",
+        "source_query": "cf.genero=Infantil&sort=price_desc",
+        "item_count": 10
+      }
+    },
+    {
+      "slot": "storefront:home.below_brands",
+      "config": {
+        "layout": "grid",
+        "title": "Botas que acabaram de chegar",
+        "source": "manual",
+        "source_handles": "mens-keen-targhee-apex-waterproof-hiking-boots,mens-billy-footwear-billy-inclusion-trail-boots,mens-ecco-sport-rugged-track-plain-toe-high-waterproof-hiking-boots",
+        "item_count": 3,
+        "banner_link": "/botas"
+      },
+      "banner": "shelf-aventura"
+    },
+    {
+      "slot": "storefront:list.below_shelf",
+      "config": {
+        "layout": "grid",
+        "title": "Promoção para os pequenos",
+        "source": "manual",
+        "source_handles": "merrell-kids-moab-speed-2-mid-waterproof-little-kids-big-kids,keen-kids-jasper-ii-toddler-little-kid,keen-kids-zionic-mid-height-waterproof-all-terrain-easy-on-hiking-boots-toddler-little-kid",
+        "item_count": 3,
+        "banner_link": "/search?cf.genero=Infantil"
+      },
+      "banner": "shelf-aventura-kids"
+    }
+  ],
+  "pages": [
+    {
+      "slug": "sobre",
+      "title": "Sobre a Loja",
+      "template_key": "about"
+    },
+    {
+      "slug": "trocas-e-devolucoes",
+      "title": "Trocas e Devoluções",
+      "template_key": "returns"
+    },
+    {
+      "slug": "entrega",
+      "title": "Entrega e Prazos",
+      "template_key": "shipping"
+    },
+    {
+      "slug": "faq",
+      "title": "Perguntas Frequentes",
+      "template_key": "faq"
+    },
+    {
+      "slug": "contato",
+      "title": "Fale Conosco",
+      "template_key": "contact"
+    },
+    {
+      "slug": "privacidade",
+      "title": "Política de Privacidade",
+      "template_key": "privacy"
+    },
+    {
+      "slug": "termos",
+      "title": "Termos de Uso",
+      "template_key": "terms"
+    }
+  ],
+  "qa_draft_page": {
+    "slug": "rascunho-qa",
+    "title": "Página em rascunho (QA)",
+    "template_key": "about",
+    "published": false
+  },
+  "payment_simulator": {
+    "card_rules": [
+      {
+        "suffix": "0001",
+        "outcome": "decline",
+        "decline_reason": "insufficient_funds"
+      },
+      {
+        "suffix": "0002",
+        "outcome": "decline",
+        "decline_reason": "card_rejected"
+      },
+      {
+        "suffix": "0003",
+        "outcome": "decline",
+        "decline_reason": "invalid_data"
+      },
+      {
+        "suffix": "0004",
+        "outcome": "decline",
+        "decline_reason": "expired"
+      },
+      {
+        "suffix": "0005",
+        "outcome": "decline",
+        "decline_reason": "fraud_suspected"
+      },
+      {
+        "suffix": "0006",
+        "outcome": "timeout"
+      }
+    ],
+    "card_default_outcome": "approve",
+    "pix_mode": "manual",
+    "max_installments": 12
+  },
+  "admin_widgets": [
+    "admin-dashboard/revenue",
+    "admin-dashboard/recent_orders",
+    "admin-dashboard/shipping",
+    "admin-dashboard/order_status",
+    "admin-dashboard/stores_sales",
+    "admin-dashboard/promos",
+    "admin-dashboard/stock"
+  ],
+  "shelf_settings": {
+    "item_count_default": 8,
+    "item_count_max": 24
+  },
+  "related_item_count": 6,
+  "owner": "forge"
+}

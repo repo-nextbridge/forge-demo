@@ -12,22 +12,12 @@
 // is this: the demo composes everything the product offers, and an app it does NOT compose is named in
 // `notComposed` with a reason.
 //
-// ── ⚠️ AND `infra/fleet/lists/demo-instance.json` IS A COPY OF THIS BOX'S LIST, DELIBERATELY UNGUARDED ─────
+// ── ★ v031/G — THE PRODUCT CARRIES NO COPY OF THIS LIST ANY MORE ──────────────────────────────────────────
 //
-// The product carries a file with this box's composition in it. Measured 2026-09-18: the two app lists are
-// IDENTICAL today. Nothing enforces that, and nothing is going to — decision of 2026-09-18, and the reason is
-// the boundary rather than the effort:
-//
-//   · this repository is the INSTANCE. Its composition is its own answer, and `image = release × list` exists
-//     precisely so an instance can answer differently from anybody else.
-//   · the product's copy is a FIXTURE. It is what lets the fleet oven prove that a real-shaped list bakes,
-//     next to `lean-instance.json` (a smaller one) and `instance-own-app.json`. A fixture that had to track a
-//     customer's live list would make the product depend on the customer.
-//
-// ⇒ THEY ARE EXPECTED TO AGREE AND ALLOWED TO DRIFT, and when they drift the product's copy is the one that
-// is merely stale — this file is the truth about what this box composes. ⛔ Do not add a guard that compares
-// them: it would be a product asserting a fact about an instance, which is the coupling `DEMO-SAI-DO-PRODUTO`
-// exists to undo, not to formalise.
+// Until 2026-10-07 `infra/fleet/lists/demo-instance.json` in the monorepo was a copy of this box's `apps`, and
+// a rule below compared them because `bin/build-local.sh` baked the copy. Both ended in v031/G: the product
+// drops the copy in v0.3.1, and the oven bakes `composition.json` itself (`bin/build-local-own-list.guard.mjs`).
+// This repository is the INSTANCE; its composition is its own answer and nobody else's file mirrors it.
 
 // ⚠️ WHAT MAKES THIS A GUARD ON THE RESULT AND NOT ON THE INTENTION. It does not check that somebody
 // remembered to update this list; it derives the ANSWER from the monorepo — the OOTB list, and every app
@@ -78,8 +68,6 @@ const COMPOSITION = read(join(ROOT, 'composition.json'));
 
 /** Where the product's own list lives, relative to a Forge checkout. */
 const BASE_LIST = join('extensions', 'composition.base.json');
-/** The monorepo's copy of THIS list — the one the fleet oven bakes. */
-const MIRROR = join('infra', 'fleet', 'lists', 'demo-instance.json');
 
 /**
  * ★★ THE RELEASE THESE IMAGES WERE BAKED FROM, or nothing. Not "a Forge checkout" — see the header: the tree
@@ -311,22 +299,12 @@ test("★ this box's OWN apps are not carried by the release — that is what ma
   assert.deepEqual(collisions, []);
 });
 
-test('★ the monorepo mirror is this list, in this order', { skip }, () => {
-  // `bin/build-local.sh` refuses to build when the two disagree — but only once somebody is at the oven with
-  // docker warmed up. This is the same comparison, made by `bash bin/test.sh` in a second, and it is
-  // deliberately a SEQUENCE comparison because that is what build-local.sh does (`jq -S` sorts object keys,
-  // not the array), so a re-ordered mirror is a refused build.
-  const mirrorPath = join(FORGE, MIRROR);
-  assert.ok(existsSync(mirrorPath), `the monorepo has no ${MIRROR} — the fleet oven bakes this box's list from it`);
-  const theirs = read(mirrorPath).apps.map((entry) => ({ id: entry.id, package: entry.package }));
-  const mine = COMPOSITION.apps.map((entry) => ({ id: entry.id, package: entry.package }));
-  assert.deepEqual(
-    theirs,
-    mine,
-    `${MIRROR} in the monorepo is a COPY of this repo's \`apps\`, kept in step by hand because CI does not cross repositories, and \`bin/build-local.sh\` REFUSES TO BUILD until they agree. Copy this repo's \`apps\` array over that file's and commit it there:\n` +
-      `  jq --slurpfile mine <(jq '{apps}' composition.json) '.apps = $mine[0].apps' $FORGE/${MIRROR}`,
-  );
-});
+// ★ v031/G (item 26) — "the monorepo mirror is this list, in this order" LIVED HERE and was REMOVED on
+// 2026-10-07. It made, in a second, the comparison `bin/build-local.sh` refused to build without; that
+// comparison is gone because the mirror is (the product drops `infra/fleet/lists/demo-instance.json` in
+// v0.3.1), and the oven now bakes this repo's own list. What replaced it is
+// `bin/build-local-own-list.guard.mjs`. A rule that kept asserting the copy would turn red the day the product
+// does what the spec asks of it, and would be the product-knows-the-instance coupling in test form.
 
 // ── the bytes an instance app promises the admin ────────────────────────────────────────────────────────
 /**

@@ -293,7 +293,11 @@ const outletHomeRows = () => [
  * file would make the suite pass on one developer's disk and skip on another's.
  */
 const DATASET_HOME = {
-  store: 'forge',
+  // ⛔ v031/G — this said `store: 'forge'` until 2026-10-07, which is NOT the contract: `store` is `{ name }`
+  // and the handle is `owner`. The verifier read the same wrong key, so the two agreed and the real dataset
+  // was never judged. The tests at the end of this file grade the REAL tracked file, which this one cannot.
+  owner: 'forge',
+  store: { name: 'Loja Demo' },
   banners: [
     { slot: 'storefront:home.hero', style: 'carousel', media: [] },
     { slot: 'storefront:home.below_categories', style: 'mosaic', media: [] },
@@ -1412,5 +1416,87 @@ test('★ a read that stops publishing `enabled` is the verifier\'s wrong questi
   } finally {
     face.close();
     mount.close();
+  }
+});
+
+// ── ★★★ v031/G — THE REAL, TRACKED DATASET IS JUDGED, NOT REPORTED ──────────────────────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED 2026-10-07. `datasetHome()` asked the mounted `storefront.json` for `store` as a
+// string; the contract makes `store` an object (`{ name }`) and the handle `owner`. So it returned null on
+// EVERY run against the real dataset, and the shoe shop's window — two banner blocks and three home shelves —
+// was "reported, not judged" while a dataset was mounted that declared all five. The tests above stayed green
+// because their hand-written fixture spelled the same wrong key.
+//
+// ★ THE DATASET LIVES IN THIS REPOSITORY NOW (`seed/dataset/`), so the honest fixture is the file itself:
+// these tests read it, never retype it, and a curation change to the window flows through them.
+const TRACKED_STOREFRONT = JSON.parse(readFileSync(join(REPO, 'seed', 'dataset', 'storefront.json'), 'utf8'));
+
+/** The footwear box as a birth from the TRACKED dataset would leave it: its window AND its admin board. */
+function trackedFootwearBox() {
+  const box = footwearBox();
+  box.composition[FORGE] = [
+    ...datasetHomeRows(TRACKED_STOREFRONT),
+    ...appBlockRows(),
+    ...boardRows([...(TRACKED_STOREFRONT.admin_widgets ?? []), 'subscriptions/latest_subscriptions']),
+  ];
+  return box;
+}
+
+test('★★★ the REAL tracked dataset is JUDGED — the shoe shop\'s window is graded, never only reported', async () => {
+  // ⟂ ANTI-VACUUM on the fixture: the file must declare the window this test is about, or a green proves nothing.
+  assert.equal(TRACKED_STOREFRONT.owner, 'forge', 'seed/dataset/storefront.json no longer names `forge` as its owner');
+  const homeBanners = (TRACKED_STOREFRONT.banners ?? []).filter((b) => b.slot.startsWith('storefront:home.'));
+  assert.ok(homeBanners.length >= 2, `the tracked window declares ${homeBanners.length} home banner block(s)`);
+  const mount = mountedDataset(TRACKED_STOREFRONT);
+  const face = await serve(trackedFootwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', { FORGE_SEED_DATASET_DIR: mount.dir });
+    assert.match(stdout, /✓ forge's home — .*\(from the mounted dataset\)/, stdout);
+    assert.ok(!/· forge — \d+ block\(s\) on the home/.test(stdout), `the shoe shop's window was reported, not judged:\n${stdout}`);
+    assert.ok(!stdout.includes('⚑'), `no question should have been wrong:\n${stdout}`);
+    assert.equal(code, 0, `expected a settled run, got:\n${stdout}`);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('★★★ SABOTAGE (DoD G·8) — a banner taken out of the TRACKED storefront.json turns the verdict RED', async () => {
+  // The box still holds both banner blocks (it was born from the whole file); the declaration it is graded
+  // against has lost one. A verifier that is not reading the declaration cannot see the difference.
+  const dropped = TRACKED_STOREFRONT.banners.find((b) => b.slot === 'storefront:home.below_categories');
+  assert.ok(dropped, 'the tracked window has no banner under the categories to take out');
+  const declared = { ...TRACKED_STOREFRONT, banners: TRACKED_STOREFRONT.banners.filter((b) => b !== dropped) };
+  const mount = mountedDataset(declared);
+  const face = await serve(trackedFootwearBox());
+  try {
+    const { code, stdout } = await verify(VERIFIER, face.api, 'forgeco', { FORGE_SEED_DATASET_DIR: mount.dir });
+    assert.match(stdout, /✗ forge's home — is .*banners\/banner@home\.below_categories/, stdout);
+    assert.ok(!stdout.includes('⚑'), `nothing was wrong with the question:\n${stdout}`);
+    assert.equal(code, 1, stdout);
+  } finally {
+    face.close();
+    mount.close();
+  }
+});
+
+test('⟂ NEGATIVE CONTROL — the verifier as it was (reading `store`) leaves the real window UNJUDGED', async () => {
+  // The old line, run for real against the real file: it must come back "reported, not judged" and exit 0 —
+  // which is the silence this fix ends. If this ever goes green-with-a-tick, the test above proves nothing.
+  const path = sabotaged("typeof declared?.owner !== 'string' || declared.owner === ''", "typeof declared?.store !== 'string'");
+  const mount = mountedDataset(TRACKED_STOREFRONT);
+  const face = await serve(trackedFootwearBox());
+  try {
+    const old = readFileSync(path, 'utf8').replace('store: declared.owner,', 'store: declared.store,');
+    writeFileSync(path, old);
+    const { code, stdout } = await verify(path, face.api, 'forgeco', { FORGE_SEED_DATASET_DIR: mount.dir });
+    assert.match(stdout, /· forge — \d+ block\(s\) on the home/, stdout);
+    assert.match(stdout, /names no `owner`|reported and not judged/, stdout);
+    assert.ok(!/✓ forge's home/.test(stdout), `the old reader judged the window after all:\n${stdout}`);
+    assert.equal(code, 0, stdout);
+  } finally {
+    face.close();
+    mount.close();
+    rmSync(path, { force: true });
   }
 });

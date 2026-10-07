@@ -1,0 +1,224 @@
+[
+  {
+    "owner_entity": "product",
+    "key": "genero",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Masculino",
+        "label": "Masculino"
+      },
+      {
+        "key": "Feminino",
+        "label": "Feminino"
+      },
+      {
+        "key": "Unissex",
+        "label": "Unissex"
+      },
+      {
+        "key": "Infantil",
+        "label": "Infantil"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "material",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Couro",
+        "label": "Couro"
+      },
+      {
+        "key": "Camurça",
+        "label": "Camurça"
+      },
+      {
+        "key": "Mesh",
+        "label": "Mesh"
+      },
+      {
+        "key": "Knit",
+        "label": "Knit"
+      },
+      {
+        "key": "Sintético",
+        "label": "Sintético"
+      },
+      {
+        "key": "Lona",
+        "label": "Lona"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "uso",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Corrida",
+        "label": "Corrida"
+      },
+      {
+        "key": "Treino",
+        "label": "Treino"
+      },
+      {
+        "key": "Casual",
+        "label": "Casual"
+      },
+      {
+        "key": "Social",
+        "label": "Social"
+      },
+      {
+        "key": "Trilha",
+        "label": "Trilha"
+      },
+      {
+        "key": "Futebol",
+        "label": "Futebol"
+      },
+      {
+        "key": "Praia",
+        "label": "Praia"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "pisada",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Neutra",
+        "label": "Neutra"
+      },
+      {
+        "key": "Pronada",
+        "label": "Pronada"
+      },
+      {
+        "key": "Supinada",
+        "label": "Supinada"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "amortecimento",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Baixo",
+        "label": "Baixo"
+      },
+      {
+        "key": "Médio",
+        "label": "Médio"
+      },
+      {
+        "key": "Alto",
+        "label": "Alto"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "solado",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Borracha",
+        "label": "Borracha"
+      },
+      {
+        "key": "EVA",
+        "label": "EVA"
+      },
+      {
+        "key": "Couro",
+        "label": "Couro"
+      },
+      {
+        "key": "Poliuretano",
+        "label": "Poliuretano"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "fechamento",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Cadarço",
+        "label": "Cadarço"
+      },
+      {
+        "key": "Velcro",
+        "label": "Velcro"
+      },
+      {
+        "key": "Elástico",
+        "label": "Elástico"
+      },
+      {
+        "key": "Zíper",
+        "label": "Zíper"
+      },
+      {
+        "key": "Sem fechamento",
+        "label": "Sem fechamento"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "cano",
+    "type": "select",
+    "facetable": true,
+    "options": [
+      {
+        "key": "Baixo",
+        "label": "Baixo"
+      },
+      {
+        "key": "Médio",
+        "label": "Médio"
+      },
+      {
+        "key": "Alto",
+        "label": "Alto"
+      }
+    ]
+  },
+  {
+    "owner_entity": "product",
+    "key": "impermeavel",
+    "type": "boolean",
+    "facetable": true
+  },
+  {
+    "owner_entity": "product",
+    "key": "peso_g",
+    "type": "number",
+    "facetable": false
+  },
+  {
+    "owner_entity": "product",
+    "key": "drop_mm",
+    "type": "number",
+    "facetable": false
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "formatVersion": 1,
+  "id": "demo",
+  "name": "Loja Demo (calcados, PT-BR)",
+  "baseUrl": "https://storage.googleapis.com/forge-500319-media/demo-catalog",
+  "catalog": {
+    "version": "c3962ed84cb2ffc8",
+    "count": 26,
+    "totalBytes": 41493954,
+    "files": [
+      "assets/banners/banner-bota.jpg",
+      "assets/banners/banner-grande-jordan-M.jpg",
+      "assets/banners/banner-grande-jordan.jpg",
+      "assets/banners/banner-grande-rosa-M.jpg",
+      "assets/banners/banner-grande-rosa.jpg",
+      "assets/banners/banner-shelf-aventura-kids.jpg",
+      "assets/banners/banner-shelf-aventura.jpg",
+      "assets/banners/banner-social2-M.jpg",
+      "assets/banners/banner-social2.jpg",
+      "assets/banners/banner-sportswear.jpg",
+      "assets/banners/banner-strip-brinde-1200x150.jpg",
+      "assets/banners/banner-strip-corrida-1200x150.jpg",
+      "assets/banners/banner-strip-praia-1200x150.jpg",
+      "assets/catalog/catalog-manifest.json",
+      "assets/categories/icon-acessorios.png",
+      "assets/categories/icon-botas.png",
+      "assets/categories/icon-sandalias.png",
+      "assets/categories/icon-sapatos.png",
+      "assets/categories/icon-tenis.png",
+      "catalog.json",
+      "custom-fields.json",
+      "customers.json",
+      "history.json",
+      "promotions.json",
+      "showcase.json",
+      "storefront.json"
+    ]
+  },
+  "photos": {
+    "version": "9aa8af0d782b82ec",
+    "count": 18582,
+    "totalBytes": 3627725256
+  },
+  "generatedAt": "2026-09-15T14:29:16.644Z"
+}

@@ -1,0 +1,209 @@
+[
+  {
+    "name": "PROMO-01A-ADISTAR-20",
+    "label": "20% off Adistar 4",
+    "product": "mens-adidas-adistar-4-running-shoes",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 2000,
+      "scope": "each_item"
+    }
+  },
+  {
+    "name": "PROMO-01B-ADISTAR-10",
+    "label": "10% off Adistar 4",
+    "product": "mens-adidas-adistar-4-running-shoes",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 1000,
+      "scope": "each_item"
+    }
+  },
+  {
+    "name": "PROMO-02A-CLOUDRUNNER-20-STACKABLE",
+    "label": "20% off Cloudrunner 2",
+    "product": "mens-on-cloudrunner-2-waterproof",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 2000,
+      "scope": "each_item"
+    },
+    "stackable": true
+  },
+  {
+    "name": "PROMO-02B-CLOUDRUNNER-10-STACKABLE",
+    "label": "10% off Cloudrunner 2",
+    "product": "mens-on-cloudrunner-2-waterproof",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 1000,
+      "scope": "each_item"
+    },
+    "stackable": true
+  },
+  {
+    "name": "PROMO-03A-SUPERNOVA-20-EXCLUSIVE",
+    "label": "20% off Supernova Rise 3",
+    "product": "mens-adidas-supernova-rise-3-running-shoes",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 2000,
+      "scope": "each_item"
+    },
+    "stackable": false
+  },
+  {
+    "name": "PROMO-03B-SUPERNOVA-10-WILLING",
+    "label": "10% off Supernova Rise 3",
+    "product": "mens-adidas-supernova-rise-3-running-shoes",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 1000,
+      "scope": "each_item"
+    },
+    "stackable": true
+  },
+  {
+    "name": "PROMO-04-SOCKS-BUY3PAY2",
+    "label": "Leve 3, pague 2 — meias adidas Kids",
+    "product": "adidas-kids-superlite-3-0-6-pack-no-show-socks-toddler-little-kid-big-kid",
+    "benefit": {
+      "kind": "bxgy",
+      "buy_qty": 2,
+      "get_qty": 1,
+      "discount_bp": 10000,
+      "max_repeats": 2
+    }
+  },
+  {
+    "name": "PROMO-05-GIFT-SHINE-SPONGE",
+    "label": "Brinde: Florsheim Shine Sponge",
+    "benefit": {
+      "kind": "gift",
+      "items": [
+        {
+          "handle": "florsheim-shine-sponge"
+        }
+      ],
+      "out_of_stock_policy": "skip",
+      "mode": "automatic"
+    },
+    "conditions": [
+      {
+        "kind": "min_subtotal",
+        "amount": 40000,
+        "base": "before"
+      }
+    ],
+    "show_progress": true
+  },
+  {
+    "name": "PROMO-06-FREE-SHIPPING-CAPPED",
+    "label": "Frete com desconto de até R$ 10,00",
+    "benefit": {
+      "kind": "free_shipping",
+      "max_covered_amount": 1000,
+      "shipping_method_ids": []
+    },
+    "conditions": [
+      {
+        "kind": "min_subtotal",
+        "amount": 30000,
+        "base": "before"
+      }
+    ],
+    "show_progress": true
+  },
+  {
+    "name": "PROMO-07A-NB840-20",
+    "label": "20% off New Balance 840v5",
+    "product": "womens-new-balance-840v5",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 2000,
+      "scope": "each_item"
+    }
+  },
+  {
+    "name": "PROMO-07B-BEFORE-30-OFF",
+    "label": "R$ 30 off (mínimo medido ANTES dos descontos)",
+    "product": "womens-new-balance-840v5",
+    "benefit": {
+      "kind": "fixed_amount",
+      "amount": 3000
+    },
+    "conditions": [
+      {
+        "kind": "min_subtotal",
+        "amount": 60000,
+        "base": "before"
+      }
+    ]
+  },
+  {
+    "name": "PROMO-07C-AFTER-30-OFF",
+    "label": "R$ 30 off (mínimo medido DEPOIS dos descontos)",
+    "product": "womens-new-balance-840v5",
+    "benefit": {
+      "kind": "fixed_amount",
+      "amount": 3000
+    },
+    "conditions": [
+      {
+        "kind": "min_subtotal",
+        "amount": 60000,
+        "base": "after"
+      }
+    ],
+    "show_progress": true
+  },
+  {
+    "name": "PROMO-08-PIX-BELT",
+    "label": "15% no Pix — FARM Rio Metal Chain Belt",
+    "product": "farm-rio-metal-chain-belt",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 1500,
+      "scope": "each_item"
+    },
+    "conditions": [
+      {
+        "kind": "payment_method",
+        "methods": [
+          "pix"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "PROMO-09-COUPON-LAST-ONE",
+    "label": "Cupom ULTIMA10 — R$ 50 off",
+    "benefit": {
+      "kind": "fixed_amount",
+      "amount": 5000
+    },
+    "trigger": "coupon",
+    "code": "ULTIMA10",
+    "usage_limit": 1
+  },
+  {
+    "name": "PROMO-10A-SOCKS-CATEGORY-25-EXCLUSIVE",
+    "label": "25% off meias",
+    "category": "acessorios.meias",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 2500,
+      "scope": "each_item"
+    }
+  },
+  {
+    "name": "PROMO-10B-SOCKS-CATEGORY-15-EXCLUSIVE",
+    "label": "15% off meias",
+    "category": "acessorios.meias",
+    "benefit": {
+      "kind": "percentage",
+      "percent_bp": 1500,
+      "scope": "each_item"
+    }
+  }
+]

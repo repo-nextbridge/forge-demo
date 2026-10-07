@@ -52,10 +52,34 @@
 // without a re-pack would make this file answer "same tree" about a tree that is gone.
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** The file that DECLARES a directory to be a seed dataset (`packages/seed-dataset/src/pointer.ts`). */
 export const POINTER_FILE = 'forge-seed-dataset.json';
+
+/**
+ * ★★ v031/G — WHERE THIS INSTANCE'S DATASET LIVES: IN THIS REPOSITORY, TRACKED.
+ *
+ * Until 2026-10-07 the dataset was a directory of the PRODUCT (`instances/demo/dataset`) pointed at by a host
+ * path in `.env`, and that path was the one input of the box that could age in silence (the night of 03/09
+ * above). The product stops carrying it in v0.3.1, and `seed/dataset/` is a byte-for-byte copy of it at
+ * `release/v0.3.0@706701262`. This is the ONE place the path is written for JavaScript; `compose.yml`
+ * (`${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}`) and `deploy/box.env` spell the same default for the box.
+ */
+export const TRACKED_DATASET_DIR = 'seed/dataset';
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * The directory a box would mount, resolved the way COMPOSE resolves it — and that is the point of this
+ * function: `compose.yml` mounts `${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}` relative to the project
+ * directory, so an UNSET variable is not "no dataset" on the box, it is the tracked one. Reading unset as
+ * "unmounted" here would grade a box that does not exist. A relative value is relative to this repository.
+ */
+export function mountedDir(value, root = ROOT) {
+  const raw = (value ?? '').trim() || `./${TRACKED_DATASET_DIR}`;
+  return isAbsolute(raw) ? raw : resolve(root, raw);
+}
 
 /** How a payload's version reads when the payload was never published. `pointer.ts` allows `version: null`. */
 const UNPUBLISHED = '(unpublished)';
@@ -177,6 +201,26 @@ function sameStamp(a, b) {
   );
 }
 
+/** The sentence when the mounted tree is not the one this repository tracks, or null when it is (or when
+ *  there is nothing to compare). Same tree by STAMP, not by path: a bench `.env` naming a copy elsewhere
+ *  that carries the same stamp is the same dataset. */
+function trackedGap(box, tracked) {
+  // No tracked directory at all is a tree that carries no dataset of its own (a probe copy of this script,
+  // an instance that ships none): there is no third party, and the two-sided question stands alone.
+  if (!tracked || (tracked.state === 'broken' && !existsSync(tracked.dir))) return null;
+  if (tracked.state === 'broken' || tracked.state === 'stale') {
+    return `     the TRACKED dataset  ${tracked.dir ?? TRACKED_DATASET_DIR}\n                  ${
+      tracked.state === 'stale' ? `declares ${describe(tracked.stamp)} BUT ${tracked.why}` : `is not a dataset: ${tracked.why}`
+    }\n     This repository's own copy no longer describes itself; re-pack it before anything is graded against it.`;
+  }
+  if (tracked.state !== 'mounted' || box.state !== 'mounted' || sameStamp(box.stamp, tracked.stamp)) return null;
+  return `     the TRACKED dataset  ${TRACKED_DATASET_DIR}\n                  declares         ${describe(
+    tracked.stamp,
+  )}\n     the DATASET  ${box.dir}\n                  declares         ${describe(
+    box.stamp,
+  )}\n     This box would seed a dataset that is NOT the one this repository tracks. Point FORGE_SEED_DATASET_HOST_DIR\n     at ./${TRACKED_DATASET_DIR} (or unset it — that is compose's default).`;
+}
+
 const REBAKE = 'bash bin/build-local.sh <path to the forge monorepo> — re-bakes the images and rewrites forge.lock.';
 
 /**
@@ -184,7 +228,13 @@ const REBAKE = 'bash bin/build-local.sh <path to the forge monorepo> — re-bake
  * for a whole night without anybody hearing it; the only sentence that shortens the hunt names the two
  * versions side by side, and says where each one came from.
  */
-export function provenanceVerdict(lock, box) {
+export function provenanceVerdict(lock, box, tracked) {
+  // ★ v031/G — THE TRACKED POINTER IS GRADED FIRST, because it is now the dataset this instance OWNS: a box
+  // (or a bench `.env`) mounting another tree is mounting something this repository does not describe, even
+  // when the lock happens to agree with it. `tracked` is optional so the two-sided question still stands
+  // alone (and its tests with it).
+  const away = trackedGap(box, tracked);
+  if (away) return { verdict: 'diverged', message: away };
   const images = `the IMAGES   ${[lock.release, lock.builtFrom].filter(Boolean).join(' · ') || '(unnamed build)'}`;
 
   if (lock.state === 'unrecorded') {
@@ -260,7 +310,13 @@ if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   // The lock is named by the caller (`bin/box-up.sh` passes its own), then FORGE_LOCK — the same variable
   // `bin/images-from-lock.sh` and `bin/verify-composition.sh` already honour — then the working directory.
   const lockPath = process.argv[2] || process.env.FORGE_LOCK || join(process.cwd(), 'forge.lock');
-  const verdict = provenanceVerdict(lockSide(lockPath), boxSide(process.env.FORGE_SEED_DATASET_HOST_DIR));
+  // ★ v031/G — unset or relative is resolved the way compose resolves it (`mountedDir`), and the tracked
+  // pointer is the third party in the comparison.
+  const verdict = provenanceVerdict(
+    lockSide(lockPath),
+    boxSide(mountedDir(process.env.FORGE_SEED_DATASET_HOST_DIR)),
+    boxSide(join(ROOT, TRACKED_DATASET_DIR)),
+  );
   if (verdict.verdict === 'diverged') {
     process.stderr.write(
       `\n[dataset-provenance] THIS BOX WOULD SEED FROM A DATASET THAT IS NOT THE ONE ITS IMAGES WERE BUILT WITH.\n\n${verdict.message}\n\n`,

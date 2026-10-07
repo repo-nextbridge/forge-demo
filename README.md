@@ -222,7 +222,7 @@ and whether every shop can be signed in to is not.
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **admin home's widget order**, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
-| 12 | **`verify-seed.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds*; a tenant that did not settle makes `box-up` exit non-zero |
+| 12 | **`verify-seed.mjs` + `verify-content.mjs` × tenant** | the **verdict over the DATA** — the box graded on what it *holds* (and, since v031/G, on the CONTENT of `seed/dataset/`: the seven checks that left the product); a tenant that did not settle makes `box-up` exit non-zero |
 | 13 | **`online-only.mjs`** | the edge and the bucket: **what only exists online**, run **after** the rebirth — see below for why "after" is the whole decision |
 | 14 | **`warm-box.mjs` × tenant** | every store the **port** says has a public page (`storefront_enabled`), warmed and **measured** — and **reported**: warmth does **not** make `box-up` exit non-zero (see below). A store this repository **declares** and the box does not hold still does |
 | 15 | **`verify-config.mjs`** | the **verdict over the CONFIGURATION** — the box graded on what it *is*. This is the one a rebirth eats |
@@ -781,10 +781,18 @@ nothing"*. `bin/box-down.sh` makes the cheap, correct thing the default and puts
 flag, because a habit beats a paragraph: this distinction was explained, written down, and then violated by
 hand one minute later.
 
-### The seed dataset — pointed at, never copied
+### The seed dataset — tracked here since v031/G
 
-Step 7 fills the stores from a dataset that lives in the **monorepo** (`instances/demo/dataset`). This box
-points at it by path:
+★ **Since 2026-10-07 the dataset lives in THIS repository, at `seed/dataset/`** — a byte-for-byte copy of the
+product's `instances/demo/dataset` at `release/v0.3.0@706701262` (sha256 equal file by file), because the
+product stops carrying it in v0.3.1. `compose.yml`, `deploy/box.env` and `.env.example` all default to
+`./seed/dataset`; `bin/dataset-provenance.mjs` (step 0c) compares the mount against `forge.lock` **and** against
+the tracked pointer; `bin/build-local.sh` records the stamp from here. The 3.6 GB of photographs are still
+hydrated from the pointer's `baseUrl` (the product's bucket until the copy to the demo's R2 is made). The
+history below — why it used to be pointed at — is kept as it was argued.
+
+Step 7 fills the stores from a dataset that lived in the **monorepo** (`instances/demo/dataset`). This box
+pointed at it by path:
 
 | variable | what it is |
 |---|---|
@@ -1372,9 +1380,12 @@ products, 44 427 SKUs and 18 582 photographs. It arrives by **path**, and the pa
 
 ```bash
 source ./env-source.sh
-FORGE_SEED_DATASET_DIR=<path to the forge monorepo>/instances/demo/dataset \
+FORGE_SEED_DATASET_DIR=./seed/dataset \
   node bin/seed.mjs --api http://localhost:8200
 ```
+
+★ **v031/G — "the day the demo has a catalogue of its own" (below) came on 2026-10-07**: the directory is
+`seed/dataset/` in this repository. The argument that follows is the one that kept it out until then.
 
 Unset, the variable means what it means everywhere else in Forge: **no example data, and that is a legitimate
 state.** The seed writes one line saying the sports store stays empty and carries on. A clone of this

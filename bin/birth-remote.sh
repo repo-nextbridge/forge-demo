@@ -85,7 +85,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?) — an
 10|the past (seed-history — 180 days), once per tenant
 10b|waiting for the dispatcher to drain
 11|the shop window (--phase window), once per tenant
-12|the verdict over the DATA (verify-seed), once per tenant
+12|the verdict over the DATA (verify-seed + verify-content), once per tenant
 13|the edge and the bucket (what only exists online)
 14|warming every store the port says has a public page
 14-bis|opening every door of every store
@@ -433,14 +433,17 @@ fi
 # ⚠️⚠️ TWO VARIABLES WITH ONE NAME, AND THEY ARE ON TWO MACHINES. `FORGE_SEED_DATASET_HOST_DIR` means «the
 # path this box's compose mounts the dataset from» — and `deploy/box.env` declares the BOX's answer
 # (`./seed/dataset`, relative to the deploy directory), while this laptop's `.env` holds the OPERATOR's
-# (a checkout of the monorepo). `remote_box_load` sourced the first into this shell, so the second has to be
+# (since v031/G the same tracked tree by default; a monorepo checkout before). `remote_box_load` sourced the first into this shell, so the second has to be
 # read out of the file explicitly rather than inherited. It is the same class of confusion `bin/box-up.sh`
 # built `host_node` to prevent — one variable name serving two filesystems — arriving from the other side.
 say '0c · the dataset (is it the one these images were built with?) — and it is DELIVERED'
+# ★ v031/G — THE DATASET IS THIS REPOSITORY'S OWN (`seed/dataset/`, tracked), so a machine that says nothing
+# carries THAT tree — the same default `compose.yml` mounts. A `.env` or FORGE_SEED_DATASET_SOURCE may still
+# name another one, and step 0c grades it against the lock AND against the tracked pointer before a byte moves.
+# A relative value is relative to this repository, as compose reads it.
 DATASET_SRC="${FORGE_SEED_DATASET_SOURCE:-$(grep -m1 '^FORGE_SEED_DATASET_HOST_DIR=' "$HERE/.env" 2>/dev/null | cut -d= -f2-)}"
-[ -n "$DATASET_SRC" ] || die "this machine does not say where the dataset is. The birth carries it to the box, so it has to
-     exist here: put FORGE_SEED_DATASET_HOST_DIR in .env (the bench's own value is the same tree), or name it
-     for this run with FORGE_SEED_DATASET_SOURCE=<path> bash bin/birth-remote.sh $ENV_NAME."
+DATASET_SRC="${DATASET_SRC:-./seed/dataset}"
+case "$DATASET_SRC" in /*) ;; *) DATASET_SRC="$HERE/${DATASET_SRC#./}" ;; esac
 [ -d "$DATASET_SRC" ] || die "the dataset source \"$DATASET_SRC\" is not a directory on this machine."
 provenance="$(FORGE_SEED_DATASET_HOST_DIR="$DATASET_SRC" node "$HERE/bin/dataset-provenance.mjs" "$HERE/forge.lock" 2>&1)" || {
   printf '%s\n' "$provenance" >&2
@@ -1113,7 +1116,7 @@ done
 # input: green through any road back to the same state. ⚠️ It does not stop the script where it fails — the
 # box is fully standing by now, and the addresses below are what an operator needs especially when a tenant
 # did not settle. The exit code is collected and spent at the very end.
-say '12 · the verdict over the DATA (verify-seed), once per tenant'
+say '12 · the verdict over the DATA (verify-seed + verify-content), once per tenant'
 UNSETTLED=''
 for t in $TENANTS; do
   tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
@@ -1123,6 +1126,15 @@ for t in $TENANTS; do
   else
     UNSETTLED="$UNSETTLED $t"
     note "⛔ $t did NOT settle — the ✗ lines above say which check."
+  fi
+  # ★ v031/G — AND THE CONTENT. The seven checks that asserted THIS demo's content lived in the product until
+  # v0.3.1 (`*.demo.test.ts`); they ask the dataset this repository tracks AND this box now. Same token, same
+  # tenant, same exit-code policy: a ✗ leaves the tenant UNSETTLED and the run ends non-zero naming it.
+  if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-content.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+    note "$t content is what seed/dataset declares"
+  else
+    case " $UNSETTLED " in *" $t "*) ;; *) UNSETTLED="$UNSETTLED $t" ;; esac
+    note "⛔ $t's CONTENT is not what seed/dataset declares — the ✗ lines above name the check (bin/verify-content.mjs)."
   fi
 done
 

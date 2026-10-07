@@ -1,0 +1,70 @@
+{
+  "stores": [
+    {
+      "handle": "forge",
+      "weight": 62,
+      "fulfillment": "delivery"
+    },
+    {
+      "handle": "outlet",
+      "weight": 24,
+      "fulfillment": "delivery"
+    },
+    {
+      "handle": "cafe",
+      "weight": 10,
+      "fulfillment": "delivery"
+    },
+    {
+      "handle": "balcao",
+      "weight": 4,
+      "fulfillment": "pickup"
+    }
+  ],
+  "shipping": {
+    "zone": "Brasil"
+  },
+  "addresses": [
+    {
+      "line1": "Rua Oscar Freire",
+      "number": "827",
+      "neighborhood": "Jardins",
+      "city": "São Paulo",
+      "region": "SP",
+      "postal_code": "01426001"
+    },
+    {
+      "line1": "Avenida Paulista",
+      "number": "1578",
+      "neighborhood": "Bela Vista",
+      "city": "São Paulo",
+      "region": "SP",
+      "postal_code": "01310200"
+    },
+    {
+      "line1": "Rua das Palmeiras",
+      "number": "204",
+      "neighborhood": "Santa Cecília",
+      "city": "São Paulo",
+      "region": "SP",
+      "postal_code": "01226010"
+    },
+    {
+      "line1": "Avenida Atlântica",
+      "number": "1702",
+      "neighborhood": "Copacabana",
+      "city": "Rio de Janeiro",
+      "region": "RJ",
+      "postal_code": "22021001"
+    },
+    {
+      "line1": "Rua da Bahia",
+      "number": "1148",
+      "neighborhood": "Centro",
+      "city": "Belo Horizonte",
+      "region": "MG",
+      "postal_code": "30160011"
+    }
+  ],
+  "document_name": "Documento fiscal"
+}
