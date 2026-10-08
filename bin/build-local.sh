@@ -220,6 +220,14 @@ echo "[build-local] version:     $version" >&2
 echo "[build-local] composition: $composition_id ($composition_path)" >&2
 echo >&2
 
+# ★ THE AXIS IS DECLARED, BECAUSE THE PRODUCT NO LONGER KNOWS THIS BOX. Until v0.3.0 the product's fleet matrix
+# carried a `demo-instance` row, and the oven took this box's axis from it. v0.3.1 removed that row (the product
+# stopped knowing the demo), and a list the matrix does not know defaults to the strict `offer` axis — which
+# refuses `demo-setup` and `payment-pos` as instance-owned. Measured 2026-10-08 baking from the v0.3.1 tag. The
+# product answer (forge PR #634) is `FORGE_COMPOSITION_AXIS`: this box is an INSTANCE, always, and says so. A
+# product checkout older than that ARG ignores it (an undeclared build-arg is dropped), so this line is safe
+# against v0.3.0 too.
+#
 # name:dockerfile — the same four the platform's release builds and `bin/images-from-lock.sh` demands. A box
 # that came up with three of the four serves a store whose "Finalizar compra" leads to a 404.
 build() { # <lock key> <image name> <dockerfile>
@@ -230,6 +238,7 @@ build() { # <lock key> <image name> <dockerfile>
     --build-arg "FORGE_COMPOSITION=$composition_arg" \
     --build-arg "FORGE_COMPOSITION_ID=$composition_id" \
     --build-arg "FORGE_INSTANCE_APPS=$([ "$instance_count" -gt 0 ] && echo .instance-apps || echo '')" \
+    --build-arg "FORGE_COMPOSITION_AXIS=instance" \
     --build-arg "FORGE_RELEASE=$version" \
     --build-arg "GIT_SHA=$STAMP_SHA" \
     --build-arg "BUILD_DATE=$BUILT_AT" \

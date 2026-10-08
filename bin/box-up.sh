@@ -2106,7 +2106,7 @@ for t in $TENANTS; do
   # then closes the pool underneath that abandoned writer. What comes out is a HALF-WRITTEN catalogue and an
   # error naming the POOL instead of the ceiling. There is no one-line repair for an abandoned bulk write.
   dc run --rm -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
-    -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
+    ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
     kernel node dist/seed-demo.js 2>&1 | tail -6 >&2 \
     || note "⚠️ seed-demo failed for \"$t\". The kernel's own words are the six lines above — read those, not this.
      ⛔ I DO NOT KNOW WHETHER RE-RUNNING FIXES IT, and saying so is the honest answer: of the three ways this
@@ -2271,7 +2271,7 @@ $(printf '%s\n' "$armed" | sed 's/^/       /')
   # a past this box does not have — the exact false green this script was already caught by once, when a health
   # check answered 200 from somebody else's box.
   hlog="$(mktemp)"
-  dc run --rm -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
+  dc run --rm ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
     kernel node dist/seed-history.js --tenant "$t" >"$hlog" 2>&1
   hrc=$?
   tail -6 "$hlog" >&2

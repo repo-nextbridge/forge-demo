@@ -186,7 +186,7 @@ test('★★ a placement whose config still holds somebody’s test content is R
   // The bench state this file exists to replace, verbatim: seven placements carrying `{"back":"a"}`. A plan
   // that treated «already placed» as «already right» would leave exactly that on the box forever.
   const wanted = [{ component: 'checkout_header', slot: DATA.slots.checkout_header, config: { back: 'Voltar à loja' } }];
-  const placed = [{ placement_id: 'hp_1', component: 'checkout_header', config: { back: 'a', seal: 'c' } }];
+  const placed = [{ placement_id: 'hp_1', component: 'checkout_header', target: DATA.slots.checkout_header, config: { back: 'a', seal: 'c' } }];
   assert.deepEqual(planChrome(wanted, placed), [
     { action: 'update', placement_id: 'hp_1', ...wanted[0] },
   ]);
@@ -203,6 +203,7 @@ test('★★ …and a placement that already says the declaration costs NOTHING,
     {
       placement_id: 'hp_2',
       component: 'account_brand',
+      target: DATA.slots.account_brand,
       config: { logo: 'ast_1', logo_url: 'https://cdn.example/x.png', text: 'forge.co' },
     },
   ];
@@ -370,6 +371,7 @@ test('⛔ an emptied field is DECLARED empty — a key this file drops is a key 
     {
       placement_id: 'hp_9',
       component: 'checkout_footer',
+      target: slot,
       config: { start_text: 'Pix · Cartão de crédito', middle_text: 'Trocas em até 30 dias' },
     },
   ];

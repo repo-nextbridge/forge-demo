@@ -11,7 +11,10 @@
 // A DECLARATION is `{ app, slots, stores }`:
 //   · `app`    the extension id to install (`chrome`, `demo-setup`);
 //   · `slots`  component → the slot it is placed in (`storefront:<page>.<name>`). It is the app's OWN map,
-//              read off its manifest: a slot invented here is refused by `composition.place`;
+//              read off its manifest: a slot invented here is refused by `composition.place`. ★ v031/H29: the
+//              value may be a LIST of slots for a block the manifest declares `placement: 'repeatable'` — one
+//              placement per slot. A `single` block given two is refused before anything is written
+//              (`multiSlotProblems`); the kernel would refuse the second with `conflict` anyway;
 //   · `stores` handle → the blocks that store wears, `{component: config}`. `null` = a store deliberately
 //              wearing none, which is NAMED rather than absent (see either file's `_..._why`).
 //
@@ -35,23 +38,65 @@ const isMeta = (key) => key.startsWith('_');
 /** Read a declaration off disk. Malformed JSON throws — a seed that cannot read its own data must not run. */
 export const readDeclaration = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
-/** The blocks one store declares, `{component, slot, config}`, in the declaration's own order. */
+/**
+ * The slots one component is declared in — always a list. ★ v031/H29: `slots[component]` was a string, and a
+ * string is still accepted (it is every block of `seed/chrome.json` and three of `seed/demo-setup.json`); a
+ * list says «this block, in each of these places». Anything else is an empty list, which `blocksFor` refuses.
+ */
+export function slotsOf(spec, component) {
+  const value = spec.slots?.[component];
+  if (typeof value === 'string' && value.length > 0) return [value];
+  if (Array.isArray(value)) return value.filter((slot) => typeof slot === 'string' && slot.length > 0);
+  return [];
+}
+
+/** The blocks one store declares, `{component, slot, config}` — ONE PER (component, slot), in the
+ *  declaration's own order. A component declared in two slots is two blocks with the same config. */
 export function blocksFor(spec, handle) {
   const store = spec.stores?.[handle];
   if (!store) return [];
   return Object.entries(store)
     .filter(([component]) => !isMeta(component))
-    .map(([component, config]) => {
-      const slot = spec.slots?.[component];
-      if (!slot) {
+    .flatMap(([component, config]) => {
+      const slots = slotsOf(spec, component);
+      if (slots.length === 0) {
         throw new Error(
           `${spec.app}: store "${handle}" declares a block "${component}" that the declaration's own ` +
             '`slots` map does not name. The slot is what `composition.place` validates the block against, ' +
             'so there is nothing to guess.',
         );
       }
-      return { component, slot, config };
+      return slots.map((slot) => ({ component, slot, config }));
     });
+}
+
+/**
+ * ⛔ A BLOCK DECLARED IN MORE THAN ONE SLOT THAT IS NOT `repeatable` — named, before a single write.
+ *
+ * `placement: 'single'` is enforced by the KERNEL per (store, app, component) (`assertSingleFree`,
+ * packages/core/src/commands/composition.ts), so the second placement would come back `conflict` — after the
+ * first was written and with a sentence about a constraint rather than about this file. The seed says it
+ * first, naming the block and the slots.
+ *
+ * @param placementOf component → the manifest's `placement` (`'single'` | `'repeatable'` | undefined). Absent,
+ *        no block may be declared twice: a list of slots is only ever accepted with the manifest's word for it.
+ * @returns the offending blocks, as sentences; empty when the declaration is sound.
+ */
+export function multiSlotProblems(spec, placementOf) {
+  const out = [];
+  for (const component of Object.keys(spec.slots ?? {})) {
+    if (isMeta(component)) continue;
+    const slots = slotsOf(spec, component);
+    if (slots.length < 2) continue;
+    const placement = placementOf?.(component);
+    if (placement === 'repeatable') continue;
+    out.push(
+      `${spec.app}/${component} is declared in ${slots.length} slots (${slots.join(', ')}) and its manifest ` +
+        `says placement ${placement ? `'${placement}'` : '(unknown — no manifest was consulted)'}: only a ` +
+        "'repeatable' block may stand in more than one place per store",
+    );
+  }
+  return out;
 }
 
 /**
@@ -91,10 +136,30 @@ export function imagesOf(spec, handles = Object.keys(spec.stores ?? {})) {
  * same contract every other declared thing in this box has.
  */
 export function planBlocks(wanted, placed) {
-  const byComponent = new Map(placed.map((row) => [row.component, row]));
+  // ★ v031/H29 — MATCHED BY (component, SLOT), NOT BY COMPONENT. A repeatable block declared in two slots is
+  // two placements; keyed by component alone, the second declaration found the FIRST placement, «updated» it
+  // and never placed itself — the funnel's notice would simply not exist, every run green. The slot of a
+  // placement is the read's `target` (`target_override ?? the manifest hook's target`, measured in
+  // packages/core/src/read/capabilities.ts:293 at v0.3.1). `seed/blocks.test.mjs` reddens if this goes back.
+  const key = (component, slot) => `${component}\u0000${slot}`;
+  // ⛔ AND A ROW WITH NO `target` IS REFUSED, NEVER READ AS «placed nowhere». Read that way, every block would
+  // be planned as NEW: a `single` one comes back `conflict` mid-birth, and a `repeatable` one — the notice —
+  // is placed AGAIN on every run, silently, until a shop wears three bars. A read that stopped publishing the
+  // slot is the verifier's lesson of 03/09 (`bin/verify-seed.mjs`, «absence is not a value») in a writer.
+  const byPlace = new Map();
+  for (const row of placed) {
+    if (typeof row?.target !== 'string' || row.target === '') {
+      throw new Error(
+        `read.extension_composition answered a placement of ${row?.extension_id ?? '?'}/${row?.component ?? '?'} ` +
+          'with no `target`, so which slot it stands in is unknown and the plan would place every block again. ' +
+          'Refusing to plan.',
+      );
+    }
+    if (!byPlace.has(key(row.component, row.target))) byPlace.set(key(row.component, row.target), row);
+  }
   const plan = [];
   for (const block of wanted) {
-    const row = byComponent.get(block.component);
+    const row = byPlace.get(key(block.component, block.slot));
     if (!row) {
       plan.push({ action: 'place', ...block });
       continue;
@@ -123,8 +188,12 @@ function sameConfig(stored, wanted) {
  * refusal of its own — «this config would delete the shop's mark» — runs it BEFORE calling here: a refusal is
  * about what a particular app's blocks MEAN, and this file deliberately knows nothing about that.
  */
-export async function seedDeclaredBlocks(spec, { command, read, readAll, rows, log, fail, uploadAsset }) {
+export async function seedDeclaredBlocks(spec, { command, read, readAll, rows, log, fail, uploadAsset, placementOf }) {
   const app = spec.app;
+
+  // ── 0. the declaration itself — refused BEFORE the install, the upload or any placement ─────────────────
+  const twice = multiSlotProblems(spec, placementOf);
+  if (twice.length > 0) fail(`${app} — refusing the declaration: ${twice.join(' · ')}.`);
 
   // ── 1. the app ────────────────────────────────────────────────────────────────────────────────────────
   // ⚠️ `read.extensions` IS THE WRONG READ AND IT ANSWERS PLAUSIBLY — it takes a STORE and lists the apps with

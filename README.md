@@ -642,8 +642,10 @@ handle, so skipping it there leaves that store quietly different from what the d
 `DEFAULT_ACTION_TIMEOUT_MS` = 5 minutes. That cap is a **liveness guard for whoever calls** — it exists so an
 operator who fires an action is not left with a spinner forever. A bulk import one-shot is not an interactive
 action: nobody is watching a screen, and the process exists in order to finish. So `bin/box-up.sh` passes
-`FORGE_EXTENSION_ACTION_TIMEOUT_MS` on that `docker compose run` alone (30 min, override with
-`FORGE_SEED_ACTION_TIMEOUT_MS`) and **the standing kernel keeps the 5-minute default**.
+`FORGE_EXTENSION_ACTION_TIMEOUT_MS` on that `docker compose run` alone — the value of
+`FORGE_SEED_ACTION_TIMEOUT_MS` from `deploy/box.env` (30 min), and nothing when it is unset — and **the standing
+kernel keeps the 5-minute default**. Since v0.3.1 that ceiling measures SILENCE, not duration: it re-arms every
+time the seed reports progress (forge PR #613), so it no longer has to guess how long a catalogue takes.
 
 The number is derived: a run that hit the cap had written 1,287 of 2,790 products in 300s, so the full
 catalogue needs ~650s. Thirty minutes is nearly 3x that, with head-room for the first run's media hydration.

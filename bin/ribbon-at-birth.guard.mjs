@@ -50,7 +50,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { blocksOf } from './app-manifest.mjs';
+import { blocksOf, slotsDrawnElsewhere } from './app-manifest.mjs';
+import { slotsOf } from '../seed/blocks.mjs';
 import { OFF_THE_STREET } from './servable.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -172,13 +173,41 @@ test('★★ the notice lands in a slot the declaration NAMES — an undeclared 
   // `blocksFor` refuses a component the declaration's own `slots` map does not name, which is right and is
   // also a birth that has already started. This is the same refusal, before anything runs.
   const [component] = noticeComponents(DATA.app);
-  const slot = DATA.slots?.[component];
-  assert.equal(
-    typeof slot,
-    'string',
+  // ★ v031/H29 — the map's value may be a LIST (the notice stands in the shop's chrome AND in the funnel);
+  // `slotsOf` is the seed's own reading of it, so this asks exactly what the birth will ask.
+  assert.ok(
+    slotsOf(DATA, component).length > 0,
     `${DECLARATION} declares stores wearing "${component}" and its \`slots\` map does not say where it goes. ` +
       'The seed throws mid-birth on that, after the app is installed and some marks are already placed.',
   );
+});
+
+/**
+ * ★ v031/H29 — WHERE the notice stands, split by who draws it: `{ funnel, shop }` — the declared slots another
+ * deployable's own template draws (the checkout, `slotsDrawnElsewhere`) and the ones the shop's own front does.
+ */
+function noticeReach(spec, component, elsewhere) {
+  const slots = slotsOf(spec, component).map((slot) => slot.slice(slot.indexOf(':') + 1));
+  return { funnel: slots.filter((s) => elsewhere.has(s)), shop: slots.filter((s) => !elsewhere.has(s)) };
+}
+
+test('★★★ v031/H29 — the notice is declared in the FUNNEL too, not only in the shop window', (t) => {
+  // ⇒ SABOTAGE: put `slots.demo_ribbon` back to the single `storefront:footer.end` and this names the funnel
+  //   as missing — a visitor walks from a shop that says «nothing here is charged» into a checkout that asks
+  //   for a card and says nothing. Or drop `footer.end` and keep only the funnel: the shop half is named.
+  const elsewhere = slotsDrawnElsewhere();
+  if (elsewhere.tried) {
+    t.skip(`NOT CHECKED — which slots the checkout draws comes from the release's catalogue: ${elsewhere.tried.join(' · ')}`);
+    return;
+  }
+  const [component] = noticeComponents(DATA.app);
+  const reach = noticeReach(DATA, component, elsewhere.slots);
+  assert.ok(reach.funnel.length > 0, `${DECLARATION} places "${component}" in no slot the checkout draws (${slotsOf(DATA, component).join(', ')}).`);
+  assert.ok(reach.shop.length > 0, `${DECLARATION} places "${component}" ONLY in the funnel — the shop window would say nothing.`);
+  // ⟂ the split SEES: the same declaration with one slot is caught on the missing side, both ways round.
+  const one = (slot) => ({ ...DATA, slots: { ...DATA.slots, [component]: slot } });
+  assert.equal(noticeReach(one(`storefront:${reach.shop[0]}`), component, elsewhere.slots).funnel.length, 0);
+  assert.equal(noticeReach(one(`storefront:${reach.funnel[0]}`), component, elsewhere.slots).shop.length, 0);
 });
 
 test('⛔ AND THE STORE THAT IS OFF THE STREET IS EXCLUDED BY THE PORT’S RULE, not by a handle typed here', () => {

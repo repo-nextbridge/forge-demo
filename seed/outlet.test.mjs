@@ -656,22 +656,19 @@ test('★ s2-4 — `featured_brands` still MIRRORS the vitrine\'s own list', (t)
 // ordinary shoe shop, and the size to follow was simply its size. The one that works is
 // «Botas que acabaram de chegar»
 // in the `forge` store, and it is not a taste anybody typed here — it is declared by the MOUNTED DATASET
-// (`instances/demo/dataset/storefront.json`), which is the platform's own example data, in the monorepo.
+// (`seed/dataset/storefront.json`, tracked in THIS repository since v031/G; until then it was read from the
+// Forge checkout's `instances/demo/dataset`, which v0.3.1 removed from the product).
 //
-// So this reads it and holds the outlet's kids shelf to the same shape. Same standing risk as the
-// `featured_brands` mirror above, and the same honest answer: it only ever READS, and it skips when this
-// machine has no checkout.
+// So this reads it and holds the outlet's kids shelf to the same shape. It only ever READS, and the file is
+// tracked here, so there is no checkout to be missing and nothing to skip.
 
-/** Where the reference dataset declares the `forge` store's window. */
-const DATASET_WINDOW = join('instances', 'demo', 'dataset', 'storefront.json');
+/** Where this box's own dataset declares the `forge` store's window. */
+const DATASET_WINDOW = join('seed', 'dataset', 'storefront.json');
 
-test('★ pk5 — the kids shelf is shaped like the shelf-with-a-banner that ALREADY WORKS', (t) => {
-  const found = atPinned(DATASET_WINDOW);
-  if (found.tried) {
-    t.skip(notChecked(found, DATASET_WINDOW));
-    return;
-  }
-  const window = JSON.parse(found.text);
+test('★ pk5 — the kids shelf is shaped like the shelf-with-a-banner that ALREADY WORKS', () => {
+  const window = JSON.parse(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', DATASET_WINDOW), 'utf8'),
+  );
   const gabaritos = (window.shelves ?? []).filter((shelf) => shelf.banner);
   assert.ok(
     gabaritos.length > 0,

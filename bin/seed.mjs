@@ -155,11 +155,22 @@ const tenant = argOf('--tenant') ?? process.env.FORGE_SEED_TENANT ?? process.env
 // than adding a second. Running LAST, this side is the one whose config survives if the two ever diverge —
 // the CURATED winning over the generated, which is the order that should win. They are not redundant; they
 // are CONVERGENT, and the dangerous day is the day they stop deriving from one declaration.
+//
+// ★ v031/H29 — AND A THIRD, `--phase demo-setup`, WHICH IS NOT A STEP OF A BIRTH. It runs ONLY
+// `seedDemoSetup` (install-if-absent, place-and-fill this box's own blocks per store) and the purge, against a
+// box that is already born. It exists because a change to `seed/demo-setup.json` — the notice moving into the
+// funnel — has to reach a standing box without a reset, and the curated phase is the only other caller of
+// that step: re-running it would also re-assert stores, vocabulary, the coffees, the outlet, the totem and the
+// commerce silence. The step is idempotent per (store, component, slot) (`seed/blocks.mjs`, held by
+// `seed/blocks.test.mjs`), so running it twice writes nothing the second time.
+//   remote:  bash bin/birth-remote.sh <env> --blocks-only      (per tenant, with the box's own tokens)
+const PHASES = ['curated', 'window', 'demo-setup'];
 const phase = argOf('--phase') ?? 'curated';
-if (phase !== 'curated' && phase !== 'window') {
+if (!PHASES.includes(phase)) {
   fail(
-    `unknown --phase "${phase}". It is "curated" (the terrain and the curated content) or "window"\n` +
-      '  (the shop window, which runs AFTER the one-shot). See the README.',
+    `unknown --phase "${phase}". It is "curated" (the terrain and the curated content), "window"\n` +
+      '  (the shop window, which runs AFTER the one-shot) or "demo-setup" (ONLY this box\'s own blocks, on a\n' +
+      '  box already born). See the README.',
   );
 }
 
@@ -1444,6 +1455,22 @@ const commerceExpect = () => storesOfThisTenant.map((s) => s.handle);
 log(`against ${api} as tenant ${tenant} — phase ${phase}`);
 await assertCredentialTenant();
 const here = (handle) => storesOfThisTenant.some((s) => s.handle === handle);
+
+// ── ★ v031/H29 — ONLY THIS BOX'S OWN BLOCKS, on a box that is already standing. See `--phase` above. ──────────
+if (phase === 'demo-setup') {
+await seedDemoSetup({
+  command,
+  read,
+  readAll,
+  rows,
+  log,
+  fail,
+  uploadAsset: (file) => upload(file, { library: true }),
+});
+log('demo-setup — done. Nothing else was asked of this box.');
+// ⛔ LAST — same word, same guard, same reason as the end of the curated phase below.
+await purgeStorefrontCache({ api, read, rows, log });
+} // ── end of the demo-setup phase ───────────────────────────────────────────────────────────────────────────
 
 if (phase === 'curated') {
 await stores();

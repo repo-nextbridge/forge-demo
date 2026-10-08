@@ -148,14 +148,26 @@
     "it and there is no footer of ours anywhere to hang a bar in. Its visitor is owed the same sentence and gets",
     "it from the front that store really has: `totem/src/components/DemoNotice.tsx`, mounted by hand, because a",
     "whole-host app has no Compose. `bin/ribbon-at-birth.guard.mjs` derives that exclusion from the store's",
-    "status and never from a handle typed here."
+    "status and never from a handle typed here.",
+    "",
+    "★ v031/H29 — THE NOTICE STANDS IN TWO PLACES PER STORE, AND `slots.demo_ribbon` IS A LIST BECAUSE OF IT.",
+    "The shop's chrome (`storefront:footer.end`, drawn by the vitrine — or by the café's fork, which",
+    "republishes it) and the FUNNEL (`storefront:checkout.bottom`, drawn by the CHECKOUT we host, on every",
+    "shop: `/checkout*` goes to that container through `forge_shop_host` in caddy/Caddyfile) are two different",
+    "pairs of slots. `checkout.bottom` arrived in v0.3.1 and it ADDS: a block there stands above the funnel's",
+    "footer and the payment strip («Compra segura · Forge») stays — `checkout.footer` would have replaced it.",
+    "⛔ ONLY A `repeatable` BLOCK MAY BE GIVEN A LIST. The manifest says which (`apps/demo-setup/manifest.ts`),",
+    "and `seed/blocks.mjs` (`multiSlotProblems`) refuses a `single` one by name before anything is written.",
+    "⚠️ THE SURFACE IS `storefront:`, NOT `checkout:` — the funnel's slots are slots of the storefront surface",
+    "(the kernel refuses a block whose surface differs from the slot's prefix, composition.ts `assertSlotAllowed`)."
+
   ],
   "app": "demo-setup",
   "slots": {
     "header_brand": "storefront:header.brand",
     "drawer_brand": "storefront:header.drawer_brand",
     "footer_brand": "storefront:footer.brand",
-    "demo_ribbon": "storefront:footer.end"
+    "demo_ribbon": ["storefront:footer.end", "storefront:checkout.bottom"]
   },
   "stores": {
     "forge": {
