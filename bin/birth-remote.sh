@@ -940,7 +940,7 @@ for t in $TENANTS; do
   # naming the POOL instead of the ceiling.
   remote_compose "${COMPOSE_FILES[@]}" run --rm \
     -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
-    -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
+    ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
     kernel node dist/seed-demo.js 2>&1 | tail -8 >&2
   # shellcheck disable=SC2181
   [ "${PIPESTATUS[0]}" = 0 ] || die "seed-demo failed for \"$t\". The kernel's own words are the lines above — read those, not this.
@@ -1040,7 +1040,7 @@ $(printf '%s\n' "$armed" | sed 's/^/       /')
   # gets "SKIPPING", nothing written, exit 0 and `"skipped":true` in its summary.
   hlog="$(mktemp)"
   remote_compose "${COMPOSE_FILES[@]}" run --rm \
-    -e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=${FORGE_SEED_ACTION_TIMEOUT_MS:-1800000}" \
+    ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
     kernel node dist/seed-history.js --tenant "$t" >"$hlog" 2>&1
   hrc=$?
   tail -6 "$hlog" >&2
