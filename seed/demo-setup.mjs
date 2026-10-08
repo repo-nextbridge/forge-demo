@@ -96,7 +96,9 @@ export function markless(spec = data, marks = markComponents(spec.app)) {
       if (!has) bad.push(`${handle}/${block.component}`);
     }
   }
-  return bad;
+  // ★ v031/H29 — ONE ACCUSATION PER BLOCK, NOT PER SLOT. A block declared in two slots is one config placed
+  // twice (`blocksFor`); naming it twice would read as two defects.
+  return [...new Set(bad)];
 }
 
 export async function seedDemoSetup(deps) {
@@ -108,5 +110,20 @@ export async function seedDemoSetup(deps) {
         'nothing when nothing is configured, so that place would come up with no mark at all, silently.',
     );
   }
-  await seedDeclaredBlocks(data, deps);
+  await seedDeclaredBlocks(data, { ...deps, placementOf: placementOf(data.app) });
+}
+
+/**
+ * ★ v031/H29 — component → the manifest's `placement`, so `seedDeclaredBlocks` can refuse a `single` block
+ * declared in two slots BEFORE the kernel does. Read off this box's own manifest (a directory here), never
+ * typed: `demo_ribbon` is the one block of this app the manifest calls `repeatable`, and that is the only
+ * reason `seed/demo-setup.json` may name two slots for it.
+ */
+export function placementOf(app) {
+  const read = blocksOf(app);
+  if (read.tried) {
+    throw new Error(`demo-setup — the manifest of app "${app}" could not be read (${read.tried.join(' · ')}).`);
+  }
+  const byComponent = new Map(read.blocks.map((block) => [block.component, block.placement]));
+  return (component) => byComponent.get(component);
 }

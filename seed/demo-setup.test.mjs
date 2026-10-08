@@ -29,7 +29,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { blocksOf, configKeysOf, surfaceSlots } from '../bin/app-manifest.mjs';
-import { blocksFor, imagesOf } from './blocks.mjs';
+import { blocksFor, imagesOf, slotsOf } from './blocks.mjs';
 import { markComponents, markless, seedDemoSetup } from './demo-setup.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
@@ -132,7 +132,9 @@ test('★★ …and every slot it names is a slot the SURFACE really publishes',
   // v0.4, and «the operator drags it there» was, until this slice, the only thing that had ever checked it.
   const catalogue = surfaceSlots();
   if (catalogue.tried) return t.skip(`NOT CHECKED — the pinned slot catalogue: ${catalogue.tried.join(' · ')}`);
-  for (const [component, declared] of Object.entries(DATA.slots)) {
+  // ★ v031/H29 — every slot of a LIST is asked, through the seed's own reading of the map (`slotsOf`):
+  // `String(list)` would have asked the catalogue for "footer.end,storefront" and called it absent.
+  for (const [component, declared] of Object.keys(DATA.slots).flatMap((c) => slotsOf(DATA, c).map((slot) => [c, slot]))) {
     const name = String(declared).split(':')[1];
     assert.ok(
       catalogue.slots.includes(name),
@@ -546,18 +548,24 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
     // ⛔ THE EXACT ROWS, NAMED, RATHER THAN A COUNT. A number said «two dressed shops × three marks» and was
     //   a second thing to edit the day a block arrived; worse, it cannot tell «the café got the notice» from
     //   «the shoe shop got one row too many». This is the whole plan of a birth, spelled out.
+    // ★ v031/H29 — THE SLOT IS IN THE ROW NOW, because the notice is placed TWICE per dressed shop: in the
+    //   shop's chrome (`footer.end`) and in the funnel (`checkout.bottom`, drawn by the checkout we host).
+    //   Without the slot the two rows of one shop read as one row written twice.
     assert.deepEqual(
-      placed.map((c) => `${c.input.store}/${c.input.component}`).sort(),
+      placed.map((c) => `${c.input.store}/${c.input.component}@${c.input.slot}`).sort(),
       [
-        'sto_cafe/demo_ribbon',
-        'sto_forge/demo_ribbon',
-        'sto_forge/drawer_brand',
-        'sto_forge/footer_brand',
-        'sto_forge/header_brand',
-        'sto_outlet/demo_ribbon',
-        'sto_outlet/drawer_brand',
-        'sto_outlet/footer_brand',
-        'sto_outlet/header_brand',
+        'sto_cafe/demo_ribbon@storefront:checkout.bottom',
+        'sto_cafe/demo_ribbon@storefront:footer.end',
+        'sto_forge/demo_ribbon@storefront:checkout.bottom',
+        'sto_forge/demo_ribbon@storefront:footer.end',
+        'sto_forge/drawer_brand@storefront:header.drawer_brand',
+        'sto_forge/footer_brand@storefront:footer.brand',
+        'sto_forge/header_brand@storefront:header.brand',
+        'sto_outlet/demo_ribbon@storefront:checkout.bottom',
+        'sto_outlet/demo_ribbon@storefront:footer.end',
+        'sto_outlet/drawer_brand@storefront:header.drawer_brand',
+        'sto_outlet/footer_brand@storefront:footer.brand',
+        'sto_outlet/header_brand@storefront:header.brand',
       ],
       'the birth does not write exactly the rows this declaration states',
     );
@@ -567,7 +575,7 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
     //   that its prices are not real, and the fork COMPOSES this app precisely so it can be drawn.
     const notice = APP.blocks.find((b) => b.config_schema.length === 0).component;
     assert.deepEqual(
-      placed.filter((c) => c.input.store === 'sto_cafe').map((c) => c.input.component),
+      [...new Set(placed.filter((c) => c.input.store === 'sto_cafe').map((c) => c.input.component))],
       [notice],
       'the café is dressed in something other than the notice alone',
     );
@@ -580,10 +588,10 @@ test('★★★ …and the whole thing DRIVEN: install, upload, place — with t
     );
     for (const call of placed) {
       assert.equal(call.input.extension_id, 'demo-setup');
-      assert.equal(
-        call.input.slot,
-        DATA.slots[call.input.component],
-        `${call.input.component} was placed in ${call.input.slot}, which is not the slot it declares`,
+      // ★ v031/H29 — a block may declare a LIST of slots (`slotsOf`); every placement is in one of them.
+      assert.ok(
+        slotsOf(DATA, call.input.component).includes(call.input.slot),
+        `${call.input.component} was placed in ${call.input.slot}, which is not a slot it declares`,
       );
     }
     // ⛔ THE WHOLE POINT OF THE DRIVING: a FILENAME in a placed config is a ref the kernel cannot resolve, so

@@ -43,6 +43,14 @@
 //                                   vitrine not drawing it is correct and not a finding.
 //   WHAT A FORK PUBLISHES           the render sites in its own `src`: `<Slot name="…">` and
 //                                   `<ExtensionOutlet … name="…">`, read as CODE.
+//   WHICH SLOT NO VITRINE DRAWS     ★ v031/H29 — the funnel's. `storefront:checkout.bottom` is a slot of the
+//                                   storefront SURFACE drawn by the CHECKOUT we host (`/checkout*` goes to
+//                                   that container on every shop, café included), so a fork not drawing it is
+//                                   correct. Derived, never listed: `slotsDrawnElsewhere()` (bin/app-manifest.mjs)
+//                                   reads the release's slot catalogue and keeps the slots whose template is a
+//                                   template DIRECTORY of the deployable that consumes them and not one of the
+//                                   vitrine's. The chrome both wear (`footer.end`) is in neither, so the café's
+//                                   fork dropping it is still the red of 18/09.
 //
 // ⛔ NOTHING HERE SPELLS A STORE HANDLE, A FORK DIRECTORY, AN APP ID OR A SLOT NAME. The defect this grades
 // arrives as a fork rewriting a chrome months from now, and a guard carrying its own copy of the answer would
@@ -77,6 +85,7 @@ import { fileURLToPath } from 'node:url';
 import { declaredFaces, envSitesOf, readBox } from './box-domains.mjs';
 import { forks } from './forks.mjs';
 import { composedInstanceApps, frontComponents } from './front-apps.mjs';
+import { slotsDrawnElsewhere } from './app-manifest.mjs';
 import { STOREFRONT } from './app-blocks.mjs';
 import { blocksFor } from '../seed/blocks.mjs';
 
@@ -232,8 +241,9 @@ export function declaredPlacements(ownApps) {
  * shop is missing a bar, and «the café is missing something» does not say what to add.
  * @returns {{ findings: object[], pairs: number }}
  */
-export function orphans({ shops, placements, servedBy, published }) {
+export function orphans({ shops, placements, servedBy, published, elsewhere = new Map() }) {
   const findings = [];
+  const drawnElsewhere = [];
   let pairs = 0;
   for (const shop of shops) {
     const slots = published.get(shop.front.dir);
@@ -249,6 +259,12 @@ export function orphans({ shops, placements, servedBy, published }) {
       pairs += 1;
       const slot = placement.target.slice(STOREFRONT.length);
       if (slots.has(slot)) continue;
+      // ★ v031/H29 — a slot another deployable's own template draws is not this fork's to publish. Counted and
+      // said, never dropped in silence: the run prints which pairs were answered this way, and by whom.
+      if (elsewhere.has(slot)) {
+        drawnElsewhere.push({ at: `${shop.tenant}/${shop.store}`, target: placement.target, by: elsewhere.get(slot) });
+        continue;
+      }
       findings.push({
         fork: shop.front.dir,
         at: `${shop.tenant}/${shop.store}`,
@@ -260,7 +276,7 @@ export function orphans({ shops, placements, servedBy, published }) {
       });
     }
   }
-  return { findings, pairs };
+  return { findings, pairs, drawnElsewhere };
 }
 
 // ── what this run read, said before any assertion ──────────────────────────────────────────────────────────
@@ -273,6 +289,7 @@ const SERVED_BY = new Map(frontComponents().map((c) => [`${c.app}/${c.component}
 const SHOPS = servedShops(BOX, EDGE_TEXT, OURS);
 const PLACEMENTS = declaredPlacements(OWN_APPS);
 const PUBLISHED = new Map(OURS.map((f) => [f.dir, publishedSlots(f)]));
+const ELSEWHERE = slotsDrawnElsewhere();
 
 say(`fronts this repository builds: ${OURS.map((f) => f.dir).join(', ') || 'none'}`);
 for (const front of OURS) {
@@ -280,6 +297,11 @@ for (const front of OURS) {
   say(`${front.dir} publishes ${slots.length} slot(s): ${slots.join(' · ') || 'none'}`);
 }
 say(`apps of this box: ${OWN_APPS.join(', ') || 'none'}`);
+say(
+  ELSEWHERE.tried
+    ? `slots drawn by another deployable: NOT READ — ${ELSEWHERE.tried.join(' · ')}`
+    : `slots drawn by another deployable (${ELSEWHERE.from}): ${[...ELSEWHERE.slots.keys()].join(' · ')}`,
+);
 say(
   `shops served by a front of this repository: ${
     SHOPS.map((s) => `${s.tenant}/${s.store} → ${s.front.dir}`).join(', ') || 'none'
@@ -329,19 +351,31 @@ test('⛔ THE DERIVATION — there are fronts, shops and placements to compare, 
 
 // ── ★★★ the verdict ────────────────────────────────────────────────────────────────────────────────────────
 
-test('★★★ every block of this box is placed in a slot the shop’s OWN front draws — named, pair by pair', () => {
+test('★★★ every block of this box is placed in a slot the shop’s OWN front draws — named, pair by pair', (t) => {
   // ⇒ SABOTAGE: take the slot back out of the fork's chrome, or point a declaration at a slot the fork does
   //   not draw, and this names the target AND the shop. What it stands in front of is a placement that is
   //   enabled in the database, listed in the admin, answered by the port — and rendered by nothing, on a
   //   shop a customer is looking at, until somebody notices by eye. That is how this box's demonstration
   //   notice was missing from one of its three shops.
-  const { findings, pairs } = orphans({
+  const { findings, pairs, drawnElsewhere } = orphans({
     shops: SHOPS,
     placements: PLACEMENTS,
     servedBy: SERVED_BY,
     published: PUBLISHED,
+    elsewhere: ELSEWHERE.slots ?? new Map(),
   });
   say(`${pairs} (block × shop) pair(s) graded`);
+  for (const d of drawnElsewhere) say(`${d.target} @ ${d.at} — drawn by ${d.by}, not by the shop's fork`);
+  // ⚠️ WITHOUT THE RELEASE'S CATALOGUE A FINDING MAY BE A FUNNEL SLOT THIS RUN CANNOT CLASSIFY, so it is
+  // reported NOT CHECKED with the list rather than accused — and a run with no finding still passes.
+  if (ELSEWHERE.tried && findings.length > 0) {
+    t.skip(
+      `NOT CHECKED — ${findings.map((f) => `${f.target} @ ${f.at}`).join(', ')} is not drawn by the fork, and ` +
+        `whether another deployable draws it is unknown here (${ELSEWHERE.tried.join(' · ')}). Set ` +
+        'FORGE_MONOREPO=<a Forge clone at the pinned commit>.',
+    );
+    return;
+  }
   assert.ok(
     pairs > 0,
     'not one placement of this box lands on a shop served by a front of this repository, so the comparison ' +
@@ -481,4 +515,34 @@ test('⛔ THE JURISDICTION REALLY SUBTRACTS — a shop of this box is served by 
         'this guard skipped a shop for a reason that is itself a defect (bin/box-domains.guard.mjs owns it).',
     );
   }
+});
+
+test('⛔ v031/H29 — «drawn by another deployable» subtracts the FUNNEL and never the CHROME a fork owes', (t) => {
+  // ★ The exemption is real only if it is narrow. Handed the real catalogue's answer, a placement at a funnel
+  // slot on the café's fork is NOT a finding, and the same placement with the exemption taken away IS one —
+  // while `footer.end`, which the checkout's catalogue also lists (its account screens wear the footer), stays
+  // a finding the moment the fork stops drawing it. That last line is the defect of 18/09.
+  if (ELSEWHERE.tried) {
+    t.skip(`NOT CHECKED — the release's slot catalogue could not be read: ${ELSEWHERE.tried.join(' · ')}`);
+    return;
+  }
+  const elsewhere = ELSEWHERE.slots;
+  assert.ok(elsewhere.size > 0, 'the release names no slot drawn by another deployable — the exemption is empty');
+  const [shop] = SHOPS;
+  const funnel = [...elsewhere.keys()].find((slot) => !PUBLISHED.get(shop.front.dir).has(slot));
+  assert.ok(funnel, `${shop.front.dir} publishes every funnel slot, so there is nothing to subtract`);
+  const chrome = [...PUBLISHED.get(shop.front.dir).keys()].find((slot) => !elsewhere.has(slot) && slot.startsWith('footer.'));
+  assert.ok(chrome, `${shop.front.dir} publishes no footer slot the funnel does not also claim — the control has no subject`);
+  const servedBy = new Map([['fixture-app/fixture-block', ['storefront']]]);
+  const at = (target) => [{ app: 'fixture-app', component: 'fixture-block', store: shop.store, target: `${STOREFRONT}${target}`, file: 'fixture' }];
+  const published = new Map(PUBLISHED);
+  const findings = (target, ex, drop) => {
+    const slots = new Map(PUBLISHED.get(shop.front.dir));
+    if (drop) slots.delete(drop);
+    published.set(shop.front.dir, slots);
+    return orphans({ shops: [shop], placements: at(target), servedBy, published, elsewhere: ex }).findings.length;
+  };
+  assert.equal(findings(funnel, elsewhere), 0, `${funnel} is the checkout's and was still pinned on the fork`);
+  assert.equal(findings(funnel, new Map()), 1, `${funnel} without the exemption is not a finding — the rule is blind`);
+  assert.equal(findings(chrome, elsewhere, chrome), 1, `the fork dropped ${chrome} and the exemption hid it`);
 });

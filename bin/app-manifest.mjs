@@ -297,8 +297,12 @@ export const wordmarkComponentsOf = (blocks) =>
 // was written to prevent.
 const SLOT_CATALOGUE = 'apps/storefront/src/lib/slots/generated/sibling-slots.ts';
 
-/** Every slot name the storefront surface publishes, at the pinned commit. `{ slots, from }` or `{ tried }`. */
-export function surfaceSlots() {
+/**
+ * ★ v031/H29 — THE CATALOGUE ITSELF, ENTRY BY ENTRY: `{ entries: [{ consumer, name, template }], from }` or
+ * `{ tried }`. `consumer` is the deployable that DISCOVERS and renders the slot (the file lists the siblings of
+ * `apps/storefront` — today `apps/checkout`) and `template` is the template that declares it.
+ */
+export function slotCatalogue() {
   const pinned = pinnedCommit();
   if (!pinned) return { tried: ['forge.lock names registry digests, not a branch@sha'] };
   const found = fileAtPinned(pinned, SLOT_CATALOGUE);
@@ -316,8 +320,61 @@ export function surfaceSlots() {
   } catch (error) {
     throw new Error(`${SLOT_CATALOGUE}: could not be evaluated — ${error.message}`);
   }
-  const slots = consumers.flatMap((c) => (c.slots ?? []).map((s) => s.name)).filter(Boolean);
+  const entries = consumers.flatMap((c) =>
+    (c.slots ?? []).filter((s) => s?.name).map((s) => ({ consumer: c.consumer, name: s.name, template: s.template })),
+  );
   // ⛔ ANTI-VACUUM: an empty catalogue would make "this slot exists" true of every string.
-  if (slots.length === 0) throw new Error(`${SLOT_CATALOGUE} parsed to no slot names at all`);
-  return { slots, from: found.from };
+  if (entries.length === 0) throw new Error(`${SLOT_CATALOGUE} parsed to no slot names at all`);
+  return { entries, from: found.from };
+}
+
+/** Every slot name the storefront surface publishes, at the pinned commit. `{ slots, from }` or `{ tried }`. */
+export function surfaceSlots() {
+  const read = slotCatalogue();
+  if (read.tried) return { tried: read.tried };
+  return { slots: read.entries.map((e) => e.name), from: read.from };
+}
+
+/** The deployable whose generated file IS the catalogue — the vitrine, which republishes its siblings' slots. */
+const CATALOGUE_OWNER = SLOT_CATALOGUE.split('/src/')[0];
+
+/** The templates one deployable ships, as directories of `<app>/src/templates` at the pinned commit. */
+function templatesOf(pinned, app) {
+  const found = fileAtPinned(pinned, `${app}/src/templates`);
+  if (found.tried) return { tried: found.tried };
+  // `git show <sha>:<dir>` answers `tree <sha>:<dir>`, a blank line, then one entry per line — `name/` for a
+  // directory. Only directories are templates (registry.ts and the tests beside them are not).
+  const dirs = found.text.split('\n').filter((line) => line.endsWith('/')).map((line) => line.slice(0, -1));
+  if (dirs.length === 0) return { tried: [`${app}/src/templates at ${pinned.sha} lists no template directory`] };
+  return { templates: new Set(dirs) };
+}
+
+/**
+ * ★★ v031/H29 — THE SLOTS A VITRINE NEVER DRAWS, because ANOTHER deployable's own templates do:
+ * `slot name → consumer`, or `{ tried }`.
+ *
+ * A slot of the catalogue belongs here when its `template` is a template directory of its CONSUMER
+ * (`apps/checkout/src/templates/checkout`) and NOT one of the vitrine's (`apps/storefront/src/templates/*`).
+ * ⚠️ THE SECOND HALF IS LOAD-BEARING. The checkout also lists the chrome it wears — `footer.end` is in its
+ * catalogue under template `footer` — and that slot is drawn by the vitrine too (and by the café's fork, whose
+ * not drawing it was the defect of 18/09). `footer`/`header` are templates of neither directory, so they never
+ * land here, and a fork that drops `footer.end` is still accused.
+ */
+export function slotsDrawnElsewhere() {
+  const pinned = pinnedCommit();
+  if (!pinned) return { tried: ['forge.lock names registry digests, not a branch@sha'] };
+  const catalogue = slotCatalogue();
+  if (catalogue.tried) return { tried: catalogue.tried };
+  const vitrine = templatesOf(pinned, CATALOGUE_OWNER);
+  if (vitrine.tried) return { tried: vitrine.tried };
+  const out = new Map();
+  for (const consumer of new Set(catalogue.entries.map((e) => e.consumer))) {
+    const own = templatesOf(pinned, consumer);
+    if (own.tried) return { tried: own.tried };
+    for (const entry of catalogue.entries) {
+      if (entry.consumer !== consumer) continue;
+      if (own.templates.has(entry.template) && !vitrine.templates.has(entry.template)) out.set(entry.name, consumer);
+    }
+  }
+  return { slots: out, from: catalogue.from };
 }
