@@ -114,6 +114,14 @@ wants. `bin/vendor-drift.guard.mjs` is the rule underneath both.
 ⚠️ **And `build-totem.sh` was missing from this list.** It is the fifth of five bake gestures, documented in
 "Bringing the counter up" below and nowhere in the sequence anybody follows.
 
+⚠️ **And the two fork bakes no longer need `bin/test.sh` to have run first** (v032/P4). Both forks install
+`apps/demo-setup` as `file:../apps/demo-setup`, and that app's own `node_modules/` — where webpack resolves
+`@forgeco/storefront-kit/media/src` from — used to be written only by `bin/instance-app.guard.mjs`. Measured
+2026-10-08 in a fresh clone: `build-coffee.sh` died in `next build` with `Can't resolve
+'@forgeco/storefront-kit/media/src'`. Each bake now links those apps itself, from the checkout it was handed
+(`bin/link-instance-apps.mjs`, the same `linkDependencies()` the guard uses), and `bin/build-links.guard.mjs`
+holds every fork bake to doing it before its `npm run build`.
+
 ⚠️ **Every `docker build` above has a ceiling and a conscience.** On 2026-09-07 Docker Hub answered **500**
 to the HEAD request for the base image these four Dockerfiles pull, while this box was baking: the admin
 image did not rebuild,
