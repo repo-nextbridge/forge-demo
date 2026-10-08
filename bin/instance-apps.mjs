@@ -223,3 +223,41 @@ export function lendingTree() {
   for (const line of found.tried ?? []) tried.push(line);
   return { tried };
 }
+
+
+// ── ★★ v032/P4 — THE SAME LINKS, FOR A FORK'S BUILD, AND NOT ONLY FOR THE SUITE ─────────────────────────
+//
+// ⛔ THE DEFECT, MEASURED 2026-10-08 IN A FRESH CLONE OF THIS REPOSITORY. `bin/build-coffee.sh` died at
+// `npm run build` because `apps/demo-setup/block/marks.tsx` imports `@forgeco/storefront-kit/media/src` and
+// webpack resolves that from the app's REAL path — `apps/demo-setup/node_modules/`, which nothing but
+// `bin/instance-app.guard.mjs` (at load, via `linkDependencies()` above) ever wrote. The fork's own
+// `npm install` links `file:../apps/demo-setup` and never installs THAT directory's dependencies (they are
+// `workspace:*`/`catalog:` — see the header). So a build worked only on a machine where `bin/test.sh` had
+// already run once, an order nothing wrote down outside an adoption report.
+//
+// ★ THE FIX IS THE SAME FUNCTION, CALLED BY THE BUILD. `bin/link-instance-apps.mjs` is the CLI both
+// `bin/build-*.sh` run between the fork's install and its `npm run build`; `bin/build-links.guard.mjs`
+// holds every build script that compiles a fork to calling it, in that order.
+
+/** Every app of this instance that `forkPath`'s manifest installs as a directory — `file:../apps/<id>` (the
+ *  first of the three gestures `bin/front-apps.mjs` names). Derived from the manifest, so a fork that names a
+ *  second app tomorrow gets it linked without this file changing. */
+export function appsOfFork(forkPath) {
+  const manifest = readJson(join(forkPath, 'package.json'));
+  const specs = { ...manifest.dependencies, ...manifest.devDependencies };
+  const out = [];
+  for (const spec of Object.values(specs)) {
+    if (typeof spec !== 'string' || !spec.startsWith('file:')) continue;
+    const path = join(forkPath, spec.slice('file:'.length));
+    if (dirname(path) !== APPS_DIR) continue;
+    let app;
+    try {
+      app = readJson(join(path, 'package.json'));
+    } catch {
+      continue;
+    }
+    if (app.forge?.origin !== INSTANCE_ORIGIN) continue;
+    out.push({ dir: `apps/${path.slice(APPS_DIR.length + 1)}`, path, manifest: app });
+  }
+  return out.sort((a, b) => a.dir.localeCompare(b.dir));
+}

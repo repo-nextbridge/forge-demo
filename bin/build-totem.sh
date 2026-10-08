@@ -57,6 +57,12 @@ bash "$here/bin/vendor-packages.sh" "$forge" totem
 # 2. Install them.
 bash "$here/bin/install-storefront.sh" totem
 
+# 2b. ★ v032/P4 — the apps of THIS box the fork compiles (`file:../apps/<id>`), linked into their own
+#     `node_modules/` from the same checkout the kit was just packed from. Without it `next build` cannot
+#     resolve what `apps/demo-setup` imports, and only a previous run of `bin/test.sh` used to have written
+#     those links. See bin/link-instance-apps.mjs; bin/build-links.guard.mjs holds this line before the build.
+node "$here/bin/link-instance-apps.mjs" "$forge" "$app"
+
 # 3. The build the image copies. STANDALONE is not optional — it is what emits `.next/standalone/server.js`,
 #    the path the Dockerfile looks for and the only layout that works outside a monorepo.
 ( cd "$app" && FORGE_BUILD_STANDALONE=1 npm run build )
