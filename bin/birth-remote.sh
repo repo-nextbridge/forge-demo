@@ -7,6 +7,7 @@
 #   bash bin/birth-remote.sh stag --again        a box that has ALREADY been born here — see THE REFUSAL
 #   bash bin/birth-remote.sh stag --warm-only    ONLY step 14, on a deployed box already standing (§0w)
 #   bash bin/birth-remote.sh stag --verdict-only ONLY steps 14-bis and 15, on a box already standing (§0v)
+#   bash bin/birth-remote.sh stag --blocks-only  ONLY this box's own blocks (seed --phase demo-setup), on a box already standing (§0b)
 #
 # ── ⛔⛔ WHAT THIS IS, AND WHAT `bin/deploy.sh` IS NOT ──────────────────────────────────────────────────────
 #
@@ -103,7 +104,7 @@ STEPS_RAN=''
 PLANNED_SKIPS=''
 
 # ── THE ARGUMENTS ──────────────────────────────────────────────────────────────────────────────────────────
-USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again] [--warm-only] [--verdict-only]'
+USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again] [--warm-only] [--verdict-only] [--blocks-only]'
 ENV_NAME=''
 WARM=1
 PLAN_ONLY=0
@@ -120,6 +121,7 @@ while [ $# -gt 0 ]; do
     --again)   AGAIN=1 ;;
     --warm-only)    MODE=warm ;;
     --verdict-only) MODE=verdict ;;
+    --blocks-only)  MODE=blocks ;;
     -h|--help) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) printf '%s unknown option "%s".\n  %s\n' "$TAG" "$1" "$USAGE" >&2; exit 1 ;;
     *)
@@ -331,6 +333,35 @@ if [ "$MODE" = warm ]; then
     printf '\n%s ⛔ %s IS MISSING A STORE THIS REPOSITORY DECLARES. That is not warmth — the birth did not\n         build it, and this run only noticed. The ✗ line above names the store.\n\n' "$TAG" "$MISSING_STORE" >&2
     exit 1
   fi
+  exit 0
+fi
+
+# ── 0b · ★ v031/H29 · `--blocks-only` · THIS BOX'S OWN BLOCKS ALONE, ON A BOX THAT IS ALREADY STANDING ─────────
+#
+# ★ WHY IT EXISTS: a change to `seed/demo-setup.json` (the demonstration notice moving into the funnel,
+# `storefront:checkout.bottom`, in v031/H29) has to reach a born box WITHOUT a reset. The only other caller of
+# that step is the curated phase, which also re-asserts stores, vocabulary, catalogues and the commerce
+# silence. `bin/seed.mjs --phase demo-setup` runs `seedDemoSetup` and the purge and nothing else; the step is
+# idempotent per (store, component, slot) — `seed/blocks.test.mjs` and `bin/seed-demo-setup-phase.test.mjs`
+# hold that, the second over an ephemeral fake kernel. Run twice, the second run writes nothing.
+#
+# ⚠️ THIS MODE IS NOT A BIRTH AND DOES NOT PRETEND TO BE ONE: it stamps no roteiro, warms nothing, opens no
+# door. A shop's ISR render is purged by the phase itself (with the box's own revalidate secret); the funnel
+# is not cached, so the checkout shows the block on the next request.
+if [ "$MODE" = blocks ]; then
+  note "${ENV_NAME} · ${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR} · ${FORGE_PUBLIC_ORIGIN}"
+  load_operator_tokens
+  BOX_REVALIDATE="$(remote_env_get FORGE_REVALIDATE_SECRET)"
+  say "the blocks · this box's own blocks (seed --phase demo-setup), per tenant, on a box already standing"
+  note 'this is seedDemoSetup and the purge and nothing else — no store, catalogue or promotion is touched.'
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    FORGE_OPERATOR_TOKEN="$tokval" FORGE_REVALIDATE_SECRET="$BOX_REVALIDATE" \
+      node "$HERE/bin/seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --phase demo-setup \
+      || die "the demo-setup phase failed for \"$t\". Its own output is above; nothing else was asked of the box."
+  done
+  note "every tenant's own blocks now match seed/demo-setup.json."
   exit 0
 fi
 

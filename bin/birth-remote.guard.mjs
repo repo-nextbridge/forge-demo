@@ -958,3 +958,48 @@ test('★★ step 12 runs verify-seed AND verify-content for every tenant, and a
   const both = runStepTwelve(script, { fails: { seed: ['alpha'], content: ['alpha'] } });
   assert.deepEqual(both.unsettled, ['alpha'], both.out);
 });
+
+// ── ★ v031/H29 · `--blocks-only` — ONLY THIS BOX'S OWN BLOCKS, ON A BOX ALREADY STANDING ──────────────────────
+// The mode the TL runs on the stag box to put the notice in the funnel without a reset. Driven over the probe
+// tree with a fake far side that holds a (fictional) token per tenant, and a `bin/seed.mjs` stand-in that only
+// records how it was called: the real seed's behaviour in that phase is `bin/seed-demo-setup-phase.test.mjs`'s.
+test('★ --blocks-only runs `seed.mjs --phase demo-setup` once per tenant, with that tenant\'s token, and seeds nothing else', () => {
+  const p = scratch({ born: true });
+  try {
+    const seedLog = join(p.dir, 'seed-calls.log');
+    writeFileSync(
+      join(p.dir, 'bin', 'seed.mjs'),
+      "import { appendFileSync } from 'node:fs';\n" +
+        `appendFileSync(${JSON.stringify(seedLog)}, JSON.stringify({ argv: process.argv.slice(2), token: process.env.FORGE_OPERATOR_TOKEN ?? '' }) + '\\n');\n`,
+    );
+    // The far side answers a `.secrets` READ (`remote_secret_get`, a `sed -n`) with a token NAMED after the secret — fictional, and enough to
+    // tell the tenants apart. Everything else goes to the probe's own stub.
+    cpSync(join(p.dir, 'stub', 'ssh'), join(p.dir, 'stub', 'ssh.probe'));
+    writeFileSync(
+      join(p.dir, 'stub', 'ssh'),
+      '#!/usr/bin/env bash\ncmd="${@: -1}"\n' +
+        'if [[ "$cmd" == *".secrets"* && "$cmd" == "sed -n"* ]]; then\n' +
+        '  printf "%s\\n" "$cmd" >> "$PROBE_LOG"\n' +
+        '  name="$(printf "%s" "$cmd" | grep -o "forge-operator-token[a-z0-9-]*" | head -1)"\n' +
+        '  [ -n "$name" ] && printf "fake_%s\\n" "$name"\n  exit 0\nfi\n' +
+        `exec ${JSON.stringify(join(p.dir, 'stub', 'ssh.probe'))} "$@"\n`,
+      { mode: 0o755 },
+    );
+    const r = p.run('birth-remote.sh', ['probe', '--blocks-only']);
+    assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+    const calls = existsSync(seedLog) ? readFileSync(seedLog, 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : [];
+    const tenants = PROBE_BOX.tenants.map((t) => t.id);
+    assert.deepEqual(
+      calls.map((c) => c.argv.join(' ').replace(/--api \S+/, '--api <origin>')),
+      tenants.map((t) => `--tenant ${t} --api <origin> --phase demo-setup`),
+      'the mode did not run the demo-setup phase exactly once per tenant',
+    );
+    for (const c of calls) assert.ok(c.token.length > 0, `${c.argv.join(' ')} ran with no token`);
+    assert.notEqual(calls[0].token, calls[1].token, 'both tenants were handed the same credential');
+    // …and nothing that writes data on the far side was reached.
+    const far = p.read();
+    for (const gesture of SEEDING.filter((g) => g !== 'seed.mjs')) assert.ok(!far.includes(gesture), `--blocks-only reached ${gesture}`);
+  } finally {
+    p.cleanup();
+  }
+});
