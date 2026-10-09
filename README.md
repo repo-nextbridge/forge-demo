@@ -64,7 +64,7 @@ monorepo, anywhere**:
 **One script, two callers.** `bin/bake.sh` bakes the six images — kernel, storefront, checkout, admin out of
 the recipe, plus the two forks — and writes `forge.lock`:
 
-- **CI** — `.github/workflows/bake.yml`, on every push to `main` (and by hand): reads the release this
+- **CI** — `.github/workflows/bake.yml`, on every push to `main` that changes an input of the bake — not one that only changes `forge.lock` (its output), `docs/**` or this README — (and by hand): reads the release this
   repository pins, downloads that Release's `forge.lock`, pulls the oven, runs `bin/bake.sh --registry
   ghcr.io/<org>`, publishes `ghcr.io/<org>/forge-demo-<name>` and uploads the lock as the run's **`forge-lock`
   artifact**.
@@ -1863,8 +1863,11 @@ deploy without the flag, against a box that HOLDS data, reaches no gesture that 
 bash bin/birth-remote.sh stag --plan      # the roteiro of the steps; touches nothing
 bash bin/birth-remote.sh stag             # be born
 bash bin/birth-remote.sh stag --no-warm   # the same without step 14 (warmth REPORTS, it never grades)
-bash bin/birth-remote.sh stag --again     # a box that has ALREADY been born here — read the refusal first
+bash bin/birth-remote.sh stag --again     # converge over a box that HOLDS a birth — read the refusal first
 bash bin/deploy.sh stag --birth           # deliver, bring up AND be born, in one gesture
+
+# ★ REBORN FROM ZERO — one sequence, and no `--again` in it:
+bash bin/box-down.sh --env stag && bash bin/deploy.sh stag --birth
 ```
 
 It crosses **the same fifteen steps** `bin/box-up.sh` does, by two vehicles:
@@ -1915,22 +1918,30 @@ after it attempted.
 
 ### ⛔ And a box that has already been born refuses a second birth
 
-The signal is the birth's own record rather than a guess: step 3 files `forge-operator-token` into the box's
-`.secrets`, so its presence means this exact script has run against this exact box. `--again` is the way past
-it, and the refusal says what it costs — every step converges rather than wipes, so it is not a deletion to
-confirm; what it IS, is the settings, the assortments, the promotions and the freight this repository
-DECLARES being re-applied over whatever the live box has since become.
+The question starts at the birth's own record — step 3 files `forge-operator-token` into the box's `.secrets`
+— and is answered by the box's STATE: whether the kernel's directory claims any face this box declares
+(`read.admin.by_host` / `read.store.by_host`, which step 3 and step 6b write; `bin/born-here.mjs`). A box
+whose directory claims one is refused, and `--again` is the way past it: every step converges rather than
+wipes, so it is not a deletion to confirm; what it IS, is the settings, the assortments, the promotions and
+the freight this repository DECLARES being re-applied over whatever the live box has since become. A box
+whose directory could not be ASKED is refused too — not knowing is never «empty».
 
-### ⛔ What is NOT here: a remote `box-down`
+⚠️ **Neither the token nor the volume is the state, and both were once read as if they were.** `box-down
+--env` keeps `.secrets` (identity, not state), and `deploy.sh` runs `compose up` + `migrate`, which creates
+an EMPTY `pgdata` again. Measured on the rehearsal of 2026-10-09: `box-down` → `deploy` → `birth-remote` was
+refused as «a live box» over a database with no tenant in it, and the documented rebirth needed `--again`.
 
-`bin/box-down.sh` tears the BENCH down so it can be born from zero; a deployed box has no equivalent, and
-that is the next card rather than an oversight. It matters because the steps converge in ONE direction: step
-9 sets stock to what the dataset declares and step 10 then reserves some of it against a past, so a birth
-re-run from step 9 on a box that already has that past is refused by the kernel — `inventory.adjust … on_hand
-below reserved or below zero`, measured. That refusal is CORRECT (nothing guesses its way past reserved
-stock); what is missing is the gesture that gives the box a clean start, which on the bench is `box-down.sh`.
-Until it exists, a deployed box is reborn from zero by destroying its `pgdata` volume on the host by hand —
-which is exactly the kind of thing that ought to be a reviewable script and is not one yet.
+### ★ Reborn from zero: one sequence
+
+```bash
+bash bin/box-down.sh --env stag && bash bin/deploy.sh stag --birth
+```
+
+`box-down --env` destroys the state volumes on the host and keeps identity and cache (the certificates, the
+ACME account, `.secrets`, the photo cache); `deploy.sh --birth` delivers, brings the box up on an empty
+database and hands over to `birth-remote.sh`, which reads the empty directory as a rebirth and says so. No
+`--again`: that flag is for converging over a box somebody is using, and a refusal that is false on the
+common path trains everybody to type past it.
 
 ### The host first
 
