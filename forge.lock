@@ -33,32 +33,32 @@
   },
   "images": {
     "kernel": {
-      "ref": "v032-c-forge-demo-kernel@sha256:626fdc1cbcc0e8003549d36241da06f4e4a0ca76479b459cdf1e1974630848fd",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:7823d77c2e3594fddc7a3c55a3f449af79348fec2c34397f83851c3150cec02f",
       "origin": "own build",
       "built_from": "v0.3.2"
     },
     "storefront": {
-      "ref": "v032-c-forge-demo-storefront@sha256:704e133449c66e1a51d1160ffce8adb538b52bb5f4efca889e6c3d862700222d",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:ec7b9dcdf802193c32e9093adb737a7d6d701b8e2607b53dfe929d2a8cf6d1eb",
       "origin": "own build",
       "built_from": "v0.3.2"
     },
     "checkout": {
-      "ref": "v032-c-forge-demo-checkout@sha256:603cb83ce4440283e69ca4353bdbf6ed4b217fad6f9fb4400eb556707de4ced9",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:2d63dd39a3ae4602221194c170b62ab1b2e02eefcdcd0a0dfa6438965a0fc963",
       "origin": "own build",
       "built_from": "v0.3.2"
     },
     "admin": {
-      "ref": "v032-c-forge-demo-admin@sha256:1317235e31916251fd13d12e8dbbb685808e9014ee47e8c4c90d2258a342ba15",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:80eb66328b482b93878966c8609cdca82e2a8ab2b86296818f8fd4c0330fe425",
       "origin": "own build",
       "built_from": "v0.3.2"
     },
     "storefront-coffee": {
-      "ref": "v032-c-forge-demo-storefront-coffee@sha256:47cff03f976adb2d0aeb3e3d610790aa01a0741ea9b6628666cb57ebbb7de52c",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:9c57c5db82f90454254c69b131e2698a962e73463a68d7aec2f15e7f8142004a",
       "origin": "own build",
       "built_from": "v0.3.2"
     },
     "totem": {
-      "ref": "v032-c-forge-demo-totem@sha256:165ce9e146166b313b54a4cdf37c62c1bfbb8ba8a4c1b9985f7b7a59e8ee10cb",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:79db6087fdb57557a21e8d9d43c65ea10d00d07a0873e368a3b1caf706a05e93",
       "origin": "own build",
       "built_from": "v0.3.2"
     }
