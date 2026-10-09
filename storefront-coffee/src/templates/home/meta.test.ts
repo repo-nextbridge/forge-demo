@@ -58,9 +58,20 @@ test('⚠️ the home metadata uses the CACHED read — an uncached one would ki
   // read-client exposes both: `read` (ISR-tagged) and `readFresh` (no-store). `storeFlags` is the cached one,
   // and this pins the reason rather than the spelling: if it ever moves to readFresh, `/c/[store]` silently
   // stops being cacheable and every home render hits the port.
+  //
+  // ★ v032/C — the kit of v0.3.2 gave the read an opt-in `{ fresh: true }` for the CHECKOUT (P6: no purge
+  // reaches it), so the declaration is `storeFlags(store: string, opts …)` and its body holds both reads. What
+  // stays pinned is the DEFAULT: the line the vitrine reaches — no `opts` — is the cached `read`, and the
+  // uncached one is reachable only behind `opts.fresh`. Measured: the old needle `storeFlags(store: string)`
+  // matched nothing in 0.3.2 and this test was reading an empty string.
   const client = readFileSync(join(KIT_SRC, 'read-client.ts'), 'utf8');
-  const decl = client.slice(client.indexOf('storeFlags(store: string)'));
+  const at = client.indexOf('storeFlags(store: string');
+  expect(at, 'read-client.ts no longer declares storeFlags(store: string…)').toBeGreaterThan(-1);
+  const decl = client.slice(at);
   const body = decl.slice(0, decl.indexOf('},'));
-  expect(body).toContain('read<StoreFlags>');
-  expect(body).not.toContain('readFresh');
+  const lines = body.split('\n');
+  const fallthrough = lines.filter((line) => /\breturn\b/.test(line) && !/\bif\s*\(/.test(line));
+  expect(fallthrough.join('\n')).toContain('read<StoreFlags>');
+  expect(fallthrough.join('\n')).not.toContain('readFresh');
+  for (const line of lines.filter((l) => l.includes('readFresh'))) expect(line).toMatch(/if \(opts\.fresh\)/);
 });

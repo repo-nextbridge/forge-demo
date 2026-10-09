@@ -2,7 +2,7 @@
 // run, THE REASON IS NAMED, with the file and line that owes the fix.
 //
 //   node --test bin/fork-codegen.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/fork-codegen.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/fork-codegen.guard.mjs   (a bench without gh/registry access)
 //
 // ── ⛔ THE SILENCE THIS ENDS, measured on this bench 2026-09-13 ───────────────────────────────────────────
 //
@@ -88,7 +88,7 @@ if (TREE.path) say(`surfaces read from: ${TREE.path} @ ${TREE.head.slice(0, 9)} 
 else if (PINNED) {
   say(`⚠️ NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine.`);
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<the release\'s checkout>: without it nothing here knows which fork is a cut of');
+  say('   run node bin/release-tree.mjs — it names what is missing; without the release nothing here knows which fork is a cut of');
   say('   which surface, and the tool the release ships cannot be named.');
 }
 for (const wall of UPSTREAM_WALLS) say(`★ UPSTREAM WALL declared: ${wall.id} — ${wall.why.slice(0, 110)}…`);
@@ -198,7 +198,7 @@ test('★★★ the generator RUNS in every surface fork — clean, or stopped b
   for (const fork of FORKS) {
     const dir = installedTool(fork);
     if (!dir) {
-      say(`${fork.dir}: NOT CHECKED — ${TOOL.name} is not installed. \`bash bin/install-storefront.sh ${fork.dir}\``);
+      say(`${fork.dir}: NOT CHECKED — ${TOOL.name} is not installed. \`cd ${fork.dir} && npm ci\``);
       continue;
     }
     graded.push(fork.dir);

@@ -28,7 +28,7 @@
 //
 //   1. `image: ${FORGE_...}`   a Forge RELEASE image. The product declares `HEALTHCHECK` inside it (measured:
 //                              the kernel's is `fetch(.../health)`), and this repository must not restate it.
-//   2. `build:` in this repo   OUR image. The `HEALTHCHECK` belongs in the Dockerfile, so it travels with the
+//   2. built here              OUR image (`<service>/Dockerfile`, baked by bin/bake.sh; a `build:` block too). The `HEALTHCHECK` belongs in the Dockerfile, so it travels with the
 //                              image wherever it runs — the totem and the coffee vitrine already do this.
 //   3. anything else           a THIRD-PARTY tag (`postgres:18`, `redis:7`, `caddy:2`). Nobody upstream put a
 //                              probe in it, so compose is the only place one can be declared. postgres and
@@ -109,10 +109,15 @@ function imageOf(svc) {
   return hit ? hit.replace(/^ {4}image:\s*/, '').trim() : null;
 }
 
-/** The Dockerfile a `build:` block points at, as a repo-relative path, or null. */
+/** The Dockerfile a `build:` block points at, as a repo-relative path, or null.
+ *
+ *  ★ v032/C — OR the service's own directory, when it has one with a Dockerfile. The two forks lost their
+ *  `build:` blocks: they are baked by `bin/bake.sh` (`for fork in …` → `docker build <fork>/`) and started BY
+ *  DIGEST from the lock like the four. What makes an image OURS stopped being a compose key and is now the
+ *  directory `bin/bake.sh` builds — `<service>/Dockerfile` in this repository. */
 function dockerfileOf(svc) {
   const at = svc.body.findIndex((l) => /^ {4}build:/.test(l));
-  if (at < 0) return null;
+  if (at < 0) return existsSync(join(ROOT, svc.name, 'Dockerfile')) ? join(svc.name, 'Dockerfile') : null;
   for (let i = at + 1; i < svc.body.length; i += 1) {
     if (/^ {4}\S/.test(svc.body[i])) break;
     const ctx = /^ {6}context:\s*(\S+)/.exec(svc.body[i]);

@@ -38,8 +38,8 @@ docs/capabilities/     what this box can DO that it could not before, one page e
 docs/operations/       how this box is OPERATED. `runbook-demo.md` is the online instance's runbook — the
                        deploy order, what to fill in, the weekly reset. This README is the BENCH; that is
                        the box anyone can reach.
-bin/                   build-local · build-coffee · build-totem · revendor-forks · pack-apps ·
-                       images-from-lock · verify-composition · seed
+bin/                   bake (+ bake-local) · lock-gate · pack-apps · images-from-lock ·
+                       verify-composition · deploy · seed
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge), plus ONE extension
                        folder per edge — `extra/` (site blocks, read by Caddyfile) and `extra-local/`
                        (fragments, read by Caddyfile.local). Sharing one folder killed the production
@@ -48,35 +48,56 @@ caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench 
 
 ---
 
-## ⚠️ 1. The pin is a PRE-RELEASE LOCAL BUILD, and re-stamping it is somebody's job
+## ★★ 1. How this box is baked — from a Forge RELEASE, in this repository's CI (v032/C)
 
-`forge.lock` normally carries the digests published with a Forge release, read back from the registry, so
-that what it names is what a `docker pull` gets. **This one does not.** It carries the digests of images
-built **on a workstation**, from a branch, and it says so in a `provenance` block:
+`image = release × list`. Since v0.3.2 this box bakes its own images exactly the way any customer of Forge
+does, following `templates/instance/README.md` §5b in the product to the letter — **no checkout of the Forge
+monorepo, anywhere**:
 
-```json
-"provenance": {
-  "origin": "local build",
-  "built_from": "d2/d1-repo@…",
-  "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy replaces every ref below …"
-}
-```
+| input | where it comes from |
+|---|---|
+| **the release** | its published **oven** (`forge-oven:<tag>`), named by digest in the Release's own `forge.lock` (`images.oven`) and stamped with its tag at `/forge-oven/release`. The recipe — `infra/oven/Dockerfile` — is copied **out of the oven**. |
+| **the list** | `composition.json`, as is. It declares `"axis": "instance"` (the oven of v0.3.2 reads the axis from the list and refuses `instanceApps` without it). |
+| **our apps** | `apps/<id>/` (`instanceApps[].source`), handed over as the oven's `apps` build context. |
+| **our two fronts** | `storefront-coffee/` and `totem/`, which install `@forgeco/*` **from npm, at the release's exact version** (`bin/fork-release-pin.guard.mjs`). |
 
-**Why.** The features this demo exists to show — the store's own vocabulary, the theme's fonts, the anonymous
-list face's publication rule, the subscriptions app — live on a branch that has not been merged or promoted.
-The registry's digests for this release predate all of them. A lock pinning the registry today would be
-perfectly honest about bytes and unable to run the demo. (Decision of 2026-08-31.)
+**One script, two callers.** `bin/bake.sh` bakes the six images — kernel, storefront, checkout, admin out of
+the recipe, plus the two forks — and writes `forge.lock`:
 
-**What does NOT bend:** the images are still pinned **by digest**. `bin/images-from-lock.sh` refuses a
-tag-pinned lock and is not relaxed here — `<name>@sha256:<id>` resolves a locally built image exactly as a
-registry digest does. The pre-release mode costs a paragraph of honesty and no weakening of the pin.
+- **CI** — `.github/workflows/bake.yml`, on every push to `main` (and by hand): reads the release this
+  repository pins, downloads that Release's `forge.lock`, pulls the oven, runs `bin/bake.sh --registry
+  ghcr.io/<org>`, publishes `ghcr.io/<org>/forge-demo-<name>` and uploads the lock as the run's **`forge-lock`
+  artifact**.
+- **Bench** — `OVEN_IMAGE=<an oven stamped with the release> bash bin/bake-local.sh`: the same recipe into
+  this daemon. Its refs name no registry host — the one thing that tells a bench lock apart.
 
-**The obligation.** The first deploy of this instance to anywhere anyone else can reach re-stamps
-`forge.lock` with registry digests from a promoted release and deletes the `provenance` block. A lock that
-still says `local build` on a shared box is a box nobody can reproduce. That is part of that deploy's
-definition of done, not a note to self.
+**The lock has no `provenance` block any more.** Every image — the two forks included, which used to travel by
+an unpinned `:local` tag — is `{ "ref": "ghcr.io/…@sha256:…", "origin": "own build", "built_from": "v0.3.2" }`.
 
-Rebuilding here: `bash bin/build-local.sh <path to the forge monorepo>`.
+**It comes back to this repository by PR, from a human.** The workflow runs with `contents: read` and commits
+nothing; the lock is what decides what production runs, so it is reviewed like code
+(`gh run download <run> -n forge-lock`, commit, PR — `docs/operations/runbook-demo.md` §2.1). `bin/deploy.sh`
+reads only the committed file.
+
+⛔ **And the old obligation is a mechanism now.** `bin/deploy.sh stag|prod` refuses, before it touches the
+host, a lock with `provenance.origin: "local build"`, any image with `origin: "local build"`, or any ref with no
+registry host (`bin/lock-gate.sh`, held by `bin/lock-is-not-local.guard.mjs`). `--allow-local` is a bench
+switch and is refused for stag and prod.
+
+★ **The packages on GHCR are PUBLIC** (owner's decision, 2026-10-09): the boxes pull without logging in. GHCR
+creates every new package **private**, so after the **first push** of each `forge-demo-<name>` the owner makes
+it public with one click in the package's settings. A box whose `.secrets` holds `GHCR_PULL_TOKEN` and
+`GHCR_PULL_USER` logs in with them first — optional, and the value never leaves the host.
+
+**What the CI needs from the owner (names only):** `vars.WIF_PROVIDER` — the Workload Identity provider that
+may read the product's Artifact Registry, no service account — and `secrets.FORGE_RELEASE_TOKEN`, read access to
+the product repository, which is private (this repository's `GITHUB_TOKEN` cannot read another repository's
+Release).
+
+**The guards grade against the release, not against a checkout.** `bin/release-tree.mjs` cuts the release's
+tree out of the same oven (`docker run … tar`, ~90 MB, once per oven, cached under `~/.cache/forge-demo/`) and
+every guard that compares this repository with the product reads it. `FORGE_MONOREPO` survives only as a bench
+override, read in that one file. `node bin/release-tree.mjs` says what this machine has and lacks.
 
 ---
 
@@ -93,40 +114,22 @@ $EDITOR .env                         # ports, if 8080/8081 are taken here
 printf 'forge-postgres-password=%s\n' "$(openssl rand -hex 16)"  >> .secrets
 printf 'forge-vault-key=%s\n'         "$(openssl rand -base64 32)" >> .secrets
 
-bash bin/build-local.sh ~/path/to/forge     # PRE-RELEASE ONLY — builds the four images, writes forge.lock
-bash bin/pack-apps.sh   ~/path/to/forge     # apps/ → extensions/ (the form the kernel loads)
-bash bin/revendor-forks.sh ~/path/to/forge  # the Forge packages the two forks install, from THAT tree
-bash bin/build-coffee.sh ~/path/to/forge    # the FORKED vitrine — this repo's own front, built not pinned
-bash bin/build-totem.sh  ~/path/to/forge    # the counter's kiosk — same shape, same reason
+npm ci                                      # the release's tools (forge, forge-lock-provenance), pinned
+# EITHER the images of a bake.yml run (adopt its forge.lock — §1) and nothing else to build,
+# OR, on a bench, the same six images baked here — no Forge checkout involved:
+OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh
 
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
 ```
 
-⚠️ **`bin/revendor-forks.sh` is there because a kit change used to cost four gestures composed by hand.**
-The two fork bakes each vendor and install their OWN fork, so a bake is never stale — but a kit change that
-lands while nobody is baking leaves two COMMITTED lockfiles describing a different commit of the product than
-the one this box pins, and then `npm ci` in a pipeline fails `EINTEGRITY` naming a base64 digest and no
-cause. This is the one step that puts every fork back in step with one checkout; it derives the forks
-(`bin/forks.mjs`, never a typed list), it rewrites `package-lock.json`, and it says which locks moved so they
-can be committed. `bash bin/revendor-forks.sh <tree> --check` writes nothing and is the shape a CI gate
-wants. `bin/vendor-drift.guard.mjs` is the rule underneath both.
-
-⚠️ **And `build-totem.sh` was missing from this list.** It is the fifth of five bake gestures, documented in
-"Bringing the counter up" below and nowhere in the sequence anybody follows.
-
-⚠️ **And the two fork bakes no longer need `bin/test.sh` to have run first** (v032/P4). Both forks install
-`apps/demo-setup` as `file:../apps/demo-setup`, and that app's own `node_modules/` — where webpack resolves
-`@forgeco/storefront-kit/media/src` from — used to be written only by `bin/instance-app.guard.mjs`. Measured
-2026-10-08 in a fresh clone: `build-coffee.sh` died in `next build` with `Can't resolve
-'@forgeco/storefront-kit/media/src'`. Each bake now links those apps itself, from the checkout it was handed
-(`bin/link-instance-apps.mjs`, the same `linkDependencies()` the guard uses), and `bin/build-links.guard.mjs`
-holds every fork bake to doing it before its `npm run build`.
+⚠️ **The two forks no longer need `bin/test.sh` to have run first** (v032/P4). Both install `apps/demo-setup` as
+`file:../apps/demo-setup`, and webpack resolves that app's imports from ITS `node_modules/`. `bin/bake.sh` links
+them itself, from the fork's own npm install (`bin/link-instance-apps.mjs`), between `npm ci` and `npm run
+build`; `bin/build-links.guard.mjs` holds the order.
 
 ⚠️ **Every `docker build` above has a ceiling and a conscience.** On 2026-09-07 Docker Hub answered **500**
 to the HEAD request for the base image these four Dockerfiles pull, while this box was baking: the admin
-image did not rebuild,
-`bin/build-local.sh` refused to write the lock — correctly, the provenance is read back OUT of the image and
-compared — and a human ran `docker pull` and repeated the command. In a pipeline that minute is a red build
+image did not rebuild, the bake refused to write the lock — correctly — and a human ran `docker pull` and repeated the command. In a pipeline that minute is a red build
 with no cause of its own, and the habit it teaches is worse than the outage. `bin/docker-retry.sh` repeats
 it, at most three times, with 5 s and 20 s between; it says every repeat out loud with the reason, because a
 silent retry hides a sick registry.
@@ -177,8 +180,8 @@ de destruir o banco. Dê esse diretório à unidade antes de ela rodar qualquer 
 **The number is not this repository's.** It travels in `forge.lock`, the file this box pins the product with,
 as `node.minMajor` — the floor already resolved to a whole major, because everything that acts on it is a shell
 — next to `node.engines`, the range it was resolved from. `bin/require-node.sh` **reads** it and states nothing
-of its own; `bin/build-local.sh`, the one script here that is handed the monorepo, **stamps** it, through the
-product's own derivation (`infra/cicd/node-floor.sh`). Raising the floor is a release, not an edit here.
+of its own; `bin/bake.sh` **stamps** it, through the release's own derivation (`infra/cicd/node-floor.sh`,
+copied out of the oven it bakes from). Raising the floor is a release, not an edit here.
 
 ⚠️ **A lock that states no floor is still a valid pin.** The field was added to an artifact that had already
 left the product's hands, and the lifecycle is forward-only, so a lock stamped by an older release simply does
@@ -797,7 +800,7 @@ hand one minute later.
 product's `instances/demo/dataset` at `release/v0.3.0@706701262` (sha256 equal file by file), because the
 product stops carrying it in v0.3.1. `compose.yml`, `deploy/box.env` and `.env.example` all default to
 `./seed/dataset`; `bin/dataset-provenance.mjs` (step 0c) compares the mount against `forge.lock` **and** against
-the tracked pointer; `bin/build-local.sh` records the stamp from here. The 3.6 GB of photographs are still
+the tracked pointer; `bin/bake.sh` records the stamp from here. The 3.6 GB of photographs are still
 hydrated from the pointer's `baseUrl` (the product's bucket until the copy to the demo's R2 is made). The
 history below — why it used to be pointed at — is kept as it was argued.
 
@@ -846,7 +849,7 @@ is.)
 
 | where | what |
 |---|---|
-| `bin/build-local.sh` | copies the dataset's own content stamp (`forge-seed-dataset.json`, written by `pnpm pack:dataset`) into `forge.lock` → `dataset` as it bakes the images |
+| `bin/bake.sh` | copies the dataset's own content stamp (`forge-seed-dataset.json`, written by `pnpm pack:dataset`) into `forge.lock` → `dataset` as it bakes the images |
 | `bin/box-up.sh` step **0c** | compares that record against the pointer of the directory this box mounts, **before a single container starts**, and refuses **naming both stamps** |
 
 ⚠️ **The block below is the TRANSCRIPT of the refusal that bought this check, on the night it was written —
@@ -1022,7 +1025,7 @@ the reason disappears. This tree declares none.
 
 ⚠️ **`bin/test.sh` is also who runs the FORKS' own suites.** `storefront-coffee/` and `totem/` carry vitest
 suites of their own — 774 and 171 tests — and until 2026-09-05 nothing ran them: not this script, not
-`bin/build-coffee.sh`, not the Dockerfiles, and this repository has no CI. `bin/fork-suite.guard.mjs` is the
+the fork bakes, not the Dockerfiles, and this repository had no CI. `bin/fork-suite.guard.mjs` is the
 loop that does, and the very first run came back **red** on the coffee vitrine: two test files left behind by
 fixes that had travelled into the fork's source and stopped there. It costs ~5.6 s of work, which the
 parallelism of `node --test` mostly absorbs on an idle machine and does not on a busy one, and a fork that is
@@ -1032,33 +1035,29 @@ not installed is reported **NOT CHECKED**, never quietly passed.
 `apps/demo-setup/` (the shop's marks and the demonstration ribbon) are loaded by the kernel itself, and until 2026-09-08 nothing here
 compiled or ran them: not `bin/test.sh`, which scanned `bin/` and `seed/`; not the fork guards, which only see
 a directory that depends on the storefront kit; not `bin/pack-apps.sh`, which packs the artifact without
-reading it; not `bin/build-local.sh`, which copies it into the oven. An app of this instance could be written,
+reading it; not the bake, which hands it to the oven. An app of this instance could be written,
 packed, baked and served without a compiler or a runner ever having read it. `bin/instance-app.guard.mjs`
 closes that: it derives the list from `forge.origin: "instance"` (the property the oven itself requires),
-links each app's declared dependencies out of a Forge checkout the way the oven does, runs `tsc` and the app's
+links each app's declared dependencies out of an installed fork (v032/C: the release's npm packages — before,
+out of a Forge checkout), runs `tsc` and the app's
 own suite — 35 tests that had never run — and finally asserts that the `instanceApps` list `composition.json`
 hands the bake is exactly the set it just compiled and ran. The first run found both apps unloadable, for the
 same reason twice: `apps/*/tsconfig.json` extended `../../tsconfig.base.json` and an app's
 `vitest.config.ts` imported `../../vitest.shared`, two files of the MONOREPO that this
-repository has never had. Without a Forge checkout on the machine it reports **NOT CHECKED**, never a silent
+repository has never had. Without an installed fork at the release it reports **NOT CHECKED**, never a silent
 green.
 
-⚠️ **`bin/vendor-drift.guard.mjs` is who asks whether the forks' COMMITTED locks still describe this
-release.** It recomputes each vendored tarball's `integrity` by packing the pinned checkout with the
-product's own `scripts/pack-publishable.sh`, and compares. That is the failure a pipeline would otherwise
-meet as an `EINTEGRITY` from `npm ci` with no cause attached, and its message names one command
-(`bin/revendor-forks.sh`) rather than four. It also proves what is INSTALLED is what is in `vendor/` —
-measured on 2026-09-08, `npm install` served a cached copy of an older tarball that had the same path, and
-the fork ran 174 lines behind the release with nothing saying a word. It costs ~9 s of packing on an idle
-machine (67 s measured on this bench with eight agents on it), and it says **NOT CHECKED** rather than green
-when there is no Forge checkout at the pinned commit, or when a `built` package's `dist` is not on disk —
-this guard never builds in a tree it does not own.
+⚠️ **`bin/fork-release-pin.guard.mjs` is who asks whether what this repository installs of Forge IS the release
+it pins** (v032/C — it replaced `bin/vendor-drift.guard.mjs` with the vendored tarballs it graded): every
+`@forgeco/*` in the two forks and in the root `package.json` is EXACTLY `forge.lock`'s version, the committed
+`package-lock.json` resolves each from the npm registry with an integrity hash, and what is on disk is that
+version.
 
 ⚠️ **Two of those guards need the forks INSTALLED, and say so when they are not.**
 `bin/fork-typecheck.guard.mjs` compiles `storefront-coffee/` and `totem/` against the kit in their own
 `node_modules` (`tsc --noEmit`, ~5 s) — the contract that used to be checked only by the oven, four minutes
-into an image build. It also proves that kit is the one `forge.lock` pins, by finding the checkout whose HEAD
-is that commit (`FORGE_MONOREPO=<path>` names one; a worktree of it is found from any other). Every run
+into an image build. It also proves that kit's bytes are the release's own `src/`, read out of the release's oven
+(`bin/release-tree.mjs`). Every run
 prints the tree it compiled against, and a run that cannot check prints **NOT CHECKED** with the reason —
 never a silent green.
 
@@ -1412,7 +1411,7 @@ it belongs in his repo" — was measured before it was rejected, and it does not
 So committing the dataset here would add 41 MB of weight to this repository **and still depend on the same
 bucket** for the half that actually matters — the pictures. The path costs nothing and is honest about what
 this box is today: a demo whose example catalogue is still ours, pointed at from where it is maintained. It
-is the same gesture `bin/build-local.sh <path to the forge monorepo>` already asks for, and the same variable
+is the same kind of gesture the old monorepo-based bake asked for, and the same variable
 name the platform's own compose uses (`FORGE_SEED_DATASET_DIR` / `FORGE_SEED_DATASET_HOST_DIR`).
 
 **What changes the day the demo has a catalogue of its own.** Nothing in `seed/forge.mjs`: it reads a dataset
@@ -1647,7 +1646,7 @@ coffee store's PIX (the live "aguardando pagamento" the demo exists to show), an
 which is the whole difference, and it cost zero kernel.
 
 It reaches the image exactly like `demo-setup`: `instanceApps` in `composition.json`, staged into the build
-context by `bin/build-local.sh`, and the image it composes is stamped not offerable.
+context by `bin/bake.sh` (the oven's `apps` context), and the image it composes is stamped not offerable.
 
 The capability page is `docs/capabilities/payment-pos.md`; the field-level contract is the app's own README.
 
@@ -1678,9 +1677,9 @@ The demo instance is **six images**, and only four of them are the product:
 
 | image | whose | how it gets here |
 |---|---|---|
-| `kernel` · `storefront` · `checkout` · `admin` | **the product** | pinned BY DIGEST in `forge.lock`, re-stamped from a registry |
-| `storefront-coffee` | **ours** | built by `bin/build-coffee.sh`, wired in `compose.override.yml` |
-| `totem` | **ours** | built by `bin/build-totem.sh`, wired in `compose.override.yml` |
+| `kernel` · `storefront` · `checkout` · `admin` | **the product's recipe**, baked with this box's list | `bin/bake.sh`, pinned BY DIGEST in `forge.lock` |
+| `storefront-coffee` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
+| `totem` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
 
 **The totem is the fourth posture of the customisation table, and it is the one worth understanding.** It is
 not a forked vitrine plus a forked checkout: it is ONE Next app of the client's own (`totem/`) answering
@@ -1688,20 +1687,18 @@ not a forked vitrine plus a forked checkout: it is ONE Next app of the client's 
 number, all of it — while talking to the same kernel through the same public port as everything else. Not
 every extra experience is a fork of ours; it can be **one more image**.
 
-⚠️ **Neither of the two OURS is in `forge.lock`, and for the totem there is a second reason worth writing
-down.** The first is the one `compose.override.yml` already gives for the vitrine: they are ours, they have
-no upstream, and pinning them would claim a provenance they do not have. The second is a fact about the file:
-`bin/build-local.sh` **rewrites `forge.lock` from a fixed four-image template**, so a fifth or sixth key added
-there by hand is deleted, silently, by the next oven run. `totem/src/lock-provenance.test.ts` fails if anybody
-puts it back.
+★ **Since v032/C all six are in `forge.lock`.** The two OURS used to stay out because the script that wrote the
+lock (`bin/build-local.sh`) rebuilt it from a fixed four-image template and would have deleted a fifth key;
+`bin/bake.sh` writes all six, so the forks are pinned by digest like the rest and travel by pull, never by a
+`:local` tag. `totem/src/lock-provenance.test.ts` holds it.
 
 ### Bringing the counter up
 
-The image has to exist before compose can start it — the Dockerfile is thin on purpose (it copies a build,
-it does not run one), exactly like the vitrine's:
+The image is in `forge.lock` like the other five — the Dockerfile is thin on purpose (it copies the build
+`bin/bake.sh` ran, it does not run one), exactly like the vitrine's:
 
 ```bash
-bash bin/build-totem.sh <path to the forge monorepo checkout>
+OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh   # or adopt the lock of a bake.yml run
 source ./env-source.sh && source bin/images-from-lock.sh
 docker compose up -d totem
 ```

@@ -64,7 +64,7 @@
 // used to have, and why it now holds the same posture as the kit comparison next door.
 //
 //   node --test bin/instance-app.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/instance-app.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/instance-app.guard.mjs   (a bench without gh/registry access)
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -98,7 +98,7 @@ if (TREE.path) {
 } else {
   say('⚠️ NOT CHECKED — no checkout of the PINNED release with a built @forgeco/contracts here.');
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<a clone at the pinned commit> and run `pnpm build` there.');
+  say('   install a fork at the release: cd storefront-coffee && npm ci.');
 }
 
 /** app.dir → the packages it declares that the tree could not lend. Empty is the only state that runs. */
@@ -119,7 +119,7 @@ function notChecked(app) {
   if (!TREE.path) {
     return (
       'NOT CHECKED — no checkout of the PINNED release with a built @forgeco/contracts ' +
-      '(set FORGE_MONOREPO to a clone at that commit, then `pnpm build` there)'
+      '(install a fork at the release: cd storefront-coffee && npm ci)'
     );
   }
   const missing = incomplete.get(app.dir);
@@ -158,7 +158,7 @@ test('this repository owns at least one app of its own', () => {
     APPS.length > 0,
     `no directory under apps/ declares \`forge.origin: "instance"\` and a \`test\` script. Either this box ` +
       `stopped writing its own apps — in which case this guard and bin/pack-apps.sh have no subject — or an ` +
-      `app lost the declaration the OVEN reads to adopt it (bin/build-local.sh:114), and is about to be ` +
+      `app lost the declaration the OVEN reads to adopt it (templates/instance/README.md §5b), and is about to be ` +
       `refused by the bake instead of by this line.`,
   );
 });
@@ -206,7 +206,7 @@ test('the tsconfig base this repository carries IS the one the pinned release ca
   }
   const pinnedTree = releaseTree(PINNED);
   if (!pinnedTree.path) {
-    t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (set FORGE_MONOREPO)`);
+    t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (node bin/release-tree.mjs says why)`);
     return;
   }
   const bases = new Set();
@@ -318,7 +318,7 @@ test('★★ every app the OVEN will bake is one this file just compiled and ran
     oven.filter((dir) => !checked.includes(dir)),
     [],
     `composition.json puts an app in the oven that this guard cannot check. It must declare ` +
-      `\`forge.origin: "instance"\` (which the bake also requires, bin/build-local.sh:114) and a \`test\` ` +
+      `\`forge.origin: "instance"\` (which the oven also requires, §5b) and a \`test\` ` +
       `script.\n  oven: ${oven.join(', ')}\n  checked: ${checked.join(', ')}`,
   );
   assert.deepEqual(

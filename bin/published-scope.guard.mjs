@@ -158,7 +158,7 @@ test('★★ no tracked file of this repository mentions the retired npm scope',
     0,
     `the retired scope survives in ${hits.length} place(s). The packages are published as ${SCOPE}/* and ` +
       `nothing answers to the old name — an import left behind resolves to nothing, and a \`package\` left ` +
-      `behind in composition.json stops the oven (bin/build-local.sh:97-98).\n${report}`,
+      `behind in composition.json stops the oven (it reads composition.json as is — bin/bake.sh).\n${report}`,
   );
 });
 

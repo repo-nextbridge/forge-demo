@@ -118,6 +118,13 @@ strict=0
 case "${FORGE_STRICT_CHECKS:-}" in 1|true|yes) strict=1 ;; esac
 [ "$strict" = 1 ] && echo "[test] ⚑ STRICT: a skipped test is a failure here — this run must GRADE, not report." >&2
 
+# ★ v032/C — THE RELEASE TREE IS CUT ONCE, HERE, BEFORE THE FILES RUN IN PARALLEL. A dozen guards ask
+# `bin/release-tree.mjs` for it at load; on a machine that has not cut it yet each of them would start the
+# same `docker run … tar` at once. The resolver is safe under that race (it renames a finished cut into
+# place), but it is a dozen copies of ~90 MB for one answer. Its report is printed; a failure here is not a
+# verdict — the guards say NOT CHECKED with the reason, and the census below names it.
+node "$HERE/bin/release-tree.mjs" 2>&1 | sed 's/^/[test] release · /' >&2
+
 out="$(mktemp)"; trap 'rm -f "$out"' EXIT
 set -o pipefail
 node --test "${files[@]}" 2>&1 | tee "$out"
@@ -131,8 +138,8 @@ if [ "$strict" = 1 ] && [ "${skipped:-0}" -gt 0 ]; then
   echo "" >&2
   echo "[test] ⛔ STRICT: $skipped test(s) reported NOT CHECKED instead of running — the census above names them" >&2
   echo "       one by one, and the verdict in it says which repair applies. Give the runner what they ask for" >&2
-  echo "       — a Forge checkout at the pinned commit (FORGE_MONOREPO), an installed fork (bash" >&2
-  echo "       bin/revendor-forks.sh <checkout>) — or drop FORGE_STRICT_CHECKS and accept that this run graded" >&2
+  echo "       — the release's tree (node bin/release-tree.mjs says how this machine gets it), an installed" >&2
+  echo "       fork (cd <fork> && npm ci) — or drop FORGE_STRICT_CHECKS and accept that this run graded" >&2
   echo "       less than it looks like it did." >&2
   exit 1
 fi

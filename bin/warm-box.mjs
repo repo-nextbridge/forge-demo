@@ -583,7 +583,7 @@ const warmRun = async (maxDurationMs, waitMs) => {
         'predates the route — ' +
         `forge.lock pins ${LOCK?.forgeVersion ?? 'this release'}` +
         `${LOCK?.provenance?.built_from ? ` (built from ${LOCK.provenance.built_from})` : ''}. ` +
-        'Rebake the fronts with `bash bin/build-local.sh <forge checkout>`, which rewrites forge.lock.',
+        'Rebake the fronts (bin/bake.sh — in CI, .github/workflows/bake.yml), which rewrites forge.lock.',
     );
   }
   if (started.status === 401) {

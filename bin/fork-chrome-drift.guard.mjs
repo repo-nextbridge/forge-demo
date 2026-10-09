@@ -47,7 +47,7 @@
 // `bash bin/test.sh` runs it.
 //
 //   node --test bin/fork-chrome-drift.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/fork-chrome-drift.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/fork-chrome-drift.guard.mjs   (a bench without gh/registry access)
 
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -148,7 +148,7 @@ if (TREE.path) {
 } else if (PINNED) {
   say(`⚠️ NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine.`);
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say("   set FORGE_MONOREPO=<the release's checkout>. Nothing below can compare this fork to anything.");
+  say("   run node bin/release-tree.mjs — it names what is missing. Nothing below can compare this fork to anything.");
 }
 say(`forks of a packed surface: ${FORKS.map((f) => `${f.dir} (cut of ${f.surface.dir})`).join(', ') || 'none'}`);
 for (const d of DIVERGENCES) say(`declared divergence: ${d.fork}/${d.layout} mounts NO chrome — ${d.why}`);
@@ -161,7 +161,7 @@ test('a Forge checkout at the pinned commit was found (otherwise nothing here is
     return;
   }
   if (!TREE.path) {
-    t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (set FORGE_MONOREPO)`);
+    t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (node bin/release-tree.mjs says why)`);
     return;
   }
   assert.ok(surfaces(TREE).length > 0, `${TREE.path} has no scripts/publishing/surfaces.json entries to map a fork to`);

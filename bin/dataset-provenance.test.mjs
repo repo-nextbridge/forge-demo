@@ -181,7 +181,7 @@ test('★ a lock that RECORDS NO dataset cannot be compared — and that is a no
   const verdict = provenanceVerdict(lockSide(writeLock(undefined)), boxSide(writeDataset(MOUNTED)));
   assert.equal(verdict.verdict, 'uncomparable');
   assert.match(verdict.message, /c51b5e4b49324fa9/, 'it still names what the box mounts');
-  assert.match(verdict.message, /build-local\.sh/, 'and how the lock gets a stamp');
+  assert.match(verdict.message, /bake/, 'and how the lock gets a stamp');
 });
 
 test('a lock that records `dataset: null` is an ANSWER — "built with none" — and disagrees with a mount', () => {
@@ -194,12 +194,12 @@ test('neither side has one → match: a box that wants no example data is a supp
   assert.equal(provenanceVerdict(lockSide(writeLock(null)), boxSide('')).verdict, 'match');
 });
 
-test('★★ THIS repo — `forge.lock` carries a dataset stamp, and `bin/build-local.sh` is what writes it', () => {
+test('★★ THIS repo — `forge.lock` carries a dataset stamp, and `bin/bake.sh` is what writes it', () => {
   // Anti-vacuity in the other direction: every assertion above passes on a lock with no stamp at all, so the
   // committed lock is graded here. If a re-bake ever stops recording it, the check above degrades to a note
   // and the class comes back silently.
   const side = lockSide(join(ROOT, 'forge.lock'));
-  assert.equal(side.state, 'recorded', 'forge.lock records no `dataset` — re-run bin/build-local.sh');
+  assert.equal(side.state, 'recorded', 'forge.lock records no `dataset` — re-bake (bin/bake.sh writes it)');
   assert.match(side.stamp.catalog.version, /^[0-9a-f]{16}$/);
   assert.match(side.stamp.photos.version, /^[0-9a-f]{16}$/);
 });

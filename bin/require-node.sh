@@ -158,7 +158,7 @@ require_node() {
     printf '       The floor is a property of the release the lock pins, and it is stamped into the lock by\n' >&2
     printf '       the release that carries it. A lock written before that existed simply does not answer\n' >&2
     printf '       the question — that is not an error, and this box will not answer it for the lock.\n' >&2
-    printf '       Re-stamp the pin (`bash bin/build-local.sh <forge monorepo>`) to get the check back.\n\n' >&2
+    printf '       Re-bake the pin (`bin/bake.sh` stamps the release'"'"'s floor) to get the check back.\n\n' >&2
     return 0
   fi
 

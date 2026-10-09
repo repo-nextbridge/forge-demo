@@ -601,7 +601,7 @@ test('★ pk5 — every LINE of a banner block on this home is full: a short row
 // on a machine that legitimately has no monorepo is a guard people learn to ignore. Same decision here.
 //
 // ⛔ pk35/D6 — AND "the product's own copy" MEANS THE PINNED ONE. Until 2026-09-14 both rules below took the
-// first directory that happened to hold the file, out of `FORGE_MONOREPO` and four hard-coded neighbours, and
+// first directory that happened to hold the file, out of the bench override and four hard-coded neighbours, and
 // never asked which commit it was: a stale worktree turned a CORRECT mirror into a named accusation. They now
 // read the blob AT the commit `forge.lock` pins — the release these images were baked from — through
 // `fileAtPinned`, which answers from any clone that has fetched it, whatever that clone has checked out.
@@ -622,7 +622,7 @@ function atPinned(relPath) {
 /** The sentence a rule that could not reach the release carries — it names the pin and what was tried. */
 const notChecked = (found, relPath) =>
   `NOT CHECKED — cannot read ${relPath} at ${pinnedCommit()?.ref ?? 'the pinned commit'} ` +
-  `(tried: ${found.tried.join(' · ')}). Set FORGE_MONOREPO=<a Forge clone that has fetched it>.`;
+  `(tried: ${found.tried.join(' · ')}). Run node bin/release-tree.mjs — it names what this machine lacks to read the release.`;
 
 /** Where the vitrine keeps the list the home's «Marcas que amamos» tiles are built from. */
 const BRANDS_GRID = join('apps', 'storefront', 'src', 'components', 'BrandsGrid.tsx');

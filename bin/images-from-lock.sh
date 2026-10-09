@@ -51,7 +51,7 @@ jq -e . "$FORGE_LOCK" >/dev/null 2>&1 || {
 # One reader, used four times: read the ref, and prove it is a pin before letting it reach the compose.
 # The jq expression takes the ref out of EITHER form — a string is the ref, an object carries it under `ref` —
 # so a lock that starts saying where each image comes from keeps booting the same box it booted yesterday.
-_forge_lock_ref() { # <kernel|storefront|checkout|admin>
+_forge_lock_ref() { # <kernel|storefront|checkout|admin|storefront-coffee|totem>
   local key="$1" ref digest
   ref="$(jq -r --arg k "$key" '.images[$k] | if type == "object" then (.ref // "") else (. // "") end' "$FORGE_LOCK")"
   [ -n "$ref" ] || {
@@ -86,6 +86,13 @@ FORGE_STOREFRONT_IMAGE="$(_forge_lock_ref storefront)" || return 1
 FORGE_CHECKOUT_IMAGE="$(_forge_lock_ref checkout)" || return 1
 FORGE_ADMIN_IMAGE="$(_forge_lock_ref admin)" || return 1
 export FORGE_IMAGE FORGE_STOREFRONT_IMAGE FORGE_CHECKOUT_IMAGE FORGE_ADMIN_IMAGE
+
+# ★ v032/C — AND THE TWO FRONTS THIS BOX OWNS, by the same rule. `compose.override.yml` reads them from here;
+# a lock that does not pin them is refused like a lock missing the kernel, because a box that comes up with
+# the café or the counter on some other image is a mix no bake ever produced.
+FORGE_STOREFRONT_COFFEE_IMAGE="$(_forge_lock_ref storefront-coffee)" || return 1
+FORGE_TOTEM_IMAGE="$(_forge_lock_ref totem)" || return 1
+export FORGE_STOREFRONT_COFFEE_IMAGE FORGE_TOTEM_IMAGE
 
 # The version the running kernel REPORTS (read.platform_info). It comes from the lock, so "what am I running?"
 # has exactly one answer and it is the one you pinned.

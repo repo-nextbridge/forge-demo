@@ -21,8 +21,9 @@
 // A caller that gets `{ tried }` back has no tree and must say NOT CHECKED, loudly. A silent green there
 // would mean "measured against whatever was lying around", which is not a measurement.
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,11 +36,28 @@ export const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
  *  stops being pre-release and the lock names registry digests instead of a branch; at that same moment the
  *  kit comes from npm and the tarballs (and this question) are gone. */
 export function pinnedCommit() {
-  const from = readJson(join(ROOT, 'forge.lock')).provenance?.built_from;
-  if (typeof from !== 'string') return null;
+  const lock = readJson(join(ROOT, 'forge.lock'));
+  const from = lock.provenance?.built_from;
+  if (typeof from !== 'string') {
+    // ★★ v032/C — A LOCK THAT PINS A RELEASE. From v0.3.2 this box is baked in its own CI from the release's
+    // published oven (`.github/workflows/bake.yml`) and the lock has no `provenance` block: every image is
+    // `{ ref, origin: "own build", built_from: <tag> }`. The pin is then the TAG, which names the same tree
+    // a commit did — `sha` carries it too, so every caller that prints `PINNED.sha` keeps working and every
+    // git question (`git show <tag>:<path>`) still has an answer in a clone that fetched the tag.
+    const tag = typeof lock.forgeVersion === 'string' ? lock.forgeVersion : '';
+    return RELEASE_TAG.test(tag) ? { ref: tag, sha: tag, release: tag } : null;
+  }
   const at = from.lastIndexOf('@');
   return at < 0 ? null : { ref: from, sha: from.slice(at + 1) };
 }
+
+/** A release tag as the product cuts them (`infra/cicd/stamp-oven.sh` refuses anything else). */
+export const RELEASE_TAG = /^v\d+\.\d+\.\d+$/;
+
+/** ★ v032/C — THE ONE NAME OF THE BENCH OVERRIDE. Every other file says "the release tree" and asks this one;
+ *  only here is the variable read, so `grep -rl FORGE_MONOREPO bin/` answers with this file alone (spec
+ *  v032, DoD 6). A guard that wants to tell a human how to override says `${BENCH_OVERRIDE}=…`. */
+export const BENCH_OVERRIDE = 'FORGE_MONOREPO';
 
 export const gitOut = (cwd, args) => {
   try {
@@ -74,7 +92,7 @@ export function checkout(base) {
  *  own shell. Defaulting to `process.env` keeps every other caller written exactly as it was. */
 export function candidates(env = process.env) {
   return [
-    env.FORGE_MONOREPO,
+    env[BENCH_OVERRIDE],
     join(ROOT, '..', 'forge'),
     join(ROOT, '..', '..', 'forge'),
     join(ROOT, '..', '..', '..', 'forge'),
@@ -127,6 +145,16 @@ function uncommitted(base) {
  *   `unpinned`        the lock names registry digests and there is no commit to diagnose
  */
 export function pinDiagnosis(pinned, env = process.env) {
+  if (pinned?.release) {
+    return {
+      kind: 'release-unreachable',
+      sentence:
+        `VERDICT — THE ${pinned.release} TREE COULD NOT BE READ HERE. It comes from the release's oven: give this ` +
+        `machine one (FORGE_OVEN_IMAGE=<an oven stamped ${pinned.release}>, or \`gh\` access to the ` +
+        `${releaseRepo(env)} Release plus registry access to the oven it names), or point ${BENCH_OVERRIDE} at a ` +
+        `clean clone at the tag. Nothing about the installed kit is in question — it comes from npm at that version.`,
+    };
+  }
   if (!pinned?.sha) {
     return {
       kind: 'unpinned',
@@ -182,7 +210,7 @@ export function pinDiagnosis(pinned, env = process.env) {
         `of it, so the pin is an ANCESTOR of the product next door. These images were baked before those ${ahead} ` +
         `commits; nothing here says the installed kit is wrong. Park a tree at the pin ` +
         `(git -C ${holder} worktree add <dir> ${short}) to grade this run, or rebake to move the pin ` +
-        `(bash bin/build-local.sh ${holder}, which rewrites forge.lock).`,
+        `(bin/bake.sh, which rewrites forge.lock).`,
     };
   }
   return {
@@ -192,6 +220,192 @@ export function pinDiagnosis(pinned, env = process.env) {
       `⛔ VERDICT — THE PIN IS ON NO BRANCH: ${holder} holds ${short} and no tip of it contains that commit, so the ` +
       `branch it was baked from was rewritten or dropped. A rebake is the only thing that makes this lock honest again.`,
   };
+}
+
+// ── ★★★ v032/C — THE TREE OF A RELEASE, WITHOUT A CLONE OF THE PRODUCT ────────────────────────────────────
+//
+// Until v0.3.2 every guard below found the product by looking for a CHECKOUT of it on this machine, because
+// the images were baked from one (`bin/build-local.sh <monorepo>`). From v0.3.2 the images are baked from the
+// release's published OVEN (`forge-oven:<tag>`: the monorepo at the tag, `pnpm install --frozen-lockfile`
+// done — `infra/oven/Dockerfile`, stage `oven`, in the product), and that same image is the tree the guards
+// grade against: the bytes the bake read are the bytes the comparison reads. Nothing here needs git, a
+// clone, or `FORGE_MONOREPO` (spec v032, decision 8).
+//
+// HOW, MEASURED 2026-10-09 on an oven built from `v0.3.2` (`3b5e552b9`): `docker run --entrypoint tar <oven>
+// -C /app --exclude=node_modules -cf - .` streams 90 MB in 1.8 s, and the tree lands in `.forge-release/
+// <tag>/tree/` under the user's cache (`RELEASE_CACHE`), once per oven. node_modules is left in the image on purpose: it is ~2.5 GB of
+// it, and what this repository compiles against is what IT installs from npm (`@forgeco/*@<release>`), not
+// the monorepo's workspace links.
+//
+// ⛔ THE OVEN MUST SAY WHICH RELEASE IT IS. A published oven carries its tag at `/forge-oven/release`
+// (`infra/cicd/stamp-oven.sh` in the product — one layer on top of the tested oven). An oven with no stamp,
+// or another tag, is refused by name: the tree is never guessed, which is the rule this file was born with.
+//
+// WHICH OVEN — in order, each one said in `how`:
+//   1. `FORGE_OVEN_IMAGE` — a bench that built or pulled one itself (`docker build … --target oven` plus
+//      `stamp-oven.sh`, or a `docker pull` with registry access).
+//   2. `images.oven.ref` of the RELEASE's own `forge.lock`, downloaded once into `RELEASE_CACHE/<tag>/`
+//      (`gh release download <tag> -R $FORGE_RELEASE_REPO -p forge.lock`). ⚠️ THE REF IS NEVER WRITTEN INTO
+//      THIS REPOSITORY: the product's registry has no public name (spec v032, decision 2 as amended), and
+//      this repository is public. It lives in the per-machine cache and in the release.
+
+/** Where a release's tree and its lock are cached — OUTSIDE this repository, on purpose: measured 2026-10-09,
+ *  a cache under the repo root put eight of the product's Dockerfiles in front of `bin/container-health.guard.mjs`'s
+ *  walk, and every guard that walks this tree would have had to learn to skip it. It is per machine, like any
+ *  cache; `FORGE_RELEASE_CACHE` moves it. */
+export const RELEASE_CACHE =
+  process.env.FORGE_RELEASE_CACHE || join(process.env.XDG_CACHE_HOME || join(homedir(), '.cache'), 'forge-demo', 'release');
+
+/** The product's repository — where its GitHub Releases live. Overridable for a fork of the product. */
+const releaseRepo = (env) => env.FORGE_RELEASE_REPO || 'repo-nextbridge/forge';
+
+/** The file a materialised tree carries, naming what it was cut from. Its presence is what makes a directory
+ *  a release tree rather than a directory that happens to hold a `packages/` folder. */
+const TREE_MARK = '.forge-release-tree.json';
+
+const STAMP_PATH = '/forge-oven/release';
+
+const run = (cmd, args, opts = {}) => {
+  try {
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], ...opts }).trim();
+  } catch {
+    return null;
+  }
+};
+
+/** The release's own `forge.lock`, from the cache or downloaded into it. `{ lock, path }` or `{ error }`. */
+export function releaseLock(tag, env = process.env) {
+  const dir = join(RELEASE_CACHE, tag);
+  const path = join(dir, 'forge.lock');
+  if (!existsSync(path)) {
+    mkdirSync(dir, { recursive: true });
+    const got = run('gh', ['release', 'download', tag, '-R', releaseRepo(env), '-p', 'forge.lock', '-D', dir, '--clobber']);
+    if (got === null || !existsSync(path)) {
+      return {
+        error:
+          `the ${tag} Release's forge.lock could not be downloaded (gh release download ${tag} -R ${releaseRepo(env)} ` +
+          `-p forge.lock — gh missing, not logged in, or no read access to that repository)`,
+      };
+    }
+  }
+  try {
+    const lock = readJson(path);
+    if (lock.forgeVersion !== tag) return { error: `${path} is the lock of ${lock.forgeVersion}, not of ${tag}` };
+    return { lock, path };
+  } catch (error) {
+    return { error: `${path} is not a readable lock: ${error.message}` };
+  }
+}
+
+/** Which oven to read the release from, and how that was decided. `{ ref, how }` or `{ error }`. */
+export function ovenRef(tag, env = process.env) {
+  if (env.FORGE_OVEN_IMAGE) return { ref: env.FORGE_OVEN_IMAGE, how: 'FORGE_OVEN_IMAGE' };
+  const found = releaseLock(tag, env);
+  if (found.error) return { error: found.error };
+  const ref = found.lock.images?.oven?.ref;
+  if (typeof ref !== 'string' || !ref.includes('@sha256:')) {
+    return { error: `the ${tag} Release's forge.lock names no oven by digest (images.oven.ref) — a release older than v0.3.2 has none` };
+  }
+  return { ref, how: `images.oven of the ${tag} Release's forge.lock` };
+}
+
+/** The image id of `ref` on this daemon, pulling it once if it is not here. `{ id }` or `{ error }`. */
+function ovenImage(ref) {
+  const inspect = () => run('docker', ['image', 'inspect', '--format', '{{.Id}}', ref]);
+  let id = inspect();
+  if (!id) {
+    if (run('docker', ['version', '--format', '{{.Server.Version}}']) === null) return { error: 'no docker daemon answers here' };
+    run('docker', ['pull', '-q', ref], { timeout: 15 * 60_000 });
+    id = inspect();
+  }
+  return id ? { id } : { error: `the oven is not on this daemon and \`docker pull\` did not bring it (no registry access?)` };
+}
+
+/**
+ * ★★ THE TREE OF `tag`, CUT OUT OF ITS OVEN — `{ path, head, how, clean: true }` or `{ error }`.
+ * Reused while the oven it came from is the same image; re-cut when it is not.
+ */
+export function ovenTree(tag, env = process.env) {
+  const oven = ovenRef(tag, env);
+  if (oven.error) return { error: oven.error };
+  const image = ovenImage(oven.ref);
+  if (image.error) return { error: `${oven.how}: ${image.error}` };
+  const path = join(RELEASE_CACHE, tag, 'tree');
+  const how = `cut from the ${tag} oven (${oven.how}, image ${image.id.slice(7, 19)})`;
+  try {
+    const mark = readJson(join(path, TREE_MARK));
+    if (mark.release === tag && mark.image === image.id) return { path, head: tag, how, clean: true };
+  } catch {
+    /* no tree yet, or one from another oven — cut it below */
+  }
+  const stamp = run('docker', ['run', '--rm', '--network', 'none', '--entrypoint', 'cat', image.id, STAMP_PATH]);
+  if (stamp !== tag) {
+    return {
+      error:
+        `${oven.how} names an oven stamped '${stamp || '<none>'}' at ${STAMP_PATH}, and this lock pins ${tag}. ` +
+        `An oven that does not say it IS this release is not the tree these images were baked from ` +
+        `(stamp a bench oven with the product's infra/cicd/stamp-oven.sh)`,
+    };
+  }
+  // Cut into a sibling and RENAME, so a reader never sees half a tree and two guards cutting at once (node
+  // --test runs files in parallel) cannot interleave: the loser's rename fails and it takes the winner's.
+  const staging = `${path}.${process.pid}`;
+  rmSync(staging, { recursive: true, force: true });
+  mkdirSync(staging, { recursive: true });
+  const cut = spawnSync(
+    'sh',
+    ['-c', 'docker run --rm --network none --entrypoint tar "$1" -C /app --exclude=node_modules -cf - . | tar -xf - -C "$2"', 'cut', image.id, staging],
+    { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' },
+  );
+  if (cut.status !== 0 || !existsSync(join(staging, 'package.json'))) {
+    rmSync(staging, { recursive: true, force: true });
+    return { error: `${oven.how}: cutting /app out of the oven failed — ${(cut.stderr || '').trim().split('\n').pop()}` };
+  }
+  writeFileSync(join(staging, TREE_MARK), `${JSON.stringify({ release: tag, oven: oven.how, image: image.id }, null, 2)}\n`);
+  rmSync(path, { recursive: true, force: true });
+  try {
+    renameSync(staging, path);
+  } catch {
+    rmSync(staging, { recursive: true, force: true });
+  }
+  return existsSync(join(path, TREE_MARK)) ? { path, head: tag, how, clean: true } : { error: `${path} could not be written` };
+}
+
+/** Does `base` hold `tag`'s tree? A cut of its oven (it carries the mark), or a CLONE whose HEAD is the tag's
+ *  commit. `{ path, head, how, clean }`, or a sentence saying why not. */
+function overrideTree(base, tag) {
+  try {
+    const mark = readJson(join(base, TREE_MARK));
+    if (mark.release === tag) return { path: base, head: tag, how: `${BENCH_OVERRIDE} (a cut of the ${tag} oven)`, clean: true };
+    return `${base} — a cut of the ${mark.release} oven, not of ${tag}`;
+  } catch {
+    /* not a cut — maybe a clone */
+  }
+  const found = checkout(base);
+  if (!found) return `${base} — neither a cut of the ${tag} oven nor a Forge checkout`;
+  const at = gitOut(base, ['rev-parse', `${tag}^{commit}`]);
+  if (!at) return `${base} — a Forge clone that has not fetched the tag ${tag}`;
+  if (found.head !== at) return `${base} @ ${found.head.slice(0, 9)} — a different commit (${tag} is ${at.slice(0, 9)})`;
+  const changed = uncommitted(base);
+  if (changed !== 0) return `${base} @ ${tag} — ⚠️ NOT THE RELEASE'S BYTES, ${changed ?? 'unknown'} uncommitted change(s)`;
+  return { path: base, head: at, how: `${BENCH_OVERRIDE} (a clean clone at ${tag})`, clean: true };
+}
+
+/** `releaseTree` for a lock that pins a release: the bench override when one is set, else the oven. */
+function releaseTreeOfTag(pinned, env) {
+  const tag = pinned.release;
+  const tried = [];
+  if (env[BENCH_OVERRIDE]) {
+    const found = overrideTree(env[BENCH_OVERRIDE], tag);
+    if (typeof found !== 'string') return found;
+    tried.push(found);
+  }
+  const cut = ovenTree(tag, env);
+  if (cut.path) return cut;
+  tried.push(`the ${tag} oven — ${cut.error}`);
+  const diagnosis = pinDiagnosis(pinned, env);
+  tried.push(diagnosis.sentence);
+  return { tried, diagnosis };
 }
 
 /**
@@ -205,6 +419,7 @@ export function pinDiagnosis(pinned, env = process.env) {
  * carrying the count of what is uncommitted in it so a reader of a red can see the tree is not the release.
  */
 export function releaseTree(pinned, env = process.env) {
+  if (pinned?.release) return releaseTreeOfTag(pinned, env);
   const tried = [];
   /** Trees AT the pinned commit that are not clean — the fallback, weighed only after the search is over. */
   const dirty = [];
@@ -286,6 +501,7 @@ export function releaseTree(pinned, env = process.env) {
  * the list of what was looked at, for a caller that must then say NOT CHECKED out loud.
  */
 export function fileAtPinned(pinned, relPath) {
+  if (pinned?.release) return fileOfRelease(pinned, relPath);
   const tried = [];
   for (const base of candidates()) {
     if (!existsSync(join(base, '.git')) && !existsSync(join(base, 'packages', 'storefront-kit', 'package.json'))) {
@@ -308,6 +524,24 @@ export function fileAtPinned(pinned, relPath) {
   // same way.
   tried.push(pinDiagnosis(pinned).sentence);
   return { tried };
+}
+
+/**
+ * ★ v032/C — `fileAtPinned` for a lock that pins a release: the file read out of the release tree. A
+ * DIRECTORY answers the way `git show <rev>:<dir>` does — `tree <rev>:<dir>`, a blank line, one entry per
+ * line with `/` after a directory — because callers (`bin/app-manifest.mjs#templatesOf`) parse that shape.
+ */
+function fileOfRelease(pinned, relPath) {
+  const tree = releaseTree(pinned);
+  if (!tree.path) return { tried: tree.tried };
+  const full = join(tree.path, relPath);
+  if (!existsSync(full)) return { tried: [`${tree.path} — has no ${relPath} at ${pinned.ref}`, ...(tree.tried ?? [])] };
+  const from = `${tree.path} @ ${pinned.ref}`;
+  if (!statSync(full).isDirectory()) return { text: readFileSync(full, 'utf8'), from };
+  const entries = readdirSync(full, { withFileTypes: true })
+    .map((entry) => (entry.isDirectory() ? `${entry.name}/` : entry.name))
+    .sort();
+  return { text: `tree ${pinned.ref}:${relPath}\n\n${entries.join('\n')}\n`, from };
 }
 
 // ── ★ THE SAME ANSWER, FOR A HUMAN AND FOR A SHELL ──────────────────────────────────────────────────────────

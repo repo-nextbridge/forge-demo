@@ -1,7 +1,7 @@
 // ★★★ "MY COMPOSITION DECLARES A BLOCK OF FRONT THAT NO FRONT OF MINE REACHES" — said OUT LOUD, by name.
 //
 //   node --test bin/front-app-reach.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/front-app-reach.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/front-app-reach.guard.mjs   (a bench without gh/registry access)
 //
 // ── ⛔ THE SILENCE THIS ENDS (caderno pk32 §15, measured on this bench 2026-09-10/11) ─────────────────────
 //
@@ -179,7 +179,7 @@ if (TREE.path) {
 } else if (PINNED) {
   say(`⚠️ NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine.`);
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<the release\'s checkout>: without it nothing here knows which front is a cut of');
+  say('   run node bin/release-tree.mjs — it names what is missing; without the release nothing here knows which front is a cut of');
   say('   which surface, and a jurisdiction guessed is a verdict invented.');
 }
 for (const divergence of DIVERGENCES) {

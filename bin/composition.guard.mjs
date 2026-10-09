@@ -33,8 +33,8 @@
 // ── ⛔ pk35/D6 — AND *WHICH* CHECKOUT IS NOT "the first one lying around" ────────────────────────────────
 //
 // Until 2026-09-14 this file took the FIRST directory holding `extensions/composition.base.json`, out of
-// `FORGE_MONOREPO` and three hard-coded neighbours, and never asked which COMMIT it was at. Measured on this
-// branch with `FORGE_MONOREPO=…/wt-v03/d2-onda1` (pk3/integra, hundreds of commits behind the pinned
+// the bench override and three hard-coded neighbours, and never asked which COMMIT it was at. Measured on this
+// branch with the bench override at `…/wt-v03/d2-onda1` (pk3/integra, hundreds of commits behind the pinned
 // `v03/integra@e8fc602d4`): TWO red rules — "content — the release carries no such app (rule not-carried)"
 // and the fleet mirror out of order — and BOTH are false about this box. At the pinned commit
 // `extensions/content` exists and `infra/fleet/lists/demo-instance.json` matches `composition.json` entry
@@ -52,7 +52,7 @@
 // what would fix it. `bin/composition-pin.test.mjs` holds both halves as a property, by running this file.
 //
 //   node --test bin/composition.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/composition.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/composition.guard.mjs   (a bench without gh/registry access)
 
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -88,7 +88,7 @@ if (FORGE) {
 } else {
   say(`⚠️ NOT CHECKED — no Forge checkout at ${PINNED ? PINNED.ref : 'the pinned commit'} on this machine.`);
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<a Forge clone at that commit, or one with a worktree of it>.');
+  say('   run node bin/release-tree.mjs — it names what this machine lacks to read the release.');
 }
 
 /** The sentence a skipped rule carries. ⚠️ It names the PIN and what would fix it — a skip that says only
@@ -97,7 +97,7 @@ if (FORGE) {
 const skip = FORGE
   ? false
   : `NOT CHECKED — no Forge checkout at ${PINNED ? PINNED.ref : 'the pinned commit'} on this machine ` +
-    '(set FORGE_MONOREPO=<a clone at that commit>; the [composition] lines above list what was tried)';
+    '(node bin/release-tree.mjs names what is missing; the [composition] lines above list what was tried)';
 
 /** Every app directory this release CARRIES, read the way `scripts/fleet/release.ts` reads it: a directory
  *  under `extensions/` with a readable `package.json`. A directory left behind with only `node_modules` in it

@@ -1,0 +1,122 @@
+# THE DEMO'S BAKE — the six images this box runs, out of the Forge release it pins, published to this
+# repository's GHCR by digest, and the `forge.lock` that pins them handed back as an artifact.
+#
+# ★ v032/C (spec v032, decision 6). The recipe is `bin/bake.sh` — the SAME script a bench runs through
+# `bin/bake-local.sh`; this file only supplies what a bench does not have: the release's oven (read from the
+# release's own forge.lock, never typed), registry access to it, and a registry to push to.
+#
+# WHAT THE OWNER PROVIDES — names only, no value lives in this repository:
+#   vars.WIF_PROVIDER          the Workload Identity provider (`github-demo` in pool `github-pool`, restricted
+#                              to this repository) that may READ the product's Artifact Registry. A variable, not
+#                              a secret: it names a provider and grants nothing by itself. No service account.
+#   secrets.FORGE_RELEASE_TOKEN  read access to the PRODUCT repository's contents. ⚠️ The product repository is
+#                              private, so this repository's GITHUB_TOKEN cannot `gh release download` from it
+#                              (measured 2026-10-09: `gh repo view repo-nextbridge/forge` → PRIVATE).
+#
+# ⚠️ THIS REPOSITORY IS PUBLIC AND SO ARE ITS ACTION LOGS. The product's registry has no public name (decision 2,
+# as amended), and the oven ref carries it — so the ref and its registry host are MASKED before anything prints
+# them.
+#
+# HOW THE LOCK COMES BACK: it does not commit itself (`contents: read`). It is uploaded as the `forge-lock`
+# artifact of the run and adopted by a human, in a PR — `docs/operations/runbook-demo.md` §2.1 says how and why.
+#
+# ★ The packages are PUBLIC (owner's decision, 2026-10-09): the boxes pull without logging in. GHCR creates a
+# new package PRIVATE; after the first push of each `forge-demo-<name>` the owner flips it to public, once, in
+# the package's settings.
+
+name: bake
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: bake-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The release this repository pins: the exact @forgeco/* version the forks and the tools install.
+      # bin/bake.sh refuses the bake if they disagree, so reading one here is enough to name the release.
+      - name: The release this repository pins
+        id: release
+        run: |
+          version="$(jq -r '.devDependencies["@forgeco/cli"]' package.json)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "package.json pins @forgeco/cli at '$version', not a release" >&2; exit 1; }
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      # The release's own forge.lock names its oven by digest (images.oven) — downloaded, never copied by hand.
+      - name: The release's lock, and the oven it names
+        id: oven
+        env:
+          GH_TOKEN: ${{ secrets.FORGE_RELEASE_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release download "$TAG" -R repo-nextbridge/forge -p forge.lock -D "$RUNNER_TEMP/release"
+          ref="$(jq -r '.images.oven | if type == "object" then .ref else . end // ""' "$RUNNER_TEMP/release/forge.lock")"
+          [[ "$ref" == *@sha256:* ]] || { echo "the $TAG release names no oven by digest" >&2; exit 1; }
+          host="${ref%%/*}"
+          echo "::add-mask::$ref"
+          echo "::add-mask::${ref%@*}"
+          echo "::add-mask::$host"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker may read the oven's registry
+        env:
+          HOST: ${{ steps.oven.outputs.host }}
+        run: gcloud auth configure-docker "$HOST" --quiet >/dev/null 2>&1
+
+      - name: Docker may push to this repository's GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+      # The release's tools at the root (forge-lock-provenance checks the written lock below).
+      - name: Install the release's tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Bake the six images and write the lock
+        env:
+          OVEN_IMAGE: ${{ steps.oven.outputs.ref }}
+          FORGE_RELEASE: ${{ steps.release.outputs.tag }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          start=$(date +%s)
+          bash bin/bake.sh --registry "${REGISTRY,,}" --tag "${SHA::12}" --lock "$RUNNER_TEMP/forge.lock"
+          echo "bake took $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
+
+      # The lock the deploy would take: it must pass the gate bin/deploy.sh applies to stag and prod, and the
+      # provenance fence bin/deploy.sh runs first.
+      - name: The lock passes the deploy's gate and fence
+        run: |
+          . bin/lock-gate.sh && lock_gate "$RUNNER_TEMP/forge.lock" prod no
+          node_modules/.bin/forge-lock-provenance --root . --lock "$RUNNER_TEMP/forge.lock"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-lock
+          path: ${{ runner.temp }}/forge.lock
+          if-no-files-found: error
