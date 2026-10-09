@@ -1064,6 +1064,31 @@ done
 # silently skipped: "the coffee shop has 23 products" and "the coffee shop was forgotten" look identical in a
 # log that says nothing.
 say '9 · seed-demo (the massive catalogue), once per DATASET tenant'
+# >>> THE BIRTH'S CPU CEILING — sourced verbatim by bin/birth-ceiling.guard.mjs, which runs it over fabricated boxes
+# ★★ v04-stress/H — STEPS 9 AND 10 RUN IN `birth-worker`, NOT IN `kernel`: the same image, environment and
+# mounts, plus the CPU ceiling `deploy/box.env` declares (the measurement is written there). The ceiling
+# lives on the one-shot `run --rm` creates for the step and dies with it, so there is nothing to retire and no
+# trap to forget. ⚠️ IT IS ASKED OF THE BOX'S `.env`, NOT OF THIS LAPTOP'S COPY OF `deploy/box.env`: compose
+# interpolates the box's file, and a ceiling this script believed in while the box applied another would be
+# the sentence that lies. An absent ceiling is SAID, never run in silence.
+BIRTH_WORKER=birth-worker
+announce_birth_ceiling() { # <the box's FORGE_BIRTH_CPUS> <the box's FORGE_BIRTH_CPU_SHARES> <deploy/box.env's FORGE_BIRTH_CPUS>
+  local cpus="$1" shares="$2" declared="$3"
+  if [ -z "$cpus" ] || [ "$cpus" = 0 ]; then
+    note "⚠️ NO CPU CEILING: the box's .env declares no FORGE_BIRTH_CPUS, so steps 9 and 10 run UNCAPPED in
+     $BIRTH_WORKER and the shop this box serves shares its CPU with the seed at equal weight. Declare it in
+     deploy/box.env and deploy — the reason and the measured value are written there."
+  else
+    note "CPU ceiling: steps 9 and 10 run in $BIRTH_WORKER capped at $cpus CPU, weight ${shares:-1024} (the box's
+     .env). No container that serves carries it, and it ends with each one-shot, on success or failure."
+    awk -v c="$cpus" 'BEGIN { exit !(c + 0 >= 1) }' \
+      && note "⚠️ a ceiling of $cpus CPU on ONE node process caps almost nothing — its JavaScript runs on one thread."
+  fi
+  [ "${declared:-}" = "${cpus:-}" ] || note "⚠️ deploy/box.env declares FORGE_BIRTH_CPUS=${declared:-<empty>} and the box's .env says
+     ${cpus:-<empty>}. Compose applies the BOX's; a deploy is what carries this repository's value there."
+}
+# <<< THE BIRTH'S CPU CEILING
+announce_birth_ceiling "$(remote_env_get FORGE_BIRTH_CPUS)" "$(remote_env_get FORGE_BIRTH_CPU_SHARES)" "${FORGE_BIRTH_CPUS:-}"
 for t in $TENANTS; do
   case " $DATASET_TENANTS " in
     *" $t "*) ;;
@@ -1081,7 +1106,7 @@ for t in $TENANTS; do
   remote_compose "${COMPOSE_FILES[@]}" run --rm \
     -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
     ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
-    kernel node dist/seed-demo.js 2>&1 | tail -8 >&2
+    "$BIRTH_WORKER" node dist/seed-demo.js 2>&1 | tail -8 >&2
   # shellcheck disable=SC2181
   [ "${PIPESTATUS[0]}" = 0 ] || die "seed-demo failed for \"$t\". The kernel's own words are the lines above — read those, not this.
      ⛔ RE-RUNNING IS NOT KNOWN TO FIX IT: of the three ways this step has failed so far, none was repaired by
@@ -1181,7 +1206,7 @@ $(printf '%s\n' "$armed" | sed 's/^/       /')
   hlog="$(mktemp)"
   remote_compose "${COMPOSE_FILES[@]}" run --rm \
     ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
-    kernel node dist/seed-history.js --tenant "$t" >"$hlog" 2>&1
+    "$BIRTH_WORKER" node dist/seed-history.js --tenant "$t" >"$hlog" 2>&1
   hrc=$?
   tail -6 "$hlog" >&2
   if [ "$hrc" != 0 ]; then

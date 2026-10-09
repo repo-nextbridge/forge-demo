@@ -210,6 +210,33 @@ services:
       postgres:
         condition: service_healthy
 
+  # ★★ v04-stress/H — THE BIRTH'S WORKER: the kernel image, the kernel's environment and mounts, and a CPU
+  # CEILING THAT ONLY EXISTS WHILE A BIRTH STEP RUNS. `bin/birth-remote.sh` runs its long one-shots here
+  # (step 9 `seed-demo`, 51–59 min on 2 vCPU in the 2026-10-09 rehearsals, and step 10 `seed-history`) instead
+  # of `run --rm kernel`, so the box keeps CPU for the shop it is serving while it is reborn.
+  #
+  # ⚠️ WHY HERE AND NOT ON THE SERVICES THAT SERVE: a ceiling on `kernel`, the fronts or `postgres` is a
+  # ceiling on the SHOP — the read path is those processes. The seed's one-shot is the only writer of a birth
+  # (its own pool, `max: 24`, product apps/api/src/seed-demo.ts:154), so slowing IT is what slows the load it
+  # causes downstream in postgres and in the kernel's relay. `bin/birth-ceiling.guard.mjs` holds that no other
+  # service carries a CPU key.
+  # ⚠️ WHY A SERVICE AND NOT `docker update` + a trap: the limit is a property of a container that `run --rm`
+  # creates for one step and removes when the step ends, success or failure — there is nothing to retire, so
+  # there is no trap that can fail to fire (a laptop that dies mid-birth never runs its trap; measured on
+  # 2026-10-09 with a one-shot that exited 7: no container left, the standing service untouched).
+  # ⚠️ AND IT IS BEHIND A PROFILE so `docker compose up -d` never starts it; `run` of a profiled service does.
+  # The two values are `deploy/box.env`'s, where the measurement that chose them is written. Empty → 0 →
+  # compose drops the key (measured: `docker compose config` prints no `cpus`), i.e. NO ceiling, and the birth
+  # says so out loud before step 9.
+  birth-worker:
+    extends:
+      service: kernel
+    image: ${FORGE_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
+    profiles: ['birth']
+    restart: 'no'
+    cpus: ${FORGE_BIRTH_CPUS:-0}
+    cpu_shares: ${FORGE_BIRTH_CPU_SHARES:-0}
+
   storefront:
     image: ${FORGE_STOREFRONT_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
