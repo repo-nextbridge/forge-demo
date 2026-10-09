@@ -54,6 +54,11 @@
 # what `--again` costs. It is not a wipe (every step converges), but it is not nothing either: the settings,
 # the assortments and the promotions this repository declares are re-applied over whatever the live box has
 # since become.
+#
+# ⚠️ THE TOKEN IS ONLY WHERE THE QUESTION STARTS (v032/E). A teardown keeps `.secrets` and a deploy recreates an
+# empty `pgdata`, so neither is the state; what is refused is a box whose DIRECTORY claims a face it declares
+# (`bin/born-here.mjs`). ⇒ The rebirth from zero is ONE sequence with no `--again`:
+#     bash bin/box-down.sh --env stag && bash bin/deploy.sh stag --birth
 
 set -uo pipefail
 
@@ -432,14 +437,39 @@ if remote_secret_has "$(secret_name_for "$(echo "$TENANTS" | head -1)" seed)"; t
   # and not defaulted here. It is the name the volumes carry, so a second author of it would ask about a
   # volume that does not exist and read every torn-down box as a rebirth, which is the failure inverted.
   if "${REMOTE_SSH[@]}" "docker volume inspect $(basename "$FORGE_DEPLOY_DIR")_pgdata" </dev/null >/dev/null 2>&1; then
-    [ "$AGAIN" = 1 ] || die "${FORGE_DEPLOY_HOST} HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE — its .secrets carries the
-     operator token step 3 files, and its pgdata volume is there. Every step below converges rather than
-     wipes, so this is not a request to confirm a deletion. What it IS: the settings, the assortments, the
-     promotions and the freight this repository DECLARES get re-applied over whatever the live box has since
-     become, and \`seed-history\` will either rebuild the past or say it is SKIPPING one that is already
-     there. On a box somebody is using, that is a decision.
-       bash bin/birth-remote.sh ${ENV_NAME} --again"
-    note '⚠️ --again: this box has been born before AND still holds its state; this run re-applies what the repository declares over it.'
+    # ⛔⛔ v032/E · AND THE VOLUME IS NOT THE STATE EITHER — MEASURED ON THE REHEARSAL OF 2026-10-09. The rebirth
+    # from zero is `box-down.sh --env` → `deploy.sh` → this script, and the gesture in the middle runs `docker
+    # compose up` + `migrate`, which CREATES `pgdata` again, empty (`[migrate] tenants: none registered yet`).
+    # Asked only «is the volume there», this refused that rebirth and sent the operator to `--again` with a
+    # sentence about a LIVE box that was false. ⇒ The volume is now only the cheap half: when it is there, the
+    # DIRECTORY is asked whether any face this box declares is claimed — which is what step 3 and step 6b
+    # write, so a claim is a birth and no claim is a database nothing was born on. `bin/born-here.mjs` carries
+    # the reasoning; `bin/birth-remote.guard.mjs` proves all three answers. ⛔ «Could not ask» REFUSES.
+    BORN_HERE_RC=0
+    printf '%s\n' "$FACES" | node "$HERE/bin/born-here.mjs" --api "$FORGE_PUBLIC_ORIGIN" || BORN_HERE_RC=$?
+    case "$BORN_HERE_RC" in
+      0)
+        note '⚠️ this box carries secrets from an earlier birth and a pgdata volume, but its directory claims NONE of'
+        note '   the faces it declares — the volume is the empty one a deploy creates (compose up + migrate), not'
+        note '   a shop. Read as a REBIRTH, not a convergence: there is no live box to re-apply anything over.' ;;
+      1)
+        [ "$AGAIN" = 1 ] || die "${FORGE_DEPLOY_HOST} HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE — its .secrets carries the
+     operator token step 3 files, and its directory claims the face(s) named above, which only a birth
+     writes. Every step below converges rather than wipes, so this is not a request to confirm a deletion.
+     What it IS: the settings, the assortments, the promotions and the freight this repository DECLARES get
+     re-applied over whatever the live box has since become, and \`seed-history\` will either rebuild the
+     past or say it is SKIPPING one that is already there. On a box somebody is using, that is a decision.
+     To start from zero instead: bash bin/box-down.sh --env ${ENV_NAME} && bash bin/deploy.sh ${ENV_NAME} --birth
+     To converge over it:       bash bin/birth-remote.sh ${ENV_NAME} --again"
+        note '⚠️ --again: this box has been born before AND still holds its state; this run re-applies what the repository declares over it.' ;;
+      *)
+        [ "$AGAIN" = 1 ] || die "${FORGE_DEPLOY_HOST} HAS BEEN BORN BEFORE AND ITS STATE COULD NOT BE ASKED — its .secrets carries
+     the operator token step 3 files and its pgdata volume is there, and the directory at
+     ${FORGE_PUBLIC_ORIGIN} did not answer the question above. Not knowing is not «empty»: a birth over a
+     live box re-applies everything this repository declares. Bring the box up (\`bash bin/deploy.sh ${ENV_NAME}\`)
+     and run this again, or, knowing what it costs: bash bin/birth-remote.sh ${ENV_NAME} --again"
+        note '⚠️ --again: whether this box holds a birth could not be asked; this run re-applies what the repository declares over whatever it holds.' ;;
+    esac
   else
     note "⚠️ this box carries secrets from an earlier birth but its state volume is GONE — it was torn down."
     note '   Read as a REBIRTH, not a convergence: there is no live box to re-apply anything over. The'
