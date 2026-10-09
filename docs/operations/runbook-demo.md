@@ -71,6 +71,7 @@ esta tabela não a inventa, ela a espelha.
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
 | 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
 | 6 | **reset + reseed** | a bancada **ou** a VM | bancada: `bin/box-down.sh` + `bin/box-up.sh` — §5 · VM: `bash bin/box-down.sh --env <env> && bash bin/deploy.sh <env> --birth` — §2.3 |
+| 6b | **voltar ao ouro** (sem reseed) | a VM | `bash bin/demo-reset.sh <env>` — §2.4 (o ouro: `--take-gold`, de uma caixa provada) |
 | 7 | o **ciclo agendado** é configurado | a máquina | §5.1 e `docs/operations/reset-cycle.md` |
 
 > ⏳ O degrau que faltava caía **entre o 3 e o 5** — veja o bloco acima. Uma metade é o passo 4b (o deploy);
@@ -158,6 +159,53 @@ postura nova: é o que `--api` sempre quis dizer — e é por isso que **a caixa
 ⛔ **Um passo que falha INTERROMPE o nascimento.** Não há "avisa e segue": a caixa não é entregue
 meio-semeada. Medido na primeira corrida contra o stag — o passo 5 recusou e a corrida parou ali, sem migrar
 nada além do que já estava feito.
+
+### 2.4 ★★★ VOLTAR AO OURO — o reset por restore, em minutos e não em 80 (stress/g)
+
+O admin da Demo é **público**: qualquer visitante suja ou quebra a loja. Renascer do zero (§2.3) custa
+**80–89 min** (ensaios D e E de 09/10, 51–59 deles o seed). Restaurar põe de volta os bytes que o seed levou
+aquela hora para escrever.
+
+```bash
+bash bin/demo-reset.sh stag --take-gold   # PROVA a caixa (prove-shop + --data-only) e SÓ ENTÃO tira o ouro + cópia fora dela
+bash bin/demo-reset.sh stag --plan        # o que o reset recusaria, destruiria e rodaria — não toca em nada
+bash bin/demo-reset.sh stag               # volta ao ouro, depois prove-shop + --data-only + --verdict-only
+```
+
+**Dois arquivos, de propósito.** `bin/snapshot.sh` é o **mecanismo genérico** (`take` · `restore` · `list` ·
+`pull` · `push`, bancada ou `--env`): não supõe que o dado seja descartável, porque é o modelo do backup e da
+recuperação de desastre do produto para clientes — lá, restaurar é recuperar, não resetar.
+`bin/demo-reset.sh` é a **política da Demo**: só tira ouro de caixa provada, e depois de restaurar roda os
+vereditos.
+
+⛔ **O ouro é o PAR, não o dump.** O nascimento cunha fora do banco o que o banco referencia: tokens no
+`.secrets` (operator, admin-service, platform, bulk-read, chaves do `/enter`) e os ids `sto_…` + o mapa
+host → loja no `.env`. Medido na prova local de 09/10: restaurar **só o dump** depois de um renascimento deu
+**89 tabelas iguais ao ouro e 401 no token da caixa** — verde nas contagens, ninguém entra. Os nomes do par
+são **lidos do próprio nascimento** (`remote_env_put` / `remote_secret_put`), nunca digitados;
+`forge-vault-key` vai junto porque o banco guarda cifrado com ela. Identidade (R2, OAuth, SMTP) **não entra**.
+
+**O que o restore faz, em ordem** (cabeçalho de `bin/snapshot.sh`): **julga** (ouro existe · bate com o
+`SHA256SUMS` · carrega o par · nenhuma migração dele é desconhecida do kernel) — qualquer recusa para AQUI, sem
+tocar em nada → `box-down` (o mesmo autor do que é estado) → `pg_restore` + volumes arquivados → **conta todas
+as tabelas e compara com o ouro** → o par de volta, nome a nome → `migrate` → a pilha **recriada** e saudável.
+
+| armadilha | o que foi medido | o que a ferramenta faz |
+|---|---|---|
+| Redis | `packages/db/src/cache.ts:1-4` (produto): «speed, never truth», TTL de 1 h | descartado (estado do `box-down`), re-deriva do banco |
+| cache das vitrines | nenhum front monta volume gravável nem tem `cacheHandler`; render plantado em 3 fronts → 0 depois do restore; `restart` simples o manteve | o `down` + `--force-recreate` mata o que `seed/purge.mjs` purga **e** o que ele não alcança (café, checkout) |
+| mídia no R2 | o conector só assina `GET`/`HEAD`/`PUT` (`apps/api/src/storage-connector.ts:25-27,352`, produto); o seed faz `HEAD` e só `PUT` o que falta; `box-down` só mexe em volumes | **nada apaga objeto do bucket** — o ouro vale enquanto o bucket existir |
+| versão | as migrações do kernel lidas **da imagem** que a caixa roda | ouro mais NOVO que o kernel é **recusado**; mais velho → `migrate` aplica o que falta |
+
+⚠️ **Imagem apagada pelo admin público:** o admin solta a linha/referência; o objeto **fica** no R2 (ninguém
+assina `DELETE`). O restore traz a linha de volta e a foto volta a abrir. Upload feito por visitante vira
+objeto órfão no bucket (chave nova, nunca sobrescreve) — lixo, não quebra.
+
+**Onde o ouro mora:** na caixa (`/opt/forge-demo/gold/<label>/`, modo 700 — `deploy.sh` entrega por `tar -x`
+e `box-down` só mexe em volume, nenhum dos dois o alcança) **e** no laptop do operador
+(`~/.forge-gold/<env>/<label>/`, conferido contra o `SHA256SUMS` na chegada). ⛔ **Não no R2:** o bucket é
+servido publicamente pelo domínio de mídia, e o ouro carrega tokens e a vault key **em claro**. Disco da caixa
+morto → `bash bin/snapshot.sh push --env stag` devolve o ouro e o restore segue.
 
 ### 2.1 ★★ Como a Demo assa — do release, no CI dela, sem checkout do produto (v032/C)
 

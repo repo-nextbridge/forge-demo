@@ -47,3 +47,8 @@ postmortem/
 # whole transcript lands here — kernel addresses, hostnames and the tail of a seed included. Never committed,
 # for the same reason `postmortem/` is not.
 cycle-logs/
+
+# ★ THE GOLD (bin/snapshot.sh) — a database dump plus the tokens and store ids the birth minted, IN CLEAR.
+# On a bench it lands here, beside the box it was taken from; it is never committed, for the reason
+# `.secrets` is not.
+gold/

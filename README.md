@@ -39,7 +39,9 @@ docs/operations/       how this box is OPERATED. `runbook-demo.md` is the online
                        deploy order, what to fill in, the weekly reset. This README is the BENCH; that is
                        the box anyone can reach.
 bin/                   bake (+ bake-local) · lock-gate · pack-apps · images-from-lock ·
-                       verify-composition · deploy · seed
+                       verify-composition · deploy · seed · snapshot (the GENERIC take/restore of a box:
+                       dump + what the birth minted outside it) · demo-reset (the DEMO's policy over it —
+                       docs/operations/runbook-demo.md §2.4)
 caddy/                 Caddyfile (the real edge) and Caddyfile.local (the bench edge), plus ONE extension
                        folder per edge — `extra/` (site blocks, read by Caddyfile) and `extra-local/`
                        (fragments, read by Caddyfile.local). Sharing one folder killed the production
