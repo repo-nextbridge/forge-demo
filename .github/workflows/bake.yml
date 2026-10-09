@@ -26,9 +26,20 @@
 
 name: bake
 
+# ★ v032/E — A PUSH THAT ONLY CHANGES WHAT THE BAKE WRITES, OR WHAT A HUMAN READS, DOES NOT BAKE. Measured
+# 2026-10-09: the adoption PR #21 changed `forge.lock` alone and re-baked all six images for nothing. The lock
+# is the bake's OUTPUT (bin/bake.sh --lock); `docs/` and the root README are read by people and enter no
+# build context (bin/bake.sh reads composition.json, instanceApps sources, storefront-coffee/, totem/,
+# package.json). ⚠️ Deliberately NOT `**/*.md`: an app's README sits inside `apps/<app>/`, which is copied into
+# the build context, so it IS an input. A push that mixes an ignored path with any other still bakes, and
+# `workflow_dispatch` bakes on demand whatever changed.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - forge.lock
+      - docs/**
+      - README.md
   workflow_dispatch:
 
 concurrency:
