@@ -7,6 +7,7 @@
 #   bash bin/birth-remote.sh stag --again        a box that has ALREADY been born here — see THE REFUSAL
 #   bash bin/birth-remote.sh stag --warm-only    ONLY step 14, on a deployed box already standing (§0w)
 #   bash bin/birth-remote.sh stag --verdict-only ONLY steps 14-bis and 15, on a box already standing (§0v)
+#   bash bin/birth-remote.sh stag --data-only    ONLY step 12 (the verdict over the DATA), on a box already standing (§0d)
 #   bash bin/birth-remote.sh stag --blocks-only  ONLY this box's own blocks (seed --phase demo-setup), on a box already standing (§0b)
 #
 # ── ⛔⛔ WHAT THIS IS, AND WHAT `bin/deploy.sh` IS NOT ──────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ STEPS_RAN=''
 PLANNED_SKIPS=''
 
 # ── THE ARGUMENTS ──────────────────────────────────────────────────────────────────────────────────────────
-USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again] [--warm-only] [--verdict-only] [--blocks-only]'
+USAGE='usage: bash bin/birth-remote.sh <env> [--no-warm] [--plan] [--again] [--warm-only] [--verdict-only] [--data-only] [--blocks-only]'
 ENV_NAME=''
 WARM=1
 PLAN_ONLY=0
@@ -127,7 +128,8 @@ while [ $# -gt 0 ]; do
     --warm-only)    MODE=warm ;;
     --verdict-only) MODE=verdict ;;
     --blocks-only)  MODE=blocks ;;
-    -h|--help) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --data-only)    MODE=data ;;
+    -h|--help) sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) printf '%s unknown option "%s".\n  %s\n' "$TAG" "$1" "$USAGE" >&2; exit 1 ;;
     *)
       [ -z "$ENV_NAME" ] || { printf '%s two environments named ("%s" and "%s"). One birth, one box.\n' "$TAG" "$ENV_NAME" "$1" >&2; exit 1; }
@@ -248,13 +250,26 @@ admin_origin_of() { # <tenant>  → https://<that tenant's admin face>
 # ⛔ THEY SET THE SAME VARIABLES THE BIRTH'S CLOSING BLOCK READS, and that is deliberate: the modes below and
 # the birth grade through ONE set of names, so a sentence can never mean one thing in a birth and another in
 # a cycle. `bin/box-cycle.guard.mjs` pins those sentences across the fence.
+# ★★ v032/F — THE WARMER IS HANDED THE BOX'S OWN `.env`, because without `--env` it reads THIS CLONE's, and
+# the clone a birth is normally run from has none. Measured on the 09/10 rebirth of stag: forgecafe closed
+# «not warm» on `<clone>/.env could not be read (ENOENT)` — the run could not know which store the box serves
+# at the root, so it could not call itself warm. ⚠️ NOT `deploy/<env>.env`: that file states FORGE_PUBLIC_ORIGIN
+# but not FORGE_STORE_HOSTS — the store ids in that map are minted by THIS birth (steps 3b and 6b) and live only
+# in the box's `.env`. So the answer is fetched from the box, exactly as step 15 fetches it, and removed after.
+# Undo it and every remote warm is «not warm» again on a clean clone, whatever the box really serves.
 warm_every_tenant() {
-  local t tokvar tokval
+  local t tokvar tokval boxenv
+  if ! boxenv="$(fetch_box_env)"; then
+    # Named as the BOX's path, which no local read can open: the warmer then says «could not be read» about the
+    # file it really needed, instead of quietly grading this laptop's declaration.
+    boxenv="${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR}/.env"
+    note "⚠️ the box’s own .env could not be read, so the warming cannot know which store it serves at the root."
+  fi
   for t in $TENANTS; do
     tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
     eval "tokval=\${$tokvar:-}"
     FORGE_OPERATOR_TOKEN="$tokval" FORGE_REVALIDATE_SECRET="$BOX_REVALIDATE" \
-      node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"
+      node "$HERE/bin/warm-box.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN" --env "$boxenv"
     case $? in
       0) ;;
       2) WARM_UNKNOWN="$WARM_UNKNOWN $t" ;;
@@ -262,6 +277,7 @@ warm_every_tenant() {
       *) COLD="$COLD $t" ;;
     esac
   done
+  [ ! -f "$boxenv" ] || rm -f "$boxenv"
 }
 prove_every_tenant() {
   local t tokvar tokval
@@ -279,15 +295,52 @@ prove_every_tenant() {
 # ⚠️ AND IT IS ASKED OF THE BOX'S OWN `.env`, fetched for the length of this call — the file on this laptop
 # describes the bench, and grading a deployed box against a bench's declaration answers a question nobody
 # asked. The copy is removed on the way out, in the same function that made it.
+# `fetch_box_env` prints the path of a local copy of the box's `.env` (the caller removes it), or fails and
+# leaves nothing behind. One author for the two readers: step 14 (the root store) and step 15 (the config).
+fetch_box_env() {
+  local copy; copy="$(mktemp)"
+  if "${REMOTE_SSH[@]}" "cat $(printf '%q' "$REMOTE_BOX_DIR/.env")" </dev/null > "$copy" 2>/dev/null; then
+    printf '%s' "$copy"
+    return 0
+  fi
+  rm -f "$copy"
+  return 1
+}
 verify_the_configuration() {
-  local boxenv; boxenv="$(mktemp)"
-  if "${REMOTE_SSH[@]}" "cat $(printf '%q' "$REMOTE_BOX_DIR/.env")" </dev/null > "$boxenv" 2>/dev/null; then
+  local boxenv
+  if boxenv="$(fetch_box_env)"; then
     node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" --env "$boxenv" || MISCONFIGURED=1
+    rm -f "$boxenv"
   else
     MISCONFIGURED=1
     note '⛔ the box’s own .env could not be read, so the configuration was NOT graded.'
   fi
-  rm -f "$boxenv"
+}
+
+# ★★ v032/F — STEP 12's LOOP, A FUNCTION FOR THE SAME REASON AS THE OTHERS: `--data-only` (§0d) asks it again of
+# a standing box, and a second copy would drift on the day a verifier is added. It sets `UNSETTLED`, the name
+# the birth's closing block already reads.
+verify_the_data() {
+  local t tokvar tokval
+  for t in $TENANTS; do
+    tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
+    eval "tokval=\${$tokvar:-}"
+    if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+      note "$t settled"
+    else
+      UNSETTLED="$UNSETTLED $t"
+      note "⛔ $t did NOT settle — the ✗ lines above say which check."
+    fi
+    # ★ v031/G — AND THE CONTENT. The seven checks that asserted THIS demo's content lived in the product until
+    # v0.3.1 (`*.demo.test.ts`); they ask the dataset this repository tracks AND this box now. Same token, same
+    # tenant, same exit-code policy: a ✗ leaves the tenant UNSETTLED and the run ends non-zero naming it.
+    if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-content.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
+      note "$t content is what seed/dataset declares"
+    else
+      case " $UNSETTLED " in *" $t "*) ;; *) UNSETTLED="$UNSETTLED $t" ;; esac
+      note "⛔ $t's CONTENT is not what seed/dataset declares — the ✗ lines above name the check (bin/verify-content.mjs)."
+    fi
+  done
 }
 
 # ── 0t · ⛔⛔ WHERE THE CREDENTIAL COMES FROM WHEN NOTHING WAS MINTED ───────────────────────────────────────
@@ -393,6 +446,32 @@ if [ "$MODE" = verdict ]; then
   [ -z "$MISCONFIGURED" ] || printf '\n%s ⛔ THE CONFIGURATION IS NOT WHAT THIS BOX DECLARES. Asked AGAIN, of the box as it stands.\n\n' "$TAG" >&2
   if [ -n "$SHUT" ] || [ -n "$DOORS_UNKNOWN" ] || [ -n "$MISCONFIGURED" ]; then exit 1; fi
   note 'both questions of the birth were asked again here and both answered ✓.'
+  exit 0
+fi
+
+# ── 0d · ★★ v032/F · `--data-only` · STEP 12 ALONE, ASKED AGAIN OF A STANDING BOX ──────────────────────────
+#
+# ★ WHY A MODE OF ITS OWN AND NOT A THIRD QUESTION IN `--verdict-only`: that mode is gesture 5 of the scheduled
+# cycle (`bin/box-cycle.sh`), its bench twin is `bin/box-up.sh --verdict-only`, and `bin/box-cycle.guard.mjs`
+# pins both as «the birth's two questions». Growing one side alone would make the same sentence mean two
+# things across the fence, and would change what wakes somebody up on a schedule — a decision this slice was
+# not asked to take. What WAS asked (09/10): re-asking step 12 of a born box after a fix to the verifier,
+# without a rebirth (~2h) and without touching anything. Both verifiers only READ, so this mode writes nothing.
+#
+# ⚠️ IT RUNS THIS CHECKOUT'S verifiers against the box: a fix to `bin/verify-content.mjs` is judged the moment
+# it is checked out here — which is the point — and the box needs no deploy for it.
+if [ "$MODE" = data ]; then
+  note "${ENV_NAME} · ${REMOTE_BOX_TARGET}:${REMOTE_BOX_DIR} · ${FORGE_PUBLIC_ORIGIN}"
+  load_operator_tokens
+  UNSETTLED=''
+  say 'the data · step 12 (verify-seed + verify-content), once per tenant, asked again of the box as it stands'
+  note 'this is step 12 and nothing else — nothing is built, nothing is warmed, no door is opened.'
+  verify_the_data
+  if [ -n "$UNSETTLED" ]; then
+    printf '\n%s ⛔ THE BOX IS UP AND%s DID NOT SETTLE. Asked AGAIN, of the box as it stands — the ✗ lines above name the check.\n\n' "$TAG" "$UNSETTLED" >&2
+    exit 1
+  fi
+  note 'step 12 was asked again here and every tenant answered ✓.'
   exit 0
 fi
 
@@ -1179,25 +1258,8 @@ done
 # did not settle. The exit code is collected and spent at the very end.
 say '12 · the verdict over the DATA (verify-seed + verify-content), once per tenant'
 UNSETTLED=''
-for t in $TENANTS; do
-  tokvar="$(secret_name_for "$t" seed | tr 'a-z-' 'A-Z_')"
-  eval "tokval=\${$tokvar:-}"
-  if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-seed.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
-    note "$t settled"
-  else
-    UNSETTLED="$UNSETTLED $t"
-    note "⛔ $t did NOT settle — the ✗ lines above say which check."
-  fi
-  # ★ v031/G — AND THE CONTENT. The seven checks that asserted THIS demo's content lived in the product until
-  # v0.3.1 (`*.demo.test.ts`); they ask the dataset this repository tracks AND this box now. Same token, same
-  # tenant, same exit-code policy: a ✗ leaves the tenant UNSETTLED and the run ends non-zero naming it.
-  if FORGE_OPERATOR_TOKEN="$tokval" node "$HERE/bin/verify-content.mjs" --tenant "$t" --api "$FORGE_PUBLIC_ORIGIN"; then
-    note "$t content is what seed/dataset declares"
-  else
-    case " $UNSETTLED " in *" $t "*) ;; *) UNSETTLED="$UNSETTLED $t" ;; esac
-    note "⛔ $t's CONTENT is not what seed/dataset declares — the ✗ lines above name the check (bin/verify-content.mjs)."
-  fi
-done
+# ★ THE LOOP ITSELF IS `verify_the_data`, DEFINED IN §0f — one copy, two callers (this step and `--data-only`).
+verify_the_data
 
 # ── 13 · WHAT ONLY EXISTS ONLINE — and it runs AFTER the rebirth, on purpose ──────────────────────────────
 # ⚠️ MEASURED 2026-09-16, AND IT CORRECTS AN ASSUMPTION: this step is NOT automatically "real" on a VM. Each

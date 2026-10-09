@@ -1122,3 +1122,102 @@ test('★ --blocks-only runs `seed.mjs --phase demo-setup` once per tenant, with
     p.cleanup();
   }
 });
+
+// ── ★★★ v032/F — THE REMOTE WARM ASKS THE BOX'S `.env`, AND STEP 12 CAN BE ASKED AGAIN ALONE ────────────────────
+// Measured on the 09/10 rebirth of stag: step 14 closed forgecafe «not warm» on `<clone>/.env could not be read
+// (ENOENT)` — `bin/warm-box.mjs` defaults to THIS clone's `.env`, and the clone a birth runs from has none. Held
+// here over the probe tree WITH ITS `.env` DELETED (the laptop's normal state), through `--warm-only`, which
+// drives the same `warm_every_tenant` step 14 drives. The stand-in warmer answers the one question that line
+// was about — «which store does this box serve at the root?» — with the REAL `bin/box-env.mjs`, reading the file
+// it was handed, or (no `--env`) the clone's own `.env`, which is `bin/warm-box.mjs`'s default.
+
+/** The far side answers a `.secrets` read with a (fictional) token named after the secret. */
+function withTokens(p) {
+  cpSync(join(p.dir, 'stub', 'ssh'), join(p.dir, 'stub', 'ssh.probe'));
+  writeFileSync(
+    join(p.dir, 'stub', 'ssh'),
+    '#!/usr/bin/env bash\ncmd="${@: -1}"\n' +
+      'if [[ "$cmd" == *".secrets"* && "$cmd" == "sed -n"* ]]; then\n' +
+      '  printf "%s\\n" "$cmd" >> "$PROBE_LOG"\n' +
+      '  name="$(printf "%s" "$cmd" | grep -o "forge-operator-token[a-z0-9-]*" | head -1)"\n' +
+      '  [ -n "$name" ] && printf "fake_%s\\n" "$name"\n  exit 0\nfi\n' +
+      `exec ${JSON.stringify(join(p.dir, 'stub', 'ssh.probe'))} "$@"\n`,
+    { mode: 0o755 },
+  );
+}
+
+/** A stand-in for a `bin/*.mjs` that records its argv, its token, and (optionally) an extra JSON field. */
+function recorder(p, name, extra = 'null', exitFor = '0') {
+  const at = join(p.dir, `${name}.calls.log`);
+  writeFileSync(
+    join(p.dir, 'bin', name),
+    "import { appendFileSync } from 'node:fs';\n" +
+      "import { join, dirname } from 'node:path';\nimport { fileURLToPath } from 'node:url';\n" +
+      "const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');\n" +
+      "const argOf = (n) => { const i = process.argv.indexOf(n); return i > -1 ? process.argv[i + 1] : undefined; };\n" +
+      `const extra = await (async () => { ${extra} })();\n` +
+      `appendFileSync(${JSON.stringify(at)}, JSON.stringify({ argv: process.argv.slice(2), token: process.env.FORGE_OPERATOR_TOKEN ?? '', extra }) + '\\n');\n` +
+      `process.exit(${exitFor});\n`,
+  );
+  return () => (existsSync(at) ? readFileSync(at, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+}
+
+test('★★★ v032/F — the remote warm, run from a clone with NO .env, is handed the BOX’s declaration and learns its root store', () => {
+  const p = scratch({ born: true });
+  try {
+    withTokens(p);
+    rmSync(join(p.dir, '.env'));
+    // The box's own `.env` as a birth leaves it: deploy/<env>.env's origin + the map steps 3b/6b wrote.
+    writeFileSync(p.boxEnv, `${p.boxState()}FORGE_PUBLIC_ORIGIN=https://probe.example\n`);
+    cpSync(join(ROOT, 'bin', 'box-env.mjs'), join(p.dir, 'bin', 'box-env.mjs'));
+    const calls = recorder(
+      p,
+      'warm-box.mjs',
+      // ⚠️ THE SAME DEFAULT AS bin/warm-box.mjs (`argOf('--env') ?? join(ROOT, '.env')`), and the same reader.
+      "const { readDeclaration, storeAtRoot } = await import(join(ROOT, 'bin', 'box-env.mjs'));\n" +
+        "const path = argOf('--env') ?? join(ROOT, '.env');\n" +
+        "try { const d = readDeclaration(path); return { root: storeAtRoot(d, new URL(d.FORGE_PUBLIC_ORIGIN).host) }; }\n" +
+        'catch (e) { return { error: e.code ?? e.message }; }',
+    );
+    const r = p.run('birth-remote.sh', ['probe', '--warm-only']);
+    assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+    const got = calls();
+    assert.equal(got.length, PROBE_BOX.tenants.length, `the warmer ran ${got.length} time(s):\n${r.stderr}`);
+    for (const c of got) {
+      assert.ok(c.argv.includes('--env'), `the warmer was not handed a declaration (${c.argv.join(' ')}), so it read the clone's own .env`);
+      assert.deepEqual(c.extra, { root: 'sto_01LIVEROOT' }, `the warmer could not learn the root store: ${JSON.stringify(c.extra)}`);
+    }
+    // ⟂ and the copy of the box's `.env` (it carries secrets) does not outlive the step.
+    for (const c of got) assert.ok(!existsSync(c.argv[c.argv.indexOf('--env') + 1]), 'the local copy of the box .env was left behind');
+  } finally {
+    p.cleanup();
+  }
+});
+
+test('★★ v032/F — `--data-only` asks step 12 alone, per tenant with its OWN token, and its red reaches the exit code', () => {
+  for (const red of [false, true]) {
+    const p = scratch({ born: true });
+    try {
+      withTokens(p);
+      const seed = recorder(p, 'verify-seed.mjs');
+      const content = recorder(p, 'verify-content.mjs', 'null', red ? "argOf('--tenant') === 'probecafe' ? 1 : 0" : '0');
+      const others = ['warm-box.mjs', 'prove-doors.mjs', 'verify-config.mjs', 'seed.mjs'].map((f) => [f, recorder(p, f)]);
+      const r = p.run('birth-remote.sh', ['probe', '--data-only']);
+      const tenants = PROBE_BOX.tenants.map((t) => t.id);
+      for (const calls of [seed(), content()]) {
+        assert.deepEqual(calls.map((c) => c.argv[c.argv.indexOf('--tenant') + 1]), tenants, `${r.stdout}\n${r.stderr}`);
+        for (const c of calls) assert.equal(c.token, `fake_forge-operator-token${c.argv.includes('probeco') ? '' : '-probecafe'}`, 'a tenant was asked with another tenant’s credential');
+      }
+      for (const [f, calls] of others) assert.deepEqual(calls(), [], `--data-only reached ${f}`);
+      for (const gesture of SEEDING) assert.ok(!p.read().includes(gesture), `--data-only reached ${gesture} on the far side`);
+      if (red) {
+        assert.equal(r.status, 1, `a content ✗ did not reach the exit code:\n${r.stderr}`);
+        assert.match(r.stderr, /THE BOX IS UP AND probecafe DID NOT SETTLE/);
+      } else {
+        assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
+      }
+    } finally {
+      p.cleanup();
+    }
+  }
+});

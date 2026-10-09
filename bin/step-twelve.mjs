@@ -9,13 +9,24 @@
 
 import { execFileSync } from 'node:child_process';
 
+// ★ v032/F — THE LOOP MAY LIVE IN A FUNCTION. `bin/birth-remote.sh` moved it into `verify_the_data` so that
+// `--data-only` drives the same copy; when the script defines one, its definition is cut too and placed BEFORE
+// the step, so what runs is still exactly what the script would run. `bin/box-up.sh` keeps it inline.
+const FUNCTION = 'verify_the_data';
+function definitionOf(script, name) {
+  const at = script.search(new RegExp(`^${name}\\(\\) \\{`, 'm'));
+  if (at < 0) return '';
+  const end = script.indexOf('\n}\n', at);
+  if (end < 0) throw new Error(`${name} never closes`);
+  return `${script.slice(at, end)}\n}\n`;
+}
+
 export function stepTwelveOf(script) {
   const at = script.search(/^say '12 ·/m);
   if (at < 0) throw new Error('the script no longer says step 12');
   const end = script.indexOf('\n# ── 13', at);
   if (end < 0) throw new Error('step 12 has no `# ── 13` banner after it to end the cut');
-  return script
-    .slice(at, end)
+  return `${definitionOf(script, FUNCTION)}${script.slice(at, end)}`
     .split('\n')
     .filter((line) => !/^\s*#/.test(line))
     .join('\n');

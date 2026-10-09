@@ -108,6 +108,7 @@ bash bin/birth-remote.sh stag --plan      # o roteiro dos passos; não toca na c
 bash bin/birth-remote.sh stag             # nasce
 bash bin/birth-remote.sh stag --no-warm   # o mesmo sem o passo 14 (aquecer é RELATO, nunca portão)
 bash bin/birth-remote.sh stag --again     # convergir sobre uma caixa que GUARDA um nascimento — leia a recusa antes
+bash bin/birth-remote.sh stag --data-only # só o passo 12 (verify-seed + verify-content) numa caixa de pé; só lê
 bash bin/deploy.sh stag --birth           # entrega, sobe E nasce, num gesto só
 ```
 
