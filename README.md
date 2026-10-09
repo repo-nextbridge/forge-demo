@@ -1864,6 +1864,7 @@ bash bin/birth-remote.sh stag --plan      # the roteiro of the steps; touches no
 bash bin/birth-remote.sh stag             # be born
 bash bin/birth-remote.sh stag --no-warm   # the same without step 14 (warmth REPORTS, it never grades)
 bash bin/birth-remote.sh stag --again     # converge over a box that HOLDS a birth — read the refusal first
+bash bin/birth-remote.sh stag --data-only # step 12 alone (verify-seed + verify-content) on a box already standing; reads only
 bash bin/deploy.sh stag --birth           # deliver, bring up AND be born, in one gesture
 
 # ★ REBORN FROM ZERO — one sequence, and no `--again` in it:

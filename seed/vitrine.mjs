@@ -512,7 +512,7 @@ async function seedPromotions(port, store, dir) {
     log('vitrine — the dataset declares no promotions.json; nothing priced.');
     return;
   }
-  const chosen = selectPromotions(JSON.parse(readFileSync(path, 'utf8')), data.promotions.apply, fail);
+  const chosen = appliedPromotions(JSON.parse(readFileSync(path, 'utf8')), fail);
 
   const products = new Map();
   const productOf = async (handle) => {
@@ -586,6 +586,20 @@ async function seedPromotions(port, store, dir) {
     `vitrine — promotions: ${created} created, ${already} already there, ` +
       `${Object.keys(data.promotions._excluded).length} of the bench left out by name (seed/vitrine.json)`,
   );
+}
+
+/**
+ * ★ v032/F — THE SCENARIOS THIS INSTANCE APPLIES, with ONE author for the two readers that need the answer:
+ * `seedPromotions` above (what gets created) and `bin/verify-content.mjs` (what step 12 asks the box to hold).
+ *
+ * ⚠️ WHY THE VERDICT IMPORTS THIS INSTEAD OF READING `promotions.json`: on 09/10 two rebirths of the staging
+ * box ended RED on «every promotion scenario is on the box — absent: PROMO-01A…, … (12)». The box was right:
+ * the window applies the four `seed/vitrine.json → promotions.apply` names, and the check counted the sixteen
+ * the dataset DECLARES. A copied list in the verifier would drift the same way the other direction, so the
+ * verifier asks this function. Undo it and step 12 is red on every correct birth again.
+ */
+export function appliedPromotions(declared, fail) {
+  return selectPromotions(declared, data.promotions.apply, fail);
 }
 
 /**

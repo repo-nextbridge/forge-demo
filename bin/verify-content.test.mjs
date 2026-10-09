@@ -16,6 +16,7 @@
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -318,6 +319,52 @@ test('SABOTAGE 6b · seed-curation-inventory — the QA draft is PUBLISHED on th
   const box = bornBox();
   box.pages.find((p) => p.slug === DS.storefront.qa_draft_page.slug).published = true;
   await onlyRed(box, DS, 'seed-curation-inventory');
+});
+
+// ── ★★★ v032/F — THE BOX IS ASKED FOR THE PROMOTIONS THE WINDOW APPLIES, NOT THE SIXTEEN THE DATASET DECLARES ──
+// Measured 09/10: two rebirths of the staging box ended red on «every promotion scenario is on the box —
+// absent: PROMO-01A…, … (12)», and the box was right — `seed/vitrine.mjs` creates only the subset
+// `seed/vitrine.json → promotions.apply` names. `bornBox` above fabricates all sixteen, which is why the suite
+// never saw it. The subset here is read off `seed/vitrine.json` by THIS file, not through the verifier's import,
+// so a verifier that went back to the sixteen (or to a typed list) disagrees with it.
+const APPLIED = JSON.parse(readFileSync(join(HERE, '..', 'seed', 'vitrine.json'), 'utf8')).promotions.apply;
+/** The box a correct birth leaves: only the scenarios the window applies. */
+const windowBox = () => {
+  const box = bornBox();
+  box.promotions = box.promotions.filter((p) => APPLIED.includes(p.name));
+  return box;
+};
+
+test('★★★ v032/F — a box holding ONLY what the window applies is green, end to end through the CLI', async () => {
+  assert.ok(APPLIED.length > 0 && APPLIED.length < DS.promotions.length, `the premise moved: the window applies ${APPLIED.length} of ${DS.promotions.length}`);
+  const box = windowBox();
+  assert.equal(box.promotions.length, APPLIED.length, 'the fabricated box does not hold the applied subset');
+  const face = await serve(box);
+  try {
+    const { code, out } = await cli(face.api);
+    assert.match(out, /✓ every promotion scenario the window applies is on the box/, out);
+    assert.match(out, new RegExp(`${APPLIED.length} of ${DS.promotions.length} scenario\\(s\\)`), out);
+    assert.equal(code, 0, out);
+  } finally {
+    face.close();
+  }
+});
+
+test('SABOTAGE 6c · seed-curation-inventory — ONE scenario the window applies is missing from the box', async () => {
+  const box = windowBox();
+  const lost = APPLIED[APPLIED.length - 1];
+  box.promotions = box.promotions.filter((p) => p.name !== lost);
+  const r = await onlyRed(box, DS, 'seed-curation-inventory');
+  assert.match(JSON.stringify(r.lines), new RegExp(`absent: ${lost}`));
+});
+
+test('SABOTAGE 6d · seed-curation-inventory — the window applies a name the dataset no longer declares', async () => {
+  // The seed refuses this loudly (`selectPromotions`); the verdict must not turn it into a shorter, greener list.
+  const ds = clone(DS);
+  const lost = APPLIED[0];
+  ds.promotions = ds.promotions.filter((p) => p.name !== lost);
+  const r = await onlyRed(windowBox(), ds, 'seed-curation-inventory');
+  assert.match(JSON.stringify(r.lines), new RegExp(`threw: .*no longer declares: ${lost}`));
 });
 
 test('SABOTAGE 7 · admin-widget-order — the install order decided the board (subscriptions on top)', async () => {
