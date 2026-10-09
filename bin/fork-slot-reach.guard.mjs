@@ -372,7 +372,7 @@ test('★★★ every block of this box is placed in a slot the shop’s OWN fro
     t.skip(
       `NOT CHECKED — ${findings.map((f) => `${f.target} @ ${f.at}`).join(', ')} is not drawn by the fork, and ` +
         `whether another deployable draws it is unknown here (${ELSEWHERE.tried.join(' · ')}). Set ` +
-        'FORGE_MONOREPO=<a Forge clone at the pinned commit>.',
+        'node bin/release-tree.mjs names what this machine lacks to read the release.',
     );
     return;
   }

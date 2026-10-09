@@ -5,29 +5,28 @@
 # the Forge storefront and this repository owns every line of it), so it is not one of the four images
 # `forge.lock` pins. Whoever creates a deployable wires it.
 #
-# ⚠️ IT IS BUILT, NOT PINNED, AND THAT IS THE WHOLE DIFFERENCE BETWEEN THE TWO KINDS OF FRONT HERE.
-# `storefront`, `checkout`, `admin` and `kernel` are the PRODUCT: pinned by digest, upgraded by re-stamping
-# the lock, never patched locally. This one is OURS — its source is in this repo, it has no upstream, and
-# `forge.lock` has nothing to say about it. Pinning it would be claiming a provenance it does not have.
+# ★★ v032/C — THEY ARE PINNED NOW, LIKE THE FOUR. Until v0.3.2 these two travelled by a `:local` tag and
+# `forge.lock` said nothing about them, because the script that wrote the lock (`bin/build-local.sh`) rebuilt
+# it from a fixed four-image template and would have deleted a fifth key. That script is gone: `bin/bake.sh`
+# bakes all SIX images in one gesture (in this repository's CI, `.github/workflows/bake.yml`) and writes all
+# six into the lock by digest — `{ ref, origin: "own build", built_from: <release> }`, the same vocabulary as
+# the four (spec v032, decision 7). A tag nobody pins was measured shipping an 18-hour-old front on
+# 2026-09-18 (bin/deploy.sh, `ship_image`); a digest cannot.
 #
-# ── BEFORE `docker compose up`, THE IMAGE HAS TO EXIST ───────────────────────────────────────────────────
-# The Dockerfile is thin ON PURPOSE (it copies a build instead of running one), so the build happens outside:
+# What stays different is only what they ARE: the four are the product's recipe baked with this box's list,
+# these two are OURS — source in this repository, no upstream, never merged.
 #
-#     bash bin/vendor-packages.sh ~/nextbridge/projetos/forge   # once, and again when the monorepo moves
-#     bash bin/install-storefront.sh
-#     cd storefront-coffee && FORGE_BUILD_STANDALONE=1 npm run build && cd ..
-#     docker compose build storefront-coffee
+# ── WHERE THE IMAGE COMES FROM ───────────────────────────────────────────────────────────────────────────
+#     source bin/images-from-lock.sh      # exports FORGE_STOREFRONT_COFFEE_IMAGE and FORGE_TOTEM_IMAGE too
 #
-# The build that ships is the build that was tested, byte for byte — not a second one that ran in a layer.
+# A bench bakes its own with `bash bin/bake-local.sh` (same recipe, refs that never leave this daemon). The
+# Dockerfile is thin ON PURPOSE (it copies the build `bin/bake.sh` ran), so the build that ships is the build
+# that was tested, byte for byte — not a second one that ran in a layer.
 
 services:
   storefront-coffee:
-    # ★ NAMED EXPLICITLY, so the image `bin/build-coffee.sh` produces and the one compose starts are the same
-    # thing under the same tag. Without it compose invents a project-scoped name, and the build script would
-    # have to guess it — a guess that breaks the day somebody runs compose with `-p`.
-    image: forge-demo-storefront-coffee:local
-    build:
-      context: ./storefront-coffee
+    # ★ BY DIGEST, FROM THE LOCK — the same door as the four images in compose.yml.
+    image: ${FORGE_STOREFRONT_COFFEE_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
       # ⚠️ F11 (2ª vez, 04/09) — o fork aquece pelas MESMAS rotas; sem isto ele resolve a origem
@@ -98,32 +97,15 @@ services:
   #
   # "Nem toda experiência extra é fork — pode ser uma imagem A MAIS." Today a totem; tomorrow an internal app.
   #
-  # ── ⚠️ IT IS NOT IN `forge.lock`, AND THE REASON IS A FACT ABOUT THAT FILE, NOT AN ANALOGY ───────────────
+  # ── ★ v032/C — IT IS IN `forge.lock` NOW (key `totem`), by digest, like the vitrine above. ──────────────
   #
-  # The vitrine above is absent from the lock because it is ours and has no upstream, and all of that is true
-  # of the totem too. But there is a second reason, and it is the one that settles it: `bin/build-local.sh`
-  # REWRITES `forge.lock` from scratch (`jq -n`, from a fixed four-image template). A `totem` key written
-  # there by hand is deleted, silently, by the next oven run — so the lock cannot hold the claim even if we
-  # wanted it to. A lock that carries an assertion its own generator discards is not provenance; it is a
-  # comment with an expiry date.
-  #
-  # So the answer is written HERE, where it is executed, and `totem/src/lock-provenance.test.ts` fails if
-  # anybody ever puts it in the lock without changing this paragraph first.
-  #
-  # (This makes the architect's spec line "forge.lock ganha a 6ª imagem" false. Recorded, and carried back to
-  # the architect by the tech lead — this repository does not edit somebody else's spec.)
-  #
-  # ── BEFORE `docker compose up`, THE IMAGE HAS TO EXIST ───────────────────────────────────────────────────
-  #
-  #     bash bin/build-totem.sh ~/nextbridge/projetos/wt-v03/t-forno
-  #
-  # Same thin-Dockerfile bargain as the vitrine: the build that ships is the build that was tested.
+  # It used to be absent for a reason about the FILE, not an analogy: `bin/build-local.sh` rewrote the lock
+  # from a fixed four-image template and would have deleted a `totem` key in silence. `bin/bake.sh` writes all
+  # six, so the reason is gone and so is the absence (spec v032, decision 7). `totem/src/lock-provenance.test.ts`
+  # holds the new shape: the lock pins it, and this service reads it from there.
   totem:
-    # ★ NAMED EXPLICITLY, so the image `bin/build-totem.sh` produces and the one compose starts are the same
-    # thing under the same tag — and so a `-p` on the command line cannot make compose invent another name.
-    image: forge-demo-totem:local
-    build:
-      context: ./totem
+    # ★ BY DIGEST, FROM THE LOCK — the same door as the four images in compose.yml.
+    image: ${FORGE_TOTEM_IMAGE:?run `source bin/images-from-lock.sh` first — the image ref comes from forge.lock}
     restart: unless-stopped
     environment:
       NODE_ENV: production

@@ -25,7 +25,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { candidates, pinDiagnosis, releaseTree } from './release-tree.mjs';
+import { BENCH_OVERRIDE, candidates, pinDiagnosis, releaseTree } from './release-tree.mjs';
 
 const git = (cwd, ...args) =>
   execFileSync('git', ['-c', 'user.email=a@b.c', '-c', 'user.name=fixture', ...args], {
@@ -69,8 +69,8 @@ test('★ the environment is an ARGUMENT — the tree a child would find, asked 
   const fixture = clone();
   try {
     assert.ok(
-      candidates({ FORGE_MONOREPO: fixture.main }).includes(fixture.main),
-      'the first door of the search is no longer the FORGE_MONOREPO of the environment it was handed',
+      candidates({ [BENCH_OVERRIDE]: fixture.main }).includes(fixture.main),
+      'the first door of the search is no longer the bench override of the environment it was handed',
     );
     assert.ok(
       !candidates({}).includes(fixture.main),
@@ -84,7 +84,7 @@ test('★ the environment is an ARGUMENT — the tree a child would find, asked 
 test('★★ a CLEAN tree at the pinned commit is the answer, and it says so', () => {
   const fixture = clone();
   try {
-    const found = releaseTree(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const found = releaseTree(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     assert.equal(found.path, fixture.main, `the tree at the pinned commit was not found: ${found.tried?.join('; ')}`);
     assert.equal(found.clean, true, found.how);
     assert.match(found.how, /checked out here/);
@@ -99,7 +99,7 @@ test('★★★ a DIRTY tree loses to a clean one at the SAME commit — the pk3
     const sibling = fixture.sibling();
     fixture.dirty(fixture.main);
 
-    const found = releaseTree(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const found = releaseTree(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     assert.equal(
       found.path,
       sibling,
@@ -116,7 +116,7 @@ test('★★ a dirty tree is still an ANSWER when it is the only one — and it 
   const fixture = clone();
   try {
     fixture.dirty(fixture.main);
-    const found = releaseTree(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const found = releaseTree(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     // ⛔ NOT a refusal: a machine whose only checkout is being edited must still be able to grade, or every
     // guard in bin/ goes NOT CHECKED the moment somebody opens the monorepo next door.
     assert.equal(found.path, fixture.main, `the only tree at the pinned commit was refused: ${found.tried?.join('; ')}`);
@@ -131,7 +131,7 @@ test('★ no tree at the commit is NOT CHECKED material — the list of what was
   const fixture = clone();
   try {
     const nowhere = { ref: 'nowhere/none@0123456789abcdef0123456789abcdef01234567', sha: '0123456789abcdef0123456789abcdef01234567' };
-    const found = releaseTree(nowhere, { FORGE_MONOREPO: fixture.main });
+    const found = releaseTree(nowhere, { [BENCH_OVERRIDE]: fixture.main });
     assert.equal(found.path, undefined, 'a tree claimed to be at a commit no clone on this machine has');
     assert.ok(Array.isArray(found.tried) && found.tried.length > 0, 'it came back with no tree AND no reasons');
     assert.ok(
@@ -175,7 +175,7 @@ function aged(commitsAfter) {
 test('★★★ the pin is an ANCESTOR of the tree next door — that is a LOCK THAT AGED, and it is counted', () => {
   const fixture = aged(3);
   try {
-    const verdict = pinDiagnosis(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const verdict = pinDiagnosis(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     assert.equal(
       verdict.kind,
       'lock-behind',
@@ -198,11 +198,11 @@ test('★★★ a commit NO clone holds is the grave one, and it says so in diff
   const fixture = aged(1);
   try {
     const nowhere = { ref: 'nowhere/none@0123456789abcdef0123456789abcdef01234567', sha: '0123456789abcdef0123456789abcdef01234567' };
-    const verdict = pinDiagnosis(nowhere, { FORGE_MONOREPO: fixture.main });
+    const verdict = pinDiagnosis(nowhere, { [BENCH_OVERRIDE]: fixture.main });
     assert.equal(verdict.kind, 'pin-unreachable', verdict.sentence);
     assert.match(verdict.sentence, /NO CLONE ON THIS MACHINE HOLDS/, verdict.sentence);
     // ⚠️ AND THE TWO ARE NOT THE SAME STRING — the whole slice is that a reader can tell them apart.
-    const agedVerdict = pinDiagnosis(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const agedVerdict = pinDiagnosis(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     assert.notEqual(agedVerdict.sentence, verdict.sentence, 'the two states still produce one sentence');
     assert.notEqual(agedVerdict.kind, verdict.kind);
   } finally {
@@ -213,7 +213,7 @@ test('★★★ a commit NO clone holds is the grave one, and it says so in diff
 test('★★ the verdict rides the list every caller already prints — no call site had to be edited', () => {
   const fixture = aged(2);
   try {
-    const found = releaseTree(fixture.pinned, { FORGE_MONOREPO: fixture.main });
+    const found = releaseTree(fixture.pinned, { [BENCH_OVERRIDE]: fixture.main });
     // The fixture's HEAD is 2 commits past the pin, so there is no tree at it — the shape this is about.
     assert.equal(found.path, undefined, `a tree at the pin was claimed: ${found.path}`);
     assert.equal(found.diagnosis?.kind, 'lock-behind', JSON.stringify(found.diagnosis));
@@ -227,5 +227,71 @@ test('★★ the verdict rides the list every caller already prints — no call 
     for (const line of found.tried) assert.match(line, /—/, `"${line}" carries no reason`);
   } finally {
     fixture.close();
+  }
+});
+
+// ── ★★ v032/C — A LOCK THAT PINS A RELEASE, AND THE TREE CUT OUT OF ITS OVEN ────────────────────────────────
+//
+// From v0.3.2 `forge.lock` pins a TAG and the tree comes out of that release's oven (`ovenTree`, docker). What
+// is held here without docker: the bench override accepts a CUT only when the cut says it is the pinned
+// release (its `.forge-release-tree.json`), a cut of another release is refused naming both, and a file read
+// of a DIRECTORY answers in the `git show <rev>:<dir>` shape `bin/app-manifest.mjs#templatesOf` parses.
+
+/** A fake cut: the mark `ovenTree` writes, plus one template directory and one file. */
+function fakeCut(release) {
+  const dir = mkdtempSync(join(tmpdir(), 'release-cut-'));
+  writeFileSync(join(dir, '.forge-release-tree.json'), JSON.stringify({ release, oven: 'fixture', image: 'sha256:fixture' }));
+  mkdirSync(join(dir, 'apps', 'probe', 'src', 'templates', 'home'), { recursive: true });
+  writeFileSync(join(dir, 'apps', 'probe', 'src', 'templates', 'registry.ts'), '// fixture\n');
+  return dir;
+}
+/** An environment whose oven cannot answer, so only the override can: no image by this name exists. */
+const noOven = (override) => ({ [BENCH_OVERRIDE]: override, FORGE_OVEN_IMAGE: 'v032-c-no-such-oven:none' });
+const release = (tag) => ({ ref: tag, sha: tag, release: tag });
+
+test('★★ a cut of the PINNED release under the bench override is the tree, and says how it was found', () => {
+  const cut = fakeCut('v9.9.9');
+  try {
+    const found = releaseTree(release('v9.9.9'), noOven(cut));
+    assert.equal(found.path, cut, `the cut was not taken: ${JSON.stringify(found.tried)}`);
+    assert.match(found.how, /a cut of the v9\.9\.9 oven/);
+  } finally {
+    rmSync(cut, { recursive: true, force: true });
+  }
+});
+
+test('★★★ SABOTAGE — a cut of ANOTHER release is refused, naming both, and the verdict is the release one', () => {
+  const cut = fakeCut('v9.9.8');
+  try {
+    const found = releaseTree(release('v9.9.9'), noOven(cut));
+    assert.equal(found.path, undefined, `a cut of v9.9.8 was graded as v9.9.9`);
+    assert.ok(found.tried.some((line) => /a cut of the v9\.9\.8 oven, not of v9\.9\.9/.test(line)), found.tried.join('\n'));
+    assert.equal(found.diagnosis.kind, 'release-unreachable');
+  } finally {
+    rmSync(cut, { recursive: true, force: true });
+  }
+});
+
+test('★ a directory read from the release answers in the `git show <rev>:<dir>` shape', async () => {
+  const cut = fakeCut('v9.9.9');
+  const before = process.env[BENCH_OVERRIDE];
+  const oven = process.env.FORGE_OVEN_IMAGE;
+  process.env[BENCH_OVERRIDE] = cut;
+  process.env.FORGE_OVEN_IMAGE = 'v032-c-no-such-oven:none';
+  try {
+    const { fileAtPinned } = await import('./release-tree.mjs');
+    const found = fileAtPinned(release('v9.9.9'), 'apps/probe/src/templates');
+    assert.ok(found.text, JSON.stringify(found.tried));
+    const lines = found.text.split('\n');
+    assert.equal(lines[0], 'tree v9.9.9:apps/probe/src/templates');
+    assert.equal(lines[1], '');
+    assert.ok(lines.includes('home/'), 'a directory is not listed with its trailing slash');
+    assert.ok(lines.includes('registry.ts'), 'a file is not listed');
+  } finally {
+    if (before === undefined) delete process.env[BENCH_OVERRIDE];
+    else process.env[BENCH_OVERRIDE] = before;
+    if (oven === undefined) delete process.env.FORGE_OVEN_IMAGE;
+    else process.env.FORGE_OVEN_IMAGE = oven;
+    rmSync(cut, { recursive: true, force: true });
   }
 });

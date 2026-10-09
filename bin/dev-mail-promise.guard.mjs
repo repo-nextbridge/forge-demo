@@ -37,7 +37,7 @@ const ENV_SOURCE = join(ROOT, 'env-source.sh');
  * a machine without a checkout is a guard people learn to ignore.
  *
  * ⛔ pk35/D6 — AND IT IS THE PINNED COMMIT, NOT "a Forge checkout". Until 2026-09-14 this took the first
- * directory that happened to hold the file, out of `FORGE_MONOREPO` and two hard-coded neighbours, and never
+ * directory that happened to hold the file, out of the bench override and two hard-coded neighbours, and never
  * asked which commit it was — so the PREMISE of this whole file could be graded against a driver these
  * images were never built from, and a stale worktree would have said the gate below was gone. `fileAtPinned`
  * reads the blob AT the commit `forge.lock` names, from any clone that has fetched it. */
@@ -64,7 +64,7 @@ test('★ the PREMISE holds — the terminal mail transport is still gated on !p
   if (found.tried) {
     t.skip(
       `NOT CHECKED — cannot read ${DRIVER} at ${pinnedCommit()?.ref ?? 'the pinned commit'} ` +
-        `(tried: ${found.tried.join(' · ')}). Set FORGE_MONOREPO=<a Forge clone that has fetched it>.`,
+        `(tried: ${found.tried.join(' · ')}). Run node bin/release-tree.mjs — it names what this machine lacks to read the release.`,
     );
     return;
   }

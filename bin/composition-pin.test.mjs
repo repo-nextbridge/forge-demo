@@ -2,7 +2,7 @@
 // CANNOT. It is not allowed to grade against whatever Forge tree was lying around.
 //
 // ⛔ THE DEFECT, MEASURED 2026-09-14 ON THIS BRANCH, BEFORE THE FIX. `bin/composition.guard.mjs` accepted the
-// FIRST directory holding `extensions/composition.base.json` — `FORGE_MONOREPO` or one of three hard-coded
+// FIRST directory holding `extensions/composition.base.json` — the bench override (`BENCH_OVERRIDE`) or one of three hard-coded
 // neighbours — and never asked which COMMIT it was. Pointed at `wt-v03/d2-onda1` (pk3/integra, hundreds of
 // commits behind the pinned `v03/integra@e8fc602d4`) it reported, confidently and in the guard's own words:
 //
@@ -31,7 +31,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-import { pinnedCommit, releaseTree } from './release-tree.mjs';
+import { BENCH_OVERRIDE, pinnedCommit, releaseTree } from './release-tree.mjs';
 
 const run = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -43,19 +43,19 @@ const PINNED = pinnedCommit();
  * will that child find?" can be asked from this process with the same answer.
  *
  * ⛔ THE DEFECT THIS SHAPE ENDS, measured 2026-09-14. This file used to point the child at a fixture and then
- * resolve the expected tree out of ITS OWN `process.env`. With `FORGE_MONOREPO` exported in the shell the two
- * disagreed by construction: the parent saw the release, the child — whose `FORGE_MONOREPO` is the fixture —
+ * resolve the expected tree out of ITS OWN `process.env`. With the bench override (`BENCH_OVERRIDE`) exported in the shell the two
+ * disagreed by construction: the parent saw the release, the child — whose the bench override (`BENCH_OVERRIDE`) is the fixture —
  * correctly said NOT CHECKED, and the test called that a failure of the guard. A test whose verdict depends on
  * which variables the caller happened to export is measuring the shell.
  */
 const childEnv = (forge) => {
-  const env = { ...process.env, FORGE_MONOREPO: forge };
+  const env = { ...process.env, [BENCH_OVERRIDE]: forge };
   delete env.NODE_TEST_CONTEXT;
   return env;
 };
 
 /**
- * Run the composition guard with `FORGE_MONOREPO` pointed somewhere, and hand back everything it said.
+ * Run the composition guard with the bench override (`BENCH_OVERRIDE`) pointed somewhere, and hand back everything it said.
  *
  * ⚠️ `node <file>` AND NOT `node --test <file>`: a `node:test` file executed from inside a `node --test` run
  * answers `run() is being called recursively within a test file. skipping running files.` and grades NOTHING
@@ -132,7 +132,7 @@ test('★★★ a tree that is NOT the pinned release is never the tree this box
     // skipped past), and a developer who does not gets NOT CHECKED with the pin named. The failure mode this
     // file exists for — a verdict off the impostor — is refused above in both.
     //
-    // ★ ASKED IN THE CHILD'S ENVIRONMENT, NEVER IN THIS ONE — see `childEnv`. The child's `FORGE_MONOREPO` is
+    // ★ ASKED IN THE CHILD'S ENVIRONMENT, NEVER IN THIS ONE — see `childEnv`. The child's the bench override (`BENCH_OVERRIDE`) is
     // the impostor, so the only release it can reach is one of the neighbouring layouts; resolving that from
     // this process's own variables would demand of the child a tree the child was never told about.
     const here = releaseTree(PINNED, childEnv(fake.dir));

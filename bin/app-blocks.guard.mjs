@@ -23,7 +23,7 @@
 // A machine with no clone that holds the pinned commit gets NOT CHECKED, by name. Never a silent green.
 //
 //   node --test bin/app-blocks.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/app-blocks.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/app-blocks.guard.mjs   (a bench without gh/registry access)
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -96,7 +96,7 @@ test('★★★ every block of the fixture is where the PINNED manifest places i
   if (unreadable.length > 0) {
     t.skip(
       `NOT CHECKED — ${unreadable.map(([id, f]) => `${id}: ${f.tried.join('; ')}`).join(' | ')} ` +
-        '(set FORGE_MONOREPO=<a Forge clone that has fetched the pinned commit>)',
+        '(run node bin/release-tree.mjs — it names what this machine lacks to read the release)',
     );
     return;
   }
@@ -231,7 +231,7 @@ test('★★★ the board fixture answers to the DATASET when it declares, to th
   if (unreadable.length > 0) {
     t.skip(
       `NOT CHECKED — ${unreadable.map(([id, f]) => `${id}: ${f.tried.join('; ')}`).join(' | ')} ` +
-        '(set FORGE_MONOREPO=<a Forge clone that has fetched the pinned commit>)',
+        '(run node bin/release-tree.mjs — it names what this machine lacks to read the release)',
     );
     return;
   }

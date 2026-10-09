@@ -54,19 +54,18 @@
 // the storefront) and no CI crosses them. A renamed member is the dangerous one: `=== 'no'` would simply stop
 // matching, every test here would stay green, and the defect would be back on the box.
 //
-//   FORGE_MONOREPO=<a Forge checkout> node --test bin/pos-after-payment.guard.mjs   ← grades the two halves
-//
-// It is OPT-IN rather than searched for on purpose: the pinned tree this box's other guards use
-// (`bin/release-tree.mjs`) is the commit the images were BAKED from, which may predate the product half — and
-// a check against "whatever tree was lying around" is not a measurement.
-//
-//   node --test bin/pos-after-payment.guard.mjs        (or: bash bin/test.sh)
+// ★ v032/C — GRADED AGAINST THE PINNED RELEASE, ALWAYS. This rule used to be OPT-IN (a checkout named by
+// hand), because the only tree the other guards could find was the commit the images were baked from, which
+// could predate the product half. From v0.3.2 the pin IS a release and its tree comes out of that release's
+// oven (`bin/release-tree.mjs`): the product half this box runs is exactly the one read here, and a machine
+// that cannot read it says NOT CHECKED with the reason.
 
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { pinnedCommit, releaseTree } from './release-tree.mjs';
 import { afterPaymentNotice } from '../apps/payment-pos/after-payment-notice.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -202,16 +201,18 @@ test('⛔ and the counter’s sentence is UNCHANGED — the copy was never the d
 
 // ── 3. the other repository, when the operator names it ─────────────────────────────────────────────────
 
-test('★★ the product half declares the field and the members this app reads (FORGE_MONOREPO=<checkout>)', (t) => {
-  const forge = process.env.FORGE_MONOREPO;
-  const registry = forge && join(forge, 'apps/checkout/src/lib/payment-blocks/registry.tsx');
-  if (!registry || !existsSync(registry)) {
+test('★★ the product half declares the field and the members this app reads, at the pinned release', (t) => {
+  const pinned = pinnedCommit();
+  const tree = pinned ? releaseTree(pinned) : { tried: ['forge.lock pins nothing'] };
+  const registry = tree.path && join(tree.path, 'apps/checkout/src/lib/payment-blocks/registry.tsx');
+  if (!registry) {
     t.skip(
-      'NOT CHECKED — no FORGE_MONOREPO. The field name and its three members are declared in BOTH ' +
-        'repositories and no CI crosses them: `FORGE_MONOREPO=~/path/to/forge bash bin/test.sh` grades it.',
+      `NOT CHECKED — the release tree of ${pinned?.ref ?? '<no pin>'} is not readable here (${tree.tried.join(' · ')}). ` +
+        'The field name and its three members are declared in BOTH repositories and only this rule crosses them.',
     );
     return;
   }
+  assert.ok(existsSync(registry), `${registry} is not in the ${pinned.ref} tree — this check has lost its subject.`);
   const source = readFileSync(registry, 'utf8');
   const props = source.match(/export type AfterPaymentProps = \{[\s\S]*?\n\};/)?.[0];
   assert.ok(props, `${registry} no longer declares AfterPaymentProps — this check has lost its subject.`);

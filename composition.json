@@ -34,8 +34,8 @@
     "★★ `apps` AND `instanceApps` ARE TWO DIFFERENT QUESTIONS AND THE SPLIT IS THE WHOLE POINT. `apps` names",
     "what the PLATFORM offers and this box chose, and every entry is an app the pinned release",
     "carries. `instanceApps` names what THIS REPOSITORY WROTE — code no release of ours has",
-    "ever seen — and it reaches the bake by being copied into the build context (`bin/build-local.sh` stages",
-    "it; the oven adopts it with --instance-apps).",
+    "ever seen — and it reaches the bake as the oven's `apps` build context (`bin/bake.sh` copies",
+    "`instanceApps[].source` there; the oven adopts each app).",
     "",
     "⚠️ AN INSTANCE APP IS ADOPTED, NEVER COMPOSED, AND PUTTING ONE ON `apps` IS A RED BUILD. The oven",
     "refuses the collision by name — `<package> would land on extensions/<id>, which this release already",
@@ -61,9 +61,15 @@
     "reasoned: with the Seeder still excused, `box-up` step 9 refused with «this image carries no \"demo-data\" app,",
     "so there is nothing here that knows how to seed» and the box could not be born. The copy of this list in the",
     "monorepo (`infra/fleet/lists/demo-instance.json`, retired by v031/G) moved in the same hour — nothing kept the two in",
-    "step, which is why both edits are named here."
+    "step, which is why both edits are named here.",
+    "",
+    "★ v032/C — `\"axis\": \"instance\"` IS DECLARED HERE, IN THE LIST. From v0.3.2 the oven reads the axis from the list",
+    "(`image = release × list`, one input) and refuses a list that carries `instanceApps` without saying it, naming the",
+    "key. Until then `bin/build-local.sh` passed `FORGE_COMPOSITION_AXIS=instance` on the command line; that script is",
+    "gone, and `bin/bake.sh` hands THIS file to the oven as is — no generated copy, no second list."
   ],
   "version": 1,
+  "axis": "instance",
   "apps": [
     {
       "id": "banners",

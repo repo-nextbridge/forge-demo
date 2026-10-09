@@ -58,6 +58,7 @@ ENV_NAME=''
 PLAN=no
 BIRTH=no
 BIRTH_ARGS=()
+ALLOW_LOCAL=no
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan) PLAN=yes ;;
@@ -76,6 +77,8 @@ while [ $# -gt 0 ]; do
     # asked, so it refuses below when `--birth` was not given.
     --no-warm) BIRTH_ARGS+=(--no-warm) ;;
     --again)   BIRTH_ARGS+=(--again) ;;
+    # ★ v032/C — the lock gate's bench switch (bin/lock-gate.sh). Refused for stag/prod by the gate itself.
+    --allow-local) ALLOW_LOCAL=yes ;;
     -h|--help)
       sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
@@ -128,29 +131,36 @@ REHEARSAL=''
 
 note "${REHEARSAL}${ENV_NAME} · ${SSH_TARGET}:${FORGE_DEPLOY_DIR} · ${FORGE_PUBLIC_ORIGIN}"
 
+# ── 0 · THE LOCK GATE ───────────────────────────────────────────────────────────────────────────────────────
+say '0 · the lock: can anybody but this machine run it?'
+
+# ★★ v032/C — DECISION 9, AS A MECHANISM. A lock baked on a bench (`bin/bake-local.sh`, or any lock before
+# v0.3.2 with `provenance.origin: "local build"`) names images by the baking daemon's ids. It is refused for
+# stag and prod before the fence, the host or a single byte is touched; `--allow-local` exists for a bench
+# environment only and the gate prints why it let one through. bin/lock-gate.sh is the rule, once.
+# shellcheck source=bin/lock-gate.sh
+. "$HERE/bin/lock-gate.sh"
+lock_gate "$HERE/forge.lock" "$ENV_NAME" "$ALLOW_LOCAL" \
+  || die "forge.lock cannot go to ${ENV_NAME} — the gate above names every image and why. Nothing was sent."
+
 # ── 1 · THE FENCE ───────────────────────────────────────────────────────────────────────────────────────────
 say '1 · the fence: does every surface this box pins carry the apps this box declares?'
 
 # ★★ THE RESOLUTION ORDER IS DECLARED, AND ITS ABSENCE IS A REFUSAL RATHER THAN A SKIP.
 #
-# The binary travels in `@forgeco/surface-codegen`, the package a cut of a Forge front already installs
-# (`storefront-coffee/node_modules/.bin/`) — so in the finished world this resolves with nothing configured.
-# ⚠️ IT DOES NOT RESOLVE THERE TODAY, MEASURED 2026-09-16: the tarballs in `storefront-coffee/vendor/` were
-# vendored at 10:57 that morning, before the slice that added this binary reached the product, so the package
-# on disk declares one bin (`forge-surface-codegen`) and not two. Re-vendoring is not free — it moves the
-# integrity hashes in both forks' committed locks and obliges a rebuild of both images — so until the next
-# time those forks are re-vendored, `FORGE_PROVENANCE_BIN` is how this box reaches it, exactly the way
-# `bin/build-local.sh` and `bin/vendor-packages.sh` are handed a monorepo checkout in this same pre-release
-# moment.
+# The binary travels in `@forgeco/surface-codegen`. ★ v032/C — this repository installs it at the release
+# (`package.json` at the root, `npm ci`), so it resolves from `node_modules/.bin/` with nothing configured —
+# the default spec v032 item 11 asks for. The forks install the same package and are kept as fallbacks;
+# `FORGE_PROVENANCE_BIN` stays an override for a bench that wants another build of it.
 #
 # ⛔ AND THERE IS NO `--no-fence`. A guard with a switch is a guard that is off on the day it matters; the
 # refusal below names every place it looked and the one gesture that fixes each.
 provenance_bin=''
 for candidate in \
   "${FORGE_PROVENANCE_BIN:-}" \
+  "$HERE/node_modules/.bin/forge-lock-provenance" \
   "$HERE/storefront-coffee/node_modules/.bin/forge-lock-provenance" \
-  "$HERE/totem/node_modules/.bin/forge-lock-provenance" \
-  "$HERE/node_modules/.bin/forge-lock-provenance"
+  "$HERE/totem/node_modules/.bin/forge-lock-provenance"
 do
   [ -n "$candidate" ] || continue
   [ -x "$candidate" ] || [ -f "$candidate" ] || continue
@@ -162,13 +172,11 @@ done
      ungraded deploy is how a front reaches a box without the apps it is supposed to draw.
      Looked, in order:
        \$FORGE_PROVENANCE_BIN                                       ${FORGE_PROVENANCE_BIN:-<unset>}
+       node_modules/.bin/forge-lock-provenance                      (this repository's tools, at the release)
        storefront-coffee/node_modules/.bin/forge-lock-provenance    (the kit a forked front installs)
        totem/node_modules/.bin/forge-lock-provenance
-       node_modules/.bin/forge-lock-provenance
-     Either re-vendor the forks from a Forge checkout that carries it —
-       bash bin/vendor-packages.sh <forge checkout> storefront-coffee && bash bin/install-storefront.sh storefront-coffee
-     — or point at the built binary directly:
-       FORGE_PROVENANCE_BIN=<forge checkout>/packages/surface-codegen/dist/provenance-main.js bash bin/deploy.sh $ENV_NAME"
+     Install the release's tools at the root of this repository — they are pinned in package.json:
+       npm ci"
 
 note "fence     $provenance_bin"
 
@@ -200,12 +208,11 @@ say '2 · the pin: which images, by digest'
 # shellcheck disable=SC1091
 . "$HERE/bin/images-from-lock.sh" || die "forge.lock is not usable — the line above says why."
 
-# ★★ THE TWO DEPLOYABLES THAT ARE NOT IN THE LOCK, AND THE REASON IS IN `compose.override.yml`.
-# The coffee vitrine and the counter's totem are OURS: their source is in this repository, they have no
-# upstream, and `bin/build-local.sh` rewrites `forge.lock` from a fixed four-image template — so a key for
-# them there would be deleted by the next oven run. They travel by the tag their build scripts name.
-# ⚠️ WHICH MEANS THEY ARE NOT PINNED BY ANYTHING. Stated here rather than hidden: RESULTADOS-d1.md records it.
-FORK_IMAGES=(forge-demo-storefront-coffee:local forge-demo-totem:local)
+# ★★ v032/C — THE TWO DEPLOYABLES THIS REPOSITORY OWNS ARE IN THE LOCK NOW, by digest like the four:
+# `bin/images-from-lock.sh` exports them, and they ship by the same pull as everything else. They used to
+# travel by a `:local` tag that nothing pinned (and that `ship_image` had to compare by content after one
+# shipped 18 hours stale — measured 2026-09-18); `bin/bake.sh` writes all six, so that path is gone.
+FORK_IMAGES=("$FORGE_STOREFRONT_COFFEE_IMAGE" "$FORGE_TOTEM_IMAGE")
 
 # ── 3 · THE HOST ────────────────────────────────────────────────────────────────────────────────────────────
 say '3 · the host'
@@ -435,107 +442,58 @@ note "env       $(grep -cE '^[A-Z_]' "$assembled") keys"
 # ── 5 · THE IMAGES ──────────────────────────────────────────────────────────────────────────────────────────
 say '5 · the images'
 
-# ★★★ TWO TRANSPORTS, AND WHICH ONE IS USED IS DECIDED BY THE REF ITSELF — never by a flag.
+# ★★★ v032/C — ONE TRANSPORT: THE HOST PULLS (spec v032, item 11). Until v0.3.2 a ref with no registry was
+# carried over ssh (`docker save | docker load`), because the lock was a bench bake; and a tag-pinned fork was
+# compared by CONTENT, because a `:local` tag existed on the far side from the first deploy that sent it and
+# a freshly baked fork was silently never delivered (measured in production, 2026-09-18). Both paths ended
+# with their cause: every image is in the lock by REGISTRY digest (the lock gate, step 0, refuses anything
+# else for stag/prod), and a digest that resolves over there IS the bytes, by construction.
 #
-# A ref that names a REGISTRY HOST is pulled: that is the finished state, and it is what a customer does.
-# A ref that names none is an image that exists only in the daemon that built it — which is precisely what
-# `forge.lock`'s `provenance.origin: "local build"` says this instance is today — so it is carried over the
-# same ssh connection everything else travels on.
-#
-# ⚠️ AND THE DIGEST IS CHECKED ON BOTH ENDS, WHICH IS WHY SAVING BY TAG IS NOT A WEAKENING. MEASURED
-# 2026-09-16 against the staging VM: `docker save <name>@sha256:<digest>` loads as an UNTAGGED image and
-# `<name>@sha256:<digest>` then resolves to nothing on the far side — the repository name does not survive.
-# Saving the TAG does keep it, and the far side then resolves the digest ref exactly as the near side does.
-# So the tag is used only to FIND the bytes; what is asserted, here and there, is the digest the lock names.
-# A tag that pointed at other bytes fails the first check and the deploy stops before anything is sent.
+# ⚠️ THE PACKAGES MAY BE PRIVATE, and whether they are is the owner's call, not this script's. So the host
+# logs in to ghcr.io only when ITS secret store holds `GHCR_PULL_TOKEN` (and `GHCR_PULL_USER`) — read on the
+# host by the same accessor as every other secret, never sent from here, never printed. With no token the
+# pull is anonymous, which is all a public package needs.
+GHCR_LOGIN_DONE=no
+ghcr_login() {
+  [ "$GHCR_LOGIN_DONE" = no ] || return 0
+  GHCR_LOGIN_DONE=yes
+  local answer
+  answer="$("${SSH[@]}" "cd '${FORGE_DEPLOY_DIR}' && . ./env-source.sh >/dev/null 2>&1; \
+    t=\"\$(optional_secret GHCR_PULL_TOKEN)\"; u=\"\$(optional_secret GHCR_PULL_USER)\"; \
+    if [ -z \"\$t\" ]; then echo anonymous; \
+    elif [ -z \"\$u\" ]; then echo no-user; \
+    else printf '%s' \"\$t\" | docker login ghcr.io -u \"\$u\" --password-stdin >/dev/null 2>&1 && echo logged-in || echo refused; fi" 2>/dev/null || echo unreachable)"
+  case "$answer" in
+    anonymous) note 'ghcr      no GHCR_PULL_TOKEN on the host — pulling anonymously (a public package needs nothing)' ;;
+    logged-in) note 'ghcr      logged in on the host with its own GHCR_PULL_TOKEN (the value never left it)' ;;
+    no-user)   die "the host holds GHCR_PULL_TOKEN and no GHCR_PULL_USER — add both to ${FORGE_DEPLOY_DIR}/.secrets, or neither." ;;
+    *)         die "the host could not log in to ghcr.io with its GHCR_PULL_TOKEN ($answer). Nothing was pulled." ;;
+  esac
+}
+
 ship_image() { # <ref>
-  local ref="$1" leaf digest tag have local_id
+  local ref="$1"
   case "$ref" in
-    *@sha256:*) digest="${ref##*@}" ;;
-    *)          digest='' ;;
+    *@sha256:*) ;;
+    *) die "$ref is not pinned by digest — bin/images-from-lock.sh should have refused it." ;;
   esac
-  leaf="${ref%@*}"
-
-  # Does the far side already have it? A deploy that re-sent ~180 MB per image on every pin bump would make
-  # the cheap gesture the expensive one, and people would stop making it.
-  #
-  # ⛔⛔ AND "HAS IT" MEANS THE SAME BYTES, NOT THE SAME NAME — measured 2026-09-18, in production.
-  #
-  # For a DIGEST-pinned ref this was always true by construction: different bytes are a different digest, so
-  # `docker image inspect` simply does not find it and the image ships. The header above says exactly that,
-  # and it is right about the four images `forge.lock` pins.
-  #
-  # It was NOT true for the two FORK images. `storefront-coffee` and `totem` are pinned by TAG
-  # (`:local`), because they have no upstream and `forge.lock` has nothing true to say about them — that is
-  # `bin/build-coffee.sh`'s own decision and it is correct. But a tag exists on the far side from the FIRST
-  # deploy that ever sent it, so `inspect <tag>` answered yes forever after, and a freshly baked fork was
-  # silently never delivered. Measured: the demo's café and counter ran an 18-hour-old front while the two
-  # product-image storefronts carried the new one — half the box updated, no error, no line in the log.
-  #
-  # So a tag-only ref is compared by CONTENT. The far side's image id for that tag against this daemon's;
-  # equal means have, different means ship. One extra ssh round trip per tag-pinned image, and it closes a
-  # hole that only ever showed up as "the change did not take" long after the deploy said it was done.
   if "${SSH[@]}" "docker image inspect '$ref' >/dev/null 2>&1"; then
-    # A digest ref that resolves over there IS the bytes, by construction — nothing further to ask.
-    if [ -n "$digest" ]; then
-      note "have      $ref"
-      return 0
-    fi
-    # A TAG that resolves says only that the name exists. Ask both daemons what it points AT.
-    local there here
-    there="$("${SSH[@]}" "docker image inspect '$ref' --format '{{.Id}}' 2>/dev/null" </dev/null || true)"
-    here="$(docker image inspect "$ref" --format '{{.Id}}' 2>/dev/null || true)"
-    # ⚠️ AN UNREADABLE ID IS TREATED AS "HAVE", DELIBERATELY. If the far side resolved the tag but will not
-    # say what it points at, we know less than nothing new — and the old behaviour (trust the name) is the
-    # conservative one: shipping ~180 MB per image on every deploy because a daemon answered oddly would make
-    # the cheap gesture the expensive one, which is the failure this whole check exists to avoid.
-    if [ -z "$there" ] || [ "$there" = "$here" ]; then
-      note "have      $ref"
-      return 0
-    fi
-    note "stale     $ref on the host is $there, this daemon has $here — re-sending"
+    note "have      $ref"
+    return 0
   fi
-
-  # A registry in the ref means the host can fetch it itself, which is the finished shape.
-  case "$leaf" in
-    *.*/*|*:*/*|localhost/*)
-      note "pull      $ref"
-      "${SSH[@]}" "docker pull -q '$ref'" >/dev/null \
-        || die "the host could not pull $ref. If this registry is private, the box needs a read-only
-     credential for it (\`docker login\` on the host, once) — that is one of the two a deployed instance of
-     this repository is expected to hold."
-      return 0
-      ;;
-  esac
-
-  # No registry: carry it. Find the local TAG for this digest first, and refuse rather than guess.
-  if [ -n "$digest" ]; then
-    local_id="$(docker image inspect "$ref" --format '{{.Id}}' 2>/dev/null)" \
-      || die "$ref is not on this machine, and it names no registry for the host to fetch it from.
-     Bake it first: bash bin/build-local.sh <forge checkout>"
-    [ "$local_id" = "$digest" ] || die "$ref resolves locally to $local_id — the lock and this daemon disagree about what that
-     digest is. Nothing was sent."
-  fi
-  tag="$(docker image inspect "$ref" --format '{{if .RepoTags}}{{index .RepoTags 0}}{{end}}' 2>/dev/null)"
-  [ -n "$tag" ] || die "$ref is on this machine but carries no repository tag, so \`docker save\` would strip the name
-     it has to arrive under. Re-bake it: bash bin/build-local.sh <forge checkout>"
-
-  note "ship      $ref (as $tag)"
-  docker save "$tag" | "${SSH[@]}" 'docker load' >/dev/null \
-    || die "shipping $ref to the host failed."
-
-  # ⚠️ ASKED OF THE FAR SIDE, IN THE FORM COMPOSE WILL USE. The whole transport rests on the repository name
-  # surviving the round trip, and that is a property of the daemon rather than of this script.
-  "${SSH[@]}" "docker image inspect '$ref' >/dev/null 2>&1" \
-    || die "$ref arrived on the host and does not resolve there by digest. `docker load` kept the bytes and
-     lost the name — nothing further was done, and the box on that host is untouched."
+  lock_gate_has_registry "$ref" || die "$ref names no registry and the host does not hold it. A lock like this goes only to a
+     bench that already has the bytes (--allow-local); a box is fed by a bake that pushed."
+  case "$ref" in ghcr.io/*) ghcr_login ;; esac
+  note "pull      $ref"
+  "${SSH[@]}" "docker pull -q '$ref'" >/dev/null \
+    || die "the host could not pull $ref. If the package is private, the host needs GHCR_PULL_TOKEN and
+     GHCR_PULL_USER in its .secrets (a read-only token, once) — names only; this script never carries the value."
 }
 
 for ref in "$FORGE_IMAGE" "$FORGE_STOREFRONT_IMAGE" "$FORGE_CHECKOUT_IMAGE" "$FORGE_ADMIN_IMAGE"; do
   ship_image "$ref"
 done
-# The two this repository builds. They are needed only when the override is in play; shipping them anyway
-# costs one `docker image inspect` on a box that already has them and saves a second deploy on one that does not.
+# The two this repository owns — pinned in the same lock, pulled the same way.
 for ref in "${FORK_IMAGES[@]}"; do
   ship_image "$ref"
 done

@@ -219,7 +219,7 @@ afirma sobre o PEDIDO o que só sabe sobre SI.**
   cópia que o guard do monorepo não alcança um app da instância para cobrar.
 * `bin/instance-app.guard.mjs` — **quem roda as duas suítes acima**, e o compilador que nunca as tinha lido.
   Um app desta instância não chega ao forno sem ter sido compilado e testado: o guard deriva a lista de quem
-  declara `forge.origin: "instance"` (a mesma propriedade que o forno exige, `bin/build-local.sh:114`), liga
+  declara `forge.origin: "instance"` (a mesma propriedade que o forno exige, templates/instance/README.md §5b), liga
   as dependências a partir de um checkout do Forge, roda `tsc` e a suíte de cada app, e por fim cobra que a
   lista de `instanceApps` do `composition.json` — a que o forno copia — seja exatamente a que ele acabou de
   compilar e rodar. Sem checkout do Forge na máquina ele diz **NOT CHECKED**, nunca verde.

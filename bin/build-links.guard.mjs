@@ -15,12 +15,18 @@
 //       comes BEFORE its `npm run build` — a link written after the build links nothing the build saw.
 //   3 · the forks those scripts build really do install an app of this box (`appsOfFork`), so the step is not a
 //       ritual: when no fork names `file:../apps/<id>` any more, this rule says so instead of passing.
-//   4 · the CLI refuses, loudly, what would otherwise surface as a webpack error: no arguments, a tree that is
-//       not a Forge checkout.
+//   4 · the CLI refuses, loudly, what would otherwise surface as a webpack error: no arguments, a fork that is
+//       not installed.
+//
+// ★ v032/C — THE BUILD MOVED INTO `bin/bake.sh` (the one script CI and the bench call; `bin/build-coffee.sh`
+// and `bin/build-totem.sh` died with `bin/vendor-packages.sh`), and the linker lost its `<forge>` argument:
+// it lends from the fork's own npm install. So the set is `bin/bake.sh` plus any `bin/build-*.sh` that comes
+// back, the call is `node "$here/bin/link-instance-apps.mjs" "$app"`, and the forks are read from the loop
+// that builds them (`for fork in …`) as well as from an `app="$here/<fork>"` line.
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -52,7 +58,7 @@ function codeOf(shell) {
 }
 
 const BUILDS = readdirSync(join(ROOT, 'bin'))
-  .filter((name) => /^build-.*\.sh$/.test(name))
+  .filter((name) => name === 'bake.sh' || /^build-.*\.sh$/.test(name))
   .sort()
   .map((name) => ({ name, code: codeOf(readFileSync(join(ROOT, 'bin', name), 'utf8')) }))
   .filter((script) => script.code.some((line) => /\bnpm run build\b/.test(line)));
@@ -66,13 +72,13 @@ test('1 · at least one build script compiles a fork — otherwise every rule be
 for (const script of BUILDS) {
   test(`2 · ${script.name} links this box's apps before it runs \`npm run build\``, () => {
     const link = script.code.findIndex((line) =>
-      /node\s+"\$here\/bin\/link-instance-apps\.mjs"\s+"\$forge"\s+"\$app"/.test(line),
+      /node\s+"\$here\/bin\/link-instance-apps\.mjs"\s+"\$app"/.test(line),
     );
     const build = script.code.findIndex((line) => /\bnpm run build\b/.test(line));
     assert.notEqual(
       link,
       -1,
-      `${script.name} compiles a fork and never runs \`node "$here/bin/link-instance-apps.mjs" "$forge" "$app"\`` +
+      `${script.name} compiles a fork and never runs \`node "$here/bin/link-instance-apps.mjs" "$app"\`` +
         ' — in a fresh clone its `next build` cannot resolve what apps/<id> imports until bin/test.sh has run',
     );
     assert.ok(
@@ -81,29 +87,35 @@ for (const script of BUILDS) {
     );
   });
 
-  test(`3 · the fork ${script.name} builds installs an app of this box, so the link step is not a ritual`, () => {
-    const dir = script.code.map((line) => line.match(/^app="\$here\/([\w.-]+)"\s*$/)?.[1]).find(Boolean);
-    assert.ok(dir, `${script.name} no longer sets app="$here/<fork>" — this rule cannot tell which fork it builds`);
-    const apps = appsOfFork(join(ROOT, dir));
-    console.error(`[build-links] ${dir} installs: ${apps.map((a) => a.dir).join(', ') || 'none'}`);
-    assert.ok(
-      apps.length > 0,
-      `${dir} names no \`file:../apps/<id>\` app of this instance any more — the link step in ${script.name} links ` +
-        'nothing; drop it (and this rule) together, on purpose',
-    );
+  test(`3 · the forks ${script.name} builds install an app of this box, so the link step is not a ritual`, () => {
+    const dirs = [
+      ...script.code.map((line) => line.match(/^app="\$here\/([\w.-]+)"\s*$/)?.[1]).filter(Boolean),
+      ...script.code.flatMap((line) => line.match(/^for fork in ([\w.\- ]+); do\s*$/)?.[1].trim().split(/\s+/) ?? []),
+    ];
+    assert.ok(dirs.length > 0, `${script.name} names no fork it builds (app="$here/<fork>" or \`for fork in …\`)`);
+    for (const dir of dirs) {
+      const apps = appsOfFork(join(ROOT, dir));
+      console.error(`[build-links] ${dir} installs: ${apps.map((a) => a.dir).join(', ') || 'none'}`);
+      assert.ok(
+        apps.length > 0,
+        `${dir} names no \`file:../apps/<id>\` app of this instance any more — the link step in ${script.name} links ` +
+          'nothing; drop it (and this rule) together, on purpose',
+      );
+    }
   });
 }
 
-test('4 · the linker refuses a missing argument and a tree that is not a Forge checkout', () => {
+test('4 · the linker refuses a missing argument and a fork that is not installed', () => {
   const none = spawnSync(process.execPath, [LINKER], { encoding: 'utf8' });
   assert.equal(none.status, 2, `no arguments should exit 2, got ${none.status}: ${none.stderr}`);
   assert.match(none.stderr, /usage: link-instance-apps\.mjs/);
 
   const empty = mkdtempSync(join(tmpdir(), 'build-links-'));
   try {
-    const bad = spawnSync(process.execPath, [LINKER, empty, join(ROOT, 'storefront-coffee')], { encoding: 'utf8' });
-    assert.equal(bad.status, 1, `a non-checkout should exit 1, got ${bad.status}: ${bad.stderr}`);
-    assert.match(bad.stderr, /is not a Forge checkout/);
+    writeFileSync(join(empty, 'package.json'), '{"name":"not-installed"}');
+    const bad = spawnSync(process.execPath, [LINKER, empty], { encoding: 'utf8' });
+    assert.equal(bad.status, 1, `a fork with no install should exit 1, got ${bad.status}: ${bad.stderr}`);
+    assert.match(bad.stderr, /is not installed/);
   } finally {
     rmSync(empty, { recursive: true, force: true });
   }

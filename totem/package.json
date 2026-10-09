@@ -14,7 +14,8 @@
     "@fontsource/fraunces": "^5.2.5",
     "@fontsource/poppins": "^5.2.5",
     "@forge/ext-demo-setup": "file:../apps/demo-setup",
-    "@forgeco/storefront-kit": "file:vendor/forgeco-storefront-kit-0.3.1.tgz",
+    "@forgeco/contracts": "0.3.2",
+    "@forgeco/storefront-kit": "0.3.2",
     "next": "15.2.9",
     "react": "19.0.0",
     "react-dom": "19.0.0"
@@ -29,25 +30,5 @@
     "jsdom": "25.0.1",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
-  },
-  "overrides": {
-    "@forgeco/cli": "./vendor/forgeco-cli-0.3.1.tgz",
-    "@forgeco/contracts": "./vendor/forgeco-contracts-0.3.1.tgz",
-    "@forgeco/ext-banners": "./vendor/forgeco-ext-banners-0.3.1.tgz",
-    "@forgeco/ext-chrome": "./vendor/forgeco-ext-chrome-0.3.1.tgz",
-    "@forgeco/ext-content": "./vendor/forgeco-ext-content-0.3.1.tgz",
-    "@forgeco/ext-feed": "./vendor/forgeco-ext-feed-0.3.1.tgz",
-    "@forgeco/ext-leads": "./vendor/forgeco-ext-leads-0.3.1.tgz",
-    "@forgeco/ext-payment-mercadopago": "./vendor/forgeco-ext-payment-mercadopago-0.3.1.tgz",
-    "@forgeco/ext-payment-promissory": "./vendor/forgeco-ext-payment-promissory-0.3.1.tgz",
-    "@forgeco/ext-payment-reference": "./vendor/forgeco-ext-payment-reference-0.3.1.tgz",
-    "@forgeco/ext-payment-zero": "./vendor/forgeco-ext-payment-zero-0.3.1.tgz",
-    "@forgeco/ext-recommendations": "./vendor/forgeco-ext-recommendations-0.3.1.tgz",
-    "@forgeco/ext-reviews": "./vendor/forgeco-ext-reviews-0.3.1.tgz",
-    "@forgeco/ext-shelves": "./vendor/forgeco-ext-shelves-0.3.1.tgz",
-    "@forgeco/ext-subscriptions": "./vendor/forgeco-ext-subscriptions-0.3.1.tgz",
-    "@forgeco/sdk": "./vendor/forgeco-sdk-0.3.1.tgz",
-    "@forgeco/surface-codegen": "./vendor/forgeco-surface-codegen-0.3.1.tgz",
-    "@forgeco/theme-storefront-vanilla": "./vendor/forgeco-theme-storefront-vanilla-0.3.1.tgz"
   }
 }

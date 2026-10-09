@@ -301,10 +301,10 @@ test('the README points at the pin instead of restating the number', () => {
 
 test('★★ THIS repo — `forge.lock` states the host node floor, and it states it as a whole number', () => {
   // A lock WITHOUT the floor is valid (see section 2) — but this box's lock is written by
-  // `bin/build-local.sh` against a monorepo that declares one, so an absent floor here means the stamp was
+  // `bin/bake.sh` against an oven whose release declares one, so an absent floor here means the stamp was
   // lost, and this bench would go back to being born on whatever node the shell happened to resolve.
   const floor = pinnedFloor();
-  assert.equal(typeof floor, 'number', 'forge.lock states no node.minMajor — re-run bin/build-local.sh');
+  assert.equal(typeof floor, 'number', 'forge.lock states no node.minMajor — re-bake (bin/bake-local.sh, or the lock of .github/workflows/bake.yml)');
   assert.ok(Number.isInteger(floor) && floor > 0, `node.minMajor is not a whole major version: ${floor}`);
   const range = JSON.parse(read('forge.lock')).node?.engines;
   assert.equal(
@@ -373,24 +373,25 @@ test('every script here that starts node on the HOST refuses an old one first', 
   assert.deepEqual(unguarded, [], `these start node on the host without checking it:\n${unguarded.join('\n')}`);
 });
 
-test('★★ build-local.sh STAMPS the floor into the lock, derived from the product it is handed', () => {
-  // The one script here that is handed the monorepo, so the one place that can put the release's own floor
-  // into the pin. It must not re-derive it: `infra/cicd/node-floor.sh` is the product's single derivation,
-  // and a second `sed` over `engines.node` living here would be the drift this change removed.
-  const src = read('bin/build-local.sh');
+test('★★ bake.sh STAMPS the floor into the lock, derived by the release it bakes from', () => {
+  // ★ v032/C — the script that writes the lock moved from `bin/build-local.sh` (handed a monorepo) to
+  // `bin/bake.sh` (handed an oven), and the rule moved with it: the floor is the RELEASE's, asked of the
+  // product's single derivation (`infra/cicd/node-floor.sh`) inside the oven. A second `sed` over
+  // `engines.node` living here would be the drift this check exists to refuse.
+  const src = read('bin/bake.sh');
   assert.ok(
     src.includes('infra/cicd/node-floor.sh'),
-    "build-local.sh does not source the product's node-floor derivation",
+    "bake.sh does not source the product's node-floor derivation",
   );
-  assert.ok(src.includes('forge_node_engines'), 'build-local.sh never asks the product for its engines range');
-  assert.ok(src.includes('forge_node_min_major'), 'build-local.sh never resolves the range to a major');
+  assert.ok(src.includes('forge_node_engines'), 'bake.sh never asks the product for its engines range');
+  assert.ok(src.includes('forge_node_min_major'), 'bake.sh never resolves the range to a major');
   assert.match(
     src,
     /node:\s*\{\s*minMajor:/,
-    'the lock template build-local.sh writes has no `node` block — the floor would not travel with the pin',
+    'the lock template bake.sh writes has no `node` block — the floor would not travel with the pin',
   );
   const drift = [...src.matchAll(/^(?!\s*#).*engines\.node.*$/gm)].filter((m) => /sed|=~|\bcut\b/.test(m[0]));
-  assert.deepEqual(drift, [], `build-local.sh derives the floor a second time:\n${drift.join('\n')}`);
+  assert.deepEqual(drift, [], `bake.sh derives the floor a second time:\n${drift.join('\n')}`);
 });
 
 // ── 5 · the refusal a human will actually read ──────────────────────────────────────────────────────────

@@ -1,17 +1,8 @@
 {
-  "forgeVersion": "v0.3.1-pre.e852092ee",
+  "forgeVersion": "v0.3.2",
   "node": {
     "minMajor": 24,
     "engines": ">=24"
-  },
-  "provenance": {
-    "origin": "local build",
-    "built_from": "HEAD@e852092ee",
-    "built_at": "2026-10-08T11:43:51Z",
-    "built_on": "ms-s1",
-    "why": "The branch these images carry has not been merged or promoted, so the registry digests for this release do not contain the features this demo exists to show. Building locally is the deliberate answer (decision of 2026-08-31); pinning the registry today would give a lock that is honest about bytes and unable to run the demo.",
-    "restamp": "OBLIGATION, NOT A REMINDER: the first real deploy of this instance replaces every ref below with a registry digest from a promoted Forge release, and this whole block goes with them. A lock that still says `local build` on a box anyone else can reach is a box nobody can reproduce.",
-    "how": "bash bin/build-local.sh <path to the forge monorepo> — rebuilds the four images here and rewrites this file."
   },
   "composition": {
     "id": "demo-instance",
@@ -41,10 +32,36 @@
     ]
   },
   "images": {
-    "kernel": "forge-demo-kernel@sha256:be5af45bfefef4c9b2ca0aaf714929b487af1cbd94ab831b0e12256e66bae816",
-    "storefront": "forge-demo-storefront@sha256:393e0d748f1a44464c20774cb993781f0144bbea3582d3b8c1bc1d50c22b41ba",
-    "checkout": "forge-demo-checkout@sha256:62bfaad329aa666f4e6791dbdebf6a16533481748e68b102508d6fa5816141b0",
-    "admin": "forge-demo-admin@sha256:66e03346c12f152909f6513f43f5e981716b9a4e48d8bc2b242d1550cbdbccac"
+    "kernel": {
+      "ref": "v032-c-forge-demo-kernel@sha256:626fdc1cbcc0e8003549d36241da06f4e4a0ca76479b459cdf1e1974630848fd",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    },
+    "storefront": {
+      "ref": "v032-c-forge-demo-storefront@sha256:704e133449c66e1a51d1160ffce8adb538b52bb5f4efca889e6c3d862700222d",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    },
+    "checkout": {
+      "ref": "v032-c-forge-demo-checkout@sha256:603cb83ce4440283e69ca4353bdbf6ed4b217fad6f9fb4400eb556707de4ced9",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    },
+    "admin": {
+      "ref": "v032-c-forge-demo-admin@sha256:1317235e31916251fd13d12e8dbbb685808e9014ee47e8c4c90d2258a342ba15",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    },
+    "storefront-coffee": {
+      "ref": "v032-c-forge-demo-storefront-coffee@sha256:47cff03f976adb2d0aeb3e3d610790aa01a0741ea9b6628666cb57ebbb7de52c",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    },
+    "totem": {
+      "ref": "v032-c-forge-demo-totem@sha256:165ce9e146166b313b54a4cdf37c62c1bfbb8ba8a4c1b9985f7b7a59e8ee10cb",
+      "origin": "own build",
+      "built_from": "v0.3.2"
+    }
   },
   "extensions": [],
   "dataset": {

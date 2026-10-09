@@ -33,15 +33,16 @@
 // pinned tree does not carry is REPORTED BY NAME, never quietly skipped, because a suite that ran without the
 // thing it declares proved something about a smaller program than the one the oven ships.
 
-import { existsSync, lstatSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { checkout, pinnedCommit, readJson, releaseTree, ROOT } from './release-tree.mjs';
+import { forks } from './forks.mjs';
+import { pinnedCommit, readJson, ROOT } from './release-tree.mjs';
 
 /** Where this repository keeps the apps it writes itself. The oven reads the same directory through
  *  `composition.json`'s `instanceApps[].source`, all of which are `./apps/<id>`. */
 export const APPS_DIR = join(ROOT, 'apps');
 
-/** The value `bin/build-local.sh` and the Forge oven both require of an app that belongs to ONE box. */
+/** The value `bin/bake.sh` hands to the oven, and the oven requires of an app that belongs to ONE box. */
 export const INSTANCE_ORIGIN = 'instance';
 
 /**
@@ -145,6 +146,15 @@ export function linkDependencies(tree, app) {
     }
     const target = join(app.path, 'node_modules', name);
     mkdirSync(dirname(target), { recursive: true });
+    // ★ v032/C — A LINK ALREADY POINTING AT THE SAME PLACE IS LEFT ALONE. The lending tree is now ONE fork,
+    // the same on every run, and `node --test` runs this guard beside `bin/fork-typecheck.guard.mjs`, which
+    // compiles that fork — and with it this app. Measured 2026-10-09: rewriting the link every time opened a
+    // window (rm, then symlink) in which the other process's `tsc` found the app's imports missing, and the
+    // fork went red for a file nobody had changed.
+    if (isLink(target) && readlinkSync(target) === found.path) {
+      linked.push(`${name} ← ${found.how}`);
+      continue;
+    }
     if (existsSync(target) || isLink(target)) rmSync(target, { recursive: true, force: true });
     symlinkSync(found.path, target, 'dir');
     linked.push(`${name} ← ${found.how}`);
@@ -172,55 +182,63 @@ export function toolFromTree(tree, bin) {
 
 // ── THE CHECKOUT AN APP OF THIS BOX IS LINKED AGAINST ────────────────────────────────────────────────────
 
-/** A Forge checkout can only lend an app its contracts if that package has been BUILT: `@forgeco/
- *  contracts` declares `main: ./dist/index.js`, and a tree with no `dist` links cleanly and then fails at
- *  import. Measured 2026-09-08 against the worktree at the pinned commit, which had never been built:
- *  `manifest.test.ts` alone went red and 14 of 23 tests ran — a RED that says nothing about this app. */
-export function lendable(base) {
-  const tree = checkout(base);
-  if (!tree) return null;
-  return existsSync(join(base, 'packages', 'contracts', 'dist', 'index.js')) ? tree : null;
+/** Can `forkPath` lend an app what it declares? Only an INSTALLED fork whose `@forgeco/contracts` is the
+ *  release's: the contracts are what a manifest is validated against, and a stale install of another release
+ *  would make the suite argue with code the kernel of this box never loads. */
+export function lendable(forkPath, release) {
+  try {
+    const version = readJson(join(forkPath, 'node_modules', '@forgeco', 'contracts', 'package.json')).version;
+    return `v${version}` === release ? { path: forkPath, version } : { stale: `v${version}` };
+  } catch {
+    return null;
+  }
 }
 
 /**
- * The Forge checkout to link from — THE PINNED ONE, or nothing.
+ * ★★ v032/C — WHAT AN APP OF THIS BOX IS COMPILED AND TESTED AGAINST: AN INSTALLED FORK, AT THE RELEASE.
  *
- * ── ⛔ THE FALLBACK THIS USED TO HAVE, AND THE MEASUREMENT THAT ENDED IT (pk38/d9) ───────────────────────
+ * Until v0.3.2 this lent from a Forge CHECKOUT at the pinned commit, built (`pnpm build`), because the kit and
+ * the contracts reached this repository only through one. From v0.3.2 they reach it from npm: each fork
+ * installs `@forgeco/*@<release>` exactly, plus react / react-dom / typescript / vitest / jsdom / the testing
+ * library at the versions the monorepo's catalog pins — the names these apps declare. So a fork's install is
+ * the release's published surface, which is also what the oven links an adopted app against
+ * (`@forgeco/contracts` "from the release it is baking", templates/instance/README.md §5b).
  *
- * It used to accept any Forge checkout when the pinned one was not on the machine, "with the fallback said
- * out loud", on the reasoning that what is lent here is a COMPILER, a RUNNER and the contracts a manifest is
- * validated against — none of them a versioned surface — which is what `bin/pack-apps.sh` already does with
- * whatever checkout the operator names. That reasoning was measured false on 2026-09-14, and the set it is
- * false about is DERIVED, not typed: `declaredDependencies()` lends whatever an app's own manifest names, and
- * `apps/demo-setup` names `@forgeco/storefront-kit` — the kit. That IS the versioned surface, and it is
- * precisely the thing `bin/fork-typecheck.guard.mjs` refuses to take from an unpinned tree.
+ * ⛔ THE PIN STILL DECIDES, as it did against a checkout (pk38/d9, measured: an app graded against a kit 545
+ * commits behind went RED for a symbol added upstream). A fork whose `@forgeco/contracts` is not the release
+ * `forge.lock` names is refused by version — `npm ci` in it, and it lends.
  *
- * What it cost, on this machine, on an untouched tree: the only checkout here sits 545 commits BEHIND the
- * pinned `v03/integra@888c80367`, and the kit there has no `mediaRenderSrc` — a function the pinned release
- * ships and `apps/demo-setup/block/marks.tsx` imports. Both rules over that app went RED, naming this
- * repository ("apps/demo-setup does not compile", "its OWN suite is RED", 5 failures) for a symbol that was
- * ADDED in the other repository after the tree being lent. A green off an unpinned tree was already declared
- * to mean "this app agrees with THAT tree"; the red says nothing at all, and nothing in it says so.
- *
- * ⇒ the pinned tree when it is on this machine and built, and NOT CHECKED otherwise — the same posture as the
- * kit comparison next door, reached by the same argument. An operator who wants another tree graded names it
- * in `FORGE_MONOREPO`, and `forge.lock` is what decides whether that tree is the release.
+ * The forks are tried in name order; the first that lends wins and is said in `how`.
  * @returns {{ path: string, head: string, how: string, clean: boolean } | { tried: string[] }}
  */
 export function lendingTree() {
-  const tried = [];
   const pinned = pinnedCommit();
-  if (!pinned) return { tried: ['forge.lock names no branch@sha, so there is no release to link against'] };
-  const found = releaseTree(pinned);
-  if (found.path && lendable(found.path)) {
-    return { ...found, how: `${found.how}, at the pinned ${pinned.ref}` };
+  if (!pinned?.release) {
+    return {
+      tried: [
+        `forge.lock pins ${pinned?.ref ?? 'nothing'}, not a release tag — the forks install a release from npm, ` +
+          'so there is no pin to hold them to',
+      ],
+    };
   }
-  tried.push(
-    found.path
-      ? `${found.path} — the tree at ${pinned.ref}, but @forgeco/contracts is not built there (pnpm build)`
-      : `no checkout at ${pinned.ref} on this machine`,
-  );
-  for (const line of found.tried ?? []) tried.push(line);
+  const tried = [];
+  for (const fork of forks('test')) {
+    const found = lendable(fork.path, pinned.release);
+    if (found?.path) {
+      return {
+        path: fork.path,
+        head: pinned.release,
+        how: `${fork.dir}'s npm install, @forgeco/contracts ${found.version} = ${pinned.release}`,
+        clean: true,
+      };
+    }
+    tried.push(
+      found?.stale
+        ? `${fork.dir} — installs @forgeco/contracts ${found.stale}, and forge.lock pins ${pinned.release} (npm ci in it)`
+        : `${fork.dir} — not installed (cd ${fork.dir} && npm ci)`,
+    );
+  }
+  if (tried.length === 0) tried.push('this repository has no fork that installs the kit and declares `test`');
   return { tried };
 }
 

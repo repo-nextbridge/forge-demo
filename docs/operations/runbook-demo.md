@@ -66,8 +66,8 @@ esta tabela não a inventa, ela a espelha.
 |---|---|---|---|
 | 1 | a `main` do produto assa e sobe em **Staging/QA** | produto | **Portão 2** — o QA **humano** aprova |
 | 2 | **corta o release**: tag `vX.Y.Z` + deploy na **Referência/Prod** | produto | **Portão 3** |
-| 3 | a Demo **PINA** esse release — ⚠️ **e é aqui que o modo pré-release morre** | esta caixa | §2.1 |
-| 4 | a Demo assa o que é **dela**: a vitrine do café, o totem, os apps | esta caixa | `bin/build-coffee.sh`, `bin/build-totem.sh`, `bin/pack-apps.sh` |
+| 3 | a Demo **PINA** esse release — os forks e as ferramentas instalam `@forgeco/*@<versão>` do npm | este repositório | §2.1 |
+| 4 | a Demo **ASSA** as seis imagens no CI dela, do oven do release, e publica no GHCR por digest | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
 | 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
 | 6 | **reset + reseed** | esta caixa | `bin/box-down.sh` + `bin/box-up.sh` — §5 |
@@ -75,6 +75,7 @@ esta tabela não a inventa, ela a espelha.
 
 > ⏳ O degrau que faltava caía **entre o 3 e o 5** — veja o bloco acima. Uma metade é o passo 4b (o deploy);
 > a outra é o passo 5 numa VM, que agora é `bin/birth-remote.sh`. ⛔ São dois gestos de propósito.
+> ★ v032/C — e o passo 4 deixou de ser um gesto de bancada: ele É o CI deste repositório (§2.1).
 
 ### 2.2 O deploy — `bin/deploy.sh <env>`
 
@@ -138,32 +139,68 @@ postura nova: é o que `--api` sempre quis dizer — e é por isso que **a caixa
 meio-semeada. Medido na primeira corrida contra o stag — o passo 5 recusou e a corrida parou ali, sem migrar
 nada além do que já estava feito.
 
-### 2.1 ⚠️ O passo 3 é o que a sequência implica e ninguém tinha escrito
+### 2.1 ★★ Como a Demo assa — do release, no CI dela, sem checkout do produto (v032/C)
 
-Hoje `forge.lock` diz `"origin": "local build"`, e os quatro digests são de imagens construídas **numa
-estação de trabalho**, a partir de uma **branch** — nunca por um registry. `bin/build-local.sh:22` carrega a
-obrigação por escrito:
+Até a v0.3.1 o `forge.lock` dizia `"origin": "local build"`: as quatro imagens eram assadas **numa estação de
+trabalho**, copiando os apps desta caixa para dentro de um checkout do monorepo (`bin/build-local.sh`, que
+morreu), e os dois forks instalavam 19 tarballs vendorizados do mesmo checkout (`bin/vendor-packages.sh`,
+morto também). A obrigação de re-carimbar com digests de registry era prosa. **Desde a v0.3.2 ela é mecanismo.**
 
-> *"THE FIRST REAL DEPLOY **RE-STAMPS IT** with registry digests. That is not a reminder, it is **part of
-> that deploy's definition of done**"*
+**A receita, em uma linha:** `imagem = release × lista`. O release é o **oven** publicado com ele
+(`images.oven` do `forge.lock` da Release: a árvore do produto na tag, instalada, carimbada com a tag em
+`/forge-oven/release`); a lista é o `composition.json` deste repositório, que declara `"axis": "instance"`;
+os apps são `apps/<id>/`, entregues como contexto de build. A receita (`infra/oven/Dockerfile`) sai **de dentro
+do oven**. É o §5b de `templates/instance/README.md` do produto, seguido ao pé da letra.
 
-**Se o passo 3 for pulado, a Demo online roda as imagens da bancada — e nada quebra.** O pin continua sendo
-por digest (`bin/images-from-lock.sh` recusa tag, e não afrouxa aqui), a caixa sobe, a loja vende. Só que
-ninguém consegue reproduzir aquela caixa, porque os bytes não existem em registry nenhum.
+| quem | o quê | onde |
+|---|---|---|
+| `bin/bake.sh` | assa **kernel, storefront, checkout, admin** (a receita) + **storefront-coffee, totem** (os forks, `npm ci` do npm na versão do release) e escreve o lock | o MESMO script no CI e na bancada |
+| `.github/workflows/bake.yml` | em todo push na `main` (e `workflow_dispatch`): baixa o `forge.lock` da Release, puxa o oven por digest, roda `bin/bake.sh --registry ghcr.io/<org>`, publica `ghcr.io/<org>/forge-demo-<nome>` e sobe o lock como **artefato** do run | CI desta caixa |
+| `bin/bake-local.sh` | `bin/bake.sh` **sem** registry: refs **sem host de registry**, que só existem no daemon que assou | bancada |
 
-**Como fazer o passo, e como PROVAR que foi feito:**
+**O lock que sai** não tem bloco `provenance`. Cada imagem é `{ ref, origin, built_from }` — `ref` com o host
+do registry e `@sha256:` quando o CI publicou (na bancada, o id do daemon, **sem** host), `origin: "own build"` (o
+vocabulário da cerca do produto é fechado: `release` | `own build`),
+`built_from: "<tag do release>"`. **As seis entram no lock**, os dois forks também (antes viajavam por uma tag
+`:local` que nada pinava). `bin/images-from-lock.sh` exporta as seis; `compose.override.yml` lê
+`FORGE_STOREFRONT_COFFEE_IMAGE` e `FORGE_TOTEM_IMAGE` de lá.
 
-1. Pegue o `forge.lock` publicado com o release cortado no passo 2 e copie dele os quatro digests e o
-   `forgeVersion`; **apague o bloco `provenance` inteiro**.
-2. Prova, e é de uma linha só: `jq -e '.provenance // empty' forge.lock` tem de sair **vazio**, e
-   `jq -r '.images[]' forge.lock` tem de listar quatro refs `@sha256:` de um registry — não do daemon local.
-3. `source bin/images-from-lock.sh` e confira a linha que ele imprime: `<versão> × <composição> [apps]`.
-4. Depois de `box-up`, `bash bin/verify-composition.sh` compara o que a lock **pediu** com o que o container
-   **declara**.
+**Como o lock volta ao repositório — por PR, de um humano, e é de propósito.** O workflow roda com
+`contents: read` (o repositório é público e o `GITHUB_TOKEN` não escreve nele), então ele **não** comita nada:
+o lock é artefato do run. Quem adota:
 
-⚠️ **`node.minMajor` viaja na lock.** É o piso de Node do release, e é o número que `bin/require-node.sh`
-lê. Uma lock de release **antigo** pode não trazê-lo: a caixa então diz isso e **não inventa piso nenhum**.
-Re-carimbar traz o check de volta.
+```bash
+gh run download <run-id> -n forge-lock -D /tmp/lock && cp /tmp/lock/forge.lock forge.lock
+git switch -c adopt/<release> && git commit -am "adopt: <release> — the lock of bake run <run-id>" && gh pr create
+```
+
+O lock é o que decide o que roda em produção; ele passa por revisão como qualquer código, e o `deploy.sh` lê
+**só o arquivo comitado** — um deploy reproduzível a partir do git, nunca de "o último run que deu verde".
+
+⛔ **A recusa (decisão 9 da spec v032):** `bin/deploy.sh stag|prod` recusa, no passo 0 e antes de tocar no
+host, um lock com `provenance.origin == "local build"`, com qualquer imagem `origin: "local build"`, ou com
+qualquer ref **sem host de registry** (`bin/lock-gate.sh`). `--allow-local` existe só para um ambiente de
+bancada e é recusado para `stag` e `prod`.
+
+★ **Os pacotes no GHCR são PÚBLICOS** (decisão do dono, 09/10/2026). As caixas puxam **sem login**. ⚠️ O GHCR
+cria um pacote novo como **privado**: depois do **primeiro push** de cada `forge-demo-<nome>`, o dono torna o
+pacote público com **um clique** nas configurações do pacote (*Package settings → Change visibility →
+Public*). Enquanto um pacote estiver privado, o `deploy.sh` dessa imagem falha no pull e diz o porquê. O login
+continua **opcional**: se o `.secrets` da caixa tiver `GHCR_PULL_TOKEN` e `GHCR_PULL_USER`, o host faz
+`docker login ghcr.io` com eles antes do pull (o valor nunca sai do host; só o nome está aqui).
+
+**O que o CI precisa (nomes; nenhum valor neste repositório):** `vars.WIF_PROVIDER` (o provider `github-demo`
+do pool de Workload Identity, com `artifactregistry.reader` no repositório do oven — sem conta de serviço) e
+`secrets.FORGE_RELEASE_TOKEN` (leitura de conteúdo no repositório do produto, que é **privado**: o
+`GITHUB_TOKEN` deste repositório não lê a Release de outro repositório).
+
+**Como PROVAR, de uma linha:** `jq -e '.provenance // empty' forge.lock` sai **vazio**;
+`jq -r '.images[] | "\(.origin) \(.ref)"' forge.lock` lista **seis** `own build ghcr.io/…@sha256:…`; e
+`bash bin/deploy.sh stag --plan` passa do passo 0. Depois de nascer, `bash bin/verify-composition.sh` compara o
+que o lock pediu com o que o kernel declara.
+
+⚠️ **`node.minMajor` viaja na lock.** É o piso de Node do release, derivado por `infra/cicd/node-floor.sh` do
+próprio release (copiado de dentro do oven), e é o número que `bin/require-node.sh` lê.
 
 ---
 
@@ -190,7 +227,9 @@ Não edite as linhas à mão para "consertar" um vermelho: o compose é a fonte.
 | `FORGE_DOMAIN` | .env | não |
 | `FORGE_IMAGE` | forge.lock | não |
 | `FORGE_PUBLIC_ORIGIN` | .env | não |
+| `FORGE_STOREFRONT_COFFEE_IMAGE` | forge.lock | não |
 | `FORGE_STOREFRONT_IMAGE` | forge.lock | não |
+| `FORGE_TOTEM_IMAGE` | forge.lock | não |
 | `FORGE_TOTEM_STORE_ID` | .env | não |
 | `FORGE_VAULT_KEY` | segredo | não |
 | `POSTGRES_PASSWORD` | segredo | não |
@@ -198,7 +237,7 @@ Não edite as linhas à mão para "consertar" um vermelho: o compose é a fonte.
 
 **Como ler a coluna do meio — obrigatória ≠ digitada por você:**
 
-- **`forge.lock`** (4): você **nunca** digita. `source bin/images-from-lock.sh` as exporta a partir do pin.
+- **`forge.lock`** (6): você **nunca** digita. `source bin/images-from-lock.sh` as exporta a partir do pin.
   Inventar um valor aí é rodar uma imagem que release nenhum publicou.
 - **segredo** (3): nascem no **cofre**, nunca no disco. `env-source.sh` as exporta para o shell; na bancada o
   `secret()` dele lê um `.secrets` gitignorado, e **online é aí que entra o gerenciador de segredos de
@@ -867,8 +906,8 @@ um bloco colocado em lugar nenhum continua sem conseguir se esconder.
 nada dizia quando ninguém tinha ligado.** A UI de um app tem **duas metades**: a **declaração** (a colocação, a
 composição, o config) é **dado** — atravessa a porta e chega a **qualquer** front, nosso ou dele, sem build
 nenhum; a **implementação** (o componente React) tem de estar **compilada no bundle de quem desenha**. Um app de
-plataforma atravessa a segunda metade porque viaja como **pacote** (`bin/vendor-packages.sh` põe o tarball
-dentro do fork). Um app **desta caixa** viaja como **diretório de fonte** (`composition.json` →
+plataforma atravessa a segunda metade porque viaja como **pacote** (o fork instala `@forgeco/*` na versão do
+release, do npm). Um app **desta caixa** viaja como **diretório de fonte** (`composition.json` →
 `instanceApps[].source: ./apps/<id>`), então **um fork que não o nomeia não consegue importá-lo** — e um bloco
 que ele não importa é um bloco que ele silenciosamente não desenha.
 
@@ -909,8 +948,7 @@ resolve para nada e a rota é servida como é. O registro composto do café
 perdeu `src/lib/gate/` por completo. `bin/no-gate.guard.mjs` é o que impede que volte.
 
 ⚠️ **O que ainda NÃO fecha, e está dito em voz alta:** a superfície gerada do fork é regerada **à mão**
-(`npm run codegen` dentro de `storefront-coffee/`) — `bin/build-coffee.sh` e `bin/build-totem.sh` não chamam
-codegen. ⛔ Soldar o import à mão **não** é o conserto: foi o que o registro soldado do totem fez para a
+(`npm run codegen` dentro de `storefront-coffee/`) — `bin/bake.sh` não chama codegen. ⛔ Soldar o import à mão **não** é o conserto: foi o que o registro soldado do totem fez para a
 portaria, e a prosa daquele arquivo já estava mentindo quando a pk31/d1 a leu.
 
 ★★ **pk28/d2 — a coluna `(healthy)` do `docker ps` ERA decoração nos dois forks desta caixa, e agora não é.**

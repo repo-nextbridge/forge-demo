@@ -41,7 +41,7 @@
 //   3. neither                      → NOT CHECKED, with the reason and the command that would fix it.
 //
 //   node --test bin/fork-typecheck.guard.mjs        (or: bash bin/test.sh)
-//   FORGE_MONOREPO=~/path/to/forge node --test bin/fork-typecheck.guard.mjs
+//   FORGE_OVEN_IMAGE=<an oven stamped with the pinned release> node --test bin/fork-typecheck.guard.mjs   (a bench without gh/registry access)
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -92,7 +92,7 @@ if (TREE.path) {
 } else if (PINNED) {
   say(`⚠️ NOT CHECKED against a tree — no Forge checkout at ${PINNED.ref} on this machine.`);
   for (const line of TREE.tried) say(`   tried: ${line}`);
-  say('   set FORGE_MONOREPO=<the release\'s checkout>. Any green below means "the fork agrees with the kit');
+  say('   run node bin/release-tree.mjs — it names what is missing. Any green below means "the fork agrees with the kit');
   say('   that is INSTALLED", which is not the same sentence as "with the kit this release pins".');
 }
 for (const fork of FORKS) {
@@ -120,8 +120,7 @@ for (const fork of FORKS) {
     const tsc = join(fork.path, 'node_modules', '.bin', 'tsc');
     if (!existsSync(tsc)) {
       t.skip(
-        `NOT CHECKED — ${fork.dir} is not installed. \`bash bin/vendor-packages.sh <forge checkout> ${fork.dir}\` ` +
-          `then \`bash bin/install-storefront.sh ${fork.dir}\` (or \`bash bin/build-coffee.sh <forge checkout>\`).`,
+        `NOT CHECKED — ${fork.dir} is not installed: \`cd ${fork.dir} && npm ci\` (it pins @forgeco/* at the release).`,
       );
       return;
     }
@@ -146,11 +145,11 @@ for (const fork of FORKS) {
     // the file list comes from the package's `files` manifest rather than from a walk: tests and internal
     // modules are not packed, and diffing the directories would report them forever.
     if (!PINNED) {
-      t.skip('NOT CHECKED — forge.lock no longer names a branch@sha, so there is no tree to compare with');
+      t.skip('NOT CHECKED — forge.lock pins neither a release nor a branch@sha, so there is no tree to compare with');
       return;
     }
     if (!TREE.path) {
-      t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (set FORGE_MONOREPO)`);
+      t.skip(`NOT CHECKED — no Forge checkout at ${PINNED.ref} on this machine (node bin/release-tree.mjs says why)`);
       return;
     }
     const kit = installedKit(fork);
@@ -176,8 +175,7 @@ for (const fork of FORKS) {
       differs,
       [],
       `${fork.dir} installed a kit that is not the one ${PINNED.ref} carries — ${differs.length} of ` +
-        `${packed.length} packed files differ. Re-vendor: \`bash bin/vendor-packages.sh ${TREE.path} ${fork.dir}\` ` +
-        `then \`bash bin/install-storefront.sh ${fork.dir}\`.`,
+        `${packed.length} packed files differ. The fork pins @forgeco/* at the release on npm: \`cd ${fork.dir} && npm ci\`.`,
     );
     say(`${fork.dir}: ${packed.length}/${packed.length} packed kit files identical to ${PINNED.ref}`);
   });

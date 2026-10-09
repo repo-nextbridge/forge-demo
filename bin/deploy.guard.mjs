@@ -80,11 +80,15 @@ const lock = (adminOrigin) => ({
   forgeVersion: 'v0.0.0-probe',
   node: { minMajor: 24, engines: '>=24' },
   composition: { id: 'probe', apps: ['probe'] },
+  // ★ v032/C — every ref names a registry (bin/lock-gate.sh refuses one that does not, before the fence) and
+  // the two forks are pinned (bin/images-from-lock.sh refuses a lock without them). Nothing else changed.
   images: {
-    kernel: { ref: 'probe-kernel@sha256:' + 'a'.repeat(64), origin: 'own build' },
-    storefront: { ref: 'probe-storefront@sha256:' + 'b'.repeat(64), origin: 'own build' },
-    checkout: { ref: 'probe-checkout@sha256:' + 'c'.repeat(64), origin: 'own build' },
+    kernel: { ref: 'reg.example/probe-kernel@sha256:' + 'a'.repeat(64), origin: 'own build' },
+    storefront: { ref: 'reg.example/probe-storefront@sha256:' + 'b'.repeat(64), origin: 'own build' },
+    checkout: { ref: 'reg.example/probe-checkout@sha256:' + 'c'.repeat(64), origin: 'own build' },
     admin: { ref: 'reg.example/probe-admin@sha256:' + 'd'.repeat(64), origin: adminOrigin },
+    'storefront-coffee': { ref: 'reg.example/probe-coffee@sha256:' + 'e'.repeat(64), origin: 'own build' },
+    totem: { ref: 'reg.example/probe-totem@sha256:' + 'f'.repeat(64), origin: 'own build' },
   },
 });
 
@@ -104,6 +108,8 @@ function scratch({ adminOrigin, blocks }) {
   // of this script into `bin/remote-box.sh` so that the birth and the deploy cannot hold two opinions about
   // where the box is. A scratch tree without it measures a missing file instead of a provenance.
   cpSync(join(ROOT, 'bin/remote-box.sh'), join(dir, 'bin/remote-box.sh'));
+  // ★ v032/C — and the lock gate, which the deploy sources at step 0.
+  cpSync(join(ROOT, 'bin/lock-gate.sh'), join(dir, 'bin/lock-gate.sh'));
 
   writeFileSync(
     join(dir, 'composition.json'),
@@ -279,6 +285,9 @@ test('bin/images-from-lock.sh reads BOTH forms in one lock — a bare ref beside
     storefront: { ref: `own-storefront@${D('b')}`, origin: 'own build' },
     checkout: { ref: `own-checkout@${D('c')}`, origin: 'own build' },
     admin: `reg.example/forge-admin@${D('d')}`,
+    // ★ v032/C — the two forks are in the lock now and the reader demands them (bin/images-from-lock.sh).
+    'storefront-coffee': { ref: `own-coffee@${D('e')}`, origin: 'own build' },
+    totem: `reg.example/own-totem@${D('f')}`,
   });
   assert.equal(code, 0, `the reader refused a lock in the shape decision 9 requires:\n${out}`);
   assert.match(out, new RegExp(`own-kernel@${D('a')}`), 'the object form did not yield its ref');

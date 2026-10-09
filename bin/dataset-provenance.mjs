@@ -221,7 +221,7 @@ function trackedGap(box, tracked) {
   )}\n     This box would seed a dataset that is NOT the one this repository tracks. Point FORGE_SEED_DATASET_HOST_DIR\n     at ./${TRACKED_DATASET_DIR} (or unset it — that is compose's default).`;
 }
 
-const REBAKE = 'bash bin/build-local.sh <path to the forge monorepo> — re-bakes the images and rewrites forge.lock.';
+const REBAKE = 'adopt the lock of a .github/workflows/bake.yml run (or, on a bench, bash bin/bake-local.sh) — bin/bake.sh records the dataset stamp as it bakes.';
 
 /**
  * The verdict, and its MESSAGE is the deliverable. "They diverge" is what the two `catalog.json` files said

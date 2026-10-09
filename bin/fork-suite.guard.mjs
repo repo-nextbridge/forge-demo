@@ -83,8 +83,7 @@ const runner = (fork) => {
 };
 
 const NOT_INSTALLED = (fork) =>
-  `NOT CHECKED — ${fork.dir} has no vitest on disk. \`bash bin/vendor-packages.sh <forge checkout> ` +
-  `${fork.dir}\` then \`bash bin/install-storefront.sh ${fork.dir}\`.`;
+  `NOT CHECKED — ${fork.dir} has no vitest on disk: \`cd ${fork.dir} && npm ci\`.`;
 
 /** Run the fork's own runner, from the fork's own directory, and hand back what a failure would need to be
  *  read. `execFileSync` throws on a non-zero exit and ONLY THEN carries `stdout`/`stderr`, so both are asked

@@ -1,0 +1,10 @@
+{
+  "name": "forge-demo-tooling",
+  "private": true,
+  "description": "The Forge release this box bakes from, as the tools its scripts run: `forge pack-extension` (bin/pack-apps.sh) and `forge-lock-provenance` (bin/deploy.sh, bin/bake.sh). Pinned EXACTLY to the release the forks install — bin/bake.sh refuses a disagreement.",
+  "devDependencies": {
+    "@forgeco/cli": "0.3.2",
+    "@forgeco/contracts": "0.3.2",
+    "@forgeco/surface-codegen": "0.3.2"
+  }
+}
