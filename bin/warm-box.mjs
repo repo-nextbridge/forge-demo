@@ -910,7 +910,7 @@ if (observed && observed.skipped > 0 && stopWord !== null) {
 // INFERENCE FROM `skipped`: since pk35/p1 a cut can mean the box went quiet, and printing the clock's
 // sentence over a quiet box is the same defect one field along (see `neverVisitedWhy`).
 
-/** A url, short enough to read in a terminal and long enough to paste. */
+/** A STORE's url, short enough to read in a terminal. ⚠️ Never a failure's — see `namedFailures`. */
 const shortUrl = (u) => {
   const text = String(u ?? '');
   return text.length <= 120 ? text : `${text.slice(0, 117)}…`;
@@ -918,8 +918,12 @@ const shortUrl = (u) => {
 
 /** Up to `SAMPLE` of them BY NAME, and the total — a sample that hides its own size is the old defect again. */
 const SAMPLE = 5;
+// ⛔ v032/E — WHOLE, NOT `shortUrl`. Measured on the rehearsal of 2026-10-09: the one image of 19 699 that did
+// not answer was printed as `…/01m4gf9fxkn0te864zsjjfa12r-ban…`, cut at 117 characters — and an image url's
+// distinguishing part is its TAIL (the key's slug), so the report named no file and could not be pasted to ask
+// the bucket or the storefront log for it. At most SAMPLE lines, so the terminal pays a few characters.
 const namedFailures = (lines) => {
-  const shown = lines.slice(0, SAMPLE).map((f) => `${shortUrl(f.url)} (${f.error ?? 'failed'})`);
+  const shown = lines.slice(0, SAMPLE).map((f) => `${f.url ?? '?'} (${f.error ?? 'failed'})`);
   const more = lines.length - shown.length;
   return `${shown.join(' · ')}${more > 0 ? ` · …and ${more} more` : ''} (${lines.length} in total)`;
 };

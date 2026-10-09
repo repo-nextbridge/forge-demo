@@ -67,6 +67,10 @@ const CAFE_ON_THE_STREET = CAFE_STORES.map((s) => ({ ...s, storefront_enabled: t
  * `failed` is a url that ANSWERED BADLY; `skipped` is a url the run's ceiling arrived before it was TRIED.
  * They are the two halves the birth of 04/09 folded into one number, and they are different repairs.
  */
+/** ★ v032/E — an image url as long as the one the stag failed on, whose distinguishing part is its TAIL. */
+const LONG_IMAGE_URL =
+  'https://shop.example.test/api/img/orig/828/tenant_01m4gc2s1ek27et1wmbzrkc8cd/01m4gf9fxkn0te864zsjjfa12r-banner-probe-art-mobile.jpg';
+
 const pass = ({ planned, done, failed = [], skipped = 0, p95 = 120, busy = 0, busyNamedNoTime = 0 }) => ({
   planned,
   done,
@@ -399,7 +403,14 @@ async function fakeBox({
                                 { url: '/s/sto_CAFE/colecoes/torra-escura', error: 'timeout after 20000ms' },
                               ],
                             }),
-                            images: { ...pass({ planned: 0, done: 0 }), foreignHosts: [], declared: 0, cut: false },
+                            // ★ v032/E — ONE image that did not answer, at the length the real one had (the
+                            // rehearsal of 2026-10-09: 1 of 19 699, a banner key the report cut to `-ban…`).
+                            images: {
+                              ...pass({ planned: 1, done: 0, failed: [{ url: LONG_IMAGE_URL, error: 'HTTP 404' }] }),
+                              foreignHosts: [],
+                              declared: 1,
+                              cut: false,
+                            },
                             verify: undefined,
                           },
                         ],
@@ -765,6 +776,19 @@ test('★★★ …and it NAMES the pages that did not answer — the number alo
     // The reason each one gave, too: a 503 and a timeout are different repairs.
     assert.match(stdout, /HTTP 503/, `the error the url answered with is not printed:\n${stdout}`);
     assert.match(stdout, /timeout/, `a timeout is not distinguished from a bad status:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ v032/E — a failing url is printed WHOLE, so it can be pasted — a key cut to `-ban…` names no file', async () => {
+  // ⛔ MEASURED ON THE REHEARSAL OF 2026-10-09: the one image of 19 699 that answered 404 was printed as
+  //    `…/01m4gf9fxkn0te864zsjjfa12r-ban…` — 117 characters and an ellipsis, so neither the operator nor the
+  //    next slice could tell WHICH banner it was, nor ask the bucket for it. The tail is the part that differs.
+  const box = await fakeBox({ warm: 'incomplete' });
+  try {
+    const { stdout } = await runStep({ box });
+    assert.ok(stdout.includes(`${LONG_IMAGE_URL} (HTTP 404)`), `the failing image url is not printed whole:\n${stdout}`);
   } finally {
     box.close();
   }

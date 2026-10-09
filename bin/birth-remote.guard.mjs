@@ -30,7 +30,8 @@
 // ⛔ AND THE TREE IS FABRICATED, NEVER THIS REPOSITORY'S. A guard that ran against the real `deploy/stag.env`
 // would grade a bench — and would ssh to a real VM.
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -169,7 +170,7 @@ const PROBE_BOX = {
  * its own dependencies, the birth needs its own, and giving each only what it uses keeps a missing file from
  * looking like a refusal.
  */
-function scratch({ born = false, state = true, failAt = '', bench = false, missingFace = false } = {}) {
+function scratch({ born = false, state = true, failAt = '', bench = false, missingFace = false, origin = 'https://probe.example' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'forge-birth-guard-'));
   mkdirSync(join(dir, 'bin'), { recursive: true });
   mkdirSync(join(dir, 'deploy'), { recursive: true });
@@ -186,6 +187,7 @@ function scratch({ born = false, state = true, failAt = '', bench = false, missi
     'require-node.sh',
     'images-from-lock.sh',
     'deployed-faces.mjs',
+    'born-here.mjs',
     'box-domains.mjs',
     'roteiro.mjs',
     'dataset-provenance.mjs',
@@ -268,7 +270,7 @@ function scratch({ born = false, state = true, failAt = '', bench = false, missi
       'FORGE_DEPLOY_DIR=/opt/probe',
       `FORGE_DEPLOY_KEY=${join(dir, 'fake-key')}`,
       ...faces,
-      'FORGE_PUBLIC_ORIGIN=https://probe.example',
+      `FORGE_PUBLIC_ORIGIN=${origin}`,
       '',
     ].join('\n'),
   );
@@ -326,6 +328,17 @@ function scratch({ born = false, state = true, failAt = '', bench = false, missi
     read: () => readFileSync(log, 'utf8'),
     boxState: () => readFileSync(boxEnv, 'utf8'),
     run: (script, args) => spawnSync('bash', [join(dir, 'bin', script), ...args], { env, encoding: 'utf8' }),
+    // ★ v032/E — the ASYNC twin, for the cases that ask a fake kernel living in THIS process: `spawnSync` blocks
+    // the event loop, so the server would never answer and every run would read as «could not ask».
+    runAsync: (script, args) =>
+      new Promise((resolve) => {
+        const child = spawn('bash', [join(dir, 'bin', script), ...args], { env });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (d) => (stdout += d));
+        child.stderr.on('data', (d) => (stderr += d));
+        child.on('close', (status) => resolve({ status, stdout, stderr }));
+      }),
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   };
 }
@@ -581,23 +594,53 @@ test('the same birth, with nothing refusing until step 3b, gets past the tier an
   }
 });
 
-test('a box that has already been born refuses a second birth unless --again', () => {
-  const s = scratch({ born: true });
+/**
+ * ★ v032/E — THE KERNEL'S DIRECTORY, faked: the two global reads `bin/born-here.mjs` asks. `claims` maps a
+ * hostname to the tenant (admin face) or store (shop face) that claims it; every other host is 404, which is
+ * what a kernel that `deploy.sh` just brought up on an empty volume answers. `broken` answers 503 to all.
+ */
+async function fakeDirectory({ claims = {}, broken = false } = {}) {
+  const asked = [];
+  const server = createServer((req, res) => {
+    const url = new URL(req.url, 'http://x');
+    const host = url.searchParams.get('host') ?? '';
+    asked.push(`${url.pathname}?host=${host}`);
+    const json = (code, body) => {
+      res.writeHead(code, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(body));
+    };
+    if (broken) return json(503, { error: { kind: 'unavailable' } });
+    const who = claims[host];
+    if (url.pathname === '/v1/read/admin.by_host') return who ? json(200, { tenant_id: who }) : json(404, {});
+    if (url.pathname === '/v1/read/store.by_host') return who ? json(200, { store_id: who }) : json(404, {});
+    return json(404, {});
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { origin: `http://127.0.0.1:${server.address().port}`, asked, close: () => server.close() };
+}
+
+/** A live box: step 3 claimed the first tenant's admin face, step 6b its shop. */
+const LIVE = { 'admin.probe.example': 'probeco', 'probe.example': 'sto_01LIVEROOT' };
+
+test('a box that has already been born refuses a second birth unless --again', async () => {
+  const kernel = await fakeDirectory({ claims: LIVE });
+  const s = scratch({ born: true, origin: kernel.origin });
   try {
-    const r = s.run('birth-remote.sh', ['probe']);
+    const r = await s.runAsync('birth-remote.sh', ['probe']);
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /HAS ALREADY BEEN BORN/);
     assert.ok(!s.read().includes('up -d postgres'), 'it started bringing the box up before refusing');
 
-    const again = scratch({ born: true, failAt: 'migrate.js' });
+    const again = scratch({ born: true, failAt: 'migrate.js', origin: kernel.origin });
     try {
-      again.run('birth-remote.sh', ['probe', '--again']);
+      await again.runAsync('birth-remote.sh', ['probe', '--again']);
       assert.match(again.read(), /up -d postgres/, '--again did not get past the refusal');
     } finally {
       again.cleanup();
     }
   } finally {
     s.cleanup();
+    kernel.close();
   }
 });
 
@@ -619,15 +662,87 @@ test('a box that has already been born refuses a second birth unless --again', (
 // it was a NEW GESTURE — a teardown that separates identity from state — and neither file changed. Two correct
 // pieces composed wrongly, and only the whole run shows it.
 
-test('⛔ a box that still HOLDS ITS STATE is refused — the pair’s first half, and the one that must not rot', () => {
-  const s = scratch({ born: true, state: true });
+test('⛔ a box that still HOLDS ITS STATE is refused — the pair’s first half, and the one that must not rot', async () => {
+  // ★ v032/E — «holds its state» is now what the DIRECTORY says, so the live box is the one whose kernel claims
+  // a face it declares. The refusal names the claim it read, so a reader can check it is about THIS box.
+  const kernel = await fakeDirectory({ claims: LIVE });
+  const s = scratch({ born: true, state: true, origin: kernel.origin });
   try {
-    const r = s.run('birth-remote.sh', ['probe']);
+    const r = await s.runAsync('birth-remote.sh', ['probe']);
     assert.notEqual(r.status, 0, 'a live box with secrets AND state was born over without --again');
+    assert.match(r.stderr, /HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE/);
+    assert.match(r.stderr, /claimed .*admin\.probe\.example → probeco/, 'the refusal does not name what it found');
+    assert.ok(!s.read().includes('up -d postgres'), 'it started bringing the box up before refusing');
+  } finally {
+    s.cleanup();
+    kernel.close();
+  }
+});
+
+// ── ⟂ §3c · ⛔⛔ v032/E — AND THE VOLUME A DEPLOY JUST CREATED IS NOT A LIFE EITHER ─────────────────────────────
+//
+// MEASURED ON THE REHEARSAL OF 2026-10-09: `box-down.sh --env stag` (16 s) → `deploy.sh stag` (55 s) →
+// `birth-remote.sh stag` REFUSED in 1 s. The deploy in the middle ran `compose up` + `migrate`, which created
+// `pgdata` again — EMPTY (`[migrate] tenants: none registered yet`) — and the refusal, which asked only whether
+// the volume existed, told the operator they were about to re-apply over a LIVE box. The documented rebirth
+// needed `--again`, and a refusal that is false on the common path trains everybody to type past it.
+// ⇒ The state is asked of the DIRECTORY. These three are the three answers, and the pair above is the fourth.
+
+test('★★★ secrets + a pgdata volume + a directory that claims NOTHING is the rebirth after a deploy — no --again', async () => {
+  const kernel = await fakeDirectory({ claims: {} });
+  const s = scratch({ born: true, state: true, failAt: 'migrate.js', origin: kernel.origin });
+  try {
+    const r = await s.runAsync('birth-remote.sh', ['probe']);
+    assert.ok(
+      s.read().includes('up -d postgres'),
+      `box-down → deploy → birth was refused on a box whose directory claims nothing:\n${r.stderr}`,
+    );
+    assert.doesNotMatch(r.stderr, /HAS ALREADY BEEN BORN/);
+    assert.match(r.stderr, /claims NONE of/, 'it proceeded without saying why');
+    assert.match(r.stderr, /REBIRTH, not a convergence/);
+    // ⚠️ ANTI-VACUUM: it really ASKED — every claimable face of the probe box, and not the counter.
+    for (const h of ['admin.probe.example', 'admin.cafe.probe.example', 'probe.example', 'cafe.probe.example']) {
+      assert.ok(kernel.asked.some((a) => a.endsWith(`host=${h}`)), `the directory was never asked about ${h}: ${kernel.asked}`);
+    }
+  } finally {
+    s.cleanup();
+    kernel.close();
+  }
+});
+
+test('⛔ ONE claimed face is enough — a box whose second tenant alone was born is still refused', async () => {
+  const kernel = await fakeDirectory({ claims: { 'admin.cafe.probe.example': 'probecafe' } });
+  const s = scratch({ born: true, state: true, origin: kernel.origin });
+  try {
+    const r = await s.runAsync('birth-remote.sh', ['probe']);
+    assert.notEqual(r.status, 0);
     assert.match(r.stderr, /HAS ALREADY BEEN BORN AND STILL HOLDS ITS STATE/);
     assert.ok(!s.read().includes('up -d postgres'), 'it started bringing the box up before refusing');
   } finally {
     s.cleanup();
+    kernel.close();
+  }
+});
+
+test('⛔ a directory that cannot be ASKED is a refusal, never «empty» — and --again still gets past it', async () => {
+  const kernel = await fakeDirectory({ broken: true });
+  const s = scratch({ born: true, state: true, origin: kernel.origin });
+  try {
+    const r = await s.runAsync('birth-remote.sh', ['probe']);
+    assert.notEqual(r.status, 0, 'a box whose state could not be asked was born over as if it were empty');
+    assert.match(r.stderr, /STATE COULD NOT BE ASKED/);
+    assert.ok(!s.read().includes('up -d postgres'), 'it started bringing the box up before refusing');
+
+    const again = scratch({ born: true, state: true, failAt: 'migrate.js', origin: kernel.origin });
+    try {
+      await again.runAsync('birth-remote.sh', ['probe', '--again']);
+      assert.match(again.read(), /up -d postgres/, '--again did not get past the refusal');
+    } finally {
+      again.cleanup();
+    }
+  } finally {
+    s.cleanup();
+    kernel.close();
   }
 });
 

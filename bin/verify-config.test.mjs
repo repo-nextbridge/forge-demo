@@ -754,3 +754,98 @@ test('★★★ pk38/d8 — TWO brands on ONE store is a crossed door, and it is
     box.close();
   }
 });
+
+// ── ★★★ v032/E · A DEPLOYED BOX PUBLISHES EACH ADMIN AT A HOSTNAME OF ITS OWN ─────────────────────────────────
+//
+// MEASURED ON THE REHEARSAL OF 2026-10-09: the stag, reborn whole, came out of the verdict with 2 ✗ «THE BOX IS
+// HALF PROMOTED» — admins at `stg.admin.store.…`/`stg.admin.cafe.…`, the box at `stg.store.…` — while every
+// other line agreed with it: the directory claimed both admin faces for the right tenant and the gate pointed
+// at them. The rule compared the admin's HOSTNAME with the origin's, which is the bench's topology (one host,
+// an admin per port). These fixtures are that box, at a `stg.` prefix of the six faces seed/box.json declares,
+// so they carry no hostname of their own; the two negatives are the shapes the ✗ exists for.
+const DEPLOYED = (h) => `stg.${h}`;
+const ROOT_FACE = FACES.find((f) => f.kind === 'store' && f.env === 'FORGE_DOMAIN');
+
+function deployedBox({ siblings, adminDoors } = {}) {
+  const storeFaces = FACES.filter((f) => f.kind === 'store');
+  const map = Object.fromEntries(storeFaces.map((f) => [DEPLOYED(f.host), `sto_${f.handle.toUpperCase()}`]));
+  const doors =
+    siblings ??
+    BOX.tenants.map((t) => ({
+      name: t.settings.tenant_name,
+      url: `https://${DEPLOYED(FACES.find((f) => f.kind === 'admin' && f.tenant === t.id).host)}`,
+    }));
+  const env = envFor('localhost', {
+    FORGE_PUBLIC_ORIGIN: `https://${DEPLOYED(ROOT_FACE.host)}`,
+    FORGE_STORE_HOSTS: `'${JSON.stringify(map)}'`,
+    FORGE_ADMIN_SIBLINGS: `'${JSON.stringify(doors)}'`,
+    FORGE_GATE_ADMIN_URLS: `'${JSON.stringify(
+      Object.fromEntries(BOX.tenants.map((t) => [t.id, `https://${DEPLOYED(FACES.find((f) => f.kind === 'admin' && f.tenant === t.id).host)}`])),
+    )}'`,
+    ...Object.fromEntries(FACES.map((f) => [f.env, DEPLOYED(f.host)])),
+  });
+  const fake = {
+    storeHosts: Object.keys(map),
+    adminDoors:
+      adminDoors ?? Object.fromEntries(FACES.filter((f) => f.kind === 'admin').map((f) => [DEPLOYED(f.host), f.tenant])),
+    directory: Object.fromEntries(
+      storeFaces.filter((f) => f.directory !== false).map((f) => [DEPLOYED(f.host), `sto_${f.handle.toUpperCase()}`]),
+    ),
+  };
+  return { env, fake };
+}
+
+test('★★★ v032/E — a DEPLOYED box whole, each admin on its own declared face, is SETTLED — not «half promoted»', async () => {
+  assert.ok(ROOT_FACE, 'seed/box.json declares no FORGE_DOMAIN face — this fixture has no root store.');
+  const { env, fake } = deployedBox();
+  const box = await fakeBox(fake);
+  try {
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.doesNotMatch(stdout, /HALF PROMOTED/, `a whole deployed box was accused of a half promotion:\n${stdout}`);
+    assert.equal(status, 0, stdout);
+    assert.match(stdout, /VERDICT: settled/, stdout);
+    // ⚠️ ANTI-VACUUM: the ✓ is the NEW reason, by tenant — not some other line that happened to pass.
+    for (const t of TENANTS) {
+      assert.match(stdout, new RegExp(`✓ ${t} — admin at https://stg\\.[^ ]+ — its own face \\(FORGE_`), stdout);
+    }
+  } finally {
+    box.close();
+  }
+});
+
+test('⛔ v032/E — …and the SAME deployed box with the sibling list rewritten to localhost is STILL half promoted', async () => {
+  // The shape the ✗ was written for, on a deployed origin: the admin doors fall back to the bench ports while
+  // the origin and the faces stay published. The faces are declared, so the new arm is reachable — and must
+  // not open, because the doors are not ON them.
+  const { env, fake } = deployedBox({
+    siblings: BOX.tenants.map((t) => ({ name: t.settings.tenant_name, url: `http://${t.admin_host}` })),
+    adminDoors: Object.fromEntries(BOX.tenants.map((t) => [t.admin_host, t.id])),
+  });
+  const box = await fakeBox(fake);
+  try {
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, `a deployed box whose admins went back to localhost came out settled:\n${stdout}`);
+    for (const t of TENANTS) assert.match(stdout, new RegExp(`✗ ${t} — its admin is published at localhost`), stdout);
+    assert.match(stdout, /HALF PROMOTED/, stdout);
+  } finally {
+    box.close();
+  }
+});
+
+test('⛔ v032/E — an admin door the directory holds, on a host that is neither the origin nor its declared face, is ✗', async () => {
+  // A door somewhere else entirely — claimed, so `mine` keeps it, and published, so the bench test does not
+  // reach it. Only the declared face may open the new arm.
+  const elsewhere = (t) => `elsewhere-${t.id}.example.test`;
+  const { env, fake } = deployedBox({
+    siblings: BOX.tenants.map((t) => ({ name: t.settings.tenant_name, url: `https://${elsewhere(t)}` })),
+    adminDoors: Object.fromEntries(BOX.tenants.map((t) => [elsewhere(t), t.id])),
+  });
+  const box = await fakeBox(fake);
+  try {
+    const { stdout, status } = await runVerdict({ box, env });
+    assert.equal(status, 1, stdout);
+    for (const t of BOX.tenants) assert.match(stdout, new RegExp(`✗ ${t.id} — its admin is published at ${elsewhere(t).replace(/\./g, '\\.')}`), stdout);
+  } finally {
+    box.close();
+  }
+});

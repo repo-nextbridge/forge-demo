@@ -70,7 +70,7 @@ esta tabela não a inventa, ela a espelha.
 | 4 | a Demo **ASSA** as seis imagens no CI dela, do oven do release, e publica no GHCR por digest | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
 | 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
-| 6 | **reset + reseed** | esta caixa | `bin/box-down.sh` + `bin/box-up.sh` — §5 |
+| 6 | **reset + reseed** | a bancada **ou** a VM | bancada: `bin/box-down.sh` + `bin/box-up.sh` — §5 · VM: `bash bin/box-down.sh --env <env> && bash bin/deploy.sh <env> --birth` — §2.3 |
 | 7 | o **ciclo agendado** é configurado | a máquina | §5.1 e `docs/operations/reset-cycle.md` |
 
 > ⏳ O degrau que faltava caía **entre o 3 e o 5** — veja o bloco acima. Uma metade é o passo 4b (o deploy);
@@ -107,9 +107,28 @@ Detalhe em `README.md` §7.
 bash bin/birth-remote.sh stag --plan      # o roteiro dos passos; não toca na caixa
 bash bin/birth-remote.sh stag             # nasce
 bash bin/birth-remote.sh stag --no-warm   # o mesmo sem o passo 14 (aquecer é RELATO, nunca portão)
-bash bin/birth-remote.sh stag --again     # uma caixa que JÁ nasceu aqui — leia a recusa antes
+bash bin/birth-remote.sh stag --again     # convergir sobre uma caixa que GUARDA um nascimento — leia a recusa antes
 bash bin/deploy.sh stag --birth           # entrega, sobe E nasce, num gesto só
 ```
+
+★ **RENASCER DO ZERO é uma sequência só, sem `--again`:**
+
+```bash
+bash bin/box-down.sh --env stag && bash bin/deploy.sh stag --birth
+```
+
+O `box-down --env` destrói os volumes de estado no host e mantém identidade e cache (certificados, conta
+ACME, `.secrets`, cache de fotos); o `deploy.sh --birth` entrega, sobe a caixa num banco VAZIO e passa para o
+`birth-remote.sh`, que lê o diretório vazio como renascimento e diz isso em voz alta.
+
+⛔ **A recusa julga o ESTADO, não o token nem o volume.** Ela começa no registro do próprio nascimento
+(`forge-operator-token` no `.secrets`) e responde pelo diretório do kernel: se algum rosto que esta caixa
+declara está reivindicado (`read.admin.by_host` / `read.store.by_host`, escritos pelos passos 3 e 6b —
+`bin/born-here.mjs`), a caixa tem gente dentro e o nascimento é RECUSADO sem `--again`. Se o diretório não
+pôde ser PERGUNTADO, também recusa: não saber nunca é «vazio». Medido no ensaio de 09/10: `box-down` →
+`deploy` → `birth` era recusado como «caixa viva» porque o `deploy` recria um `pgdata` vazio
+(`[migrate] tenants: none registered yet`), e o renascimento documentado exigia `--again` — uma recusa falsa
+no caminho comum ensina o operador a digitar o flag sem ler.
 
 **Ele atravessa os mesmos quinze passos do `bin/box-up.sh`, por dois veículos.** Os one-shots que são
 entrypoints da IMAGEM do kernel (`migrate`, `provision-ref`, `admin-platform-token`, `bulk-read-token`,
@@ -155,7 +174,7 @@ do oven**. É o §5b de `templates/instance/README.md` do produto, seguido ao p�
 | quem | o quê | onde |
 |---|---|---|
 | `bin/bake.sh` | assa **kernel, storefront, checkout, admin** (a receita) + **storefront-coffee, totem** (os forks, `npm ci` do npm na versão do release) e escreve o lock | o MESMO script no CI e na bancada |
-| `.github/workflows/bake.yml` | em todo push na `main` (e `workflow_dispatch`): baixa o `forge.lock` da Release, puxa o oven por digest, roda `bin/bake.sh --registry ghcr.io/<org>`, publica `ghcr.io/<org>/forge-demo-<nome>` e sobe o lock como **artefato** do run | CI desta caixa |
+| `.github/workflows/bake.yml` | em todo push na `main` que mude alguma entrada do bake (e `workflow_dispatch`): baixa o `forge.lock` da Release, puxa o oven por digest, roda `bin/bake.sh --registry ghcr.io/<org>`, publica `ghcr.io/<org>/forge-demo-<nome>` e sobe o lock como **artefato** do run | CI desta caixa |
 | `bin/bake-local.sh` | `bin/bake.sh` **sem** registry: refs **sem host de registry**, que só existem no daemon que assou | bancada |
 
 **O lock que sai** não tem bloco `provenance`. Cada imagem é `{ ref, origin, built_from }` — `ref` com o host
@@ -176,6 +195,11 @@ git switch -c adopt/<release> && git commit -am "adopt: <release> — the lock o
 
 O lock é o que decide o que roda em produção; ele passa por revisão como qualquer código, e o `deploy.sh` lê
 **só o arquivo comitado** — um deploy reproduzível a partir do git, nunca de "o último run que deu verde".
+
+★ **E o merge dessa PR NÃO assa de novo** (v032/E). O `bake.yml` ignora um push que só mude `forge.lock` (é a
+SAÍDA do bake), `docs/**` ou o `README.md` da raiz (`paths-ignore`). Medido em 09/10: a adoção #21 mudou só o
+lock e re-assou as seis imagens à toa. Um push que mistura um desses com qualquer outro arquivo assa normalmente,
+e o `workflow_dispatch` assa sob demanda.
 
 ⛔ **A recusa (decisão 9 da spec v032):** `bin/deploy.sh stag|prod` recusa, no passo 0 e antes de tocar no
 host, um lock com `provenance.origin == "local build"`, com qualquer imagem `origin: "local build"`, ou com

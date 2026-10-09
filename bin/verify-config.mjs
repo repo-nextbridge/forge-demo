@@ -307,11 +307,37 @@ for (const entry of siblings) {
   doorTenants.set(entry.url, { url, tenant: await adminDoorTenant(authorityOf(url)) });
 }
 
+// ★★★ v032/E — WHERE «PUBLISHED WHERE THIS BOX IS» MEANS A HOSTNAME OF ITS OWN. MEASURED ON THE REHEARSAL OF
+// 2026-10-09: the stag, reborn whole, came out of this section with 2 ✗ «THE BOX IS HALF PROMOTED» — its admins
+// at `stg.admin.store.…`/`stg.admin.cafe.…`, the box at `stg.store.…`. Every other line of the verdict agreed
+// with the box: the directory claimed both admin faces for the right tenant, the gate links pointed at them,
+// and `FORGE_ADMIN_DOMAIN`/`FORGE_CAFE_ADMIN_DOMAIN` in its `.env` (written by `bin/deploy.sh` from
+// `deploy/stag.env`, the same source `bin/deployed-faces.mjs` reads) named exactly those hosts. ⇒ THE BOX WAS
+// RIGHT AND THE RULE WAS THE BENCH'S: one hostname, an admin per PORT (`localhost:8201`, `<tailnet>:8443`).
+// A DEPLOYED box publishes each admin at its own face, and prod has the same shape (`store.…`/`admin.store.…`),
+// so this is red there too, by the same arithmetic. `seed/box.json` having no
+// environment axis was the hypothesis and is not the cause: the hostname compared here never came from it.
+// ⇒ An admin door counts as published when it is on THIS box's origin OR on the admin face THIS declaration
+// names for that tenant (a published value, never a loopback one). ⛔ What stays ✗ is the shape this section
+// exists for: a door on a host that is neither — the sibling list rewritten to `localhost` under a promoted
+// origin — and a door the directory does not hold, which `mine` already demands.
+const ownAdminFace = (tenant) => {
+  const face = declaredFaces(BOX).find((f) => f.kind === 'admin' && f.tenant === tenant);
+  const value = face ? (declared[face.env] ?? '').trim().toLowerCase() : '';
+  return value && !isBenchAddress(value) ? { env: face.env, host: value } : null;
+};
+
 for (const spec of BOX.tenants) {
   const mine = [...doorTenants.entries()].filter(([, v]) => v.tenant === spec.id);
   const onPublished = mine.filter(([, v]) => v.url.hostname.toLowerCase() === PUBLISHED_HOST.toLowerCase());
   if (onPublished.length > 0) {
     ok(spec.id, `admin at ${onPublished[0][0]} — the directory holds it`);
+    continue;
+  }
+  const face = ownAdminFace(spec.id);
+  const onOwnFace = face ? mine.filter(([, v]) => authorityOf(v.url).toLowerCase() === face.host) : [];
+  if (onOwnFace.length > 0) {
+    ok(spec.id, `admin at ${onOwnFace[0][0]} — its own face (${face.env}), and the directory holds it`);
     continue;
   }
   // ★★★ THE HALF-PROMOTED BOX, NAMED. Two shapes reach here and both leave a login that refuses.

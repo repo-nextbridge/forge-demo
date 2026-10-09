@@ -6,8 +6,9 @@
 #   OVEN_IMAGE=… bash bin/bake.sh --registry ghcr.io/<org> --tag <tag> --lock <out>                  (CI: pushes)
 #
 # ONE SCRIPT, TWO CALLERS, and that is the point (spec v032, decision 6): `.github/workflows/bake.yml` runs it
-# with `--registry` on every push to `main`, and `bin/bake-local.sh` runs it on a bench without. The recipe,
-# the list, the apps and the lock it writes are the same in both; what differs is where the bytes end up —
+# with `--registry` on every push to `main` that changes one of its inputs (not `forge.lock`, `docs/`, the root
+# README — v032/E), and `bin/bake-local.sh` runs it on a bench without. The recipe, the list, the apps and the
+# lock it writes are the same in both; what differs is where the bytes end up —
 # and that difference is WRITTEN in the lock (`origin`), so `bin/deploy.sh` can refuse a bench bake on a
 # public box (decision 9).
 #
