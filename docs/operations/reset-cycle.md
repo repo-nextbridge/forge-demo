@@ -359,6 +359,30 @@ frentes** enquanto semeia; o swap é o que mantém isso lento em vez de morto (�
 - ⛔ **Não estime — meça na caixa que vai agendar.** Os dois números acima diferem por um fator de vinte, e a
   única coisa que os separa é onde a corrida aconteceu.
 
+### ★★ O teto de CPU do nascimento (v04-stress/H) — a loja servida não fica sem CPU
+
+Os passos **9** (`seed-demo`) e **10** (`seed-history`) de `bin/birth-remote.sh` rodam no serviço
+`birth-worker` do `compose.yml` — a imagem, o ambiente e as montagens do kernel, mais um teto que **só existe
+enquanto o one-shot existe** (`run --rm`): `FORGE_BIRTH_CPUS` (teto duro, **abaixo de 1** — o seed é um
+processo node só) e `FORGE_BIRTH_CPU_SHARES` (peso sob disputa), declarados em `deploy/box.env` com a medição
+que os escolheu. Nenhum serviço que **serve** (kernel, frentes, postgres, borda) carrega teto — teto na loja é
+lentidão. Não há trap porque não há nada a retirar: o teto morre com o contêiner, no sucesso e na falha.
+Sem a declaração, o passo 9 **diz** `NO CPU CEILING … UNCAPPED` antes de semear. `bin/birth-ceiling.guard.mjs`
+segura as quatro coisas.
+
+**Como medir na caixa** (durante o passo 9 de um nascimento; nada aqui escreve):
+
+```
+docker stats --format 'table {{.Name}}\t{{.CPUPerc}}'      # o one-shot ~≤50%; kernel/frentes/postgres à parte
+vmstat 5                                                   # us+sy, st (steal) e r (fila) da caixa inteira
+docker inspect $(docker ps -q --filter label=com.docker.compose.oneoff=True) \
+  --format '{{.Name}} NanoCpus={{.HostConfig.NanoCpus}} CpuShares={{.HostConfig.CpuShares}}'
+```
+
+Compare o tempo do passo 9 no fim da corrida (`how long each step took on this box`) com os ensaios de 09/10
+(**3 066 s** e **3 538 s**, sem teto). Para medir o one-shot **sem** teto, esvazie `FORGE_BIRTH_CPUS` no `.env`
+da caixa antes da corrida — o próprio nascimento diz que rodou sem.
+
 ### As credenciais, quando nada foi cunhado nesta corrida
 
 Num nascimento, o passo 3 cunha o token de operador de cada tenant e o segura no shell. Os modos
