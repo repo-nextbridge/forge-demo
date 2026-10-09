@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 
 import { TRACKED_DATASET_DIR } from './dataset-provenance.mjs';
 import { ADMIN_WIDGETS_SLOT, adminWidgetsIn, widgetName, widgetPrefixProblem } from '../seed/widgets.mjs';
+import { appliedPromotions } from '../seed/vitrine.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -362,9 +363,18 @@ export const CHECKS = [
       out.push({ ok: unpublished.length === 0, label: `${owner(ds)}'s institutional pages are published, with their titles`, detail: unpublished.length ? `wrong or absent: ${list(unpublished)}` : `${(sf.pages ?? []).length} page(s)` });
       const draft = live.get(sf.qa_draft_page?.slug);
       out.push({ ok: Boolean(draft) && draft.published === false, label: 'the QA draft exists and is NOT published', detail: draft ? `published=${draft.published}` : 'absent from the box' });
+      // ★ v032/F — THE BOX IS ASKED FOR WHAT THE SEED **APPLIES**, NOT FOR WHAT THE DATASET DECLARES. The window
+      // creates only the `seed/vitrine.json → promotions.apply` subset (four of sixteen; the why is in the header
+      // of `seed/vitrine.mjs`), and until v032/F this line counted all sixteen — so on 09/10 two correct rebirths
+      // of the staging box ended red naming the twelve the seed leaves out ON PURPOSE. The subset comes from the
+      // seed's own `appliedPromotions`, never a list typed here; a name it selects that the dataset lost throws,
+      // which the judge turns into a ✗. The sixteen stay graded where they belong: «the promotion bench» above.
+      const applied = appliedPromotions(ds.promotions ?? [], (m) => {
+        throw new Error(m);
+      });
       const names = new Set(box.promotions.map((p) => p.name));
-      const gone = (ds.promotions ?? []).map((p) => p.name).filter((n) => !names.has(n));
-      out.push({ ok: gone.length === 0, label: 'every promotion scenario is on the box', detail: gone.length ? `absent: ${list(gone)}` : `${(ds.promotions ?? []).length} scenario(s)` });
+      const gone = applied.map((p) => p.name).filter((n) => !names.has(n));
+      out.push({ ok: gone.length === 0, label: 'every promotion scenario the window applies is on the box', detail: gone.length ? `absent: ${list(gone)}` : `${applied.length} of ${(ds.promotions ?? []).length} scenario(s) — the ones seed/vitrine.json applies` });
       const placed = (box.composition[owner(ds)] ?? []).filter((r) => r.placement_id !== null && r.enabled === true && r.extension_id === 'shelves').map((r) => r.config?.title);
       const shelvesGone = (sf.shelves ?? []).map((s) => s.config.title).filter((t) => !placed.includes(t));
       out.push({ ok: shelvesGone.length === 0, label: 'every curated shelf is placed on the window, by title', detail: shelvesGone.length ? `not placed: ${list(shelvesGone)}` : `${placed.length} shelf block(s)` });
