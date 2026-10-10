@@ -274,6 +274,8 @@ warm_every_tenant() {
       0) ;;
       2) WARM_UNKNOWN="$WARM_UNKNOWN $t" ;;
       3) MISSING_STORE="$MISSING_STORE $t" ;;
+      # ★★★ dx-i2 — «0 of N planned» is its own sentence, never folded into «not fully warm».
+      4) UNWARMED="${UNWARMED:-} $t" ;;
       *) COLD="$COLD $t" ;;
     esac
   done
@@ -385,6 +387,7 @@ if [ "$MODE" = warm ]; then
   say 'the re-warm · warming every store the port says has a public page, on a box already standing'
   note 'this is step 14 and nothing else — no door is opened and no configuration is graded here.'
   warm_every_tenant
+  [ -z "${UNWARMED:-}" ] || printf '\n%s ⚠️  REPORT — THE RE-WARM WARMED NOTHING FOR%s: NOT WARMED AT ALL. The verdict above\n         says which address the vitrine tried and what it got back.\n\n' "$TAG" "$UNWARMED" >&2
   [ -z "$COLD" ] || printf '\n%s ⚠️  REPORT — THE RE-WARM DID NOT LEAVE%s FULLY WARM. Not a failure: warmth reports, it\n         does not grade. The ⚠ lines above name every url.\n\n' "$TAG" "$COLD" >&2
   [ -z "$WARM_UNKNOWN" ] || printf '\n%s ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: the warmer could not ASK. That is a different\n         sentence from "they are cold", and nothing above claims either.\n\n' "$TAG" "$WARM_UNKNOWN" >&2
   if [ -n "$MISSING_STORE" ]; then
@@ -1359,6 +1362,9 @@ printf '\n' >&2
 
 # ⛔ THE REPORTS FIRST, THE EXITS AFTER — each is its own sentence, because "the box is cold" and "the box is
 # misconfigured" are different repairs, and a report printed after an exit is a report nobody reads.
+[ -z "${UNWARMED:-}" ] || printf '%s ⚠️  REPORT — THE BOX IS UP AND%s WAS NOT WARMED AT ALL: the warmer reached none of
+         the urls it planned. Not red (warmth reports), and never "ready" — the verdict above names the
+         address the vitrine tried and the error it got.\n\n' "$TAG" "$UNWARMED" >&2
 [ -z "${COLD:-}" ] || printf '%s ⚠️  REPORT — THE BOX IS UP AND%s DID NOT COME OUT FULLY WARM. This does NOT make the birth red
          (warmth races the tail of the seed and invents red). What it DOES say is in the report above, by
          name: which urls did not answer, and which were never visited.\n\n' "$TAG" "$COLD" >&2
@@ -1383,7 +1389,7 @@ if [ -n "$UNSETTLED" ]; then
          this repository declares. Re-read the ✗ lines of the verdict — they name the check.\n\n' "$TAG" "$UNSETTLED" >&2
   exit 1
 fi
-# ⚠️ `COLD` AND `WARM_UNKNOWN` ARE DELIBERATELY NOT IN THIS CONJUNCTION — warmth reports, it does not grade.
+# ⚠️ `COLD`, `UNWARMED` AND `WARM_UNKNOWN` ARE DELIBERATELY NOT IN THIS CONJUNCTION — warmth reports, it does not grade.
 if [ -n "${SHUT:-}" ] || [ -n "${DOORS_UNKNOWN:-}" ] || [ -n "${MISCONFIGURED:-}" ] || [ -n "${ONLINE_ONLY_FAILED:-}" ] || [ -n "${MISSING_STORE:-}" ] || [ -n "${ROTEIRO_INCOMPLETE:-}" ] || [ -z "${TOTEM_UP:-}" ]; then
   exit 1
 fi

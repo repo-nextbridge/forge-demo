@@ -106,6 +106,12 @@
 //      hunting one that does not exist. The split is `bin/verify-seed.mjs`'s, for the same reason.
 //   3  THE BOX DOES NOT HOLD A STORE `seed/box.json` DECLARES — or the port reported no store at all. The
 //      birth did not build it; see above for why this one, and only this one, still fails.
+//   4  ★★★ dx-i2 — NOTHING WAS WARMED: the run planned N urls and warmed ZERO. Still a REPORT (the birth does
+//      not fail on it), but its OWN number and its own verdict, because «0 of N» is not «a few did not
+//      answer»: it is the warmer not reaching the shop at all. MEASURED on the local benches of 2026-10-10:
+//      `planned=838 warmed=0 failed=1676`, every url `fetch failed`, and the birth's closing block printed the
+//      same «did not come out fully warm» it prints for one 503 in 838 — a dead warmer read as a nearly-ready
+//      box. `bin/box-up.sh` and `bin/birth-remote.sh` read 4 apart from 1 for that reason.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -163,6 +169,8 @@ const say = (line = '') => out.push(line);
 let missing = 0;
 /** What the box was not: one sentence each, printed in the verdict. Reported, never graded — see the header. */
 const shortfalls = [];
+/** ★★★ dx-i2 — the run planned urls and warmed NONE. The sentence that replaces the verdict; see exit 4. */
+let unwarmed = null;
 /** THIS step could not ask. Never a claim about the box — see the exit codes above. */
 const wrongQuestion = (message) => {
   say(`  ⚑ ${message}`);
@@ -198,6 +206,13 @@ const finish = () => {
       `VERDICT: ${missing} store(s) this repository DECLARES are not in ${tenant}. The birth did not build ` +
         'them, which is not a statement about warmth — read the ✗ line(s) above.',
     );
+  } else if (unwarmed !== null) {
+    // ⛔ NOT the «did NOT come out fully warm» below: that sentence is also what one 503 in 838 prints, and on
+    //    2026-10-10 it was printed over a box where not ONE url had been fetched. See exit 4 in the header.
+    say(`VERDICT (a REPORT — bin/box-up.sh does not fail the birth on it): ${tenant} was NOT WARMED AT ALL.`);
+    say(`  · ${unwarmed}`);
+    for (const line of shortfalls.filter((l) => l !== unwarmed)) say(`  · ${line}`);
+    say('  Read this as "the warmer never reached the shop", never as "ready". The box is as cold as an unwarmed one.');
   } else if (shortfalls.length === 0) {
     say(`VERDICT: warm. Every servable store of ${tenant} was warmed through ${api}.`);
   } else {
@@ -208,7 +223,7 @@ const finish = () => {
   process.stdout.write(`${out.join('\n')}\n`);
   // ⚠️ 3 BEATS 1: a box that is missing a store this repository declares is a different sentence from a box
   //    that is a bit cold, and the caller reads the status before it reads the prose.
-  process.exit(missing > 0 ? 3 : shortfalls.length > 0 ? 1 : 0);
+  process.exit(missing > 0 ? 3 : unwarmed !== null ? 4 : shortfalls.length > 0 ? 1 : 0);
 };
 
 if (!api) wrongQuestion('no --api and no FORGE_PUBLIC_ORIGIN: this step has no address to warm.');
@@ -1054,6 +1069,51 @@ const passLine = (label, pass, why) => {
   return failed.length === 0 && skipped === 0 && busy === 0;
 };
 
+/**
+ * ★★★ dx-i2 — WHY A RUN THAT PLANNED URLS WARMED NONE, in the words of the run: the address the VITRINE was
+ * told to fetch, who chose it, and the errors it got back.
+ *
+ * ⛔ MEASURED 2026-10-10 on two local benches and the café: `planned=838 warmed=0 failed=1676`, every url
+ * `fetch failed`, `p95 0ms`. The vitrine fetches FROM INSIDE ITS OWN CONTAINER (`POST /api/warm` only starts
+ * the run there), and it was told `FORGE_PUBLIC_ORIGIN` = `http://localhost:8200` — which inside that container
+ * is the container itself, where nothing listens on 8200 (`fetch('http://localhost:8200/')` → ECONNREFUSED
+ * from `docker exec`, 200 from the host). So a loopback origin is named as the most likely cause, by name; any
+ * other address only gets the facts, because this step cannot see the vitrine's network.
+ */
+const LOOPBACK = /^(localhost|.+\.localhost|127(?:\.\d{1,3}){3}|\[::1\]|0\.0\.0\.0)$/i;
+const nothingWarmedWhy = (run, report, line) => {
+  const tried = run?.asked?.origin ?? null;
+  const from = { config: 'FORGE_PUBLIC_ORIGIN in the vitrine container', caller: 'the caller', request: 'the request the vitrine received' }[
+    run?.asked?.originFrom
+  ];
+  const errors = new Map();
+  for (const store of report.stores ?? []) {
+    for (const pass of [store.pages, store.images, store.verify]) {
+      for (const f of pass?.failed ?? []) errors.set(f.error ?? 'failed', (errors.get(f.error ?? 'failed') ?? 0) + 1);
+    }
+  }
+  const said = [...errors].map(([e, n]) => `${n}× ${e}`).join(' · ');
+  let host = null;
+  try {
+    host = tried ? new URL(tried).hostname : null;
+  } catch {}
+  const address = tried
+    ? `The vitrine tried ${tried}${from ? ` (chosen by ${from})` : ''}`
+    : 'The vitrine did not say which address it tried';
+  const cause =
+    host && LOOPBACK.test(host)
+      ? ` ⛔ MOST LIKELY CAUSE: ${host} is a LOOPBACK address and the vitrine fetches from INSIDE its own ` +
+        'container, where loopback is the container itself and not this box\'s edge — the same address a ' +
+        'browser on this machine opens is unreachable from there UNLESS the vitrine\'s loopback door is up ' +
+        '(`storefront-loopback`, which env-source.sh derives from a loopback FORGE_PUBLIC_ORIGIN — ' +
+        '`docker compose ps storefront-loopback`). See "The warming on a bench" in README.md.'
+      : ' The vitrine fetches from INSIDE its container: that address has to reach this box\'s edge from there.';
+  return (
+    `NOTHING WARMED — 0 of ${report.planned} planned url(s) (${line}). ${address}` +
+    `${said ? ` and got back: ${said}` : ''}.${cause}`
+  );
+};
+
 const names = toWarm.map((s) => `${s.handle}=${s.id}`).join(' · ');
 if (!run) {
   cold('the run', 'the vitrine answered with no run at all');
@@ -1099,6 +1159,12 @@ if (!run) {
         'warmer and it enumerated nothing, so NOTHING about this box was warmed and nothing about it was ' +
         'measured — read this as "the warmer could not build a plan", never as "warm".',
     );
+  } else if ((r.warmed ?? 0) === 0 && (r.failed ?? 0) > 0) {
+    // ⚠️ `failed > 0`, NOT `warmed === 0` alone: a run cut by a clock before its first url warmed nothing
+    //    too, but it TRIED nothing — that is «never visited», and it keeps its own sentence (the ceiling
+    //    block above says there was no cost to derive). This branch is the run that tried and reached nothing.
+    unwarmed = nothingWarmedWhy(run, r, line);
+    cold('the stores', unwarmed);
   } else if (runBusy !== null && runBusy > 0) {
     // ⛔ THIS STEP GRADES THE COLUMN ITSELF, and does not wait for the vitrine's `state` to do it. The run
     //    that produced this branch said `state: ok` and `failed: 0`; a step that trusted those two would

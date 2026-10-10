@@ -201,6 +201,55 @@ fi
 export FORGE_MAIL_CA=''
 fi
 
+# ★★★ dx-i2 — THE VITRINE'S LOOPBACK DOOR, DERIVED FROM `FORGE_PUBLIC_ORIGIN` AND NOTHING ELSE.
+#
+# ⛔ THE DEFECT, MEASURED ON TWO LOCAL BENCHES AND THE CAFÉ, 2026-10-10: step 14 printed `planned=838 warmed=0
+# failed=1676`, every url `fetch failed`, and the birth exited 0. `bin/warm-box.mjs` only STARTS the run
+# (`POST /api/warm`, from the host — that works); the VITRINE then fetches every page FROM INSIDE ITS OWN
+# CONTAINER, at `FORGE_PUBLIC_ORIGIN` (apps/storefront/src/app/api/warm/route.ts, `resolveOrigin`: the
+# caller's `?origin=`, else `publicOrigin()`, else the request's host). On a bench that is
+# `http://localhost:8200`, and inside the container `localhost` is the container — nothing listens on 8200
+# there: `docker exec … node -e "fetch('http://localhost:8200/')"` → ECONNREFUSED, while the host gets 200.
+# A deployed box never sees this, because its public name resolves to the box's own edge from anywhere.
+#
+# ★★ WHY A DOOR AND NOT ANOTHER ADDRESS. The product lets the caller name `?origin=` but not the Host it
+# sends, and every other address changes WHAT is warmed: `http://caddy` makes every image the pages declare
+# at `http://localhost:8200/…` a FOREIGN host the warmer skips, and `http://localhost:3000` (the process
+# itself) bypasses the edge, so the café's `/s/<id>` would be warmed on the reference vitrine instead of its
+# fork. So the bench gets what a deployed box already has: the public address REACHES THE EDGE from inside
+# the vitrine. `storefront-loopback` (compose.yml) is a caddy sharing the vitrine's network namespace, on the
+# origin's port, forwarding to `caddy:80` with the Host untouched. Same origin, same urls, same images.
+#
+# ★ ONE FACT, as with the mailbox: a loopback `http://` origin IS the declaration. A deployment (`https://` on
+# a real name) derives nothing and the service is never created. ⚠️ `https://localhost` derives nothing
+# either — the door speaks plain http — and the origin's port may not be the vitrine's own 3000.
+# `bin/loopback-door.guard.mjs` executes this function against each of those origins.
+_forge_loopback_door_port() { # <origin> → the port to open inside the vitrine, or nothing
+  local rest host port
+  case "$1" in http://*) rest="${1#http://}" ;; *) return 0 ;; esac
+  rest="${rest%%/*}"
+  case "$rest" in
+  \[*\]:*) host="${rest%%]:*}]"; port="${rest##*]:}" ;;
+  \[*\]) host="$rest"; port=80 ;;
+  *:*) host="${rest%%:*}"; port="${rest##*:}" ;;
+  *) host="$rest"; port=80 ;;
+  esac
+  case "$host" in
+  localhost | *.localhost | 127.* | '[::1]') ;;
+  *) return 0 ;;
+  esac
+  case "$port" in '' | *[!0-9]* | 3000) return 0 ;; esac
+  printf '%s' "$port"
+}
+FORGE_LOOPBACK_DOOR_PORT="$(_forge_loopback_door_port "$(_forge_env_declares FORGE_PUBLIC_ORIGIN || printf '')")"
+export FORGE_LOOPBACK_DOOR_PORT
+if [ -n "$FORGE_LOOPBACK_DOOR_PORT" ]; then
+  case ",${COMPOSE_PROFILES:-}," in
+  *,bench-loopback,*) ;;
+  *) export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}bench-loopback" ;;
+  esac
+fi
+
 # ★ THE SEED'S CREDENTIAL — and it already exists on this box.
 #
 # The `Reference Operator` credential that `provision-ref` prints at bootstrap holds every scope the seed

@@ -1,0 +1,19 @@
+# ★★★ dx-i2 — THE VITRINE'S LOOPBACK DOOR (service `storefront-loopback` in compose.yml).
+#
+# This caddy shares the VITRINE's network namespace and listens on the port of `FORGE_PUBLIC_ORIGIN`, so that
+# `http://localhost:<port>` — the address the vitrine's warmer fetches every page at (`POST /api/warm` runs the
+# fetches INSIDE the vitrine's container) — reaches this box's edge instead of the container itself. The why,
+# the measurement (`planned=838 warmed=0`, every url ECONNREFUSED, 2026-10-10) and the derivation are in
+# `env-source.sh`, at `_forge_loopback_door_port`.
+#
+# ⚠️ IT ADDS NOTHING TO THE EDGE. No port is published, no route is decided here: every request goes to the
+# bench edge's shop face (`caddy:80`, `caddy/Caddyfile.local`), and `reverse_proxy` passes the Host header
+# through unchanged by default, so the edge sees exactly the request a browser on this machine sends.
+{
+	auto_https off
+	admin off
+}
+
+:{$FORGE_LOOPBACK_DOOR_PORT} {
+	reverse_proxy caddy:80
+}

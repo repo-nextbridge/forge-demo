@@ -261,6 +261,8 @@ async function fakeBox({
    * values could never prove the step refuses to guess at a fourth.
    */
   stop,
+  /** ★★★ dx-i2 — the address the vitrine says it tried, for `warm: 'unreached'`. The bench's, by default. */
+  unreachedOrigin = 'http://localhost:8200',
 } = {}) {
   const asked = { posts: [], calls: [], gets: 0, tenantHeaders: [] };
   let run = null;
@@ -460,6 +462,38 @@ async function fakeBox({
                             startedAt: new Date(Date.now() - elapsedMs).toISOString(),
                           };
                         })()
+                      : warm === 'unreached'
+                        ? {
+                            // ★★★ dx-i2 — THE RUN THAT NEVER REACHED THE SHOP, in the shape the bench published
+                            // on 2026-10-10: every page and every verify visit `fetch failed`, nothing warmed,
+                            // no image declared (no page served one), p95 0. `failed` is pages + verify.
+                            state: 'incomplete',
+                            asked: { origin: unreachedOrigin, originFrom: 'config', stores: url.searchParams.getAll('store') },
+                            report: {
+                              planned,
+                              warmed: 0,
+                              failed: planned * 2,
+                              busy: 0,
+                              p95: 0,
+                              p95Pass: 'verify',
+                              thresholdMs: null,
+                              stoppedBecause: stop,
+                              stores: [
+                                {
+                                  store: 'sto_CAFE',
+                                  url: `${unreachedOrigin}/s/sto_CAFE`,
+                                  planned,
+                                  sections: {},
+                                  short: [],
+                                  pages: pass({ planned, done: 0, p95: 0, failed: Array.from({ length: planned }, (_, i) => ({ url: `${unreachedOrigin}/s/sto_CAFE/p/${i}`, error: 'fetch failed' })) }),
+                                  images: { ...pass({ planned: 0, done: 0, p95: 0 }), foreignHosts: [], unwarmablePaths: [], declared: 0, cut: false },
+                                  verify: pass({ planned, done: 0, p95: 0, failed: Array.from({ length: planned }, (_, i) => ({ url: `${unreachedOrigin}/s/sto_CAFE/p/${i}`, error: 'fetch failed' })) }),
+                                },
+                              ],
+                              reasons: [`sto_CAFE: ${planned} page(s) did not answer`],
+                              ok: false,
+                            },
+                          }
                       : warm === 'empty'
                         ? {
                             // ⚠️ THE VACUUM: a run that finished, said `ok`, and planned NOTHING. The
@@ -1149,6 +1183,52 @@ test('★★★ THE VACUUM: a run that finished having planned ZERO urls ACCUSES
     assert.equal(status, 1, `a run that planned nothing was called warm:\n${stdout}`);
     assert.doesNotMatch(stdout, /VERDICT: warm/, stdout);
     assert.match(stdout, /planned (NO|no|0 )/, `the verdict does not say the plan was empty:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+// ── ★★★ dx-i2 · «0 OF N» IS ITS OWN VERDICT, NEVER «NOT FULLY WARM» ──────────────────────────────────────
+//
+// ⛔ MEASURED 2026-10-10 on two local benches: `planned=838 warmed=0 failed=1676`, every url `fetch failed`,
+// and the step said `did NOT come out fully warm` — the same sentence, and the same exit 1, that one 503 in
+// 838 produces. The vitrine fetches from inside its container and `localhost:8200` there is the container.
+
+test('★★★ a run that planned urls and warmed NONE is its own verdict and its own exit code (4)', async () => {
+  const box = await fakeBox({ warm: 'unreached' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 4, `a run that warmed nothing exited like one that warmed most:\n${stdout}`);
+    assert.match(stdout, /VERDICT[^\n]*NOT WARMED AT ALL/, `the verdict does not say nothing warmed:\n${stdout}`);
+    assert.doesNotMatch(stdout, /did NOT come out fully warm/, `0 of N still reads like "a few failed":\n${stdout}`);
+    assert.match(stdout, /0 of 10 planned/, `the verdict does not carry the count:\n${stdout}`);
+    // The address the VITRINE tried and what it got back — the two facts that name the cause.
+    assert.match(stdout, /tried http:\/\/localhost:8200 \(chosen by FORGE_PUBLIC_ORIGIN/, `the address is not named:\n${stdout}`);
+    assert.match(stdout, /20× fetch failed/, `the error the vitrine got is not relayed:\n${stdout}`);
+    assert.match(stdout, /LOOPBACK/, `a loopback origin is not named as the likely cause:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ …and the cause is not invented: an origin that is NOT loopback gets the facts, not the loopback story', async () => {
+  const box = await fakeBox({ warm: 'unreached', unreachedOrigin: 'https://shop.example.test' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 4, stdout);
+    assert.match(stdout, /tried https:\/\/shop\.example\.test/, stdout);
+    assert.doesNotMatch(stdout, /LOOPBACK/, `a public origin was blamed on loopback:\n${stdout}`);
+  } finally {
+    box.close();
+  }
+});
+
+test('★★ ANTI-VACUUM — a run that warmed MOST and lost two keeps the old verdict and exit 1', async () => {
+  const box = await fakeBox({ warm: 'incomplete' });
+  try {
+    const { stdout, status } = await runStep({ box });
+    assert.equal(status, 1, stdout);
+    assert.doesNotMatch(stdout, /NOT WARMED AT ALL|NOTHING WARMED/, `a mostly-warm run was called unwarmed:\n${stdout}`);
   } finally {
     box.close();
   }
