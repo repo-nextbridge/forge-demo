@@ -47,6 +47,15 @@ require_node || exit 1
 
 tenant="$FORGE_BENCH_TENANT"
 api="http://localhost:$FORGE_HTTP_PORT"
+# ⛔ PROMOTED TO A HOST OR IP, THE STORE'S ADDRESS IS THE https DOOR, and the scripts below follow it: 6b claims
+# it, and 14-bis opens every door AT the address the store claims — not at --api. Measured 2026-10-10, first
+# promotion of this hook to 192.168.1.221: «forge/ — could not be reached: fetch failed» on all four doors,
+# «NOT ONE door of forgeco was opened», the `up` red — Node does not trust the kit's local CA. The kit exports
+# that CA to .forge-bench/ca.crt (the file its own output tells a person to trust) and removes it when the bench
+# goes back to localhost, so it is handed to Node exactly when it exists.
+if [ "${FORGE_BENCH_ORIGIN#https://}" != "$FORGE_BENCH_ORIGIN" ] && [ -s "$HERE/.forge-bench/ca.crt" ]; then
+  export NODE_EXTRA_CA_CERTS="$HERE/.forge-bench/ca.crt"
+fi
 FORGE_OPERATOR_TOKEN="$(cat "$FORGE_BENCH_OPERATOR_TOKEN_FILE")"
 export FORGE_OPERATOR_TOKEN
 

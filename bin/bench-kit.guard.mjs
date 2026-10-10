@@ -17,6 +17,8 @@
 //      and it calls this box's own seed (seed-box, store-host, seed, prove-doors) with the kit's credential,
 //      which never reaches the output. With FORGE_DEMO_BENCH_DATASET=1 it also runs the massive one-shot
 //      THROUGH THE KIT (bench/compose.sh), then the window and the data verdict — and without it, none of them.
+//      Promoted to an IP, it claims the https door and hands Node the CA the kit exported (without it, the first
+//      live promotion went red: every door «fetch failed»).
 //
 // The real run (a clean clone, block 66, promoted to a LAN IP and back) is in RESULTADOS-ib-3.
 import assert from 'node:assert/strict';
@@ -91,6 +93,8 @@ case "$*" in
     printf '  operator token\n  %s\n  login-driver token\n  %s\n' "$IB3_OP" "$IB3_DRV" >&2
     echo "$IB3_STORE" ;;
   *dist/seed-demo.js*) echo '[seed-demo] done (fake)' ;;
+  # a promoted bench exports the edge's local CA: … cp edge-tls:/data/caddy/pki/authorities/local/root.crt <dest>
+  *' cp edge-tls:'*) for last in "$@"; do :; done; echo 'FAKE CA' > "$last" ;;
 esac
 exit 0
 `;
@@ -100,7 +104,8 @@ const FAKE_CURL = `#!/usr/bin/env bash\nprintf 200\n`;
 const FAKE_NODE = String.raw`#!/usr/bin/env bash
 case "$1" in -v|--version) echo v24.18.0; exit 0 ;; esac
 tok=absent; [ "$FORGE_OPERATOR_TOKEN" = "$IB3_OP" ] && tok=kit; [ -n "$FORGE_OPERATOR_TOKEN" ] && [ "$tok" = absent ] && tok=OTHER
-echo "node $* token=$tok" >> "$IB3_LOG"
+ca="$NODE_EXTRA_CA_CERTS"; [ -n "$ca" ] || ca=none
+echo "node $* token=$tok ca=$ca" >> "$IB3_LOG"
 exit 0
 `;
 
@@ -154,7 +159,9 @@ test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds TH
   for (const l of nodes) {
     assert.match(l, /--tenant forgeco /, `not the kit's tenant: ${l}`);
     assert.match(l, /--api http:\/\/localhost:7100( |$)/, `not the shop's loopback door of block 71: ${l}`);
-    assert.match(l, / token=kit$/, `not the credential the kit minted and filed: ${l}`);
+    assert.match(l, / token=kit /, `not the credential the kit minted and filed: ${l}`);
+    // On localhost there is no CA to hand over, and none is invented.
+    assert.match(l, / ca=none$/, `a CA was handed to Node on a localhost bench: ${l}`);
   }
   assert.match(nodes[1], new RegExp(`--origin http://localhost:7100 --store ${FAKE_STORE} `), 'store-host did not claim the kit\'s origin for the kit\'s store');
   assert.ok(!out.includes(FAKE_OPERATOR) && !out.includes(FAKE_DRIVER), 'a credential the kit minted reached the output');
@@ -177,4 +184,16 @@ test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT,
     nodes.map((l) => l.split(' ').slice(1, 2).concat(l.includes('--phase window') ? ['window'] : []).join(' ')),
     ['bin/seed-box.mjs', 'bin/store-host.mjs', 'bin/seed.mjs', 'bin/seed.mjs window', 'bin/verify-seed.mjs', 'bin/verify-content.mjs', 'bin/prove-doors.mjs'],
   );
+});
+
+test('★ PROMOTED to an IP, the hook claims the https door and hands Node the CA the kit exported (14-bis opens it there)', () => {
+  // Measured 2026-10-10 without this: every door «fetch failed», «NOT ONE door of forgeco was opened», the `up` red.
+  const { rc, out, nodes } = up({ FORGE_BENCH_ADDRESS: '192.0.2.20' });
+  assert.equal(rc, 0, `bench/up.sh promoted to 192.0.2.20 did not finish:\n${out.slice(-2500)}`);
+  assert.equal(nodes.length, 4, `the hook ran ${nodes.length} script(s):\n  ${nodes.join('\n  ')}`);
+  assert.match(nodes[1], /--origin https:\/\/192\.0\.2\.20:7143 /, `store-host did not claim the promoted https door: ${nodes[1]}`);
+  for (const l of nodes) {
+    assert.match(l, /--api http:\/\/localhost:7100( |$)/, `promoted, the scripts still talk through the loopback door: ${l}`);
+    assert.match(l, / ca=\S+\/\.forge-bench\/ca\.crt$/, `Node was not handed the kit's local CA: ${l}`);
+  }
 });
