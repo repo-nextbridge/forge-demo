@@ -514,7 +514,7 @@ report — the birth does not fail on warmth — but it can no longer be read as
 | warming, reset cycle gesture 4 (after `--promote tailnet`) | **2 409 s** (~40 min) | 2026-09-15 | bench | docs/operations/reset-cycle.md |
 | birth, deployed box | **80–97 min** (seed 51–66 min) | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |
 | reset by restore (`bin/snapshot.sh`) | **92 s** | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |
-| warming, deployed box | **not measured** | — | — | the "~1h10" this repo used to quote for it had no dated run behind it |
+| warming, deployed box | **not measured** | — | — | the "~1h10" this repo quoted for it until 2026-10-10 had no dated run behind it |
 <!-- costs:end -->
 
 **This table is the one place a cost lives.** Everything else in this repository — the runbook, the reset
