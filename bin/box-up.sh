@@ -6,6 +6,8 @@
 #   bash bin/box-up.sh --warm-only         ONLY step 14, on a box that is already standing (§0w)
 #   bash bin/box-up.sh --verdict-only      ONLY steps 14-bis and 15, on a box that is already standing (§0v)
 #   bash bin/box-up.sh --plan [--no-warm]  print the roteiro this invocation would run, and do nothing
+#   bash bin/box-up.sh --tenant <id> […]   build ONLY the tenants named (repeatable; also FORGE_BOX_TENANTS in
+#                                          .env). Combines with the birth, --plan, --warm-only, --verdict-only
 #   bash bin/box-up.sh --promote <where>   PROMOTION: point the born box at an address (A15, §B5)
 #                                          <where> = `tailnet` · `localhost` (the way back) · a hostname
 #   bash bin/box-up.sh --tailnet           the alias kept: `--promote tailnet`
@@ -114,15 +116,17 @@ cd "$HERE" || exit 1
 # ⚠️ EVERY ONE OF THESE DECLARES ITSELF OR REFUSES OUT LOUD. THE RULER OF THIS SPRINT: a step
 # that only works because somebody knew which variable to export is not ready. So `--promote` with no
 # destination is a refusal that NAMES the destinations, not a fall-through to a default.
-USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan]
+USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan] [--tenant <id>]…
          bash bin/box-up.sh --promote <tailnet|localhost|hostname>
          bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)
          bash bin/box-up.sh --warm-only                  step 14 alone, on a box already standing
-         bash bin/box-up.sh --verdict-only               steps 14-bis and 15 alone, asked AGAIN of a standing box'
+         bash bin/box-up.sh --verdict-only               steps 14-bis and 15 alone, asked AGAIN of a standing box
+         --tenant <id> (repeatable) or FORGE_BOX_TENANTS=<id,…> in .env: only those tenants of seed/box.json'
 MODE=birth
 PROMOTE_TO=''
 WARM=1
 PLAN_ONLY=0
+ASKED_TENANTS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --promote)
@@ -146,6 +150,13 @@ while [ $# -gt 0 ]; do
     # that has not finished existing, and both of them answer ✓ once the promotion has run.
     --verdict-only) MODE=verdict; shift ;;
     --plan)      PLAN_ONLY=1; shift ;;
+    # ★★ DX-I5 — THE TENANTS THIS RUN BUILDS. Collected here, RESOLVED (and refused) by `bin/box-tenants.mjs`
+    # below — see "WHICH TENANTS THIS RUN BUILDS" for what each step does with a tenant nobody asked for.
+    --tenant)
+      case "${2:-}" in
+        ''|--*) printf '\n[box-up] --tenant needs a tenant id, e.g. `--tenant forgecafe`.\n  %s\n\n' "$USAGE" >&2; exit 1 ;;
+      esac
+      ASKED_TENANTS+=("$2"); shift 2 ;;
     *) printf '\n[box-up] unknown argument "%s".\n  %s\n\n' "$1" "$USAGE" >&2; exit 1 ;;
   esac
 done
@@ -155,6 +166,12 @@ if [ "$MODE" != birth ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
   # ⚠️ `--warm-only` is covered by the same line and not by a second one: it is the step list reduced to a
   # single step, so "do not warm" and "plan the birth" are exactly as meaningless there as in a promotion.
   printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote, --warm-only and --verdict-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
+  exit 1
+fi
+if [ "$MODE" = promote ] && [ "${#ASKED_TENANTS[@]}" -gt 0 ]; then
+  # ⚠️ The promotion re-points EVERY tenant's doors at once (one address, one directory); promoting some of
+  # them would leave the box half promoted BY REQUEST, which is the state step 15 exists to accuse.
+  printf '\n[box-up] --tenant selects what a birth BUILDS; --promote moves the address of every tenant this box holds.\n  %s\n\n' "$USAGE" >&2
   exit 1
 fi
 
@@ -388,6 +405,78 @@ die() { printf '\n[box-up] %s\n' "$*" >&2; capture_evidence "die-${STEP_NOW:-ear
 . "$HERE/bin/require-node.sh"
 require_node || exit 1
 
+# ── ★★ DX-I5 · WHICH TENANTS THIS RUN BUILDS — a declaration, never an edit to `seed/box.json` ──────────────
+#
+# ⛔ MEASURED 2026-10-10 (RESULTADOS-dx0, line 4): building only the café meant editing the versioned
+# `seed/box.json`, and not editing it cost every café developer step 9 of `forgeco` — 23 to 32 minutes of a
+# footwear catalogue they never open. `--tenant <id>` (repeatable) or `FORGE_BOX_TENANTS=<id,…>` in `.env`
+# now say it; `bin/box-tenants.mjs` resolves the two (the command line wins) and REFUSES a name the file
+# does not declare, before anything is read or started. Neither ⇒ every tenant, as before this slice.
+#
+# ★ THREE LISTS, AND THEY ARE NOT INTERCHANGEABLE:
+#   $DECLARED_TENANTS  every tenant `seed/box.json` declares, in its order — the input of every NAMING rule
+#             (`secret_name_for`: the first declared tenant keeps the unsuffixed secrets; the root of the shop
+#             is the first declared tenant's store). A selection narrows what is BUILT, never what things are
+#             CALLED, so a café-only bench files `forge-operator-token-forgecafe` exactly as a full one does.
+#   $WANTED   the tenants this run builds — and `$TENANTS` is set to it once the declaration is read, so
+#             every per-tenant loop of the birth (`for t in $TENANTS`) walks the selection unchanged.
+#   $ON_BOX   $WANTED plus the not-asked tenants an EARLIER birth left standing on this database (asked of the
+#             directory after step 2 — see `born_unasked`). Never built, never deleted, never re-graded by the
+#             data verdicts; their `.env` entries (switcher, gate links, /enter store ids, root map, totem) are
+#             KEPT, and step 15 grades those entries because they are this box's configuration.
+# ⛔ EACH STEP THAT THE SELECTION EMPTIES IS SKIPPED BY NAME (`skip`, and the plan says it first) — never an
+#    `if` that quietly does nothing, which the roteiro would accuse as NEITHER RAN NOR WAS DECLARED SKIPPED.
+# >>> WHICH TENANTS THIS RUN BUILDS   (bin/box-tenants.guard.mjs lifts this block out and runs it)
+_bench_tenants="$(sed -n 's/^FORGE_BOX_TENANTS=//p' "$HERE/.env" 2>/dev/null | tail -1)"
+_bench_tenants="${_bench_tenants:-${FORGE_BOX_TENANTS:-}}"
+# What the selection is measured against, read from the declaration (no jq yet: `--plan` runs before the jq
+# check): every id in order, then the four tenants whose absence empties a step. The root and the café are
+# POSITIONAL on purpose — the same `head -1`/`tail -1` step 3 uses.
+_box_facts="$(node -e '
+  const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  const t = b.tenants ?? [];
+  console.log(t.map((x) => x.id).join(" "));
+  console.log(t[0]?.id ?? "");
+  console.log(t[t.length - 1]?.id ?? "");
+  console.log(t.filter((x) => (x.stores ?? []).some((s) => s.handle === "balcao")).map((x) => x.id).join(" "));
+  console.log(t.filter((x) => x.dataset === true).map((x) => x.id).join(" "));
+' "$HERE/seed/box.json" 2>/dev/null)" || _box_facts=''
+ROOT_TENANT="$(sed -n 2p <<<"$_box_facts")"
+CAFE_TENANT="$(sed -n 3p <<<"$_box_facts")"
+COUNTER_TENANT="$(sed -n 4p <<<"$_box_facts")"
+_dataset_tenants="$(sed -n 5p <<<"$_box_facts")"
+# ⚠️ THE RESOLVER IS ONLY ASKED WHEN A SELECTION WAS DECLARED: no selection is every tenant, by definition,
+# and a box-up copied somewhere without `bin/box-tenants.mjs` (several guards run it that way) keeps working.
+if [ "${#ASKED_TENANTS[@]}" -gt 0 ] || [ -n "$(printf '%s' "$_bench_tenants" | tr -d "'\" ,")" ]; then
+  _tenant_args=()
+  for _t in "${ASKED_TENANTS[@]}"; do _tenant_args+=(--tenant "$_t"); done
+  WANTED="$(node "$HERE/bin/box-tenants.mjs" --declared "$_bench_tenants" "${_tenant_args[@]}" | tr '\n' ' ')" || exit 1
+  WANTED="${WANTED% }"
+else
+  WANTED="$(sed -n 1p <<<"$_box_facts")"
+fi
+ON_BOX="$WANTED"
+wanted_has() { case " $WANTED " in *" $1 "*) return 0 ;; esac; return 1; }
+on_box_has() { case " $ON_BOX " in *" $1 "*) return 0 ;; esac; return 1; }
+WANTED_DATASET=''
+for _t in $_dataset_tenants; do wanted_has "$_t" && WANTED_DATASET="$WANTED_DATASET $_t"; done
+# ★ THE REASONS, WRITTEN ONCE — the plan and the run print these same strings (the `$WARM_SKIP_WHY` rule).
+SKIP_9_WHY="no tenant this run builds carries the example dataset (asked: $WANTED; seed/box.json gives it to:${_dataset_tenants:+ $_dataset_tenants}) — the massive catalogue belongs to a brand nobody asked for, so the 23–32 min it costs are not spent. Ask for it too — add \`--tenant $(echo "$_dataset_tenants" | awk '{print $1}')\` beside the ones you named, or drop the selection — and re-run: every step converges."
+SKIP_3C_WHY="\"$CAFE_TENANT\" was not asked (asked: $WANTED) — there is no café store to route, so caddy/extra-local/coffee.caddy and FORGE_COFFEE_STORE_ID are left exactly as they are (a café born earlier keeps its rule)."
+SKIP_6B_WHY="the root of the shop is \"$ROOT_TENANT\"'s bootstrap store and \"$ROOT_TENANT\" was not asked (asked: $WANTED) — no store of this run can claim this box's public origin. By design: \`/\` answers 404 unless an earlier birth left \"$ROOT_TENANT\" standing (its claim is then still in the directory); the café lives at /s/<its store id>, which the bench block prints."
+SKIP_7_WHY="the counter belongs to \"$COUNTER_TENANT\", which this run does not build"
+# ⚠️ Each is PREPENDED as an assignment that opens with its own `<id>=` — the spelling `bin/birth-roteiro.guard.mjs` pairs with the
+# run's `skip <id>` calls, so a skip the run can declare and the plan does not announce is red.
+if [ -n "$_dataset_tenants" ] && [ -z "$WANTED_DATASET" ]; then PLANNED_SKIPS="9=$SKIP_9_WHY
+$PLANNED_SKIPS"; fi
+if [ -n "$CAFE_TENANT" ] && ! wanted_has "$CAFE_TENANT"; then PLANNED_SKIPS="3c=$SKIP_3C_WHY
+$PLANNED_SKIPS"; fi
+if [ -n "$ROOT_TENANT" ] && ! wanted_has "$ROOT_TENANT"; then PLANNED_SKIPS="6b=$SKIP_6B_WHY
+$PLANNED_SKIPS"; fi
+if [ -n "$COUNTER_TENANT" ] && ! wanted_has "$COUNTER_TENANT"; then PLANNED_SKIPS="7=$SKIP_7_WHY — skipped unless an earlier birth left it standing (then the totem starts on the counter store id .env kept)
+$PLANNED_SKIPS"; fi
+# <<< WHICH TENANTS THIS RUN BUILDS
+
 # ── ★ `--plan` · THE ROTEIRO WITHOUT THE BIRTH (pk24/§B1) ───────────────────────────────────────────────────
 #
 # It answers "what would this command do?" in milliseconds, where the answer used to cost a whole birth or a
@@ -399,6 +488,7 @@ require_node || exit 1
 # first while meaning the second. It reads nothing and starts nothing — placed here it is AFTER the node
 # floor (which must stay this script's first act) and BEFORE the first thing that touches this machine.
 if [ "$PLAN_ONLY" = 1 ]; then
+  printf '\n   tenants this birth builds: %s\n\n' "$WANTED"
   node "$HERE/bin/roteiro.mjs" --mode plan --steps "$BIRTH_STEPS" --skipped "$PLANNED_SKIPS" || exit 1
   printf '\n   Not a step of the birth, and invocable on its own:\n     bash bin/box-up.sh --promote <tailnet|localhost|hostname>   the address this box publishes itself at\n\n'
   exit 0
@@ -413,6 +503,12 @@ command -v jq >/dev/null || die 'jq is required.'
 BOX="$HERE/seed/box.json"
 [ -f "$BOX" ] || die "no seed/box.json — this script has no topology to build."
 TENANTS="$(jq -r '.tenants[].id' "$BOX")"
+# ★★ DX-I5 — `$TENANTS` BECOMES THE SELECTION from here on, so every per-tenant loop below builds only what was
+# asked; `$DECLARED_TENANTS` keeps the whole declaration for the NAMING rules (`secret_name_for`, the root and
+# the café in step 3). ⛔ The promotion is never narrowed: it moves the address of every tenant the box holds.
+DECLARED_TENANTS="$TENANTS"
+[ -n "$WANTED" ] || WANTED="$(echo $TENANTS)"
+[ "$MODE" = promote ] || TENANTS="$(printf '%s\n' $WANTED)"
 # ── ★★ WHOSE CATALOGUE THE MOUNTED DATASET IS — and this one line is a whole class of defect ────────────────
 #
 # ⛔ MEASURED ON THE BENCH OF 02/09. Step 9 used to run `for t in $TENANTS`, and step 9 is `dist/seed-demo.js`:
@@ -442,7 +538,9 @@ secret_name_for() { # <tenant> <kind: seed|driver|access>
     access) base=forge-admin-access-key ;;
     *)      base=forge-admin-service-token ;;
   esac
-  if [ "$t" = "$(echo "$TENANTS" | head -1)" ]; then printf '%s' "$base"; else printf '%s-%s' "$base" "$t"; fi
+  # ⚠️ DX-I5 — the DECLARED list, never the selection: a café-only bench files the café's secrets under the
+  # same suffixed names a full bench does (the fallback is for a block of this file sourced on its own).
+  if [ "$t" = "$(echo "${DECLARED_TENANTS:-$TENANTS}" | head -1)" ]; then printf '%s' "$base"; else printf '%s-%s' "$base" "$t"; fi
 }
 
 put_secret() { # <name> <value>  — never echoes the value
@@ -539,6 +637,9 @@ PYEOF
 #
 # $1 = an optional host to use INSTEAD of each tenant's `admin_host` HOSTNAME, keeping that entry's PORT —
 #      which is how the tailnet promotion re-points the same two doors without a second copy of this logic.
+# $BOX_ON_BENCH = an optional space-separated list of tenant ids (DX-I5): only those tenants get an entry —
+#      the birth passes the tenants ON this box, so a café-only bench offers no switcher entry into a forgeco
+#      admin nobody provisioned. Unset ⇒ every declared tenant (the promotion, and every bench before DX-I5).
 # $2 = an optional JSON object `{tenant_id: absolute-url}` that WINS over $1 for the tenants it names. The
 #      tailnet promotion fills it, because over there neither half of the box.json address survives: the door
 #      a browser really opens is on another PORT (`tailscale serve` publishes its own) and another SCHEME
@@ -547,8 +648,8 @@ PYEOF
 admin_siblings_json() { # [host] [overrides-json]
   local host="${1:-}" overrides="${2:-}"
   [ -n "$overrides" ] || overrides='{}'
-  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
-      [ .tenants[]
+  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" --arg only "${BOX_ON_BENCH:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
+      [ .tenants[] | select(.id as $id | $only == "" or ((" " + $only + " ") | contains(" " + $id + " ")))
       | { name: (.settings.tenant_name // .id)
         , url: ( $ov[.id]
                  // ("http://" + (if $host == "" then (.admin_host | bench_host)
@@ -569,8 +670,8 @@ admin_siblings_json() { # [host] [overrides-json]
 admin_gate_urls_json() { # [host] [overrides-json]
   local host="${1:-}" overrides="${2:-}"
   [ -n "$overrides" ] || overrides='{}'
-  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
-      [ .tenants[]
+  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" --arg only "${BOX_ON_BENCH:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
+      [ .tenants[] | select(.id as $id | $only == "" or ((" " + $only + " ") | contains(" " + $id + " ")))
       | { key: .id
         , value: ( $ov[.id]
                    // ("http://" + (if $host == "" then (.admin_host | bench_host)
@@ -1529,6 +1630,40 @@ fi
 # three measurements that took it out of the birth's exit code), and a store `seed/box.json` DECLARES that
 # the box does not hold is still red. It does not open the doors (14-bis), it does not grade the
 # configuration (15) and it does not say the box is standing — the birth that ran before it says all three.
+# ── ★★ DX-I5 · THE NOT-ASKED TENANTS AN EARLIER BIRTH LEFT STANDING — asked of the database, never of `.env` ──
+#
+# ⛔ WHY NOT `.env`: `box-down` keeps `.env` and empties the database, so a switcher entry or a gate store id
+# found there may belong to a box that no longer exists — keeping it would hand a café-only bench a forgeco
+# admin link that answers `unknown_admin_host`, and step 15 would grade it red. The question is asked of the
+# directory step 3 writes for every tenant it provisions (`forge_control.admin_directory`, the claim
+# `bin/born-here.mjs` reads for the same question on a deployed box). ⚠️ Through `psql` and not
+# `read.admin.by_host` because at step 2 of a virgin birth no kernel is answering yet; postgres is.
+# ⛔ «COULD NOT ASK» IS NEVER «NOT BORN»: a failed read refuses, because reading it as «not born» would DROP a
+# standing tenant's switcher entry and gate door from `.env` — the deletion this selection promises never to do.
+born_unasked() { # → sets ON_BOX (= $WANTED + the not-asked tenants the directory holds a claim for)
+  local t claimed rc not_asked=''
+  for t in $DECLARED_TENANTS; do wanted_has "$t" || not_asked="$not_asked $t"; done
+  ON_BOX="$WANTED"
+  [ -n "$not_asked" ] || return 0
+  claimed="$(dc exec -T postgres psql -U "${POSTGRES_USER:-forge}" -d "${POSTGRES_DB:-forge}" -X -At -v ON_ERROR_STOP=1 \
+               -c 'select distinct tenant_id from forge_control.admin_directory' 2>&1)"
+  rc=$?
+  [ "$rc" = 0 ] || die "could not ask the directory which not-asked tenant(s)$not_asked this box already holds (psql exit $rc):
+$(printf '%s\n' "$claimed" | sed 's/^/       /')
+     Refusing rather than guessing: «not born» would drop their switcher entry and gate door from .env."
+  ON_BOX=''
+  for t in $DECLARED_TENANTS; do
+    if wanted_has "$t"; then ON_BOX="$ON_BOX $t"; continue; fi
+    if printf '%s\n' "$claimed" | grep -qx -- "$t"; then
+      ON_BOX="$ON_BOX $t"
+      note "$t · NOT ASKED — standing on this box from an earlier birth (the directory holds its admin claim). This run leaves it exactly as it is: no step builds it, nothing of it is deleted, its .env entries are kept, and steps 12/14/14-bis do not re-grade it (step 15 still grades its kept configuration)."
+    else
+      note "$t · NOT ASKED — and not on this box (no admin claim in the directory). No step builds it; its .env entries, if any are left from an older box, are dropped as stale."
+    fi
+  done
+  ON_BOX="${ON_BOX# }"
+}
+
 warm_every_tenant() {
   local t tokvar tokval
   for t in $TENANTS; do
@@ -1564,6 +1699,14 @@ warm_every_tenant() {
     esac
   done
 }
+
+# ★ DX-I5 — the selection, said BEFORE either mode runs (and outside their blocks, which guards lift out of
+# this file on their own): which tenants are asked, and — for the verdict — which not-asked ones an earlier
+# birth left standing, so step 15 grades their kept configuration and accuses nothing that was never built.
+if [ "$MODE" = verdict ] || [ "$MODE" = warm ]; then
+  note "tenants asked: $WANTED"
+  [ "$MODE" = warm ] || born_unasked
+fi
 
 if [ "$MODE" = warm ]; then
   COLD=''
@@ -1658,7 +1801,7 @@ if [ "$MODE" = verdict ]; then
   note 'this is 14-bis and 15 and nothing else — nothing is built, nothing is warmed, no address is moved.'
   prove_every_tenant
   say 'the verdict over the configuration (verify-config)'
-  host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" || MISCONFIGURED=1
+  host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" --tenants "${ON_BOX:-}" || MISCONFIGURED=1
   # ⚠️ THE SAME NAMED SENTENCES THE BIRTH PRINTS, and they are named on purpose: a wrapper that has to tell
   # one reason from another reads THESE, and `bin/box-cycle.guard.mjs` pins them to the birth's own. Kept
   # short here — the long form is in the birth's closing block, and two long copies of one paragraph is how
@@ -1732,6 +1875,10 @@ fi
 # ── 2 · migrate ─────────────────────────────────────────────────────────────────────────────────────────────
 say '2 · migrate'
 dc run --rm kernel node dist/migrate.js 2>&1 | grep -E '^\[migrate\]' >&2 || die 'migrate failed.'
+# ★ DX-I5 — the tenants this run builds, and the ones an earlier birth left here (see `born_unasked`). AFTER
+# migrate, because a virgin database has no `forge_control` to ask until it has run.
+note "tenants this run builds: $WANTED"
+born_unasked
 
 # ── 3 · provision-ref, once per tenant ──────────────────────────────────────────────────────────────────────
 say '3 · provision-ref (once per tenant)'
@@ -1770,9 +1917,9 @@ for t in $TENANTS; do
   # It is collected HERE because this is where the id exists at all: a fresh ULID, minted seconds ago.
   ADMIN_STORE_IDS="$(printf '%s' "$ADMIN_STORE_IDS" | jq -c --arg t "$t" --arg s "$store" '. + {($t): $s}')"
   # The ROOT store: the first tenant's bootstrap store. See the host-map block after this loop.
-  [ "$t" = "$(echo "$TENANTS" | head -1)" ] && ROOT_STORE="$store"
+  [ "$t" = "$(echo "${DECLARED_TENANTS:-$TENANTS}" | head -1)" ] && ROOT_STORE="$store"
   # The café's store id — the coffee fork's edge rule is generated from it below (3c).
-  [ "$t" = "$(echo "$TENANTS" | tail -1)" ] && CAFE_STORE="$store"
+  [ "$t" = "$(echo "${DECLARED_TENANTS:-$TENANTS}" | tail -1)" ] && CAFE_STORE="$store"
   grep -E 'retired|hostname claimed' "$err" | sed 's/^[[:space:]]*/   /' >&2
   shred -u "$out" "$err" 2>/dev/null || rm -f "$out" "$err"
 done
@@ -1827,6 +1974,18 @@ PYEOF
     printf 'FORGE_STORE_HOSTS=%s\n' "$map" >> "$HERE/.env"
   fi
   note "root → $ROOT_STORE ($(echo "$hosts" | wc -w) hostname(s), with and without :${FORGE_HTTP_PORT:-8200})"
+elif ! wanted_has "$ROOT_TENANT" && on_box_has "$ROOT_TENANT"; then
+  # ★ DX-I5 — the root's tenant was not asked and an earlier birth left it standing: its map is kept as is.
+  note "root · \"$ROOT_TENANT\" was not asked and is standing from an earlier birth — FORGE_STORE_HOSTS kept as it is"
+elif ! wanted_has "$ROOT_TENANT"; then
+  # ★ DX-I5 — the root's tenant is not on this box at all: a map left in `.env` names a store of a box that
+  # no longer exists, so it is emptied (the value `.env.example` ships) rather than served. The 404 at `/` is
+  # BY DESIGN on such a bench — the café is reached at /s/<its store id> — and step 15 notes it instead of accusing it.
+  if [ -n "$(sed -n 's/^FORGE_STORE_HOSTS=//p' "$HERE/.env" | tail -1 | tr -d "'\" ")" ]; then
+    put_env FORGE_STORE_HOSTS ''
+    note "root · \"$ROOT_TENANT\" is not on this box — the FORGE_STORE_HOSTS left from an older box was emptied (it named a store that does not exist here)"
+  fi
+  note "root · \"$ROOT_TENANT\" was not asked — \`/\` answers 404 on this bench by design; the café is at /s/<its store id> (printed in the bench block below)"
 else
   note '⚠️ no root store id — the shop root will answer 404'
 fi
@@ -1837,6 +1996,24 @@ fi
 # carries a store instead of a credential, and the store is what fixes the tenant the key is checked against.
 # One admin container serves both brands by hostname here, so it needs one store id per tenant rather than
 # one for the box. Written beside the host map because both are ids from step 3 and both die in a rebirth.
+# ★ DX-I5 — a not-asked tenant an earlier birth left standing KEEPS its entry (its store still exists, and
+# dropping it would close that brand's /enter door); one that is not on this box loses it as stale.
+for t in $ON_BOX; do
+  wanted_has "$t" && continue
+  kept="$(python3 - "$HERE/.env" "$t" <<'PYKEEP'
+import json, sys
+raw = ''
+for line in open(sys.argv[1], encoding='utf-8'):
+    if line.startswith('FORGE_ADMIN_STORE_IDS='):
+        raw = line.split('=', 1)[1].strip().strip("'")
+try:
+    print(json.loads(raw).get(sys.argv[2], '') if raw else '')
+except ValueError:
+    print('')
+PYKEEP
+)"
+  [ -n "$kept" ] && ADMIN_STORE_IDS="$(printf '%s' "$ADMIN_STORE_IDS" | jq -c --arg t "$t" --arg s "$kept" '. + {($t): $s}')"
+done
 if [ "$ADMIN_STORE_IDS" != '{}' ]; then
   put_env FORGE_ADMIN_STORE_IDS "'$ADMIN_STORE_IDS'"
   note "$(printf '%s' "$ADMIN_STORE_IDS" | jq -r 'length') tenant(s) have a store for the gate's /enter door"
@@ -1868,6 +2045,9 @@ fi
 # once. The bench never showed it, because the bench reads the other file.
 # ⇒ ONE FOLDER, ONE READER. `bin/caddy-extra-door.guard.mjs` pairs THIS write with THAT import, so moving
 # either without the other is red instead of silent.
+if ! wanted_has "$CAFE_TENANT"; then
+  skip 3c "$SKIP_3C_WHY"    # ★ DX-I5 — the café was not asked; its rule (if any) is left as it is
+else
 say '3c · the coffee fork edge rule'
 if [ -n "${CAFE_STORE:-}" ]; then
   mkdir -p "$HERE/caddy/extra-local"
@@ -1919,6 +2099,7 @@ CADDY
 else
   note '⚠️ no café store id — the coffee fork will not receive its store, and its own institutional pages will fall back to the shared body'
 fi
+fi
 
 # ── 3d · THE ADMIN'S SIBLING SWITCHER (A44) ─────────────────────────────────────────────────────────────────
 #
@@ -1958,9 +2139,9 @@ else
 fi
 
 say '3d · the admin sibling switcher and the gate’s per-tenant admin links'
-if siblings="$(admin_siblings_json)" && [ -n "$siblings" ] && [ "$siblings" != '[]' ]; then
+if siblings="$(BOX_ON_BENCH="$ON_BOX" admin_siblings_json)" && [ -n "$siblings" ] && [ "$siblings" != '[]' ]; then
   put_env FORGE_ADMIN_SIBLINGS "'$siblings'"
-  note "$(echo "$TENANTS" | wc -w) admin door(s), from seed/box.json"
+  note "$(printf '%s' "$siblings" | jq -r 'length') admin door(s), from seed/box.json — the tenants on this box: $ON_BOX"
 else
   note '⚠️ seed/box.json yielded no sibling list — the admin shell renders without the switcher'
 fi
@@ -1978,7 +2159,7 @@ fi
 # writes the doors this box really listens on; the promotion rewrites the map with the doors it publishes
 # THERE. Both are `{"<tenant id>": "<origin>"}`, so a third tenant declared in `seed/box.json` arrives with
 # no second edit — and the hub can stop choosing which single face gets the truth.
-if gate_admin_urls="$(admin_gate_urls_json)" && [ -n "$gate_admin_urls" ] && [ "$gate_admin_urls" != '{}' ]; then
+if gate_admin_urls="$(BOX_ON_BENCH="$ON_BOX" admin_gate_urls_json)" && [ -n "$gate_admin_urls" ] && [ "$gate_admin_urls" != '{}' ]; then
   put_env FORGE_GATE_ADMIN_URLS "'$gate_admin_urls'"
   note "$(printf '%s' "$gate_admin_urls" | jq -r 'length') admin link(s) for the gate, from seed/box.json"
 else
@@ -2079,7 +2260,7 @@ for t in $TENANTS; do
 done
 # ⚠️ ZERO OF N IS A STATE THE SCREEN WILL SHOW, so it is said out loud rather than derived from silence: with
 # no key at all the hub's admin rows still render and every one of them lands on a login form.
-note "$keys_filed of $(echo "$TENANTS" | wc -w) tenant(s) have a gate key"
+note "$keys_filed of $(echo "$WANTED" | wc -w) tenant(s) this run builds have a gate key"
 # The admin reads FORGE_ADMIN_ACCESS_KEYS / FORGE_ADMIN_STORE_IDS at BOOT, and both were written after it
 # started. Re-source first: the map is assembled from `.secrets` by `env-source.sh`, which last ran at step 5.
 # shellcheck disable=SC1091
@@ -2096,12 +2277,14 @@ for t in $TENANTS; do
 done
 
 # The counter's store id is only knowable now, and `compose.override.yml` refuses to interpolate without it.
+# ★ DX-I5 — asked of the tenant that OWNS the counter (`$COUNTER_TENANT`, read from seed/box.json) and only
+# when this run builds it; otherwise the id `.env` holds is left alone for step 7 to judge.
 balcao="$(jq -r '.tenants[]|.stores[]|select(.handle=="balcao")|.handle' "$BOX")"
-if [ -n "$balcao" ]; then
-  cafe_tok="$(secret_name_for "$(echo "$TENANTS" | tail -1)" seed | tr 'a-z-' 'A-Z_')"
+if [ -n "$balcao" ] && wanted_has "$COUNTER_TENANT"; then
+  cafe_tok="$(secret_name_for "$COUNTER_TENANT" seed | tr 'a-z-' 'A-Z_')"
   eval "cafe_tokval=\${$cafe_tok:-}"
   id="$(curl -s -m 10 "${FORGE_PUBLIC_ORIGIN}/v1/read/internal/stores" \
-        -H "authorization: Bearer $cafe_tokval" -H "x-forge-tenant: $(echo "$TENANTS" | tail -1)" \
+        -H "authorization: Bearer $cafe_tokval" -H "x-forge-tenant: $COUNTER_TENANT" \
         | jq -r '.[]|select(.handle=="balcao")|.id' 2>/dev/null)"
   if [ -n "$id" ] && [ "$id" != null ]; then
     if grep -q '^FORGE_TOTEM_STORE_ID=' "$HERE/.env"; then
@@ -2137,6 +2320,11 @@ fi
 # step runs once per tenant because a credential belongs to one tenant, and the tenant that does not own the
 # root store exits 0 saying `not-mine`. Two of those in a row means NOBODY claimed the address, which reads
 # exactly like success in a scrollback and is the defect this step exists to kill.
+if ! wanted_has "$ROOT_TENANT"; then
+  # ★ DX-I5 — NO store of this run owns the root, so the loop below would end in «0 of N» and die over a
+  # selection nobody got wrong. Declared instead, with the reason; a standing root keeps its own claim.
+  skip 6b "$SKIP_6B_WHY"
+else
 say '6b · the root store claims the address this box publishes itself at'
 address_claims=0
 for t in $TENANTS; do
@@ -2154,7 +2342,8 @@ done
      root of $FORGE_PUBLIC_ORIGIN, so NOBODY claimed that address in the directory. Every tenant answered
      \"not-mine\", which is what a stale map left over from another box looks like: the store id it names does
      not exist here. Step 3b derives that map from the id provision-ref just returned — re-run the birth."
-note "$address_claims of $(echo "$TENANTS" | wc -w) tenant(s) claimed $FORGE_PUBLIC_ORIGIN · read.store.by_host now answers it"
+note "$address_claims of $(echo "$WANTED" | wc -w) tenant(s) claimed $FORGE_PUBLIC_ORIGIN · read.store.by_host now answers it"
+fi
 
 # ── 7 · THE COUNTER'S TOTEM — and it could not have started at step 5 ───────────────────────────────────────
 #
@@ -2164,15 +2353,22 @@ note "$address_claims of $(echo "$TENANTS" | wc -w) tenant(s) claimed $FORGE_PUB
 # anywhere in advance: step 6 RESOLVES it by reading the tenant's stores for the `balcao` handle and writes
 # it into `.env`, and only then is there something for this service to start with. Starting it beside the
 # other fronts is what left the first build of this box with four of the instance's six images.
+TOTEM_UP=''
+TOTEM_WHY=''
+TOTEM_SKIPPED=''
+if ! on_box_has "$COUNTER_TENANT"; then
+  # ★ DX-I5 — no counter on this box: declared, and the bench block says «not on this bench», not «NOT RUNNING».
+  TOTEM_SKIPPED=1
+  skip 7 "$SKIP_7_WHY, and no earlier birth left it on this box — there is no counter store for the totem to serve."
+else
 say '7 · the totem (needs the counter store id that step 6 just resolved)'
+wanted_has "$COUNTER_TENANT" || note "\"$COUNTER_TENANT\" was not asked and is standing from an earlier birth — the totem starts on the counter store id .env kept"
 set -a; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
 # ★★ 04/09 — THIS STEP RECORDS WHAT HAPPENED, because the bench block below used to print the totem's
 # address unconditionally. A birth where the totem never started still ended with `totem http://…:8203` in
 # the summary and exit 0, with the ⚠️ four hundred lines above where nobody scrolls. It is the same shape as
 # the promotion that announced two admin doors having claimed one: the summary derived from what was ASKED
 # FOR (the port variable) instead of from what was DONE.
-TOTEM_UP=''
-TOTEM_WHY=''
 if [ -n "${FORGE_TOTEM_STORE_ID:-}" ] && [ "${FORGE_TOTEM_STORE_ID}" != 'sto_PENDING_SEED' ]; then
   if dc up -d totem >/dev/null 2>&1; then
     TOTEM_UP=1
@@ -2184,6 +2380,7 @@ if [ -n "${FORGE_TOTEM_STORE_ID:-}" ] && [ "${FORGE_TOTEM_STORE_ID}" != 'sto_PEN
 else
   TOTEM_WHY='step 6 resolved no counter store id'
   note '⚠️ no counter store id — skipping the totem (step 6 should have resolved it)'
+fi
 fi
 
 # ── 8 · THE CURATED DATA — and it must precede the massive one-shot ─────────────────────────────────────────
@@ -2283,6 +2480,11 @@ seed_demo_speaking() { # <tenant> <store-handle>
   return "$rc"
 }
 # <<< THE SPEAKING SEED
+if [ -z "$WANTED_DATASET" ]; then
+  # ★ DX-I5 — THE HALF HOUR THIS SELECTION EXISTS TO SAVE. Declared, never an empty loop: the roteiro would
+  # call a step that printed its title and filled nobody «ran».
+  skip 9 "$SKIP_9_WHY"
+else
 say '9 · seed-demo (the catalogue, once per DATASET tenant)'
 # ⛔ `$DATASET_TENANTS`, NEVER `$TENANTS` — the derivation above carries the measurement. A tenant the mounted
 # dataset is not about is NAMED here rather than silently skipped, because "the coffee shop has 23 products"
@@ -2321,6 +2523,7 @@ for t in $TENANTS; do
      somebody imagined and wrong for the one that happened.
      What IS known: steps 1-8 completed, so the box and its curated data are standing; only this fill did not."
 done
+fi
 
 # ── 10 · THE PAST — and it is TWO halves, because the refusal is about an INSTANT, not about the box ─────────
 #
@@ -2750,7 +2953,7 @@ prove_every_tenant
 # exited 0. A verdict catches that; a sentence in the last line of a four-hundred-line scrollback does not.
 say '15 · the verdict over the configuration (verify-config)'
 MISCONFIGURED=''
-host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" || MISCONFIGURED=1
+host_node "$HERE/bin/verify-config.mjs" --api "$FORGE_PUBLIC_ORIGIN" --tenants "$ON_BOX" || MISCONFIGURED=1
 
 # ── ★★ THE ROTEIRO — WHAT THIS RUN RAN, WHAT IT SKIPPED, AND WHY (pk24/§B1) ─────────────────────────────────
 #
@@ -2778,18 +2981,26 @@ PROMOTION_OWED="$(promotion_gap_doors)"
 
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
-for t in $TENANTS; do
-  note "admin     http://$(admin_host_of "$t")   → $t"
+for t in $ON_BOX; do
+  if wanted_has "$t"; then note "admin     http://$(admin_host_of "$t")   → $t"
+  else note "admin     http://$(admin_host_of "$t")   → $t (not asked by this run — standing from an earlier birth, untouched)"; fi
+done
+for t in $DECLARED_TENANTS; do
+  on_box_has "$t" || note "          $t is NOT on this bench (not asked) — add it with \`--tenant $t\` or FORGE_BOX_TENANTS"
 done
 # ★ The café's id is RESOLVED by now (step 3c sets `CAFE_STORE`), so print it instead of a placeholder that
 # nobody can paste.
 if [ -n "${CAFE_STORE:-}" ]; then
   note "café      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/s/${CAFE_STORE}   (the forked vitrine)"
+elif ! wanted_has "$CAFE_TENANT"; then
+  note "café      not asked by this run$(on_box_has "$CAFE_TENANT" && printf ' — standing from an earlier birth at %s/s/%s' "${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}" "${FORGE_COFFEE_STORE_ID:-<its store id>}")"
 else
   note "café      ⚠️ no store id resolved for the forked vitrine"
 fi
 if [ -n "${TOTEM_UP:-}" ]; then
   note "totem     http://localhost:${FORGE_TOTEM_HTTP_PORT:-8203}"
+elif [ -n "${TOTEM_SKIPPED:-}" ]; then
+  note "totem     not on this bench — its counter belongs to \"$COUNTER_TENANT\", which was not asked"
 else
   note "totem     ⚠️ NOT RUNNING — ${TOTEM_WHY:-unknown}"
   UNSETTLED_EXTRA='the totem'

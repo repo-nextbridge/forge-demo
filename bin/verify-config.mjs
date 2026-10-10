@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ★★★ THE VERDICT OVER THE BOX'S CONFIGURATION — the twin of `bin/verify-seed.mjs`, which grades its DATA.
 //
-//   node bin/verify-config.mjs --api http://localhost:8200 [--env ./.env]
+//   node bin/verify-config.mjs --api http://localhost:8200 [--env ./.env] [--tenants "<id> …"]   (DX-I5: the tenants this box holds)
 //
 // ── WHAT DIED AT EVERY REBIRTH AND NOTHING GRADED ────────────────────────────────────────────────────────
 //
@@ -49,6 +49,7 @@ import { fileURLToPath } from 'node:url';
 
 import { declaredFaces, isBenchAddress } from './box-domains.mjs';
 import { readDeclaration } from './box-env.mjs';
+import { declaredTenants, resolveTenants, rootTenant } from './box-tenants.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const BOX = JSON.parse(readFileSync(join(ROOT, 'seed/box.json'), 'utf8'));
@@ -91,6 +92,34 @@ try {
 
 const api = (argOf('--api') ?? declared.FORGE_PUBLIC_ORIGIN ?? '').replace(/\/+$/, '');
 if (!api) wrongQuestion('no --api and no FORGE_PUBLIC_ORIGIN in the file — this step has no box to ask.');
+
+// ── ★★ DX-I5 · THE TENANTS THIS BOX HOLDS — the per-tenant sections grade those and NAME the others ──────
+//
+// A bench may be born with only some of `seed/box.json`'s tenants (`bin/box-up.sh --tenant`, or
+// `FORGE_BOX_TENANTS` in `.env`). Grading a tenant nobody provisioned would accuse the DESIGN: «no admin
+// door» for forgeco on a café-only bench is true and is exactly what was asked. `--tenants` is what the birth
+// passes (the tenants it built plus the ones an earlier birth left standing, asked of the directory);
+// standalone, the `.env` declaration answers; neither ⇒ every declared tenant, as before this slice.
+// ⛔ A tenant left out is never passed over in SILENCE: each section prints a `·` line naming it.
+// ⛔ A name `seed/box.json` does not declare is THIS STEP's wrong question (exit 2), never a quiet narrowing.
+let graded;
+try {
+  graded = new Set(
+    resolveTenants({
+      declared: declaredTenants(BOX),
+      asked: argOf('--tenants') ? [argOf('--tenants')] : [],
+      fromEnv: declared.FORGE_BOX_TENANTS ?? '',
+    }).wanted,
+  );
+} catch (error) {
+  wrongQuestion(error.message);
+}
+const ungraded = declaredTenants(BOX).filter((t) => !graded.has(t));
+const ROOT_TENANT = rootTenant(BOX);
+/** The root of the shop is the first tenant's store (box-up step 3b); without that tenant `/` 404s BY DESIGN. */
+const rootAbsent = ROOT_TENANT !== null && !graded.has(ROOT_TENANT);
+const notOnBench = (label) =>
+  ungraded.forEach((t) => noted(`${t}`, `not on this bench (FORGE_BOX_TENANTS / --tenant) — ${label} not graded`));
 
 // ── asking the box ───────────────────────────────────────────────────────────────────────────────────────
 
@@ -205,7 +234,13 @@ say('THE ADDRESS THIS BOX PUBLISHES ITSELF AT');
 {
   const code = await probeHost(authorityOf(published));
   if (code === 200) ok(`${published.origin}`, 'the shop answers there');
-  else {
+  else if (rootAbsent) {
+    noted(
+      `${published.origin}`,
+      `the shop answers ${code || 'nothing'} at its root — BY DESIGN: the root is "${ROOT_TENANT}"'s store and ` +
+        `"${ROOT_TENANT}" is not on this bench. The other tenants are reached at their own paths (the café at /s/<its store id>).`,
+    );
+  } else {
     bad(
       `${published.origin}`,
       `the shop answers ${code || 'nothing'} to Host: ${authorityOf(published)}. The kernel's media driver mints ` +
@@ -225,7 +260,9 @@ try {
   bad('FORGE_STORE_HOSTS', `is not JSON: ${declared.FORGE_STORE_HOSTS?.slice(0, 80)}`);
 }
 const storeHostKeys = Object.keys(storeHosts);
-if (storeHostKeys.length === 0) {
+if (storeHostKeys.length === 0 && rootAbsent) {
+  noted('FORGE_STORE_HOSTS', `empty — BY DESIGN: it maps the root to "${ROOT_TENANT}"'s store and "${ROOT_TENANT}" is not on this bench`);
+} else if (storeHostKeys.length === 0) {
   bad('FORGE_STORE_HOSTS', 'is empty — the shop root answers 404 at every address. Step 3b of the birth writes it.');
 } else {
   for (const key of storeHostKeys) {
@@ -327,7 +364,8 @@ const ownAdminFace = (tenant) => {
   return value && !isBenchAddress(value) ? { env: face.env, host: value } : null;
 };
 
-for (const spec of BOX.tenants) {
+notOnBench('its admin door is');
+for (const spec of BOX.tenants.filter((t) => graded.has(t.id))) {
   const mine = [...doorTenants.entries()].filter(([, v]) => v.tenant === spec.id);
   const onPublished = mine.filter(([, v]) => v.url.hostname.toLowerCase() === PUBLISHED_HOST.toLowerCase());
   if (onPublished.length > 0) {
@@ -397,7 +435,8 @@ say('THE GATE · where the front sends an operator who clicks through to the adm
   } else if (Object.keys(gateUrls).length === 0) {
     noted('FORGE_GATE_ADMIN_URLS', 'empty — every admin row on the gate falls back to the hostname seed/box.json declares');
   }
-  for (const tenant of (BOX.tenants ?? []).map((t) => t.id)) {
+  notOnBench('its gate link is');
+  for (const tenant of declaredTenants(BOX).filter((t) => graded.has(t))) {
     const origin = gateUrls[tenant];
     if (!origin) {
       if (parsed && Object.keys(gateUrls).length > 0) {
@@ -462,7 +501,9 @@ say();
 // shape nobody chose: somebody was promoting this box and stopped.
 say('THE FACES THIS BOX DECLARES · one hostname per store and per tenant admin (seed/box.json)');
 {
-  const faces = declaredFaces(BOX);
+  // ★ DX-I5 — only the faces of the tenants this box holds: a face of a tenant nobody provisioned has no
+  // claim to find, and on a deployed box «half published» would then be the selection, not a stopped promotion.
+  const faces = declaredFaces(BOX).filter((f) => graded.has(f.tenant));
   // ★ A face counts as ADDRESSED only when its value is a PUBLISHED address. `FORGE_DOMAIN` and
   // `FORGE_ADMIN_DOMAIN` are not new: `.env.example` has shipped them as `localhost` since the first box,
   // so a bench never names ZERO faces — it names two. Grading the VALUE rather than the VARIABLE is what
@@ -562,7 +603,8 @@ say('THE GATE’S /enter DOOR · the store each tenant’s key is redeemed on (t
   } else if (Object.keys(storeIds).length === 0) {
     noted('FORGE_ADMIN_STORE_IDS', 'empty — every "abrir o admin" lands on a login screen (step 3b of the birth writes it)');
   }
-  for (const tenant of (BOX.tenants ?? []).map((t) => t.id)) {
+  notOnBench('its /enter store is');
+  for (const tenant of declaredTenants(BOX).filter((t) => graded.has(t))) {
     const store = storeIds[tenant];
     if (!store) {
       if (parsed && Object.keys(storeIds).length > 0) {
