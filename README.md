@@ -741,6 +741,13 @@ container path with its host counterpart and then **refuses to launch** if any `
 a value under `/app` or `/data`, naming every offender. The replacement list covers what we know; the refusal
 covers what we do not — a variable of that shape added next month is caught on its first run.
 
+**And the host counterpart it hands over is ABSOLUTE.** A relative `FORGE_SEED_DATASET_HOST_DIR` (the
+`./seed/dataset` of `.env.example`) is resolved against this repository — the same way compose reads it for
+the mount — before a host process sees it; the variable itself is left as written. Before DX-I1 the relative
+value reached `bin/seed.mjs` as is, and a clean clone died at step 11 on its first birth with
+`ENOENT …/seed/photos/seed/dataset/assets/banners/banner-grande-jordan.jpg`.
+`bin/dataset-relative-path.guard.mjs` holds it.
+
 ### ★★ A RED birth keeps its own witness — `postmortem/`
 
 ⛔ **The defect this exists for, measured on the birth of 2026-09-05 04:01.** The curated seed died on
