@@ -230,6 +230,7 @@ bash bin/box-up.sh                     # the birth, on localhost
 bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14 (`--warm-only` warms it later)
 bash bin/box-up.sh --warm-only         # step 14 alone, on a box that is already standing
 bash bin/box-up.sh --plan [--no-warm]  # print the roteiro this invocation would run, and do nothing
+bash bin/box-up.sh --tenant forgecafe  # only the café (repeatable; or FORGE_BOX_TENANTS) — § Only the tenants you work on
 ```
 
 ★ **Os quatro juntos, em ordem, são o ciclo agendado** — derrubar, nascer, promover, aquecer:
@@ -919,6 +920,49 @@ The claim a birth proof makes is *"the box is born from nothing"* — not *"the 
 nothing"*. `bin/box-down.sh` makes the cheap, correct thing the default and puts the expensive one behind a
 flag, because a habit beats a paragraph: this distinction was explained, written down, and then violated by
 hand one minute later.
+
+### ★★ Only the tenants you work on (DX-I5)
+
+`bin/box-up.sh` builds every tenant `seed/box.json` declares. The café is cheap; **`forgeco`'s step 9 is not**
+— the massive footwear catalogue, 23–32 min measured (RESULTADOS-dx0) — and somebody working on the café's
+fork or on the totem used to pay it, or edit a versioned file to avoid it. Now it is a declaration:
+
+```bash
+bash bin/box-up.sh --tenant forgecafe                     # this run only; repeatable: --tenant a --tenant b
+echo 'FORGE_BOX_TENANTS=forgecafe' >> .env                # this bench, every run (birth, --warm-only, --verdict-only)
+bash bin/box-up.sh --plan --tenant forgecafe              # see what it will build and skip, in milliseconds
+```
+
+The command line wins over `.env`; neither = every tenant, exactly as before. **⏱ Measured 2026-10-10, bench
+`dxi5` (block 89), café only, from a virgin database: __CAFE_TIME__** (the full birth is ~45–60 min).
+
+**What each step does with a tenant you did not ask for** — said in the run, never silently:
+- **Every per-tenant step** (3, 5b, 6, 8, 10, 10b, 11, 12, 14, 14-bis) runs for the asked tenants only.
+- **9** (the massive catalogue) is **SKIPPED, by name**, when no asked tenant carries the dataset.
+- **6b** (the root store claims the public origin) is **SKIPPED** when `forgeco` is not asked: the root of the
+  shop (`/`) is `forgeco`'s store, so on a café-only bench **`/` answers 404 by design**. The café is at
+  `http://localhost:<block>00/s/<its store id>` (the bench block prints the full address — measured 2026-10-10, `/s/cafe` by handle answers 404 from the fork), its admin at `<block>02`, the totem at `<block>03`.
+- **3c** (the café fork's edge rule) is skipped without the café; **7** (the totem) without the counter's tenant.
+- **3d** writes the brand switcher and the gate links for the tenants **on** the bench only — no entry into an
+  admin nobody provisioned.
+- **15** (`verify-config`) grades the tenants on the bench and prints `· <tenant> — not on this bench` for the
+  others; the root's 404 is noted as by design. Secrets keep their names: the café's token is
+  `forge-operator-token-forgecafe` on a café-only bench too.
+
+**Refusals.** A name `seed/box.json` does not declare (`--tenant forgecaf`) stops the run before anything is
+read or started, naming the tenants that do exist. `--tenant` with `--promote` is refused (the promotion moves
+every tenant's address at once).
+
+**Adding a tenant later, and the other way round.** Asking for more on the same bench converges: steps that
+already ran for the café are idempotent, and the new tenant is built. A bench that already holds a tenant you
+now leave out is **never emptied of it**: after `migrate`, `box-up` asks the directory which not-asked tenants
+an earlier birth left standing, says so (`forgeco · NOT ASKED — standing on this box from an earlier birth`),
+builds nothing of it, deletes nothing of it, **keeps** its `.env` entries (switcher, gate link, `/enter` store,
+root map, totem), and step 15 still grades that kept configuration. Steps 12/14/14-bis do not re-grade it.
+__SECOND_RUN__
+
+`bin/box-tenants.mjs` is the resolver; `bin/box-tenants.guard.mjs` holds the refusals, the narrowed loops, the
+named skips, the secret names and the verdict that neither accuses the absent tenant nor hides the asked one.
 
 ### ★★ More than one bench on this machine (DX-I3)
 
