@@ -256,6 +256,20 @@ host_node() { # <script> [args…]
      A host process cannot be given either. Set $host_name, or take $name out of CONTAINER_PATH_VARS."; return 1; }
           ;;
       esac
+      # ★★ DX-I1 — A RELATIVE HOST PATH IS MADE ABSOLUTE HERE, against THIS repository, which is exactly how
+      #    compose reads the same value (`compose.yml` mounts `${FORGE_SEED_DATASET_HOST_DIR:-./seed/dataset}`
+      #    relative to the project directory, and the project directory is $HERE). MEASURED 2026-10-10: a clone
+      #    that followed the README literally (`.env.example`'s `./seed/dataset`) died at step 11 after 35 min
+      #    with `ENOENT …/seed/photos/seed/dataset/assets/banners/banner-grande-jordan.jpg` — `resolveMediaFile`
+      #    joins the relative dir, and `bin/seed.mjs::upload()` reads anything not starting with `/` as a bare
+      #    name under `seed/photos/`. It only bites on a box's FIRST birth (the banner not yet in the library).
+      #    Resolved HERE, at the one door every host process passes, rather than in `resolveMediaFile` (whose
+      #    `resolve()` would answer against the process cwd) or in `upload()` (one consumer of many: verify-seed,
+      #    widgets and vitrine all read the same dir). `bin/birth-remote.sh` step 0c does the same for its
+      #    side, which is why remote births never died of this. Only the value GIVEN to the host process
+      #    changes: `$host_name` itself is untouched, so compose and `dataset-provenance` read what they read.
+      #    Undo it and `bin/dataset-relative-path.guard.mjs` goes red naming the banner.
+      case "$value" in ''|/*) ;; *) value="$HERE/${value#./}" ;; esac
       overrides="$overrides $name=$(printf '%q' "$value")"
     else
       # No host counterpart can exist (a named volume has no honest host address). Blank it: a host process

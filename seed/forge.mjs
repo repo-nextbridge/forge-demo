@@ -125,7 +125,10 @@ export function mimeOf(filename) {
  * A key that still carries a namespace is refused, by name and early, by `mediaKeyFormat` below — not here,
  * where it would only be one null among thousands and would read as "the manifest does not place it".
  *
- * @returns an absolute path, or null when the manifest does not name a file for this key.
+ * @returns a path under `artDir` — absolute when `artDir` is, which on the birth it is because
+ *   `bin/box-up.sh::host_node` resolves the dataset dir before the seed sees it (DX-I1) — or null when the
+ *   manifest does not name a file for this key. ⚠️ A RELATIVE one would be taken by `bin/seed.mjs::upload()`
+ *   for a bare name under `seed/photos/`.
  */
 export function resolveMediaFile(key, { manifest, artDir, photoDir, hint }) {
   // A root category's bespoke icon — `category-<handle>-icon.png`, listed under `icons` by handle.
