@@ -1,0 +1,48 @@
+# THE BENCH'S HTTPS EDGE — merged by bench/lib.sh on every compose call, started ONLY when the bench is promoted
+# to a host or an IP (`bash bench/promote.sh 192.168.1.20`). Behind the profile `edge-tls`, so a localhost bench
+# and a tailnet bench never run it (the tailnet's TLS is `tailscale serve`'s).
+#
+# It terminates TLS for the two doors a browser opens and hands each request to the PRODUCTION edge (caddy,
+# caddy/Caddyfile, unchanged) on the compose network — so the path split between storefront and checkout, and
+# every front as declared (image · build · external · none), are reached exactly as on localhost.
+#
+# Why it is a file of its own and not a service of compose.bench.yml: everything that overlay publishes is on
+# loopback (FORGE_BENCH_BIND), and these two doors exist to be reached from another device.
+
+services:
+  edge-tls:
+    image: caddy:2
+    profiles: ['edge-tls']
+    restart: unless-stopped
+    volumes:
+      - ./bench/Caddyfile.tls:/etc/caddy/Caddyfile:ro
+      # Certificates you were given — empty by default, and the local CA serves.
+      - ${FORGE_BENCH_TLS_CERT_DIR:-./bench/certs}:/etc/caddy/certs:ro
+      # The local CA, kept across restarts and re-promotions, so a device that trusted it once keeps trusting
+      # this bench. `bench/down.sh -v` drops it with the database.
+      - bench-tls-data:/data
+    environment:
+      FORGE_BENCH_TLS_HOST: ${FORGE_BENCH_TLS_HOST:-localhost}
+    # A fingerprint of the certificates folder (bench/lib.sh): Caddy reads them at start, so a certificate dropped
+    # into the folder must RECREATE the edge, and compose recreates a container only when its config changes.
+    # Measured 2026-10-10: without it, a re-promotion kept serving the local CA over a freshly provided PEM.
+    labels:
+      forge.bench.certs: ${BENCH_TLS_CERTS_SUM:-none}
+    ports:
+      # The CONTAINER side is fixed (443 shop · 444 admin, bench/Caddyfile.tls); the HOST side is the bench's own
+      # door, moved by the port block. The browser's `Host` carries the host-side port, and Caddy matches sites
+      # by hostname, so the two never have to agree.
+      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:${FORGE_HTTPS_PORT:-8243}:443'
+      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:${FORGE_ADMIN_HTTPS_PORT:-8241}:444'
+    # No `depends_on`: it proxies lazily, and bench/up.sh starts it after the production edge is up (with
+    # --no-deps, so a front declared `build:` is not rebuilt a second time). The probe is its OWN listener —
+    # the shop's door binds only once the Caddyfile parsed — never the edge behind it.
+    healthcheck:
+      test: ['CMD', 'nc', '-z', '127.0.0.1', '443']
+      interval: 5s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+
+volumes:
+  bench-tls-data:

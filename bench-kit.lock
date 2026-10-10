@@ -1,0 +1,28 @@
+{
+  "about": "WHERE bench/ CAME FROM. The local bench of this instance is the Forge instance template bench, copied unchanged. Every file below is byte for byte what the template carried at `commit` (sha256); bin/bench-kit.guard.mjs holds that. A file of the kit that has to change to serve this box is a PRODUCT requirement: it goes to the Forge repository, never into this copy. To take a newer kit: copy templates/instance/bench/ of the new commit over bench/ (keeping bench/bench.env), then re-stamp this file.",
+  "source": {
+    "repository": "forge",
+    "path": "templates/instance/bench",
+    "commit": "f847b301f276f6ff174ed0b7465a545d1d7dbd55",
+    "committed": "2026-10-10"
+  },
+  "files": {
+    "bench/Caddyfile.tls": "07b3436b5a714631c28bd8cc69c5cfd942b1f3d3452a496e47771b3d6507f67b",
+    "bench/certs/README.md": "c3cf90685e05599b375eebc29fdb3fb20c78a3d4d0352823fdec98b9f222219f",
+    "bench/compose.bench.yml": "1639963dc6f70c7e2f078ac4b8edb26864765466fd2276d935353f3916afb715",
+    "bench/compose.edge-tls.yml": "5aa9f3edff45f56903aadc2b16dcf72076e025c7114d33ec8a1a43edbff56227",
+    "bench/compose.sh": "3498eec130515e634e7b37ab6ee006cc83ce33b6016ae2fd3325ffe93fc79771",
+    "bench/down.sh": "35012115cd7c747b2bee98bd37c601afc691291333c2e6a878c50256c7788ae7",
+    "bench/lib.sh": "1693c390eb5b461a04ce6ed171243dda76c062278b06fc2e05234b92076475df",
+    "bench/mail.sh": "e6625980e9219e0e0733ef6696261e04ff52d6b6f1609fc0724d4241736b5a2c",
+    "bench/promote.sh": "243028262ff6dc6c2d8c84e5134768be21695b76984d4d75e6a93806ba714e9e",
+    "bench/seed.example.sh": "3493079d62b40ef6eca2834a5ab57d0a7b6dc2880583a93eafac415a39a13634",
+    "bench/up.sh": "4640b1a155691c75b561259e83612306d8f684949870079c4d3ec9aeabb7e073"
+  },
+  "declaration": {
+    "bench/bench.env": {
+      "why": "the kit SEAM: copied from the kit at the same commit and then declared for this box. It is ours to edit; it is the only file under bench/ that is.",
+      "kit_sha256": "0b9c786b4cf2ce257620e10662ca9599495bfa7d21c06bb7693ffae50d994a48"
+    }
+  }
+}

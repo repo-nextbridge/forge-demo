@@ -1,0 +1,44 @@
+# THE BENCH'S HTTPS DOORS on an address that is not a tailnet (a LAN IP, a VPN address, a DNS name).
+#
+# Run by the `edge-tls` service (bench/compose.edge-tls.yml) only when FORGE_BENCH_ADDRESS names a host. The ports
+# below are the CONTAINER's; the bench maps its own (FORGE_HTTPS_PORT, FORGE_ADMIN_HTTPS_PORT) onto them.
+#
+# ⚠️ WHY TLS AT ALL, ON A PRIVATE NETWORK: the fronts and the admin run NODE_ENV=production, so every cookie they
+# set is `Secure`, and a browser drops a Secure cookie on any plain-http origin that is not `localhost`.
+#
+# ⚠️ THIS IS NOT THE PRODUCTION EDGE (caddy/Caddyfile, which this file forwards to). No ACME: `local_certs`, so a
+# laptop never calls Let's Encrypt. For a PUBLIC name, obtain the certificate with any ACME client and put it in
+# FORGE_BENCH_TLS_CERT_DIR — this file loads it, and the local CA steps aside for that name.
+
+{
+	admin off
+	# Every certificate this edge issues comes from its own local CA — never from a public ACME directory.
+	local_certs
+	# The CA lives in the container's /data volume; installing it into THIS container's trust store is useless.
+	skip_install_trust
+	# Two https-only ports; there is no :80 here to redirect from.
+	auto_https disable_redirects
+	# ⚠️ A browser sends no SNI to an IP address, and inside the container the local address is the container's
+	# own, not the one the browser dialled — so without this the handshake for `https://<ip>:<port>` finds no
+	# certificate at all (measured by the Forge repository's bench edge, DX-P8, 2026-10-10).
+	default_sni {$FORGE_BENCH_TLS_HOST}
+}
+
+# The certificates you were GIVEN (one PEM per file: chain first, key after). An empty folder is the normal state.
+(bench_tls) {
+	tls {
+		load /etc/caddy/certs
+	}
+}
+
+# THE SHOP — to the production edge's shop site, where the path split between vitrine and checkout lives.
+https://{$FORGE_BENCH_TLS_HOST}:443 {
+	import bench_tls
+	reverse_proxy caddy:80
+}
+
+# THE ADMIN — to the production edge's admin site (whatever admin is declared: image, build, external or none).
+https://{$FORGE_BENCH_TLS_HOST}:444 {
+	import bench_tls
+	reverse_proxy caddy:81
+}
