@@ -4,7 +4,7 @@
 //
 // ── THE DEFECT THIS EXISTS FOR (pk24/§B1) ─────────────────────────────────────────────────────────────────
 //
-// `bin/box-up.sh` ran step 14 — ~1h10 of warming — unconditionally, and the only flags it accepted were
+// `bin/box-up.sh` ran step 14 — every minute of warming — unconditionally, and the only flags it accepted were
 // `--tailnet` and `--localhost`. A pipeline that wanted a fast birth and a warm-up on a cron had no way to
 // ask for one, so the answer was going to be somebody's hand on a keyboard. THE RULER OF THIS SPRINT MAKES
 // THAT A DEFECT: the pipeline — bake → be born → seed → prove — must be describable without a single
@@ -17,10 +17,10 @@
 // itself as it happens, `skip` records the ones that did not with their reason, and `bin/roteiro.mjs` grades
 // the three lists against each other at the end of every birth.
 //
-// ── WHAT THIS FILE PROVES, AND HOW IT AVOIDS COSTING 19 MINUTES ───────────────────────────────────────────
+// ── WHAT THIS FILE PROVES, AND HOW IT AVOIDS COSTING A BIRTH ─────────────────────────────────────────────────
 //
-// A real birth is ~19 minutes and needs a machine with docker; these checks are seconds. The trade is taken
-// in three layers rather than by grepping and hoping:
+// A real birth is tens of minutes (README, "What it costs") and needs a machine with docker; these checks
+// are seconds. The trade is taken in three layers rather than by grepping and hoping:
 //
 //   1 · THE LEDGER IS THE SCRIPT'S OWN LIST. The ids in `BIRTH_STEPS`, the ids in the `say '<id> · …'` calls
 //       and the ids in the file's header map are compared in the directions that can catch a drift. A step

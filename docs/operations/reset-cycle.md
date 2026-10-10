@@ -71,7 +71,9 @@ sai **vermelho**. **Um reset agendado sem o gesto 3 perde o admin em toda corrid
 A promoção termina em
 `docker compose up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem`
 (`bin/box-up.sh`, bloco 0b). **Todo front que SEGURA o calor** — cache de rota, entradas de ISR, derivadas de
-imagem — é destruído e recriado ali. Aquecer antes seria pagar ~1h10 por um cache apagado minutos depois. A
+imagem — é destruído e recriado ali. Aquecer antes seria pagar o aquecimento inteiro (numa bancada, de 5 min 05 s em 10/10 a 2 409 s em 15/09 — o
+gesto 4 abaixo; numa caixa, ainda não medido — tabela "What it costs" do `README.md`) por um cache apagado
+minutos depois. A
 razão mais antiga continua valendo: numa primeira promoção o `FORGE_PUBLIC_ORIGIN` só está certo **depois**
 que ela o escreve, então aquecer antes aquece um endereço que ninguém digita.
 
@@ -95,7 +97,7 @@ do passo 14-bis. Uma terceira cópia dessa regra aqui envelheceria no dia em que
 | | o quê | por quê |
 |---|---|---|
 | ⛔ **destruído** | o banco (`pgdata`), o redis, a **mídia** servida (`media`), o estado do edge (`caddy_data`, `caddy_config`) | é o que a caixa **derivou**; uma prova de nascimento que não destrói isso não é um nascimento |
-| ✅ **preservado** | o cache de fotos (`seed_photos`, ~3,6 GB) | é o que a caixa **buscou** e buscaria de novo. Destruí-lo custa ~40 min e não prova nada. `bin/box-down.sh --all` derruba também — o ciclo **nunca** usa `--all` |
+| ✅ **preservado** | o cache de fotos (`seed_photos`, ~3,6 GB) | é o que a caixa **buscou** e buscaria de novo. Destruí-lo custa o pull de novo (5–7 min numa bancada, 10/10 — tabela "What it costs" do `README.md`) e não prova nada. `bin/box-down.sh --all` derruba também — o ciclo **nunca** usa `--all` |
 | ✅ preservado | o `.env` e os segredos | o ciclo não escreve nem um nem outro; quem reescreve `.env` é o nascimento e a promoção |
 | ⚠️ **fica para trás** | online, os objetos do bucket da corrida anterior | um bucket não é um volume: cada nascimento escreve ~18 500 objetos sob chaves novas e as antigas **ficam**, pagas e apontadas por nada. Ver runbook §5 |
 

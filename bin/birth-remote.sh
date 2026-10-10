@@ -372,7 +372,7 @@ load_operator_tokens() {
 # ★★ WHY A CYCLE WARMS LAST, WHICH IS THE WHOLE REASON THIS MODE EXISTS: everything that holds warmth — the
 # route cache, the ISR entries, the image derivatives — lives in a FRONT CONTAINER, and every gesture that
 # recreates a front throws it away. Warming inside the birth and recreating afterwards hands over a box as
-# cold as one that never warmed, having paid the ~1h10 for it.
+# cold as one that never warmed, having paid the whole warming for it (README, "What it costs").
 #
 # ⚠️ THIS MODE IS NOT A BIRTH AND DOES NOT PRETEND TO BE ONE. It runs one step, it stamps no roteiro, and its
 # exit carries exactly what step 14's carries: warmth is a REPORT, and a store `seed/box.json` DECLARES that

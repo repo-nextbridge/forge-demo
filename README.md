@@ -73,6 +73,29 @@ the recipe, plus the two forks — and writes `forge.lock`:
 - **Bench** — `OVEN_IMAGE=<an oven stamped with the release> bash bin/bake-local.sh`: the same recipe into
   this daemon. Its refs name no registry host — the one thing that tells a bench lock apart.
 
+### ⚠️ Without GCP: you can RUN this box, you cannot BAKE it (measured 2026-10-10, dx-i4)
+
+**To run it, you need no oven and no cloud account.** The committed `forge.lock` names six images on GHCR by
+digest, and those packages are public: an anonymous pull token answers **200** for each of the six digests
+(`curl https://ghcr.io/token?scope=repository:repo-nextbridge/forge-demo-kernel:pull`, then the manifest by
+digest — without the token it is 401, and a made-up digest is 404, so the 200 means something). `docker
+compose` pulls them on the first `box-up`. That is the "EITHER" line of §2, and it is the path for anyone who
+wants the box, not a new build of it.
+
+**To bake it, today you need the oven, and the oven is behind GCP.** The only oven there is lives in the
+product's Artifact Registry (`southamerica-east1-docker.pkg.dev/forge-500319/forge-kernel/forge-oven`), and
+an anonymous pull is refused: `Unauthenticated requests do not have permission
+"artifactregistry.repositories.downloadArtifacts"`. There is no public copy: no `forge-oven` package under
+`ghcr.io/repo-nextbridge` (the anonymous token is refused there too), and the Release that would name it by
+digest lives in the product repository, which is private. So a developer without access to that project
+**cannot run `bin/bake-local.sh`**, and nothing in this repository can change that.
+
+**What is missing, by name:** the release's oven published where a developer can pull it without a cloud
+account (a public GHCR package beside the six above, or an image attached to a public Release), and the
+release's `forge.lock` readable the same way. Both are the product's to publish, not this instance's. Until
+then: change `apps/`, `storefront-coffee/` or `totem/` and let `bake.yml` bake it (§1, CI), or ask someone
+with access for the oven's digest and a `docker login` to that registry.
+
 **The lock has no `provenance` block any more.** Every image — the two forks included, which used to travel by
 an unpinned `:local` tag — is `{ "ref": "ghcr.io/…@sha256:…", "origin": "own build", "built_from": "v0.3.2" }`.
 
@@ -117,8 +140,10 @@ printf 'forge-postgres-password=%s\n' "$(openssl rand -hex 16)"  >> .secrets
 printf 'forge-vault-key=%s\n'         "$(openssl rand -base64 32)" >> .secrets
 
 npm ci                                      # the release's tools (forge, forge-lock-provenance), pinned
-# EITHER the images of a bake.yml run (adopt its forge.lock — §1) and nothing else to build,
-# OR, on a bench, the same six images baked here — no Forge checkout involved:
+# EITHER the images of a bake.yml run (adopt its forge.lock — §1) and nothing else to build —
+#   the committed lock's images are public on GHCR: no login, no cloud account (§1, "Without GCP"),
+# OR, on a bench, the same six images baked here — no Forge checkout involved, but the oven is on the
+#   product's Artifact Registry and an anonymous pull is refused (§1, "Without GCP"):
 OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh
 
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
@@ -231,7 +256,7 @@ and whether every shop can be signed in to is not.
 | 6b | **`store-host.mjs` × tenant** | the **root store claims this box's address** in the kernel's directory (`tenant.store.update` → `host`), so `read.store.by_host` answers it. Without it the fronts route through their `FORGE_STORE_HOSTS` override and every consumer that asks the PORT — the warmer's address space first — is wrong while the shop looks perfect |
 | 7 | **the totem** | last of the six images: it needs the counter store id step 6 resolved |
 | 8 | **`seed.mjs` × tenant** | the **curated** data — what a human wrote, and what the assortment publishes, ending with the **cache bust** over every store the port lists |
-| 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`) |
+| 9 | **`seed-demo` × DATASET tenant** | the **massive** catalogue — filled **only** into the tenant the mounted dataset is about (`dataset: true` in `seed/box.json`). The longest step of a bench birth; it prints a beat every 60 s (see "What it costs") |
 | 10 | **`seed-history` × tenant** | the **past** — 180 days of it, written **inside the mail silence** |
 | 10b | **wait for the dispatcher** | the silence only holds while the queue is behind it |
 | 11 | **`seed.mjs --phase window` × tenant** | the shop **window**: promotions, blocks, the **admin home's widget order**, the **re-arm**, and the **cache bust** last — over every store the port lists, not just the sports shop |
@@ -392,7 +417,7 @@ promise, so the run asserts that the pages **warmed** and says out loud that it 
 fast**. Put a measured number in `seed/box.json` → `warm.threshold_ms` and every birth from then on grades it.
 
 ⚠️ **Step 13 runs AFTER the rebirth, and the obvious order is the wrong one.** A CDN purged *before* the
-teardown spends the ~17 minutes of the birth refilling itself from the origin being destroyed, and comes out
+teardown spends the whole birth (tens of minutes — "What it costs") refilling itself from the origin being destroyed, and comes out
 of the reset holding exactly what the purge was for. Step 14 is what refills it, with the new box's answers.
 On this bench both facilities are **no-ops that say so**: caddy caches nothing, and the media is a docker
 volume `bin/box-down.sh` destroys by name. **Online a bucket is not a volume** — the rebirth writes ~18 500
@@ -442,9 +467,8 @@ so the café's fork is warmed by the fork. The whole run took **5 min 05 s**:
 | `forgecafe` | `cafe` (`/s/<id>`, the fork) | 15/15 | 0 (see below) | 15/15 | 44 ms |
 
 `planned=21600 warmed=21600 failed=0` and `planned=15 warmed=15 failed=0`, `VERDICT: warm` twice. ⚠️ The
-**~1h10** quoted elsewhere in this repository (`bin/box-up.sh`'s `--no-warm` text, `bin/box-cycle.sh`,
-`docs/operations/reset-cycle.md`) is not this number and was never measured on a laptop: it is the cost on a
-deployed box whose derivative cache fills from a bucket. On a bench it is minutes. The café plans no image
+warming of a DEPLOYED box, whose derivative cache fills from a bucket, has not been measured; the number this
+repository used to quote for it had no dated run behind it (see "What it costs" below). On a bench it is minutes. The café plans no image
 because its photos are reached through `/v1/media/<key>`, which the warmer has no door for — the run names
 them as "our OWN addresses the warmer has no door for"; that is the product's seam, not this one.
 
@@ -475,17 +499,62 @@ tried and what it got back (`30× fetch failed`), and names a loopback origin as
 birth's closing block prints `… WAS NOT WARMED AT ALL` instead of `did not come out fully warm`. Still a
 report — the birth does not fail on warmth — but it can no longer be read as "ready".
 
-### ⏱ What a birth COSTS — and it is a number nobody could quote until 2026-09-03
+### ⏱ What it costs — the measured numbers, in ONE table
 
-`bash bin/box-up.sh` on a virgin box is a **19 min 17 s** job on this bench, and **it used to be 74**. Both
-ends of that are measured, and the 19 is a whole birth that finished with exit 0 (the run of 2026-09-04, with
-the defaults) rather than an estimate — the run prints its own numbers now, so nobody has to take this
-paragraph's word for it.
+<!-- costs:begin — bin/cost-dates.guard.mjs: every row carries a date and a machine. Add a row; do not edit a number in place. -->
+| what | measured | when | where (machine) | source |
+|---|---|---|---|---|
+| birth, clean clone, photos pulled cold | **28,6 min** (step 9 = 24,3 min) | 2026-10-10 | bench, `ms-s1` (32 CPU, 124 GiB, Docker 29.6.1) | RESULTADOS-dx-i1 |
+| birth | **32 min 46 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
+| two births in parallel (B on the shared photo cache) | **27 min 27 s** · **23 min 19 s** | 2026-10-10 | bench ×2, `ms-s1` | RESULTADOS-dx-i3 |
+| birth, photos pulled cold | **33 min 05 s** (step 9 = 23 min 15 s) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i4 |
+| step 9 again on a box that already holds the catalogue | **3 min 21 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
+| the 18 582 dataset photos (3,4 GiB), cold | **5–7 min** (inside step 9) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
+| warming, `--warm-only` (21 615 urls) | **5 min 05 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
+| warming, reset cycle gesture 4 (after `--promote tailnet`) | **2 409 s** (~40 min) | 2026-09-15 | bench | docs/operations/reset-cycle.md |
+| birth, deployed box | **80–97 min** (seed 51–66 min) | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |
+| reset by restore (`bin/snapshot.sh`) | **92 s** | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |
+| warming, deployed box | **not measured** | — | — | the "~1h10" this repo quoted for it until 2026-10-10 had no dated run behind it |
+<!-- costs:end -->
 
-⚠️ **This paragraph said "~12 minutes" until 2026-09-04 and that number was never a birth.** It was the
-arithmetic of the two measurements below, extrapolated from a run that **died** in the window phase and
-therefore never wrote the past, the window or the verdict. Of the real 19 min, **113 s** is waiting on rate
-limits — and **102 s of that is 52 calls** through the `ext_public` face, which is the review form.
+**This table is the one place a cost lives.** Everything else in this repository — the runbook, the reset
+cycle, `bin/box-up.sh`'s help, the comments — points HERE instead of carrying a copy, because the copies are
+what aged: until 2026-10-10 nine places said a birth was "19 min 17 s" (one bench run of 2026-09-04,
+against 23–35 min measured on 2026-10-10) and warming was "~1h10" (never a dated measurement). A new measurement is a
+new ROW with its date and machine; `bin/cost-dates.guard.mjs` refuses a row without them, and refuses the two
+retired numbers anywhere in the docs or the scripts.
+
+⚠️ **A bench is not a box.** The bench rows are one 32-core machine; a deployed box (2 vCPU) takes roughly three
+times as long for the same birth. Quote the row that matches the machine you are talking about.
+
+★ **Step 9 is most of a bench birth, and it speaks now (dx-i4).** It used to be ~21 silent minutes (the
+kernel's output went through `| tail -6`, which holds every line until the end). It now prints a beat every
+`FORGE_SEED_HEARTBEAT_S` (60 s) — elapsed time, the running app action's phase and count as the kernel writes
+them into `forge_control.extension_invocation`, and the kernel's newest line — and still ends on the
+kernel's last six lines:
+
+```
+   ⏱ 1:00 · forgeco · no app action running — between actions (photo pull, media, projection drain, storefront), which report no count
+      kernel: [seed-demo] dataset "demo": pulled 3000/18582
+   ⏱ 7:01 · forgeco · populate — products 1043/2790
+      kernel: [seed-demo] media: 18601 object(s) uploaded to /data/media, all read back OK
+   ⏱ 20:04 · forgeco · no app action running — between actions (photo pull, media, projection drain, storefront), which report no count
+      kernel: [seed-demo] media: 18601 object(s) uploaded (0 already there), 11 library asset(s) registered; …
+```
+
+Where those 23 minutes went, read off the beats of 2026-10-10 (bench `ms-s1`, photos cold): the photo pull
+~5,5 min (the kernel counts it: `pulled N/18582`), `populate` ~13 min (the database counts it: `products
+N/2790`), the media pass and the projection drain ~4,5 min, the storefront curation the last seconds. ⚠️ The
+drain has no count of its own — the kernel does not report one (`flushDemoProjection` in the product) — so
+that stretch shows the elapsed time and the kernel's last line only; it is working, and Postgres is busy.
+
+### ⏱ How the birth got to minutes — the rate-limit history (2026-09-03)
+
+`bash bin/box-up.sh` once took **74 minutes** on this bench, for a reason that had nothing to do with Docker
+or Postgres. ⚠️ An earlier version of this paragraph said "~12 minutes", and that number was never a birth:
+it was the arithmetic of the two measurements below, extrapolated from a run that **died** in the window
+phase. Of the 2026-09-04 bench birth, **113 s** was waiting on rate limits — and **102 s of that was 52
+calls** through the `ext_public` face, which is the review form.
 
 The difference was not Docker and not Postgres. `bin/seed.mjs` paces itself below
 the kernel's rate limits rather than discovering them with 429s, and until this slice it did so with **one**
@@ -843,7 +912,7 @@ the two kinds of thing this box holds:
 | | what it is | in a birth proof |
 |---|---|---|
 | `pgdata`, `redisdata`, `media` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
-| `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs ~40 min |
+| `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs the pull again (5–7 min on a bench, 2026-10-10 — "What it costs") |
 | `caddy_data`, `caddy_config` | **identity** — the edge's certificates and ACME account | **kept even by `--all`** (the script's header says why); removed by hand — see the next section |
 
 The claim a birth proof makes is *"the box is born from nothing"* — not *"the network is re-read from
@@ -1822,7 +1891,7 @@ The image is in `forge.lock` like the other five — the Dockerfile is thin on p
 `bin/bake.sh` ran, it does not run one), exactly like the vitrine's:
 
 ```bash
-OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh   # or adopt the lock of a bake.yml run
+OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh   # or adopt the lock of a bake.yml run (§1, "Without GCP")
 source ./env-source.sh && source bin/images-from-lock.sh
 docker compose up -d totem
 ```

@@ -17,7 +17,7 @@
 # tailnet promotes with `--promote demo.example.com`, and the tailnet is one DESTINATION among them.
 #
 # ★★ pk24/§B1 — AND THE BIRTH CAN BE ASKED NOT TO WARM. Step 14 used to run unconditionally, so a birth in a
-# pipeline burned ~1h10 of warming it did not ask for, while a scheduled reset wants the warming AFTER the
+# pipeline burned a whole warming it did not ask for, while a scheduled reset wants the warming AFTER the
 # promotion (§0w). `--no-warm` drops step 14 AND NOTHING ELSE — ⛔ 14-bis still opens every door, because
 # proving the box is standing is not warmth (it exists because sign-in was dead on three of four shops while
 # every other step was green). The warmer stays callable on its own, exactly as it always was:
@@ -192,7 +192,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 
 # ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
 # string, so a plan cannot promise a reason the run does not give.
-WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want what it costs (~1h10 measured on a deployed box; 5 min 05 s for 21 615 urls on a local bench, 2026-10-10 — README, "The warming on a bench"). ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later with `bash bin/box-up.sh --warm-only`, which is this same step on a box that is already standing (and the fourth gesture of bin/box-cycle.sh, after the promotion — a promotion recreates every front, so warmth taken before it is thrown away with the container). The warmer stays callable on its own too, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want what it costs (5 min 05 s for 21 615 urls on a local bench, 2026-10-10; not yet measured on a deployed box — README, "What it costs"). ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later with `bash bin/box-up.sh --warm-only`, which is this same step on a box that is already standing (and the fourth gesture of bin/box-cycle.sh, after the promotion — a promotion recreates every front, so warmth taken before it is thrown away with the container). The warmer stays callable on its own too, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
 #
 # ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
 # a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
@@ -390,7 +390,7 @@ require_node || exit 1
 
 # ── ★ `--plan` · THE ROTEIRO WITHOUT THE BIRTH (pk24/§B1) ───────────────────────────────────────────────────
 #
-# It answers "what would this command do?" in milliseconds, where the answer used to cost ~19 minutes or a
+# It answers "what would this command do?" in milliseconds, where the answer used to cost a whole birth or a
 # reading of this file. That is the whole of the ruler for this sprint: the pipeline has to be describable —
 # bake → be born → seed → prove — without a sentence that starts with "and then I…".
 #
@@ -1520,7 +1520,7 @@ fi
 # that HOLDS the warmth — the route cache, the ISR entries, the image derivatives — is a container that is
 # destroyed and replaced there. So warmth acquired before a promotion is thrown away BY the promotion, and a
 # cycle that warmed at step 14 and promoted afterwards would hand over a box as cold as one that never warmed
-# at all, having paid ~1h10 for it. The second reason is the older one and it is still true: on the first
+# at all, having paid the whole warming for it. The second reason is the older one and it is still true: on the first
 # promotion `FORGE_PUBLIC_ORIGIN` is only correct AFTER the promotion has written it, so warming before it
 # warms an address no shopper types.
 #
@@ -2224,6 +2224,65 @@ for t in $TENANTS; do
 done
 
 # ── 9 · the catalogue, once per tenant ──────────────────────────────────────────────────────────────────────
+# >>> THE SPEAKING SEED
+# ★★ dx-i4 — STEP 9 SPEAKS WHILE IT WORKS, AND STILL ENDS ON THE KERNEL'S LAST SIX LINES.
+#
+# MEASURED 2026-10-10 (RESULTADOS-dx0 N10): this step was `dc run … seed-demo.js 2>&1 | tail -6`, and `tail`
+# holds EVERYTHING until its input closes — by design, so a failure shows only the kernel's last words. The
+# cost: 21 minutes without one line on the terminal while Postgres ran at 166%, which a new developer cannot
+# tell from a hang. The kernel is not mute in that window — `demo-data:populate` reports `{note, done,
+# total}` into `forge_control.extension_invocation.progress` at most once a second (the product's
+# `packages/core/src/extension-exec/progress.ts`, v0.3.2) — nobody was reading it.
+#
+# So the one-shot writes to a file, and THIS shell beats every `FORGE_SEED_HEARTBEAT_S` (60 s): elapsed time,
+# the running action's phase and count as the database holds them, and the kernel's newest line. The six
+# lines at the end are the same six as before. ⚠️ The beat is a BACKGROUND subshell and the one-shot stays in
+# the FOREGROUND, on purpose: a background `docker compose run` ignores Ctrl-C in a non-interactive shell, so
+# inverting them would leave a seeder writing after the operator thought it was stopped. The beat watches
+# `$$` and dies with this script; on the normal path it is killed by its exact PID.
+# MEASURED on the first run of this (2026-10-10, bench `ms-s1`, step 9 = 23 min 15 s): the beats said the photo
+# pull (5,5 min, counted by the kernel's own line), `populate — products N/2790` (13 min, counted by the
+# database), then ~4,5 min with no app action — the media pass and the projection drain, which report NO count
+# (the product's `flushDemoProjection` would have to). That stretch shows elapsed + the kernel's last line only.
+# ⛔ Put back the `| tail -6` and the 21 silent minutes come back — `bin/seed-heartbeat.guard.mjs` runs this block.
+seed_beat() { # <tenant> <started-epoch> <log>
+  local t="$1" t0="$2" log="$3" row last el job pnote pdone ptotal
+  el=$(( $(date +%s) - t0 ))
+  # The tenant id is interpolated into SQL, so it is held to the shape `seed/box.json` gives tenant ids.
+  case "$t" in *[!a-z0-9_-]*|'') row='' ;; *)
+    row="$(dc exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -At -F "	" -c "$0"' \
+      "select job_name, coalesce(progress->>'note',''), coalesce(progress->>'done',''), coalesce(progress->>'total','') from forge_control.extension_invocation where tenant_id = '$t' and status = 'running' order by started_at desc limit 1" \
+      2>/dev/null | head -1)" ;;
+  esac
+  last="$(grep -v '^[[:space:]]*$' "$log" 2>/dev/null | tail -1 | cut -c1-140)"
+  if [ -n "$row" ]; then
+    IFS=$'\t' read -r job pnote pdone ptotal <<<"$row"
+    row="$job — ${pnote:-working}${pdone:+ $pdone}${ptotal:+/$ptotal}"
+  else
+    row='no app action running — between actions (photo pull, media, projection drain, storefront), which report no count'
+  fi
+  printf '   ⏱ %d:%02d · %s · %s\n' $((el / 60)) $((el % 60)) "$t" "$row" >&2
+  [ -z "$last" ] || printf '      kernel: %s\n' "$last" >&2
+}
+seed_demo_speaking() { # <tenant> <store-handle>
+  local t="$1" handle="$2" slog rc hb every="${FORGE_SEED_HEARTBEAT_S:-60}" t0 me=$$
+  slog="$(mktemp)"; t0=$(date +%s)
+  ( n=0; while kill -0 "$me" 2>/dev/null; do
+      sleep 1; n=$((n + 1)); [ "$n" -ge "$every" ] || continue
+      n=0; seed_beat "$t" "$t0" "$slog"
+    done ) &
+  hb=$!
+  dc run --rm -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
+    ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
+    kernel node dist/seed-demo.js >"$slog" 2>&1
+  rc=$?
+  kill "$hb" 2>/dev/null; wait "$hb" 2>/dev/null
+  note "seed-demo for \"$t\" ended after $(( ($(date +%s) - t0) / 60 )) min (rc=$rc) — the kernel's last words:"
+  tail -6 "$slog" >&2
+  rm -f "$slog"
+  return "$rc"
+}
+# <<< THE SPEAKING SEED
 say '9 · seed-demo (the catalogue, once per DATASET tenant)'
 # ⛔ `$DATASET_TENANTS`, NEVER `$TENANTS` — the derivation above carries the measurement. A tenant the mounted
 # dataset is not about is NAMED here rather than silently skipped, because "the coffee shop has 23 products"
@@ -2254,9 +2313,7 @@ for t in $TENANTS; do
   # in its own words: the caller stops waiting, the writer does not stop), and this entrypoint's `finally`
   # then closes the pool underneath that abandoned writer. What comes out is a HALF-WRITTEN catalogue and an
   # error naming the POOL instead of the ceiling. There is no one-line repair for an abandoned bulk write.
-  dc run --rm -e "FORGE_REF_TENANT=$t" -e "FORGE_REF_STORE_HANDLE=$handle" -e FORGE_SEED_DEMO=1 \
-    ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
-    kernel node dist/seed-demo.js 2>&1 | tail -6 >&2 \
+  seed_demo_speaking "$t" "$handle" \
     || note "⚠️ seed-demo failed for \"$t\". The kernel's own words are the six lines above — read those, not this.
      ⛔ I DO NOT KNOW WHETHER RE-RUNNING FIXES IT, and saying so is the honest answer: of the three ways this
      step has failed so far, NONE was repaired by repetition (an action ceiling, a missing step before it, and
@@ -2635,7 +2692,7 @@ UNWARMED=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
 # ★★ pk24/§B1 — AND THIS IS THE ONE STEP THE BIRTH CAN BE ASKED TO LEAVE OUT, for the reason the header gives:
-# it costs ~1h10 and it grades nothing — it reports — so a run that is going to be warmed LATER, by
+# it costs a whole warming (README, "What it costs") and it grades nothing — it reports — so a run that is going to be warmed LATER, by
 # `--warm-only`, should not pay for it twice.
 # ⚠️ "LATER" MEANS LATER IN THE SAME RUN, AND THIS LINE USED TO SAY A CLOCK INSTEAD ("born at 03:00 and
 # warmed at 04:00"). A second schedule is not a dependency: on a night the seed runs long, the warming fires

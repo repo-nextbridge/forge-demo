@@ -158,7 +158,7 @@ test('★★★ the four commands are there, in the ONE order that works', () =>
     promote < warm,
     'the warming runs before the promotion. The promotion ends in `--force-recreate` of every front, so the ' +
       'route cache, the ISR entries and the image derivatives a warm run just filled are destroyed with the ' +
-      'containers — ~1h10 paid for a cache deleted minutes later. And on a first promotion the address being ' +
+      'containers — a whole warming paid for a cache deleted minutes later. And on a first promotion the address being ' +
       'warmed would not even be the one the box publishes.',
   );
   assert.ok(

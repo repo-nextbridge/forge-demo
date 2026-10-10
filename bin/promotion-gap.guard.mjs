@@ -15,7 +15,7 @@
 // ── HOW IT GRADES BASH ─────────────────────────────────────────────────────────────────────────────────────
 //
 // `box-up.sh` is 2 200 lines that execute a birth; it cannot be sourced (its own first line says so) and a
-// real birth costs ~19 minutes. So the functions are LIFTED OUT OF THE SOURCE BY NAME and run in a shell of
+// real birth costs tens of minutes. So the functions are LIFTED OUT OF THE SOURCE BY NAME and run in a shell of
 // their own, against a fake `tailscale` and a `.env` written for the case. That makes this a behavioural
 // test — the decision really runs — and it makes a RENAMED or DELETED function a red that names it, which a
 // grep-shaped guard over the same file would not give.
