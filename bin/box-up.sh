@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # ★★ THE ONE COMMAND — a virgin box becomes this demo's bench. EXECUTE it; do not source it.
 #
-#   bash bin/box-up.sh                     birth: the fifteen steps below, on `localhost`
-#   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14 (see below; --warm-only warms later)
+#   bash bin/box-up.sh                     birth: the fifteen steps below, on `localhost` — and on a LOCAL bench
+#                                          WITHOUT step 14 (DX-I6, below); a remote or promoted box still warms
+#   bash bin/box-up.sh --warm              the birth WITH step 14, on a local bench too
+#   bash bin/box-up.sh --no-warm           the same birth WITHOUT step 14, anywhere (see below; --warm-only warms later)
 #   bash bin/box-up.sh --warm-only         ONLY step 14, on a box that is already standing (§0w)
 #   bash bin/box-up.sh --verdict-only      ONLY steps 14-bis and 15, on a box that is already standing (§0v)
-#   bash bin/box-up.sh --plan [--no-warm]  print the roteiro this invocation would run, and do nothing
+#   bash bin/box-up.sh --plan [--[no-]warm] print the roteiro this invocation would run, and do nothing
 #   bash bin/box-up.sh --tenant <id> […]   build ONLY the tenants named (repeatable; also FORGE_BOX_TENANTS in
 #                                          .env). Combines with the birth, --plan, --warm-only, --verdict-only
 #   bash bin/box-up.sh --promote <where>   PROMOTION: point the born box at an address (A15, §B5)
@@ -26,6 +28,13 @@
 # `FORGE_OPERATOR_TOKEN=… node bin/warm-box.mjs --tenant <tenant> --api <origin>` — and `--warm-only` is that
 # same loop driven by THIS script, which is what `bin/box-cycle.sh` uses so that nothing outside this file has
 # to know how a tenant's token is named.
+#
+# ★★ DX-I6 — AND A LOCAL BENCH IS NOT WARMED UNLESS ASKED. Warming costs 5 min 05 s for 21 615 urls on a local
+# bench (2026-10-10) and only spares the FIRST visitor a cold cache, which matters on a box that serves people
+# and not on a developer's bench. So with no flag the birth skips step 14 when `FORGE_PUBLIC_ORIGIN` is a
+# loopback origin (the `env-source.sh` rule that also opens the vitrine's loopback door) and says so, by name,
+# in the plan and in the roteiro; a remote box and a promoted bench warm exactly as before. `--warm` forces
+# it, `--no-warm` still skips it anywhere, the two together are refused. See "WHETHER THIS BIRTH WARMS".
 #
 # ★ AND THE RUN SAYS WHICH STEPS IT RAN AND WHICH IT SKIPPED, BY NAME AND WITH THE REASON — see `BIRTH_STEPS`
 # below and `bin/roteiro.mjs`. A step that is skipped and not mentioned is a new lie in the summary; a step
@@ -116,7 +125,7 @@ cd "$HERE" || exit 1
 # ⚠️ EVERY ONE OF THESE DECLARES ITSELF OR REFUSES OUT LOUD. THE RULER OF THIS SPRINT: a step
 # that only works because somebody knew which variable to export is not ready. So `--promote` with no
 # destination is a refusal that NAMES the destinations, not a fall-through to a default.
-USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan] [--tenant <id>]…
+USAGE='usage: bash bin/box-up.sh [--warm|--no-warm] [--plan] [--tenant <id>]…
          bash bin/box-up.sh --promote <tailnet|localhost|hostname>
          bash bin/box-up.sh --tailnet | --localhost      (aliases of --promote)
          bash bin/box-up.sh --warm-only                  step 14 alone, on a box already standing
@@ -125,6 +134,8 @@ USAGE='usage: bash bin/box-up.sh [--no-warm] [--plan] [--tenant <id>]…
 MODE=birth
 PROMOTE_TO=''
 WARM=1
+ASKED_WARM=0
+ASKED_NO_WARM=0
 PLAN_ONLY=0
 ASKED_TENANTS=()
 while [ $# -gt 0 ]; do
@@ -140,7 +151,10 @@ while [ $# -gt 0 ]; do
       shift 2 ;;
     --tailnet)   MODE=promote; PROMOTE_TO=tailnet;   shift ;;
     --localhost) MODE=promote; PROMOTE_TO=localhost; shift ;;
-    --no-warm)   WARM=0; shift ;;
+    --no-warm)   ASKED_NO_WARM=1; shift ;;
+    # ★★ DX-I6 — THE OPPOSITE ASK, for the one place the default is now NOT to warm: a LOCAL bench (see
+    # "WHETHER THIS BIRTH WARMS" below). Everywhere else it changes nothing — the default there already warms.
+    --warm)      ASKED_WARM=1; shift ;;
     # ★★ pk40 — THE COMPLEMENT OF `--no-warm`, AND IT IS A MODE RATHER THAN A FLAG for the same reason
     # `--promote` is: it runs one block and leaves. See §0w, just below the promotion, for why the scheduled
     # cycle needs it and why the loop it drives may not be copied into the script that schedules it.
@@ -160,12 +174,17 @@ while [ $# -gt 0 ]; do
     *) printf '\n[box-up] unknown argument "%s".\n  %s\n\n' "$1" "$USAGE" >&2; exit 1 ;;
   esac
 done
-if [ "$MODE" != birth ] && { [ "$PLAN_ONLY" = 1 ] || [ "$WARM" = 0 ]; }; then
+if [ "$ASKED_WARM" = 1 ] && [ "$ASKED_NO_WARM" = 1 ]; then
+  # ⛔ DX-I6 — two answers to one question. Picking either would ignore half of what was typed.
+  printf '\n[box-up] --warm and --no-warm contradict each other — ask for one (or neither: a local bench is not warmed\n  by default, a remote or promoted box is).\n  %s\n\n' "$USAGE" >&2
+  exit 1
+fi
+if [ "$MODE" != birth ] && { [ "$PLAN_ONLY" = 1 ] || [ "$ASKED_NO_WARM" = 1 ] || [ "$ASKED_WARM" = 1 ]; }; then
   # Both flags are about the BIRTH's step list, and neither other mode has one. Accepting them silently
   # would answer a question nobody asked — the operator asked for something this invocation cannot do.
   # ⚠️ `--warm-only` is covered by the same line and not by a second one: it is the step list reduced to a
   # single step, so "do not warm" and "plan the birth" are exactly as meaningless there as in a promotion.
-  printf '\n[box-up] --plan and --no-warm are about the BIRTH; --promote, --warm-only and --verdict-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
+  printf '\n[box-up] --plan, --warm and --no-warm are about the BIRTH; --promote, --warm-only and --verdict-only each run one block and nothing else.\n  %s\n\n' "$USAGE" >&2
   exit 1
 fi
 if [ "$MODE" = promote ] && [ "${#ASKED_TENANTS[@]}" -gt 0 ]; then
@@ -217,6 +236,44 @@ WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and th
 STEPS_SKIPPED=''
 STEPS_RAN=''
 PLANNED_SKIPS=''
+
+# ── ★★ DX-I6 · WHETHER THIS BIRTH WARMS — a LOCAL bench is born without step 14, everything else still warms ──
+#
+# ⛔ MEASURED 2026-10-10 (DX-I2): step 14 costs 5 min 05 s for 21 615 urls on a local bench, and all it buys is
+# that the FIRST visitor does not pay the cold cache. On a box that serves people that is the point; on a
+# developer's bench the first visitor is the developer, who paid those five minutes up front to save them.
+# So the DEFAULT now depends on where the box is, and nothing else does:
+#   · a LOCAL bench — `FORGE_PUBLIC_ORIGIN` is a loopback `http://` origin — is born WITHOUT step 14;
+#   · a remote box and a PROMOTED bench (`--promote tailnet|<hostname>` rewrote the origin) warm as before.
+# ★ "LOCAL" IS ONE RULE, NOT A SECOND ONE: `_forge_loopback_door_port` in `env-source.sh` (DX-I2) — the same
+#   function that decides whether the vitrine gets its loopback door — lifted from that file and run here, so
+#   the two can never disagree about what a bench is. Not sourced whole: that file reads `.secrets`.
+# ★ THE ORIGIN IS THE ONE THIS BIRTH WILL RUN ON, read before `--plan` so the plan and the run decide alike:
+#   `.env`'s last `FORGE_PUBLIC_ORIGIN=` line, as `bench_port_block` will leave it — an empty or block-shaped
+#   origin becomes `http://localhost:<block>00` there, so it is local here. A promotion's origin is kept.
+# ⛔ `--warm` forces step 14 on a local bench, `--no-warm` still skips it anywhere, both together are refused
+#   above; `--warm-only` is untouched (it is a mode, and still warms whatever the origin). `bin/box-cycle.sh`
+#   (`--no-warm`, then `--warm-only`), `bin/birth-remote.sh` and `bin/deploy.sh` never take this default:
+#   the first passes its own flag, the other two do not run this file. Undo it and
+#   `bin/bench-no-warm.guard.mjs` goes red naming the case.
+# >>> WHETHER THIS BIRTH WARMS   (bin/bench-no-warm.guard.mjs runs this script's --plan over each case)
+eval "$(sed -n '/^_forge_loopback_door_port() {/,/^}/p' "$HERE/env-source.sh" 2>/dev/null)"
+declare -F _forge_loopback_door_port >/dev/null || _forge_loopback_door_port() { :; }
+_birth_origin="$(sed -n 's/^FORGE_PUBLIC_ORIGIN=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\"")"
+_birth_block="$(sed -n 's/^FORGE_BENCH_PORT_BLOCK=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\" ")"
+case "$_birth_origin" in
+  ''|http://localhost:[0-9][0-9]00) [ -z "$_birth_block" ] || _birth_origin="http://localhost:${_birth_block}00" ;;
+esac
+LOCAL_BENCH=''
+[ -z "$(_forge_loopback_door_port "$_birth_origin")" ] || LOCAL_BENCH="$_birth_origin"
+WARM_LOCAL_SKIP_WHY="step 14 skipped: a local bench, not warmed by default — \`--warm\` or \`--warm-only\` if you need it. ($LOCAL_BENCH is a loopback origin; warming one costs 5 min 05 s for 21 615 urls, 2026-10-10, and only spares the FIRST visitor a cold cache — on a bench, you. A remote or promoted box still warms by default. 14-bis still opens every door.)"
+if [ "$ASKED_NO_WARM" = 1 ]; then
+  WARM=0
+elif [ "$ASKED_WARM" = 0 ] && [ -n "$LOCAL_BENCH" ]; then
+  WARM=0
+  WARM_SKIP_WHY="$WARM_LOCAL_SKIP_WHY"
+fi
+# <<< WHETHER THIS BIRTH WARMS
 [ "$WARM" = 1 ] || PLANNED_SKIPS="14=$WARM_SKIP_WHY"
 
 # ★★ DX-I3 — THE PROJECT NAME IS READ THE WAY STEP 0 WILL READ IT: `.env` first. Step 0 sources `.env` under
@@ -2904,6 +2961,9 @@ MISSING_STORE=''
 # ⛔ THE SKIP IS DECLARED, NOT
 # SILENT: `skip` puts it in the roteiro with its reason, and the roteiro reds on a step that simply vanishes.
 # ⛔ AND 14-bis IS NOT SKIPPED WITH IT — proving the doors open is a fact about the box, not about heat.
+# ★★ DX-I6 — and the branch is also how a LOCAL bench is born by default: `WARM` and `WARM_SKIP_WHY` are
+# decided ONCE, before `--plan` ("WHETHER THIS BIRTH WARMS"), so the reason printed here is the plan's.
+# Skipped by default is not a defect: COLD and UNWARMED stay empty, because the warmer never ran.
 if [ "$WARM" != 1 ]; then
   skip 14 "$WARM_SKIP_WHY"
 else

@@ -75,7 +75,7 @@ function saidSteps() {
   return [...BOX_UP.matchAll(/^\s*say ['"]([0-9][^ ]*) ·/gm)].map((m) => m[1]);
 }
 
-/** `bash bin/box-up.sh <args…>`, run for real. It reads no `.env` and starts nothing on this path. */
+/** `bash bin/box-up.sh <args…>`, run for real. It starts nothing on this path (it reads `.env`: DX-I5/DX-I6). */
 function run(args) {
   try {
     return { status: 0, out: execFileSync('bash', [join(ROOT, 'bin/box-up.sh'), ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }) };
@@ -161,8 +161,11 @@ test('★ the README\'s table of the birth names no step this box does not have'
 // ── 2 · THE PLAN, RUN FOR REAL ────────────────────────────────────────────────────────────────────────────
 
 test('★★★ `--plan` describes the whole birth, and says out loud that it is a PLAN', () => {
-  const { status, out } = run(['--plan']);
-  assert.equal(status, 0, `bash bin/box-up.sh --plan exited ${status}:\n${out}`);
+  // ⚠️ DX-I6 — `--warm`, because this runs against THIS checkout's `.env`, and on a local bench the default
+  //    plan now skips step 14 by design (bin/bench-no-warm.guard.mjs grades that default). Measured here:
+  //    with `FORGE_PUBLIC_ORIGIN=http://localhost:8200` in `.env` the bare `--plan` went red on step 14.
+  const { status, out } = run(['--plan', '--warm']);
+  assert.equal(status, 0, `bash bin/box-up.sh --plan --warm exited ${status}:\n${out}`);
   assert.match(out, /PLAN: nothing has run yet/, `the plan does not label itself as intent:\n${out}`);
   for (const step of declaredSteps()) {
     assert.match(

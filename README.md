@@ -147,6 +147,7 @@ npm ci                                      # the release's tools (forge, forge-
 OVEN_IMAGE=<oven stamped with the release> bash bin/bake-local.sh
 
 bash bin/box-up.sh                           # ← THE ONE COMMAND: a virgin box becomes this bench
+                                             #   (not warmed: a local bench skips step 14 — `--warm` if you want it)
 ```
 
 ⚠️ **The two forks no longer need `bin/test.sh` to have run first** (v032/P4). Both install `apps/demo-setup` as
@@ -226,10 +227,11 @@ It is one command to TYPE, not one step. Fifteen, and each needs what the one be
 the map of how the box is born:
 
 ```bash
-bash bin/box-up.sh                     # the birth, on localhost
-bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14 (`--warm-only` warms it later)
+bash bin/box-up.sh                     # the birth, on localhost — a LOCAL bench skips step 14 (DX-I6, below)
+bash bin/box-up.sh --warm              # the birth WITH step 14, on a local bench too
+bash bin/box-up.sh --no-warm           # the same birth WITHOUT step 14, anywhere (`--warm-only` warms it later)
 bash bin/box-up.sh --warm-only         # step 14 alone, on a box that is already standing
-bash bin/box-up.sh --plan [--no-warm]  # print the roteiro this invocation would run, and do nothing
+bash bin/box-up.sh --plan [--[no-]warm] # print the roteiro this invocation would run, and do nothing
 bash bin/box-up.sh --tenant forgecafe  # only the café (repeatable; or FORGE_BOX_TENANTS) — § Only the tenants you work on
 ```
 
@@ -500,6 +502,28 @@ tried and what it got back (`30× fetch failed`), and names a loopback origin as
 birth's closing block prints `… WAS NOT WARMED AT ALL` instead of `did not come out fully warm`. Still a
 report — the birth does not fail on warmth — but it can no longer be read as "ready".
 
+### ★★ A local bench is born WITHOUT warming (DX-I6)
+
+Warming is for a box that **serves people**: it spares the first visitor a cold cache. On a developer's bench
+the first visitor is the developer, who would pay the warming (5 min 05 s for 21 615 urls — "What it costs")
+to save themselves the same wait later. So `bash bin/box-up.sh` decides by **where the box is**:
+
+| the box | `FORGE_PUBLIC_ORIGIN` | step 14 with no flag |
+|---|---|---|
+| a local bench | loopback `http://` (`localhost`, `127.*`, `*.localhost`, `[::1]`) | **skipped, by name** |
+| a promoted bench (`--promote tailnet\|<hostname>`) | the address the promotion wrote | warmed, as before |
+| a remote box | its `https://` name | warmed, as before |
+
+"Loopback" is **one rule**: `_forge_loopback_door_port` in `env-source.sh`, the same that opens the vitrine's
+loopback door (dx-i2) — `box-up` lifts it from there instead of keeping a copy. The plan and the closing
+roteiro say the same sentence: *step 14 skipped: a local bench, not warmed by default — `--warm` or
+`--warm-only` if you need it*. Not warmed by default is **not** a defect: no `COLD`, no `UNWARMED`, exit 0;
+14-bis still opens every door. `--warm` forces step 14 on a local bench; `--no-warm` still skips it anywhere;
+both together are refused. `--warm-only` is unchanged. `bin/box-cycle.sh` (it passes `--no-warm`, then
+`--warm-only`), `bin/birth-remote.sh` and `bin/deploy.sh` (they never run `box-up`'s birth) do not change.
+**⏱ Measured 2026-10-10, bench `dxi6` (block 86), café only, virgin database: born in 3 min 24 s without
+step 14, every verdict green; `--warm-only` then warmed the café's 15 pages in 4 s.** `bin/bench-no-warm.guard.mjs`.
+
 ### ⏱ What it costs — the measured numbers, in ONE table
 
 <!-- costs:begin — bin/cost-dates.guard.mjs: every row carries a date and a machine. Add a row; do not edit a number in place. -->
@@ -512,6 +536,8 @@ report — the birth does not fail on warmth — but it can no longer be read as
 | birth, `--tenant forgecafe` only, virgin database (steps 6b and 9 skipped by name) | **3 min 31 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
 | the same café-only bench, then `--tenant forgecafe --tenant forgeco` (forgeco built, step 9 = 25 min) | **32 min 28 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
 | `--tenant forgecafe` again on a bench that holds both (forgeco kept, untouched) | **1 min 28 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
+| birth, LOCAL bench, `--tenant forgecafe`, virgin database — step 14 skipped by default (also 6b, 9) | **3 min 24 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i6 |
+| warming, `--warm-only --tenant forgecafe` after that birth (15 urls) | **4 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i6 |
 | step 9 again on a box that already holds the catalogue | **3 min 21 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | the 18 582 dataset photos (3,4 GiB), cold | **5–7 min** (inside step 9) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | warming, `--warm-only` (21 615 urls) | **5 min 05 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
@@ -938,7 +964,8 @@ bash bin/box-up.sh --plan --tenant forgecafe              # see what it will bui
 
 The command line wins over `.env`; neither = every tenant, exactly as before. **⏱ Measured 2026-10-10, bench
 `dxi5` (block 89), café only, from a virgin database: 3 min 31 s**, every verdict green — the row in
-"⏱ What it costs" beside the full births.
+"⏱ What it costs" beside the full births. Since DX-I6 a local bench also skips step 14 by default: **3 min 24 s**
+(bench `dxi6`), and `--warm-only` warms the café afterwards in 4 s.
 
 **What each step does with a tenant you did not ask for** — said in the run, never silently:
 - **Every per-tenant step** (3, 5b, 6, 8, 10, 10b, 11, 12, 14, 14-bis) runs for the asked tenants only.
