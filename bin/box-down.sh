@@ -2,7 +2,7 @@
 # ★★ TEAR THE BOX DOWN SO IT CAN BE BORN AGAIN — destroying STATE and keeping CACHE.
 #
 #   bash bin/box-down.sh              # the normal one: state dies, the photo cache lives
-#   bash bin/box-down.sh --all        # everything, cache included (you will re-pull 3.6 GB)
+#   bash bin/box-down.sh --all        # everything but IDENTITY (caddy_*), cache included (you will re-pull 3.6 GB)
 #   bash bin/box-down.sh --env prod   # THE SAME GESTURES, on a deployed box (deploy/<env>.env names it)
 #   bash bin/box-down.sh --env prod --plan   # say what WOULD go and what would stay; destroy nothing
 #
@@ -60,7 +60,10 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$HERE" || exit 1
 
-: "${COMPOSE_PROJECT_NAME:=forge-preseed}"
+# ★★ DX-I3 — `.env` FIRST, because the `. .env` below (local runs) already made it win; reading it HERE is what
+# makes the refusal further down ask about the project this run will actually tear down. See `bin/box-up.sh`.
+_bench_project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\"")"
+COMPOSE_PROJECT_NAME="${_bench_project:-${COMPOSE_PROJECT_NAME:-forge-preseed}}"
 DOCKER_SH="${FORGE_DOCKER_SH:-sg docker -c}"
 dc() {
   local quoted='' a
@@ -110,6 +113,31 @@ if [ -z "$ENV_NAME" ]; then
   set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; set +a
 fi
 
+# ⛔⛔ DX-I3 — A PROJECT OWNED BY ANOTHER CHECKOUT IS NOT TORN DOWN FROM THIS ONE. Measured 2026-10-10 (N8): two
+# checkouts with no `COMPOSE_PROJECT_NAME` share `forge-preseed`, and this script, run from the second, would
+# `down` the first bench's containers and `volume rm` its database. Compose stamps the directory it ran from
+# on every container; one stamped elsewhere is a refusal, BEFORE the first destructive line — `--plan`
+# included, because a plan that lists another bench's volumes as "would be destroyed" is the same mistake
+# with the safety on. `bin/box-up.sh::bench_refuse_foreign_project` is the twin; README §2 says how to give a
+# second checkout its own name. Local only: `--env` names its project from the deploy directory.
+if [ -z "$ENV_NAME" ]; then
+  here_real="$(pwd -P)"
+  owners="$($DOCKER_SH "docker ps -a --filter label=com.docker.compose.project=$(printf '%q' "$COMPOSE_PROJECT_NAME") --format '{{.Label \"com.docker.compose.project.working_dir\"}}'" </dev/null 2>/dev/null)" \
+    || { printf '\nbox-down: could not ask docker which checkout owns "%s" — refusing rather than guessing.\n\n' "$COMPOSE_PROJECT_NAME" >&2; exit 1; }
+  foreign=''
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    d_real="$(cd "$d" 2>/dev/null && pwd -P || printf '%s' "$d")"
+    [ "$d_real" = "$here_real" ] || foreign="$foreign $d"
+  done < <(printf '%s\n' "$owners" | sort -u)
+  if [ -n "$foreign" ]; then
+    printf '\nbox-down: the compose project "%s" belongs to ANOTHER checkout:%s\n' "$COMPOSE_PROJECT_NAME" "$foreign" >&2
+    printf '     This checkout is %s. Nothing was torn down. Run box-down from that checkout, or give this one\n' "$here_real" >&2
+    printf '     its own COMPOSE_PROJECT_NAME in .env (README §2, "More than one bench on this machine").\n\n' >&2
+    exit 1
+  fi
+fi
+
 printf '\n\033[1m── tearing down %s%s\033[0m\n' "$COMPOSE_PROJECT_NAME" \
   "${ENV_NAME:+ on ${FORGE_DEPLOY_USER:-?}@${FORGE_DEPLOY_HOST:-?}}" >&2
 if [ "$PLAN" = 1 ]; then
@@ -147,14 +175,25 @@ for v in $IDENTITY; do
 done
 
 CACHE='seed_photos'
+# ★★ DX-I3 — THE CACHE MAY BE SHARED BY EVERY BENCH OF THIS MACHINE: `FORGE_SEED_PHOTOS_VOLUME` in `.env` names
+# one volume outside any project (`compose.yml` → `volumes.seed_photos.name`), so a second bench does not pull
+# the 3.6 GB again. `--all` still means "drop the cache", and docker itself refuses to remove a volume another
+# bench's container still mounts — that refusal is printed, not swallowed: it is the other bench, alive.
+# Local only: a deployed box's cache is always its project's own.
+SHARED_CACHE=''
+[ -z "$ENV_NAME" ] && SHARED_CACHE="${FORGE_SEED_PHOTOS_VOLUME:-}"
 for v in $CACHE; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
+  [ -n "$SHARED_CACHE" ] && full="$SHARED_CACHE"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
     if [ "$ALL" = 1 ]; then
       if [ "$PLAN" = 1 ]; then
-        note "cache    $v — WOULD BE DESTROYED (--all)"
+        note "cache    $v ($full) — WOULD BE DESTROYED (--all)"
+      elif rm_out="$($DOCKER_SH "docker volume rm $full" 2>&1 >/dev/null)"; then
+        note "cache    $v ($full) — destroyed (--all); the next birth re-pulls it"
       else
-        $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "cache    $v — destroyed (--all); the next birth re-pulls it"
+        note "cache    $v ($full) — NOT destroyed: ${rm_out:-docker refused the removal}"
+        [ -n "$SHARED_CACHE" ] && note "         it is the machine's SHARED photo cache, and another bench still mounts it. Tear that one down too, then repeat."
       fi
     else
       n=$($DOCKER_SH "docker run --rm -v $full:/p alpine sh -c 'find /p -type f | wc -l'" 2>/dev/null | tr -dc '0-9')

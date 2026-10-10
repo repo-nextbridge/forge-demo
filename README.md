@@ -109,7 +109,7 @@ On a bench, in order. Every step is idempotent except the two one-shots, which s
 
 ```bash
 cp .env.example .env                 # the bench's values are already in it
-$EDITOR .env                         # ports, if 8080/8081 are taken here
+$EDITOR .env                         # ports: FORGE_BENCH_PORT_BLOCK, if 82xx is taken (§ More than one bench)
 
 # the secrets. env-source.sh reads them from a gitignored `.secrets` on a bench;
 # implement its `secret()` against a real secret manager anywhere else.
@@ -795,13 +795,81 @@ the two kinds of thing this box holds:
 
 | | what it is | in a birth proof |
 |---|---|---|
-| `pgdata`, `redisdata`, `media`, `caddy_*` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
+| `pgdata`, `redisdata`, `media` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
 | `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs ~40 min |
+| `caddy_data`, `caddy_config` | **identity** — the edge's certificates and ACME account | **kept even by `--all`** (the script's header says why); removed by hand — see the next section |
 
 The claim a birth proof makes is *"the box is born from nothing"* — not *"the network is re-read from
 nothing"*. `bin/box-down.sh` makes the cheap, correct thing the default and puts the expensive one behind a
 flag, because a habit beats a paragraph: this distinction was explained, written down, and then violated by
 hand one minute later.
+
+### ★★ More than one bench on this machine (DX-I3)
+
+A bench is a **checkout + a compose project + a port block**, and a second bench needs its own of all three.
+Measured 2026-10-10 (RESULTADOS-dx0, N8): two checkouts that never named their project are **one** compose
+project, `forge-preseed`, and the second `box-up` recreates the first bench's containers on its volumes.
+`bin/box-up.sh` and `bin/box-down.sh` now **refuse** that, naming the checkout that owns the name (compose
+stamps it on every container as `com.docker.compose.project.working_dir`); `bin/bench-parallel.guard.mjs`
+holds the refusal and the port derivation. The first bench needs none of this, and nothing about it changes.
+
+**Seven commands, one file edit** (the `cat >> .env`). From any directory:
+
+```bash
+git clone <this repository> forge-demo-2 && cd forge-demo-2      # 1 · ONE CHECKOUT PER BENCH (see ⚠️ below)
+cp .env.example .env                                             # 2
+cat >> .env <<'ENV'                                              # 3 · the three lines that make it a second bench
+COMPOSE_PROJECT_NAME=forge-bench2
+FORGE_BENCH_PORT_BLOCK=83
+FORGE_SEED_PHOTOS_VOLUME=forge-seed-photos
+ENV
+printf 'forge-postgres-password=%s\n' "$(openssl rand -hex 16)"  >> .secrets   # 4
+printf 'forge-vault-key=%s\n'         "$(openssl rand -base64 32)" >> .secrets   # 5
+npm ci                                                           # 6
+bash bin/box-up.sh                                               # 7 — the shop is at http://localhost:<block>00
+```
+
+- **`COMPOSE_PROJECT_NAME`** — the bench's name; every container and volume carries it. Unset it is
+  `forge-preseed`, the name of every bench born before this section existed, so none of them moved. One per
+  checkout. The scripts read it from `.env` (`box-up` used to read only the shell before step 0, and
+  `bin/snapshot.sh` never read `.env` at all).
+- **`FORGE_BENCH_PORT_BLOCK=NN`** — every door at `NNxx`: `NN00` shop · `NN01` admin T1 · `NN02` admin T2 ·
+  `NN03` totem · `NN04` mail · `NN43` https, and `FORGE_PUBLIC_ORIGIN=http://localhost:NN00`. `box-up`
+  **writes** those seven lines into `.env` before the first container — so compose, `box-down`, `snapshot` and
+  a hand-typed `docker compose` all read the same doors — and prints what it wrote. A line **off** the block's
+  shape (a shop door typed by hand that is not `NN00`, the origin a promotion wrote) is an override and is kept, by name.
+  Undeclared, nothing is written. Check the block is free first: `ss -ltn | grep ':NN'`.
+  ★ The admin doors move with it **inside the kernel too**: `seed/box.json` declares them as `localhost:8201` /
+  `localhost:8202`, and the admin resolves its tenant from host:port — measured on this section's first 86xx
+  birth, step 3 claimed `localhost:8201` while the edge served the admin on 8601 (a login there answers
+  `unknown_admin_host`) and the switcher linked the default bench. Every read of `admin_host` in `box-up` (step
+  3's claim, the switcher, the gate links, the summary, the promotion's port) and step 6's check move an
+  admin door of the shape `82NN` to `<block>NN`.
+- **`FORGE_SEED_PHOTOS_VOLUME`** — one photo cache for every bench that names it (`compose.yml` gives the
+  volume that name instead of `<project>_seed_photos`). The first bench to reach step 9 pulls the 3.6 GB; the
+  next finds every file on disk. Opt-in, for two reasons: the cache is keyed by file path, not by dataset
+  version (benches on different datasets must not share one — name it per version if they might), and **two
+  benches hydrating it at the same time both pull** — each sees the file missing; the bytes are the same, but
+  `@forge/seed-dataset` rewrites a file in place (`writeFileSync`), so one bench can read a photo the other is
+  rewriting. Let the first bench pass step 9 before the next one reaches it.
+
+⚠️ **One checkout per bench, never two benches in one directory.** A birth writes `.env`, `.secrets` and
+`caddy/extra-local/` in the checkout it runs from; a second birth in the same directory rewrites the first's.
+A `git clone` of this repository or a `git worktree add` both work.
+
+⚠️ **The refusal sees containers, not volumes.** A bench torn down with `box-down` has no containers left,
+so another checkout may then take its name — onto volumes `box-down` already emptied of state.
+
+**Leaving nothing behind.** `box-down --all` is everything *except* the edge's identity, on purpose (its
+header says why: certificates are issued, not fetched). For a bench you are deleting:
+
+```bash
+bash bin/box-down.sh --all       # state + the photo cache — a SHARED cache only once no other bench mounts it
+                                 # (docker refuses to remove a volume in use, and box-down prints the refusal)
+docker volume rm forge-bench2_caddy_data forge-bench2_caddy_config     # identity: <COMPOSE_PROJECT_NAME>_caddy_*
+cd .. && rm -rf forge-demo-2     # the checkout, its .env and .secrets with it
+docker volume ls --filter name=forge-bench2      # nothing
+```
 
 ### The seed dataset — tracked here since v031/G
 

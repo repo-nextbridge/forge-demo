@@ -396,17 +396,23 @@ async function assertCredentialTenant() {
  * with `unknown_admin_host` and says nothing about which host it wanted. */
 async function verifyAdminHost() {
   if (!spec.admin_host) return;
-  const res = await fetch(`${api}/v1/read/admin.by_host?host=${encodeURIComponent(spec.admin_host)}`);
+  // ★ DX-I3 — THE DOOR MOVES WITH THE BENCH'S PORT BLOCK, exactly as `bin/box-up.sh::admin_host_of` moves the
+  // one step 3 claims (`localhost:82NN` → `localhost:<block>NN`). Without this, a bench on 86xx asked about
+  // 8201 — a door nobody on that bench claims — and printed a repair that would claim ANOTHER bench's admin.
+  const block = process.env.FORGE_BENCH_PORT_BLOCK ?? '';
+  const door = /^localhost:82(\d\d)$/.exec(spec.admin_host);
+  const adminHost = block && door ? `localhost:${block}${door[1]}` : spec.admin_host;
+  const res = await fetch(`${api}/v1/read/admin.by_host?host=${encodeURIComponent(adminHost)}`);
   const body = await res.json().catch(() => ({}));
   const claimed = body?.tenant_id ?? body?.tenant ?? null;
   if (claimed === tenant) {
-    log(`admin host ${spec.admin_host} → ${tenant} ✓`);
+    log(`admin host ${adminHost} → ${tenant} ✓`);
     return;
   }
   log(
-    `⚠️ admin host ${spec.admin_host} answers ${claimed ?? '(nobody)'} , expected ${tenant}.\n` +
+    `⚠️ admin host ${adminHost} answers ${claimed ?? '(nobody)'} , expected ${tenant}.\n` +
       `  This script cannot claim it (no credential on this box holds platform.tenant.write). Claim it with:\n` +
-      `    docker compose run --rm kernel node dist/admin-host.js set ${spec.admin_host} ${tenant}`,
+      `    docker compose run --rm kernel node dist/admin-host.js set ${adminHost} ${tenant}`,
   );
 }
 

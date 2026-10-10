@@ -202,7 +202,12 @@ STEPS_RAN=''
 PLANNED_SKIPS=''
 [ "$WARM" = 1 ] || PLANNED_SKIPS="14=$WARM_SKIP_WHY"
 
-: "${COMPOSE_PROJECT_NAME:=forge-preseed}"
+# ★★ DX-I3 — THE PROJECT NAME IS READ THE WAY STEP 0 WILL READ IT: `.env` first. Step 0 sources `.env` under
+# `set -a`, so a `COMPOSE_PROJECT_NAME=` line there already WON from step 0 on — and lost before it, where the
+# refusal below and the post-mortem run. One answer for the whole run; the default is the one every bench
+# born before 2026-10-10 carries, so none of them moves. See "More than one bench on this machine" (README).
+_bench_project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\"")"
+COMPOSE_PROJECT_NAME="${_bench_project:-${COMPOSE_PROJECT_NAME:-forge-preseed}}"
 export COMPOSE_PROJECT_NAME
 
 # `docker` needs a group shim on this box, and that shim takes ONE STRING — which is the whole hazard here.
@@ -530,11 +535,12 @@ PYEOF
 admin_siblings_json() { # [host] [overrides-json]
   local host="${1:-}" overrides="${2:-}"
   [ -n "$overrides" ] || overrides='{}'
-  jq -c --arg host "$host" --argjson ov "$overrides" '[ .tenants[]
+  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
+      [ .tenants[]
       | { name: (.settings.tenant_name // .id)
         , url: ( $ov[.id]
-                 // ("http://" + (if $host == "" then .admin_host
-                                  else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]' "$BOX"
+                 // ("http://" + (if $host == "" then (.admin_host | bench_host)
+                                  else ($host + (.admin_host | bench_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]' "$BOX"
 }
 
 # THE ADMIN LINK PER TENANT, DERIVED FROM THE SAME DECLARATION (pk38/d8).
@@ -551,11 +557,12 @@ admin_siblings_json() { # [host] [overrides-json]
 admin_gate_urls_json() { # [host] [overrides-json]
   local host="${1:-}" overrides="${2:-}"
   [ -n "$overrides" ] || overrides='{}'
-  jq -c --arg host "$host" --argjson ov "$overrides" '[ .tenants[]
+  jq -c --arg host "$host" --argjson ov "$overrides" --arg block "${BENCH_BLOCK:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end;
+      [ .tenants[]
       | { key: .id
         , value: ( $ov[.id]
-                   // ("http://" + (if $host == "" then .admin_host
-                                    else ($host + (.admin_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]
+                   // ("http://" + (if $host == "" then (.admin_host | bench_host)
+                                    else ($host + (.admin_host | bench_host | capture("(?<port>:[0-9]+)?$").port // "")) end)) ) } ]
       | from_entries' "$BOX"
 }
 
@@ -722,6 +729,107 @@ $table
 EOF
   printf '%s' "${doors# }"
 }
+
+# >>> THE BENCH'S NAME AND DOORS
+# ── ★★ DX-I3 — N BENCHES ON ONE MACHINE: ONE PROJECT PER CHECKOUT, ONE PORT BLOCK PER BENCH ──────────────────
+#
+# ⛔ MEASURED 2026-10-10 (RESULTADOS-dx0 N8): two checkouts with no `COMPOSE_PROJECT_NAME` are ONE compose
+# project, `forge-preseed`. The second `box-up` recreates the first one's containers and adopts its volumes;
+# the second `box-down` destroys the first one's database. Nothing said so.
+#
+# ★ WHY A REFUSAL AND NOT A NAME DERIVED FROM THE DIRECTORY. Every bench born before this slice is
+# `forge-preseed` (and `bin/snapshot.sh` keeps golds under that name): a derived default would orphan each of
+# their volumes on the next `box-up`, which is a silent rebirth — the same accident, moved. Compose stamps the
+# directory it ran from on every container (`com.docker.compose.project.working_dir`), so the project can say
+# which checkout OWNS it, and a run from any other checkout is refused before it touches a container.
+# ⚠️ WHAT IT SEES: containers, running or stopped. A project whose containers are gone (`box-down`) has
+# only volumes left, and a volume carries no directory — so a second checkout under the same name after a
+# `box-down` is let through, onto volumes `box-down` already emptied of state.
+# Deployed boxes never reach this: `bin/birth-remote.sh` and `bin/deploy.sh` name their project themselves.
+bench_refuse_foreign_project() {
+  local here_real owners rc d d_real foreign=''
+  here_real="$(cd "$HERE" && pwd -P)"
+  owners="$($DOCKER_SH "docker ps -a --filter label=com.docker.compose.project=$(printf '%q' "$COMPOSE_PROJECT_NAME") --format '{{.Label \"com.docker.compose.project.working_dir\"}}'" </dev/null 2>/dev/null)"
+  rc=$?
+  if [ "$rc" != 0 ]; then
+    printf '\n[box-up] could not ask docker which checkout owns the project "%s" (exit %s).\n     Refusing rather than guessing: an unanswered question here is how one bench recreates another.\n\n' "$COMPOSE_PROJECT_NAME" "$rc" >&2
+    exit 1
+  fi
+  while IFS= read -r d; do
+    [ -n "$d" ] || continue
+    d_real="$(cd "$d" 2>/dev/null && pwd -P || printf '%s' "$d")"
+    [ "$d_real" = "$here_real" ] || foreign="$foreign $d"
+  done < <(printf '%s\n' "$owners" | sort -u)
+  [ -z "$foreign" ] && return 0
+  printf '\n[box-up] the compose project "%s" belongs to ANOTHER checkout:%s\n' "$COMPOSE_PROJECT_NAME" "$foreign" >&2
+  printf '     This checkout is %s. Under one project name the two are ONE bench: this run would recreate its\n' "$here_real" >&2
+  printf '     containers and adopt its volumes. Nothing was touched.\n' >&2
+  printf '     Give this checkout its own bench in .env — README §2, "More than one bench on this machine":\n' >&2
+  printf '       COMPOSE_PROJECT_NAME=<a name of its own>\n       FORGE_BENCH_PORT_BLOCK=<NN, a port block nothing else listens on>\n\n' >&2
+  exit 1
+}
+
+# ★★ ONE DECLARATION, SEVEN PORTS AND AN ORIGIN. A second bench used to be seven lines of `.env` that had to
+# move together (`FORGE_HTTP_PORT`, `_HTTPS_`, `_ADMIN_`, `_ADMIN2_`, `_TOTEM_`, `_MAIL_` and
+# `FORGE_PUBLIC_ORIGIN`); one forgotten line is two benches on one door, or an origin minting image URLs at
+# the other bench. `FORGE_BENCH_PORT_BLOCK=NN` puts every door at `NNxx`, in the same layout `.env.example`
+# ships for 82: 00 shop · 01 admin T1 · 02 admin T2 · 03 totem · 04 mail · 43 https.
+#
+# ★ IT IS WRITTEN INTO `.env`, NOT EXPORTED: `.env` is what compose, `box-down`, `snapshot` and a human typing
+# `docker compose ps` all read, so a block that lived only in this shell would be a second truth.
+# ★ AN INDIVIDUAL LINE STAYS AN OVERRIDE — a value OFF the block shape (`FORGE_HTTP_PORT=8080`, an origin a
+# promotion wrote) is kept and named. A value ON it (any `NN00`, `http://localhost:NN00`) is the block's, and
+# is rewritten when the block changes. ⛔ NO DECLARATION, NO WRITE: a bench that never declared a block keeps
+# its `.env` byte for byte, which is how every bench born before this slice stays on its own ports.
+BENCH_BLOCK=''
+bench_port_block() {
+  local block var suffix cur want derived='' kept=''
+  block="$(sed -n 's/^FORGE_BENCH_PORT_BLOCK=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\" ")"
+  [ -n "$block" ] || return 0
+  case "$block" in
+    1[1-9]|[2-9][0-9]) BENCH_BLOCK="$block" ;;
+    *) printf '\n[box-up] FORGE_BENCH_PORT_BLOCK=%s is not a port block. It is two digits, 11 to 99 (10xx would be\n     privileged ports): the doors land on <block>00…<block>04 and <block>43 (82 is the default bench).\n\n' "$block" >&2
+       exit 1 ;;
+  esac
+  for var in FORGE_HTTP_PORT:00 FORGE_ADMIN_HTTP_PORT:01 FORGE_ADMIN2_HTTP_PORT:02 FORGE_TOTEM_HTTP_PORT:03 \
+             FORGE_MAIL_HTTP_PORT:04 FORGE_HTTPS_PORT:43 FORGE_PUBLIC_ORIGIN:origin; do
+    suffix="${var#*:}"; var="${var%%:*}"
+    cur="$(sed -n "s/^$var=//p" "$HERE/.env" | tail -1 | tr -d "'\"")"
+    if [ "$suffix" = origin ]; then
+      want="http://localhost:${block}00"
+      case "$cur" in ''|http://localhost:[0-9][0-9]00) ;; *) kept="$kept $var"; continue ;; esac
+    else
+      want="$block$suffix"
+      case "$cur" in ''|[0-9][0-9]"$suffix") ;; *) kept="$kept $var"; continue ;; esac
+    fi
+    [ "$cur" = "$want" ] && continue
+    put_env "$var" "$want"
+    derived="$derived $var"
+  done
+  note "port block ${block}xx — ${block}00 shop · ${block}01/${block}02 admins · ${block}03 totem · ${block}04 mail · ${block}43 https"
+  [ -z "$derived" ] || note "  written into .env from the block:$derived"
+  [ -z "$kept" ] || note "  kept as an override (off the block's shape):$kept"
+}
+
+# ★★ AND THE ADMIN DOORS THE DIRECTORY IS TOLD ABOUT MOVE WITH THE BLOCK. MEASURED on the first 86xx birth of
+# this slice (2026-10-10): the edge published the admins on 8601/8602 and step 3 still claimed
+# `localhost:8201`/`localhost:8202` — `seed/box.json`'s `admin_host`, written in the default block's numbers.
+# The admin resolves its tenant from host:port, so a login on 8601 would answer `unknown_admin_host`, the
+# sibling switcher and the gate links pointed at 8201 — ANOTHER bench, when one is up — and step 15 graded
+# it green, because the directory did hold the address the siblings named. So every reader of `admin_host`
+# in this script reads it through here: `localhost:82NN` becomes `localhost:<block>NN`; any other value (a
+# hostname, a bench with no block) passes untouched. `bin/bench-parallel.guard.mjs` pins `seed/box.json`'s
+# admin doors to `.env.example`'s, which is what makes "82" the right literal here.
+# ⚠️ `bench_host` IS SPELLED OUT IN EACH jq PROGRAM (here, `admin_siblings_json`, `admin_gate_urls_json`)
+# rather than kept in a variable: `bin/box-config.guard.mjs` sources those two functions ALONE, and a
+# program leaning on a variable from this block would not compile there.
+admin_host_of() { # <tenant> → its admin_host from seed/box.json, in this bench's port block
+  jq -r --arg t "$1" --arg block "${BENCH_BLOCK:-}" 'def bench_host: if $block != "" then sub("^localhost:82(?<d>[0-9][0-9])$"; "localhost:\($block)\(.d)") else . end; .tenants[]|select(.id==$t)|.admin_host // empty | bench_host' "$BOX"
+}
+# <<< THE BENCH'S NAME AND DOORS
+
+bench_refuse_foreign_project
+bench_port_block
 
 # ── 0 · the environment ─────────────────────────────────────────────────────────────────────────────────────
 # ⚠️ BEFORE STEP 1, AND THE VIRGIN-BOX TEST IS WHAT PUT IT HERE. This was sourced at step 5, on the reasoning
@@ -1024,7 +1132,7 @@ PYEOF
   # when nothing is published, so `read` below never has to guess which column it is looking at.
   admin_doors=''
   for t in $TENANTS; do
-    lport="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host // empty' "$BOX" | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p')"
+    lport="$(admin_host_of "$t" | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p')"
     [ -n "$lport" ] || { note "⚠️ $t has no port in its admin_host — skipping its door"; continue; }
     admin_doors="$admin_doors$t $lport $(serve_field "$serve_table" "$lport" 1 | grep . || echo -) $(serve_field "$serve_table" "$lport" 2 | grep . || echo -)
 "
@@ -1606,7 +1714,7 @@ ADMIN_STORE_IDS='{}'
 for t in $TENANTS; do
   handle="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.handle' "$BOX")"
   name="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.stores[]|select(.bootstrap)|.name' "$BOX")"
-  ahost="$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host // empty' "$BOX")"
+  ahost="$(admin_host_of "$t")"
   [ -n "$handle" ] || die "seed/box.json declares no bootstrap store for tenant \"$t\"."
 
   out="$(mktemp)"; err="$(mktemp)"
@@ -2586,7 +2694,7 @@ PROMOTION_OWED="$(promotion_gap_doors)"
 say 'the bench'
 note "shop      ${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}"
 for t in $TENANTS; do
-  note "admin     http://$(jq -r --arg t "$t" '.tenants[]|select(.id==$t)|.admin_host' "$BOX")   → $t"
+  note "admin     http://$(admin_host_of "$t")   → $t"
 done
 # ★ The café's id is RESOLVED by now (step 3c sets `CAFE_STORE`), so print it instead of a placeholder that
 # nobody can paste.

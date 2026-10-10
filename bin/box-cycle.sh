@@ -381,7 +381,10 @@ fi
 . "$HERE/bin/require-node.sh"
 require_node || exit 2
 
-: "${COMPOSE_PROJECT_NAME:=forge-preseed}"
+# ★ DX-I3 — `.env` first, the way `bin/box-up.sh` and `bin/box-down.sh` read it, so the name this cycle
+# announces is the bench the two of them act on.
+_bench_project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\"")"
+COMPOSE_PROJECT_NAME="${_bench_project:-${COMPOSE_PROJECT_NAME:-forge-preseed}}"
 export COMPOSE_PROJECT_NAME
 
 # ── ★★ THE DESTINATION IS A PARAMETER, NEVER A CONSTANT ─────────────────────────────────────────────────────
