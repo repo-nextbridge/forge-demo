@@ -428,6 +428,53 @@ with one warning line under four hundred. Step 15 names the tenant and the hostn
 against the live bench: `fetch(origin, {headers:{host:'nope.invalid'}})` answered **200** where `node:http`
 answered **404**. A fetch-based probe would have graded every hostname as resolving, on every box, for ever.
 
+### ★★★ The warming on a bench — what step 14 does here, and the door that lets it (dx-i2)
+
+**What it does on a local bench, measured 2026-10-10** (bench `dxi2`, ports 85xx, a fresh birth, then
+`bash bin/box-up.sh --warm-only`): it fetches every page the port enumerates, then every image derivative
+those pages declare in their `srcset`, then every page a second time to measure it warm — through the edge,
+so the café's fork is warmed by the fork. The whole run took **5 min 05 s**:
+
+| tenant | store | pages | images | verify | p95 (verify) |
+|---|---|---|---|---|---|
+| `forgeco` | `forge` (root of the origin) | 419/419 | 19 699/19 699 | 419/419 | 126 ms |
+| `forgeco` | `outlet` (`/s/<id>`) | 419/419 | 1 063/1 063 | 419/419 | 57 ms |
+| `forgecafe` | `cafe` (`/s/<id>`, the fork) | 15/15 | 0 (see below) | 15/15 | 44 ms |
+
+`planned=21600 warmed=21600 failed=0` and `planned=15 warmed=15 failed=0`, `VERDICT: warm` twice. ⚠️ The
+**~1h10** quoted elsewhere in this repository (`bin/box-up.sh`'s `--no-warm` text, `bin/box-cycle.sh`,
+`docs/operations/reset-cycle.md`) is not this number and was never measured on a laptop: it is the cost on a
+deployed box whose derivative cache fills from a bucket. On a bench it is minutes. The café plans no image
+because its photos are reached through `/v1/media/<key>`, which the warmer has no door for — the run names
+them as "our OWN addresses the warmer has no door for"; that is the product's seam, not this one.
+
+⛔ **Until dx-i2 it did NOTHING here, and said "not fully warm".** `bin/warm-box.mjs` only *starts* the run
+(`POST /api/warm`, from the host); the **vitrine fetches every url from inside its own container**, at
+`FORGE_PUBLIC_ORIGIN` (`apps/storefront/src/app/api/warm/route.ts`, `resolveOrigin`: the caller's
+`?origin=`, else `FORGE_PUBLIC_ORIGIN`, else the request's host). On a bench that is `http://localhost:8200`,
+and inside the container `localhost` is the container: `ECONNREFUSED` on every url. Every local birth printed
+`planned=838 warmed=0 failed=1676` (`fetch failed`, `p95 0ms`) and exited 0 — measured again on this bench,
+2026-10-10, before the repair.
+
+**The repair is a door, not another address.** `storefront-loopback` (compose.yml) is a caddy that joins the
+vitrine's network namespace, listens on the origin's port and forwards to the edge (`caddy:80`) with the Host
+untouched — so the bench gets what a deployed box has for free: its public address reaches its own edge from
+anywhere. ⚠️ Pointing the warmer at `?origin=http://caddy` instead was measured and refused: the café's 15
+pages warm, but the images the pages declare at the public origin (`FORGE_PUBLIC_ORIGIN`, port 8500 on that bench) become a **foreign host** and none
+of them is warmed (`foreignHosts` named the public origin, 0 images planned).
+
+**Nothing to configure.** `env-source.sh` derives the `bench-loopback` profile and `FORGE_LOOPBACK_DOOR_PORT`
+from a loopback `http://` `FORGE_PUBLIC_ORIGIN` (`localhost`, `*.localhost`, `127.*`, `[::1]`; not `https`,
+not the vitrine's own port 3000). A deployment's `https://` name derives nothing and the service is never
+created; `bin/box-up.sh` names the door in every `dc up` that (re)creates the vitrine, and `--warm-only`
+starts it first, so a bench born before it existed is warmed through it too. `bin/loopback-door.guard.mjs`.
+
+**And "nothing warmed" has its own verdict now.** A run that planned urls and reached **none** of them exits
+**4** (not 1), prints `VERDICT (a REPORT …): <tenant> was NOT WARMED AT ALL`, names the address the vitrine
+tried and what it got back (`30× fetch failed`), and names a loopback origin as the most likely cause. The
+birth's closing block prints `… WAS NOT WARMED AT ALL` instead of `did not come out fully warm`. Still a
+report — the birth does not fail on warmth — but it can no longer be read as "ready".
+
 ### ⏱ What a birth COSTS — and it is a number nobody could quote until 2026-09-03
 
 `bash bin/box-up.sh` on a virgin box is a **19 min 17 s** job on this bench, and **it used to be 74**. Both

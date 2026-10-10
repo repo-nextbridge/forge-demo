@@ -261,6 +261,22 @@ test('★★★ …and it SAYS SO, by name — a gate replaced by a silence is w
   assert.match(out, /REPORT/, `the warmth line does not say it is a report:\n${out}`);
 });
 
+// ★★★ dx-i2 — «0 OF N» IS A FOURTH SENTENCE. Measured 2026-10-10: every local birth warmed `0 of 838` and
+// its closing block printed the same «did NOT come out fully warm» that one 503 in 838 prints. Still a
+// report (exit 0), never the COLD sentence.
+test('★★★ a tenant that was NOT WARMED AT ALL still exits 0 — and says so in its own words, not COLD\'s', () => {
+  const { status, out } = runExitBlock({ ...CLEAN, UNWARMED: ' forgeco' });
+  assert.equal(status, 0, `"nothing warmed" failed the birth — warmth reports:\n${out}`);
+  assert.match(out, /forgeco WAS NOT WARMED AT ALL/, `the unwarmed tenant is not named in its own sentence:\n${out}`);
+  assert.match(out, /REPORT/, out);
+  assert.doesNotMatch(out, /FULLY WARM/, `0 of N was printed as "not fully warm":\n${out}`);
+});
+
+test('★★★ …and the warming loop RECORDS status 4 apart from 1 — a sentence nobody feeds never prints', () => {
+  const block = warmLoop();
+  assert.match(block, /\n\s*4\)\s*\n[\s\S]*?UNWARMED="\$UNWARMED \$t"/, `status 4 is not recorded as UNWARMED:\n${block}`);
+});
+
 test('★★ warmth that could not be ASKED is a THIRD sentence, and it is a report too', () => {
   const { status, out } = runExitBlock({ ...CLEAN, WARM_UNKNOWN: ' forgeco' });
   assert.equal(status, 0, `"nothing was learned" failed the birth:\n${out}`);

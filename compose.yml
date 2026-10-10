@@ -299,6 +299,44 @@ services:
     depends_on:
       - kernel
 
+  # ★★★ dx-i2 — THE VITRINE'S LOOPBACK DOOR: a bench's public address, made true INSIDE the vitrine.
+  #
+  # ⛔ MEASURED 2026-10-10: every local birth warmed `0 of 838` — the vitrine's warmer fetches FROM INSIDE THIS
+  # NETWORK NAMESPACE at `FORGE_PUBLIC_ORIGIN` (`http://localhost:8200` on a bench), and here `localhost` was
+  # the vitrine's own container: ECONNREFUSED on every url. This caddy JOINS that namespace
+  # (`network_mode: service:storefront`), listens on the origin's port and hands every request to the edge's
+  # shop face with the Host untouched — what a deployed box gets for free, because its public name resolves
+  # to its own edge from anywhere. Why a door and not another `?origin=`: `env-source.sh`, at
+  # `_forge_loopback_door_port`, which is also what DERIVES the port and the profile from the origin.
+  #
+  # ⚠️ A PROFILE, and nothing declares it by hand: a loopback `http://` origin is the declaration, so a
+  # deployment (an `https://` name) never creates this service. It publishes NO port — it is a door inside a
+  # namespace, not a door on this machine — and `bin/box-up.sh` names it in every `dc up` that (re)creates the
+  # vitrine, because a namespace-sharing container dies with the container whose namespace it shares.
+  storefront-loopback:
+    image: caddy:2
+    profiles: ['bench-loopback']
+    restart: unless-stopped
+    network_mode: 'service:storefront'
+    environment:
+      FORGE_LOOPBACK_DOOR_PORT: ${FORGE_LOOPBACK_DOOR_PORT:-}
+    volumes:
+      - ./caddy/Caddyfile.loopback:/etc/caddy/Caddyfile:ro
+    depends_on:
+      storefront:
+        condition: service_started
+        restart: true
+      caddy:
+        condition: service_started
+    # `nc` is in the stock `caddy:2` image (the edge's own probe below relies on it), and the port is the one
+    # the door was told to open — a door listening elsewhere is a door the warmer never finds.
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 "$$FORGE_LOOPBACK_DOOR_PORT"']
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+
   # The CHECKOUT — the other half of the shop's front, on the SAME hostname, split by path at the edge.
   # Ours, unforked, and it stays that way: the vitrine is what the demo dresses up (C1), the checkout is what
   # it dresses up with a THEME (C2).

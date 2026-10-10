@@ -192,7 +192,7 @@ BIRTH_STEPS='0c|the dataset (is it the one these images were built with?)
 
 # ★ THE ONE REASON A STEP IS SKIPPED TODAY, WRITTEN ONCE. The plan below and step 14 itself both print THIS
 # string, so a plan cannot promise a reason the run does not give.
-WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want the ~1h10 it costs. ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later with `bash bin/box-up.sh --warm-only`, which is this same step on a box that is already standing (and the fourth gesture of bin/box-cycle.sh, after the promotion — a promotion recreates every front, so warmth taken before it is thrown away with the container). The warmer stays callable on its own too, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
+WARM_SKIP_WHY='asked with --no-warm — warmth is a REPORT, never a gate, and this run does not want what it costs (~1h10 measured on a deployed box; 5 min 05 s for 21 615 urls on a local bench, 2026-10-10 — README, "The warming on a bench"). ⚠️ WHAT IT COSTS, EXACTLY: the box is handed over COLD (step 13 purged the edge minutes ago and nothing refills it, so the first visitor pays for every cache), and nobody learns how warm this box came out — the p95, the urls that did not ANSWER by name, the ones never VISITED. Warm it later with `bash bin/box-up.sh --warm-only`, which is this same step on a box that is already standing (and the fourth gesture of bin/box-cycle.sh, after the promotion — a promotion recreates every front, so warmth taken before it is thrown away with the container). The warmer stays callable on its own too, unchanged: `FORGE_OPERATOR_TOKEN=<seed token> node bin/warm-box.mjs --tenant <tenant> --api <origin>`. ⛔ WHAT IT DOES **NOT** COST: a store seed/box.json declares and this box does not hold is still graded — step 14-bis asks that same question from the same two sources and is never skipped (it refuses, naming the store). ⚠️ Its store list comes from the CREDENTIAL, not from --tenant, so it asks about the tenant the token belongs to and REFUSES if that is not the tenant named — the birth hands each tenant its own token'
 #
 # ⚠️ TWO VARIABLES AND THEY ARE NOT INTERCHANGEABLE. `STEPS_SKIPPED` is filled BY THE RUN, one `skip` call at
 # a time, and it is what the closing roteiro reads. `PLANNED_SKIPS` is INTENT, and `--plan` is the only thing
@@ -229,6 +229,18 @@ dc() {
   local quoted='' a
   for a in "$@"; do quoted+=" $(printf '%q' "$a")"; done
   $DOCKER_SH "cd $(printf '%q' "$HERE") && docker compose$quoted" </dev/null
+}
+
+# ★★★ dx-i2 — THE VITRINE'S LOOPBACK DOOR, if this box has one — DERIVED, never a second list.
+#
+# `env-source.sh` derives it from `FORGE_PUBLIC_ORIGIN` (a loopback `http://` origin ⇒ the `bench-loopback`
+# profile and the port); `docker compose config --services` answers with that profile gate already applied,
+# so a deployment gets an empty answer and nothing is started. The door shares the VITRINE's network
+# namespace, so it dies whenever the vitrine is recreated: every compose `up` below that (re)creates `storefront`
+# names it too (`bin/loopback-door.guard.mjs`). Without it every local birth warmed `0 of 838` (2026-10-10).
+# ⛔ Never an `up -d` of `$(loopback_door)` alone: an empty answer would make it an `up -d` of EVERY service.
+loopback_door() {
+  dc config --services 2>/dev/null | grep -x -- storefront-loopback || true
 }
 
 # ★★ A CONTAINER PATH MAY NEVER REACH A HOST PROCESS — enforced, not remembered.
@@ -1394,7 +1406,8 @@ EOF
   BOX_TOUCHED=1
   capture_evidence "before-recreate-promote-${PROMOTE_TO}"
   say 'recreating the services that read the environment'
-  dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem >/dev/null 2>&1 \
+  # shellcheck disable=SC2046 -- deliberately unquoted: no door on this box is no extra service.
+  dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem $(loopback_door) >/dev/null 2>&1 \
     || note '⚠️ some service did not come back — `docker compose ps`'
   for i in $(seq 1 30); do
     code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' "$origin/health" || true)"
@@ -1536,6 +1549,12 @@ warm_every_tenant() {
       2)
         WARM_UNKNOWN="$WARM_UNKNOWN $t"
         note "⚠ $t could not be ASKED about warmth — nothing was learned; the ⚑ line above says why." ;;
+      4)
+        # ★★★ dx-i2 — NOT folded into COLD: «0 of N» printed as «not fully warm» is how a warmer that never
+        # reached the shop read like a nearly-ready box on the benches of 2026-10-10 (838 planned, 0 warmed).
+        UNWARMED="$UNWARMED $t"
+        note "⚠ $t was NOT WARMED AT ALL — the warmer reached none of the urls it planned. REPORTED, NOT FATAL;
+     the verdict above names the address the vitrine tried and what it got back." ;;
       3)
         MISSING_STORE="$MISSING_STORE $t"
         note "⛔ $t is MISSING a store this repository declares — the ✗ line above names it." ;;
@@ -1548,15 +1567,22 @@ warm_every_tenant() {
 
 if [ "$MODE" = warm ]; then
   COLD=''
+  UNWARMED=''
   WARM_UNKNOWN=''
   MISSING_STORE=''
   say 'the re-warm · warming every store the port says has a public page, on a box that is already standing'
   note "origin    $FORGE_PUBLIC_ORIGIN"
   note 'this is step 14 and nothing else — no door is opened and no configuration is graded here.'
+  # ★★★ dx-i2 — the vitrine's loopback door first, so a bench born before it existed warms through it too.
+  door="$(loopback_door)"
+  [ -z "$door" ] || dc up -d "$door" >/dev/null 2>&1 \
+    || note "⚠️ the vitrine's loopback door ($door) did not start — the warmer will not reach this origin from inside the vitrine."
+  [ -z "$door" ] || note "loopback  $door — the vitrine reaches $FORGE_PUBLIC_ORIGIN through it (port $FORGE_LOOPBACK_DOOR_PORT)"
   warm_every_tenant
   # ⚠️ THE SAME THREE SENTENCES THE BIRTH PRINTS, AND THE SAME SPLIT: two of them are reports and one is a
   # red. Kept short here on purpose — the long form is in the birth's closing block, and two long copies of
   # one paragraph is how the reasoning in this repository goes out of date.
+  [ -z "$UNWARMED" ] || printf '\n[box-up] ⚠️  REPORT — THE RE-WARM WARMED NOTHING FOR%s: NOT WARMED AT ALL. Not a failure, and\n         not "almost ready" either — the warmer reached none of its urls; the verdict above says where it tried.\n\n' "$UNWARMED" >&2
   [ -z "$COLD" ] || printf '\n[box-up] ⚠️  REPORT — THE RE-WARM DID NOT LEAVE%s FULLY WARM. Not a failure: warmth reports, it\n         does not grade (step 14 says why). The ⚠ lines above name every url.\n\n' "$COLD" >&2
   [ -z "$WARM_UNKNOWN" ] || printf '\n[box-up] ⚠️  REPORT — WARMTH IS UNKNOWN FOR%s: the warmer could not ASK. That is a different\n         sentence from "they are cold", and nothing above claims either.\n\n' "$WARM_UNKNOWN" >&2
   if [ -n "$MISSING_STORE" ]; then
@@ -1999,7 +2025,8 @@ say '5 · kernel + edge + fronts'
 # this step starts, and the copy loaded at step 0 predates them.
 # shellcheck disable=SC1091
 set -a; . "$HERE/env-source.sh" >/dev/null 2>&1; [ -f "$HERE/.env" ] && . "$HERE/.env"; . "$HERE/bin/images-from-lock.sh" >/dev/null 2>&1; set +a
-dc up -d kernel caddy admin storefront checkout storefront-coffee >/dev/null 2>&1 || die 'could not start the tier.'
+# shellcheck disable=SC2046 -- deliberately unquoted: no door on this box is no extra service.
+dc up -d kernel caddy admin storefront checkout storefront-coffee $(loopback_door) >/dev/null 2>&1 || die 'could not start the tier.'
 for i in $(seq 1 30); do
   code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' "${FORGE_PUBLIC_ORIGIN:-http://localhost:8200}/health" || true)"
   [ "$code" = 200 ] && break
@@ -2604,6 +2631,7 @@ host_node "$HERE/bin/online-only.mjs" --phase after-birth || ONLINE_ONLY_FAILED=
 # the street is warmed. ⚠️ MEASURED 2026-09-07: the counter answers `storefront_enabled: true` today, so it
 # is warmed and its doors are opened — taking it off the street is `tenant.store.update` through the port.
 COLD=''
+UNWARMED=''
 WARM_UNKNOWN=''
 MISSING_STORE=''
 # ★★ pk24/§B1 — AND THIS IS THE ONE STEP THE BIRTH CAN BE ASKED TO LEAVE OUT, for the reason the header gives:
@@ -2755,6 +2783,17 @@ fi
 # `localhost` by decision and because the addresses of a private network may not live in a versioned
 # file. A birth on this laptop is a CORRECT birth, so this may never make one red — what it may not do is stay
 # quiet while the box holds a claim nobody will type and this machine publishes one that nothing claims.
+# ★★★ dx-i2 — ITS OWN SENTENCE, and like COLD it is NOT in the exit conjunction below: warmth reports. What it
+# may not do is read like COLD — `bin/warm-box.mjs` exits 4 when the run planned urls and reached none of them.
+if [ -n "${UNWARMED:-}" ]; then
+  printf '[box-up] ⚠️  REPORT — THE BOX IS UP AND%s WAS NOT WARMED AT ALL. Read it as "the warmer never reached
+         the shop", never as "ready": not one planned url was fetched, so the first visitor pays for every
+         cache exactly as if step 14 had been skipped. This does NOT make the birth red (warmth reports). The
+         verdict above names the address the vitrine tried and the error it got; on a bench the usual cause
+         is a loopback FORGE_PUBLIC_ORIGIN with no loopback door — see "The warming on a bench" in README.md.
+
+' "$UNWARMED" >&2
+fi
 if [ -n "${PROMOTION_OWED:-}" ]; then
   printf '[box-up] ⚠️  REPORT — THE BOX IS UP ON `localhost` AND THIS MACHINE IS PUBLISHED UNDER ANOTHER NAME.
          Read off `tailscale serve` just now, and not claimed by any tenant of this box:%s
