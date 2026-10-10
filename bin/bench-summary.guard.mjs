@@ -8,7 +8,7 @@
 //
 //   ⇒ THE SUMMARY DERIVED FROM INTENT (a port variable, a config file) INSTEAD OF FROM RESULT.
 //
-// This reads the source rather than running a birth, and that is the trade: a real birth costs ~19 minutes
+// This reads the source rather than running a birth, and that is the trade: a real birth costs tens of minutes
 // and this costs milliseconds. It cannot prove the totem starts; it CAN prove the summary is not allowed to
 // claim it did. The behavioural half is the birth itself, which now exits non-zero and says which thing is
 // not standing.

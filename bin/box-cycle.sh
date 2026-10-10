@@ -81,7 +81,8 @@
 # ★★★ AND GESTURE 4 COMES AFTER GESTURE 3 BECAUSE THE PROMOTION THROWS WARMTH AWAY. The promotion ends with
 # `dc up -d --force-recreate kernel caddy admin storefront checkout storefront-coffee totem` — every front
 # that HOLDS the warmth (route cache, ISR entries, image derivatives) is destroyed and replaced there. Warming
-# before it would pay ~1h10 for a cache that is deleted minutes later. The older reason still holds too: on a
+# before it would pay for the whole warming (5 min 05 s to 2 409 s on a bench; not yet measured on a box
+# — README, "What it costs") for a cache that is deleted minutes later. The older reason still holds too: on a
 # first promotion `FORGE_PUBLIC_ORIGIN` is only right AFTER the promotion writes it, so a warm run before it
 # warms an address no shopper types.
 #

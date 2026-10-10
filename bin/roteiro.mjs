@@ -35,7 +35,7 @@
 //
 // It takes its whole subject from its arguments (no file reading, no environment): that is what lets
 // `bin/birth-roteiro.guard.mjs` prove every one of those reds in milliseconds, where proving them against a
-// real birth costs ~19 minutes.
+// real birth costs tens of minutes (README, "What it costs").
 
 import process from 'node:process';
 

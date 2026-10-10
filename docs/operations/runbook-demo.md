@@ -502,17 +502,15 @@ loopback: o antigo "cai de volta nas portas diretas" agora seria escrever endere
 porquê da ordem de cada um, está no `README.md` ("What `bin/box-up.sh` does, in order") e não se repete aqui.
 O que um operador precisa saber **antes** de rodar:
 
-**Custo.** **19 min 17 s** para um nascimento completo, medido na corrida de 04/09 **na bancada por
-`localhost`**, com os defaults e **exit 0**. Desses, **113 s** são espera de teto de rate limit — e **102 s**
-são **52 chamadas** na face `ext_public` (o formulário de avaliação da PDP, 0,5/s). Sem essa face, ~17 min.
-⚠️ **Esse número não inclui um passo 14 que estoura o teto.** Numa caixa **promovida**, onde o plano do
-aquecedor cresce (ver abaixo), some até **15 min** de teto ao orçamento: ~34 min de janela, não 19.
-**Meça a sua, não herde a minha.** ⚠️ Desde 05/09 esse teto **não** faz mais o `box-up` sair 1 — o passo 14
-virou **relatório** (abaixo); ele continua custando os 15 min de relógio.
-⚠️ **Se você viu "~12 min" em algum lugar, era estimativa, não medição** — o número saía da aritmética de duas
-corridas, uma das quais **morreu** na fase da janela e nunca fez o passado, a janela nem a verificação. O
-`README.md` carregou esse número até 04/09; foi corrigido. Prefira sempre o medido, e o que a corrida imprime
-de si mesma ao que um parágrafo diz dela.
+**Custo.** Os números medidos moram numa tabela só: `README.md`, "⏱ What it costs" — com data e máquina em
+cada linha (`bin/cost-dates.guard.mjs`). Este parágrafo **não** copia número, porque a cópia é o que
+envelhece: até 10/10 aqui estava "19 min 17 s" (uma corrida de bancada de 04/09), contra 23–35 min medidos
+em 10/10 na bancada `ms-s1` e **80–97 min** numa caixa de 2 vCPU em 09/10. Escolha a linha da máquina de
+que você está falando — bancada não é caixa.
+⚠️ **Um passo 14 que estoura o teto** soma até **15 min** ao relógio numa caixa **promovida** (o plano do
+aquecedor cresce — ver abaixo). Desde 05/09 esse teto **não** faz o `box-up` sair 1 — o passo 14 virou
+**relatório**. **Meça a sua, não herde a minha** (o `box-up` não imprime o relógio de cada passo: carimbe a
+saída). O passo 9 agora fala a cada 60 s (`FORGE_SEED_HEARTBEAT_S`) em vez de ficar ~21 min mudo.
 ⛔ **Não exporte `FORGE_SEED_RATE_PER_SECOND=0.5`** — foi o jeito de escapar de um 429 numa noite e é o
 único valor que restaura os 74 minutos curando nada: aquele botão freia a face **credential**, que nunca foi
 a face que recusou. O seed avisa em voz alta se achar a variável setada.
@@ -922,8 +920,8 @@ sabe qual árvore o visitante alcança pode ter aquecido páginas que ninguém a
    já depende de `jq`: numa máquina sem ele, a recusa fala de node nomeando jq.
 4. **Sourceie os segredos.** A unidade precisa do mesmo `env-source.sh` (ou do backend real) exportado antes
    do `box-up`; sem `DATABASE_URL` o passo 0 morre pelo nome, que é o comportamento certo.
-5. **Janela.** ~19 min de nascimento + a promoção + o aquecimento, **na mesma corrida**. Reserve ~2 h e meça
-   a primeira: o log do ciclo traz o relógio de cada gesto. Madrugada de domingo, por decisão de produto.
+5. **Janela.** o nascimento (numa caixa de 2 vCPU, 80–97 min medidos em 09/10 — tabela "What it costs" do
+   `README.md`) + a promoção + o aquecimento, **na mesma corrida**. Reserve ~2 h e meça a primeira: o log do ciclo traz o relógio de cada gesto. Madrugada de domingo, por decisão de produto.
 
 ---
 
