@@ -509,6 +509,9 @@ report — the birth does not fail on warmth — but it can no longer be read as
 | birth | **32 min 46 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
 | two births in parallel (B on the shared photo cache) | **27 min 27 s** · **23 min 19 s** | 2026-10-10 | bench ×2, `ms-s1` | RESULTADOS-dx-i3 |
 | birth, photos pulled cold | **33 min 05 s** (step 9 = 23 min 15 s) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i4 |
+| birth, `--tenant forgecafe` only, virgin database (steps 6b and 9 skipped by name) | **3 min 31 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
+| the same café-only bench, then `--tenant forgecafe --tenant forgeco` (forgeco built, step 9 = 25 min) | **32 min 28 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
+| `--tenant forgecafe` again on a bench that holds both (forgeco kept, untouched) | **1 min 28 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i5 |
 | step 9 again on a box that already holds the catalogue | **3 min 21 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | the 18 582 dataset photos (3,4 GiB), cold | **5–7 min** (inside step 9) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | warming, `--warm-only` (21 615 urls) | **5 min 05 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
@@ -934,7 +937,8 @@ bash bin/box-up.sh --plan --tenant forgecafe              # see what it will bui
 ```
 
 The command line wins over `.env`; neither = every tenant, exactly as before. **⏱ Measured 2026-10-10, bench
-`dxi5` (block 89), café only, from a virgin database: __CAFE_TIME__** (the full birth is ~45–60 min).
+`dxi5` (block 89), café only, from a virgin database: 3 min 31 s**, every verdict green — the row in
+"⏱ What it costs" beside the full births.
 
 **What each step does with a tenant you did not ask for** — said in the run, never silently:
 - **Every per-tenant step** (3, 5b, 6, 8, 10, 10b, 11, 12, 14, 14-bis) runs for the asked tenants only.
@@ -959,7 +963,12 @@ now leave out is **never emptied of it**: after `migrate`, `box-up` asks the dir
 an earlier birth left standing, says so (`forgeco · NOT ASKED — standing on this box from an earlier birth`),
 builds nothing of it, deletes nothing of it, **keeps** its `.env` entries (switcher, gate link, `/enter` store,
 root map, totem), and step 15 still grades that kept configuration. Steps 12/14/14-bis do not re-grade it.
-__SECOND_RUN__
+Measured 2026-10-10 on the same `dxi5` bench (rows in "⏱ What it costs"): born café-only, then asked
+`--tenant forgecafe --tenant forgeco` — `forgeco` was provisioned, its catalogue filled, the root claimed, both
+tenants settled, exit 0. The café's step 10 said `THE PAST WAS SKIPPED` (its 180 days were already there: the
+history is reset+seed by nature and refuses to add a second past — that is the step's own rule, not a defect of
+the selection). Then `--tenant forgecafe` again: `forgeco · NOT ASKED — standing on this box from an earlier
+birth`, its root, admin and switcher entry untouched, exit 0.
 
 `bin/box-tenants.mjs` is the resolver; `bin/box-tenants.guard.mjs` holds the refusals, the narrowed loops, the
 named skips, the secret names and the verdict that neither accuses the absent tenant nor hides the asked one.
