@@ -620,7 +620,13 @@ services:
 
 volumes:
   # The hydrated photo tree (3.6 GB). Named, so a re-seed skips what is already on disk.
+  # ★ DX-I3 — and SHAREABLE between the benches of one machine: `FORGE_SEED_PHOTOS_VOLUME` in `.env` names one
+  # volume every bench mounts, so the second bench does not pull the 3.6 GB again (measured 2026-10-10: 5 min
+  # 20 s per bench without it). Unset, the name is compose's own default for this volume — byte for byte the
+  # one every box born before this line mounts, deployed ones included (`docker compose config` → `<project>_
+  # seed_photos`). `bin/box-down.sh --all` reads the same variable.
   seed_photos:
+    name: ${FORGE_SEED_PHOTOS_VOLUME:-${COMPOSE_PROJECT_NAME}_seed_photos}
   pgdata:
   redisdata:
   caddy_data:

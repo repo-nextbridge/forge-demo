@@ -110,7 +110,11 @@ if [ -n "$ENV_NAME" ]; then
   WHERE="${FORGE_DEPLOY_USER}@${FORGE_DEPLOY_HOST}:${BOX_DIR}"
 else
   BOX_DIR="$HERE"
-  PROJECT="${COMPOSE_PROJECT_NAME:-forge-preseed}"
+  # ★ DX-I3 — `.env` first, the way `bin/box-up.sh` and `bin/box-down.sh` read it: a bench named there was this
+  # file's blind spot (read in the code 2026-10-10, not run): PROJECT fell to `forge-preseed` while the restore's
+  # box-down, which sources `.env`, would tear down the bench `.env` names — two projects in one gesture.
+  PROJECT="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$HERE/.env" 2>/dev/null | tail -1 | tr -d "'\"")"
+  PROJECT="${PROJECT:-${COMPOSE_PROJECT_NAME:-forge-preseed}}"
   BIRTH_AUTHOR='bin/box-up.sh'
   WHERE="this bench ($PROJECT)"
 fi
