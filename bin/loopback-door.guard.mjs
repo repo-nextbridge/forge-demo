@@ -20,7 +20,8 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -101,6 +102,52 @@ test('★★ the derivation is what env-source EXPORTS, from FORGE_PUBLIC_ORIGIN
     /COMPOSE_PROFILES="\$\{COMPOSE_PROFILES:\+\$COMPOSE_PROFILES,\}bench-loopback"/,
     'env-source.sh never asks compose for the `bench-loopback` profile, so the door is never created',
   );
+});
+
+// ── 1b · ★★ dx-i3's PORT BLOCK moves FORGE_PUBLIC_ORIGIN, and the door has to move with it ──────────────
+//
+// `FORGE_BENCH_PORT_BLOCK=NN` (dx-i3) rewrites the origin to `http://localhost:NN00` IN `.env`, and the door's
+// port is derived from that same `.env` line. So the chain is executed here as `bin/box-up.sh` runs it: the
+// block over `.env.example`, then env-source's own derivation reading the `.env` the block left. A door left
+// on 8200 while the vitrine is told 8600 is the 0-warmed bench again, on the second bench only.
+
+const RAW_BOX_UP = read('bin/box-up.sh');
+
+function blockThenDerive(envText) {
+  const block = RAW_BOX_UP.match(/\n# >>> THE BENCH'S NAME AND DOORS\n([\s\S]*?)\n# <<< THE BENCH'S NAME AND DOORS\n/);
+  assert.ok(block, "bin/box-up.sh lost its `# >>> THE BENCH'S NAME AND DOORS` markers — the port block cannot be run");
+  const putEnv = RAW_BOX_UP.match(/\nput_env\(\) \{[\s\S]*?\n\}\n/);
+  assert.ok(putEnv, 'bin/box-up.sh no longer defines put_env() — the block writes through it');
+  const declares = ENV_SOURCE.match(/\n(_forge_env_declares\(\) \{[\s\S]*?\n\})\n/);
+  assert.ok(declares, 'env-source.sh no longer defines _forge_env_declares() — the derivation reads .env through it');
+  const assign = ENV_SOURCE.match(/\nFORGE_LOOPBACK_DOOR_PORT=.*\n/);
+  assert.ok(assign, 'env-source.sh no longer assigns FORGE_LOOPBACK_DOOR_PORT');
+  const dir = mkdtempSync(join(tmpdir(), 'loopback-block-'));
+  try {
+    writeFileSync(join(dir, '.env'), envText);
+    const script =
+      `HERE=${JSON.stringify(dir)}\nnote() { :; }\n${putEnv[0]}\n${block[1]}\nbench_port_block\n` +
+      `${declares[1]}\n${derivation()}\n${assign[0]}\nprintf '%s' "$FORGE_LOOPBACK_DOOR_PORT"\n`;
+    // cwd = the bench: `_forge_env_declares` reads the `.env` beside its own file, which here is `.`.
+    return execFileSync('bash', ['-c', script], { encoding: 'utf8', cwd: dir });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('★★★ FORGE_BENCH_PORT_BLOCK=86 puts the door on 8600 — the port the block gives the origin', () => {
+  assert.equal(blockThenDerive(`${read('.env.example')}\nFORGE_BENCH_PORT_BLOCK=86\n`), '8600');
+});
+
+test('★★ …and with no block the door is on the template\'s own origin port (the control)', () => {
+  assert.equal(blockThenDerive(read('.env.example')), new URL(read('.env.example').match(/^FORGE_PUBLIC_ORIGIN=(.*)$/m)[1]).port);
+});
+
+test('★★ box-up applies the block BEFORE it first sources env-source — otherwise the door derives the old port', () => {
+  const blockAt = RAW_BOX_UP.indexOf('\nbench_port_block\n');
+  const sourcedAt = RAW_BOX_UP.search(/\n[^#\n]*\. "\$HERE\/env-source\.sh"/);
+  assert.ok(blockAt > 0 && sourcedAt > 0, `box-up.sh: block call at ${blockAt}, first env-source at ${sourcedAt}`);
+  assert.ok(blockAt < sourcedAt, 'box-up.sh sources env-source.sh before it applies the port block');
 });
 
 // ── 2 · the compose row ───────────────────────────────────────────────────────────────────────────────────
