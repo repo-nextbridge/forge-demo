@@ -165,6 +165,7 @@ Measured on a clean clone of this branch (no `npm ci`, no `.env`), project `ib3`
 | `bash bench/up.sh` from nothing | 0 | **29,4 s** | vitrine `/` 200 (`X-Forge-Served-By: storefront`), `/checkout` 200, `/account/login` 200, `/tenis` 200, an invented path 404; 14-bis «every door of forgeco answers as it must (4)»; admin login with the code read from the bench's mailbox, `/orders` still signed in (cookie `forge_admin_session_forgeco`, Secure) |
 | `bash bench/promote.sh 192.168.1.221` | 0 | **28,6 s** | the same four doors over https on the LAN IP; login on `https://<ip>:NN41`; the kernel's `FORGE_PUBLIC_ORIGIN` = the https door; plain http on the IP refused; `tailscale` executed 0 times |
 | `bash bench/promote.sh localhost` | 0 | **22,6 s** | the https door gone (`curl` exit 7); `FORGE_PUBLIC_ORIGIN` back to the loopback shop door (`NN00`); login again |
+| `FORGE_DEMO_BENCH_DATASET=1 bash bench/up.sh` | 0 | step 9 **29 min** cold; **3 min 51 s** again | the massive catalogue through the kit: step 9 speaking every minute, 11, 12 «settled» (verify-seed and verify-content), 14-bis; a product photo 200 at the shop's door |
 
 #### What the kit bench does not cover — `bin/box-up.sh` keeps it
 
@@ -598,6 +599,9 @@ step 14, every verdict green; `--warm-only` then warmed the café's 15 pages in 
 | the 18 582 dataset photos (3,4 GiB), cold | **5–7 min** (inside step 9) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | **kit bench** `bash bench/up.sh`, clean clone, from nothing — forgeco, curated catalogue, hook through 14-bis (IB-3) | **29,4 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
 | kit bench promoted, `bash bench/promote.sh <LAN IP>` · back, `bash bench/promote.sh localhost` | **28,6 s** · **22,6 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
+| kit bench, `FORGE_DEMO_BENCH_DATASET=1`, photos pulled cold into the bench's own cache — step 9 alone | **29 min** (rc 0) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
+| kit bench, `FORGE_DEMO_BENCH_DATASET=1` again on that bench (9 converges, 11, 12 settled, 14-bis) | **3 min 51 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
+| kit bench `bash bench/down.sh -v` (with the catalogue and its 3,6 GB photo cache) | **13 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
 | warming, `--warm-only` (21 615 urls) | **5 min 05 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
 | warming, reset cycle gesture 4 (after `--promote tailnet`) | **2 409 s** (~40 min) | 2026-09-15 | bench | docs/operations/reset-cycle.md |
 | birth, deployed box | **80–97 min** (seed 51–66 min) | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |
