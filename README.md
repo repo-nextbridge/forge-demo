@@ -134,8 +134,8 @@ override, read in that one file. `node bin/release-tree.mjs` says what this mach
 (`templates/instance/bench/`), copied into `bench/` **unchanged** — `bench-kit.lock` names the Forge commit and
 each file's sha256, and `bin/bench-kit.guard.mjs` goes red, saying *"this is a product requirement, not a local
 fix"*, the day a file of it is edited. This box is the product's first client: what the kit cannot express here
-is written down as a requirement on the kit (the table below), never patched into the copy. Since IB-7 the kit
-is the one of IB-6 (Forge `b072a7433`; IB-5 took IB-4's, `4478fc230`), and the bench holds **the whole topology of
+is written down as a requirement on the kit (the table below), never patched into the copy. Since IB-9 the kit
+is the one of IB-8 (Forge `3acffcd0f`; IB-7 took IB-6's, `b072a7433`; IB-5 took IB-4's, `4478fc230`), and the bench holds **the whole topology of
 `seed/box.json`**: both tenants, their four stores, the café's own storefront and the counter's totem — reachable
 by https from another device when promoted (`NN63`).
 
@@ -163,7 +163,9 @@ Doors on block `NN` (default 82), all on `127.0.0.1`:
 | `NN03` | the counter's totem (declared to the kit: `FORGE_BENCH_DOORS=FORGE_TOTEM_HTTP_PORT:03:82:https`) | `NN63` https (`FORGE_TOTEM_HTTPS_PORT`; `NN03` stays on this machine too) |
 | `NN04` · `NN05` | the mailbox (the login codes) · the kernel | — |
 
-Sign in at either admin door as `operator@bench.example.test`; the code is in the mailbox (`bash bench/mail.sh`).
+Sign in at either admin door as `operator@bench.example.test`; the code is in the mailbox (`bash bench/mail.sh`,
+with the same `COMPOSE_PROJECT_NAME`/`FORGE_BENCH_PORT_BLOCK` as the `up`) — or, on a bench declared to send for real,
+in YOUR inbox: "Sending mail for real", below.
 ⚠️ The admin directory keys on `localhost:<port>`: `http://127.0.0.1:NN01` answers "unknown admin host".
 ⚠️ The doors moved from the `bin/box-up.sh` layout (`NN02` café admin there, `NN21` here; `NN05` the kernel here,
 nothing there): a kit bench and a box-up bench on one machine need **different blocks**.
@@ -200,6 +202,39 @@ the kit: a localhost birth of `bin/box-up.sh --tenant forgecafe` answers the sam
 `/s/<id>` 200 `storefront-coffee`, `/s/cafe` 404 `storefront-coffee`). The edge routes `/s/cafe*` to the fork
 (box-up's step 3c rule, the same on both), and the 404 is the fork's own answer (its `requireStore` refusing the
 segment); 14-bis, which opens the café by id, grades 8/8 on both. Open the café by its id, as the summary prints it.
+
+#### Sending mail for real (IB-9, kit of IB-8)
+
+The bench's own mailbox (`NN04`) is the default and nothing leaves the machine — whatever `bench/bench.env` or the
+shell says about SMTP (a `FORGE_SMTP_*` of the shell is dropped and named). To test the real thing — the
+templates, the sender, the delivery — a developer **declares** the mailbox away, in the shell or in their own
+copy of `bench/bench.env` (the commented section "where the mail goes" there; never commit it switched on):
+
+```bash
+echo '<the provider key>' > bench/smtp.pass        # git-ignored, survives `down -v` — or FORGE_SMTP_PASS=… in the shell
+FORGE_BENCH_MAILBOX=none \
+  FORGE_SMTP_HOST=smtp.resend.com FORGE_SMTP_USER=resend FORGE_SMTP_FROM=hi@forgecommerce.pro \
+  FORGE_ADMIN_SEED_EMAIL=you@your-inbox \
+  bash bench/up.sh
+```
+
+That is what the demo's production sends with (`env-source.sh`: Resend, port 587 by default). No mailbox starts;
+the kernel gets the five `FORGE_SMTP_*` from a generated overlay (`.forge-bench/mail.compose.yml`, by reference —
+the password is never written to a file of the bench nor printed); both tenants invite `FORGE_ADMIN_SEED_EMAIL`,
+and the summary says *«the code is MAILED to …»*. `up` refuses, by name and before anything starts, an incomplete
+set, the password in `bench/bench.env`, and an operator at a reserved test domain (the committed
+`operator@bench.example.test` included: the code would bounce and nobody could sign in). An SMTP whose certificate
+no public CA signs (a company relay): `FORGE_BENCH_SMTP_CA_FILE=<its CA, relative to this repo>`. Back to the
+mailbox: the same `up` without `FORGE_BENCH_MAILBOX`.
+
+Measured on a clean clone of `ib/9-demo-kit-smtp`, project `ib9`, block 88, 2026-10-11, with a stand-in SMTP
+**outside the bench** (a mailpit on this machine's LAN address, STARTTLS with a CA of its own, refusing any
+password but one — `curl` with a wrong one: exit 67; without the CA: exit 60), declared from the shell, password
+in `bench/smtp.pass`: the default `up` **79 s**, both tenants' codes in the bench's mailbox; without the
+password *«incomplete — missing: FORGE_SMTP_PASS … Nothing was started»*; with the committed operator *«…is at a
+reserved test domain… Nothing was started»*; declared, `up` **29 s**, no `mailpit` container, the hook whole
+(14-bis 4/4 and 8/8), and one login code per tenant arrived at the outside SMTP for the declared operator (an
+address no tenant invited: 200 and no message); back to the mailbox **30 s**; `down -v` **12 s**.
 
 #### What the kit bench does not cover — `bin/box-up.sh` keeps it
 

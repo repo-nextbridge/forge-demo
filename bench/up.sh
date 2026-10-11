@@ -10,7 +10,7 @@
 #
 # The steps, each idempotent (a second `up` converges on the same box):
 #   1. the bench's own secrets and the mailbox certificate (minted once, kept in .forge-bench/)
-#   2. postgres + redis + the mailbox
+#   2. postgres + redis + the mailbox (no mailbox when FORGE_BENCH_MAILBOX=none: the mail goes out for real)
 #   3. migrate — the one-shot production runs before every `up`
 #   4. provision — each tenant (one by default; FORGE_BENCH_TENANTS for more), its store and the first operator,
 #      by production's own one-shot (`provision-ref`); the credentials it prints once are filed in .forge-bench/
@@ -51,6 +51,9 @@ bench_multi_tenant || [ -n "$FORGE_ADMIN_TENANT" ] ||
 [ "$BENCH_DESTINATION" != tailnet ] || bench_tailnet_check
 # A port another compose file adds to the edge would vanish under the bench's overlay: refused, by name.
 bench_seam_doors
+# Where the mail goes (lib.sh 5c): the mailbox, or a real SMTP declared whole — refused by name before anything.
+bench_mail_check
+mailbox="$(bench_mailbox)"
 # The services held for after the hook are services of this project — a typo here would start nothing, silently.
 # @env FORGE_BENCH_AFTER_HOOK optional — Services of an instance bench started AFTER its seed hook (space separated), because they need a value the hook learns (.forge-bench/hook.env) — a totem that serves a store the seed creates.
 held=''
@@ -77,10 +80,14 @@ previous_origin="$(sed -n 's/^FORGE_BENCH_ORIGIN=//p' "$BENCH_STATE/fronts.env" 
 previous_admin_origin="$(sed -n 's/^FORGE_BENCH_ADMIN_ORIGIN=//p' "$BENCH_STATE/fronts.env" 2>/dev/null || true)"
 
 # ── 1 ──────────────────────────────────────────────────────────────────────────────────────────────────────
-bench_say '1/8 the bench secrets and the mailbox certificate'
+if [ "$mailbox" = bench ]; then
+  bench_say '1/8 the bench secrets and the mailbox certificate'
+else
+  bench_say '1/8 the bench secrets (no mailbox: FORGE_BENCH_MAILBOX=none)'
+fi
 bench_secrets
 mkdir -p "$BENCH_STATE/mail"
-if [ ! -s "$BENCH_STATE/mail/bench-mail.crt" ]; then
+if [ "$mailbox" = bench ] && [ ! -s "$BENCH_STATE/mail/bench-mail.crt" ]; then
   # Minted with the openssl INSIDE the postgres image the bench pulls anyway — no openssl needed on this machine.
   # Dated far out so it cannot expire into a mystery; it is trusted by one kernel, on this machine only.
   docker run --rm --user "$(id -u):$(id -g)" -v "$BENCH_STATE/mail:/out" postgres:18 \
@@ -89,12 +96,18 @@ if [ ! -s "$BENCH_STATE/mail/bench-mail.crt" ]; then
     bench_die 'could not mint the mailbox certificate (docker run postgres:18 openssl).'
   chmod 644 "$BENCH_STATE/mail/bench-mail.key" "$BENCH_STATE/mail/bench-mail.crt"
 fi
-# The fronts as declared — written now so every compose call below sees the same services.
+# The fronts as declared, and where the mail goes — written now so every compose call below sees the same services.
 bench_fronts_overlay
+bench_mail_overlay
 
 # ── 2 ──────────────────────────────────────────────────────────────────────────────────────────────────────
-bench_say '2/8 postgres + redis + the mailbox'
-bench_compose up -d --wait postgres redis mailpit
+if [ "$mailbox" = bench ]; then
+  bench_say '2/8 postgres + redis + the mailbox'
+  bench_compose up -d --wait postgres redis mailpit
+else
+  bench_say "2/8 postgres + redis — no mailbox: the kernel sends for real through $FORGE_SMTP_HOST:${FORGE_SMTP_PORT:-587} as $FORGE_SMTP_FROM"
+  bench_compose up -d --wait postgres redis
+fi
 
 # ── 3 ──────────────────────────────────────────────────────────────────────────────────────────────────────
 bench_say '3/8 migrate'
@@ -307,7 +320,13 @@ check() { # <what> <url> <want>
   fi
 }
 check 'the kernel answers' "$FORGE_BENCH_KERNEL_URL/health" 200
-check 'the mailbox answers' "http://127.0.0.1:$FORGE_MAIL_HTTP_PORT/api/v1/info" 200
+if [ "$mailbox" = bench ]; then
+  check 'the mailbox answers' "http://127.0.0.1:$FORGE_MAIL_HTTP_PORT/api/v1/info" 200
+else
+  # The kernel answering is the proof the set is whole (it refuses to boot on a partial one). Delivery is the
+  # SMTP's, and the bench sends nothing to find out.
+  bench_say "  ⓘ no mailbox (FORGE_BENCH_MAILBOX=none) — the kernel took the SMTP set; delivery is $FORGE_SMTP_HOST's, not proved here"
+fi
 # The admin's door is routed when the edge answers on it at all; WHAT it answers is the admin's.
 admin_door() { # <origin> [<whose>]
   local code
@@ -390,7 +409,7 @@ if [ -n "${FORGE_BENCH_SEED_HOOK:-}" ]; then
     [ -n "$name" ] && unset_secrets+=(-u "$name")
   done <"$BENCH_STATE/secrets.env"
   (cd "$BENCH_ROOT" && env "${unset_secrets[@]}" -u FORGE_BENCH_OPERATOR_TOKEN -u FORGE_ADMIN_SERVICE_TOKEN \
-    -u FORGE_ADMIN_PLATFORM_TOKEN -u FORGE_VAULT_KEY -u FORGE_BENCH_POSTGRES_PASSWORD -u DATABASE_URL \
+    -u FORGE_ADMIN_PLATFORM_TOKEN -u FORGE_VAULT_KEY -u FORGE_BENCH_POSTGRES_PASSWORD -u DATABASE_URL -u FORGE_SMTP_PASS \
     FORGE_BENCH_TENANT="${BENCH_TENANTS[0]}" FORGE_BENCH_STORE_ID="$store_id" \
     FORGE_BENCH_OPERATOR_TOKEN_FILE="$token_file" \
     FORGE_BENCH_TENANT_IDS="${BENCH_TENANTS[*]}" FORGE_BENCH_TENANTS_FILE="$BENCH_STATE/tenants.json" \
@@ -445,7 +464,13 @@ for door in ${FORGE_BENCH_DOORS:-}; do
 done
 [ "$BENCH_DESTINATION" = localhost ] ||
   bench_say "  …and on this machine, still: $loopback_origin/ · $loopback_admin_origin/   (back: bash bench/promote.sh localhost)"
-bench_say "  mailbox   http://127.0.0.1:$FORGE_MAIL_HTTP_PORT/     (every message this bench sends — the login codes are here)"
+if [ "$mailbox" = bench ]; then
+  bench_say "  mailbox   http://127.0.0.1:$FORGE_MAIL_HTTP_PORT/     (every message this bench sends — the login codes are here)"
+  code_is='the code is in the mailbox (or: bash bench/mail.sh)'
+else
+  bench_say "  mail      sent FOR REAL through $FORGE_SMTP_HOST:${FORGE_SMTP_PORT:-587} as $FORGE_SMTP_FROM — this bench has no mailbox (FORGE_BENCH_MAILBOX=none)"
+  code_is="the code is MAILED to ${FORGE_ADMIN_SEED_EMAIL:-?} (no mailbox on this bench)"
+fi
 bench_say "  kernel    $FORGE_BENCH_KERNEL_URL     (the API; for a front or a script on this machine)"
 bench_tls_notice
 if bench_multi_tenant; then
@@ -484,10 +509,10 @@ case "$(bench_front_mode admin)" in
   image)
     if bench_multi_tenant; then
       for i in "${!BENCH_TENANTS[@]}"; do
-        bench_say "  sign in (${BENCH_TENANTS[$i]}): $(bench_tenant_admin_origin "$i")/login as ${FORGE_ADMIN_SEED_EMAIL:-?}; the code is in the mailbox (or: bash bench/mail.sh)"
+        bench_say "  sign in (${BENCH_TENANTS[$i]}): $(bench_tenant_admin_origin "$i")/login as ${FORGE_ADMIN_SEED_EMAIL:-?}; $code_is"
       done
     else
-      bench_say "  sign in: $FORGE_BENCH_ADMIN_ORIGIN/login as ${FORGE_ADMIN_SEED_EMAIL:-?}; the code is in the mailbox (or: bash bench/mail.sh)"
+      bench_say "  sign in: $FORGE_BENCH_ADMIN_ORIGIN/login as ${FORGE_ADMIN_SEED_EMAIL:-?}; $code_is"
     fi
     ;;
   *)
