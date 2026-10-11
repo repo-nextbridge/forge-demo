@@ -106,6 +106,8 @@ if [ "$1" = run ]; then
 fi
 [ "$1" = ps ] && exit 0
 case "$*" in
+  # IB-9: with the kit's send-for-real overlay merged (\`mailpit: !reset null\`) the real compose lists no mailbox.
+  *'mail.compose.yml'*'config --services'*) printf '%s\n' postgres redis kernel storefront checkout admin caddy storefront-coffee totem ;;
   *'config --services'*) printf '%s\n' postgres redis mailpit kernel storefront checkout admin caddy storefront-coffee totem ;;
   *dist/provision-ref.js*)
     t="$(printf '%s\n' "$@" | sed -n 's/^FORGE_REF_TENANT=//p')"; [ -n "$t" ] || t=forgeco
@@ -407,4 +409,65 @@ test('★ SH-2 · a tenant with NO delivery method (forgeco without the massive,
   assert.match(out, /10 · forgeco has no delivery method — its logistics come with the massive catalogue/);
   assert.match(out, /the seed hook reports:[\s\S]*10 · no past for: forgeco forgecafe — no delivery method/);
   assert.equal(historyRuns(calls).length, 0, 'a past was asked of a tenant with nothing to sell it through');
+});
+
+// ── ★★ IB-9 · THE KIT OF IB-8: THE MAILBOX STAYS THE DEFAULT, AND A DEVELOPER MAY SEND FOR REAL BY DECLARING IT ──
+//
+// Until IB-9 the kit pinned the kernel's FORGE_SMTP_* to its own mailbox as literals: no value of bench.env or of
+// the shell could reach a real SMTP, so a developer of this demo testing transactional mail had to edit the kit.
+// The kit of IB-8 (Forge 3acffcd0f) declares the mailbox away with FORGE_BENCH_MAILBOX=none: a generated overlay
+// (.forge-bench/mail.compose.yml, merged last) removes `mailpit` and hands the kernel the five FORGE_SMTP_* by
+// reference. With `none` the kit keeps the five FORGE_SMTP_* of the shell (bench_load_declarations), so the demo
+// declares nothing for them: bench/bench.env only DOCUMENTS the switch, commented out. Proved live with an SMTP of
+// the developer's own outside the bench — RESULTADOS-ib-9 / README §2 "Sending mail for real".
+const MAIL_OVERLAY = /-f \S+\/\.forge-bench\/mail\.compose\.yml/;
+const composeOps = (calls) => calls.filter((l) => /^docker compose .* (up|run) /.test(l));
+// Not a secret: an invented value, so a leak of it is found by searching for it.
+const PROD_PASS = 'ib9-production-key-never-a-real-one';
+
+test('★★ IB-9 · the demo as committed keeps the bench\'s mailbox — production\'s SMTP in the shell is dropped, never merged', () => {
+  const { rc, out, calls } = up({ FORGE_SMTP_HOST: 'smtp.resend.com', FORGE_SMTP_USER: 'resend', FORGE_SMTP_FROM: 'hi@forgecommerce.pro', FORGE_SMTP_PASS: PROD_PASS });
+  assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
+  assert.match(out, /ignored \d+ variable\(s\) of this shell .*FORGE_SMTP_HOST.*FORGE_SMTP_PASS/, 'production\'s FORGE_SMTP_* in the shell were not dropped by name');
+  assert.ok(composeOps(calls).length > 0, 'no compose up/run was recorded — this test would pass on nothing');
+  assert.deepEqual(composeOps(calls).filter((l) => MAIL_OVERLAY.test(l)), [], 'the demo, as committed, merged the send-for-real overlay');
+  assert.ok(calls.some((l) => / up -d .*postgres redis mailpit/.test(l)), `the mailbox was not started with the database:\n  ${calls.join('\n  ')}`);
+  assert.match(out, /the code is in the mailbox/, 'the summary no longer sends the operator to the mailbox');
+  assert.ok(!out.includes(PROD_PASS), 'the production SMTP password reached the output');
+});
+
+test('★★ IB-9 · FORGE_BENCH_MAILBOX=none from the shell: no mailbox, the overlay on every compose call, the hook whole, both tenants invite the declared operator', () => {
+  const operator = 'operator@ib9-guard.internal';
+  const { rc, out, calls, nodes } = up({
+    FORGE_BENCH_MAILBOX: 'none', FORGE_SMTP_HOST: 'smtp.ib9-guard.internal', FORGE_SMTP_PORT: '2525', FORGE_SMTP_USER: 'bench-user',
+    FORGE_SMTP_FROM: 'bench@mail.example.test', FORGE_SMTP_PASS: PROD_PASS, FORGE_ADMIN_SEED_EMAIL: operator,
+  });
+  assert.equal(rc, 0, `bench/up.sh with FORGE_BENCH_MAILBOX=none did not finish:\n${out.slice(-2500)}`);
+  const ops = composeOps(calls);
+  assert.ok(ops.length > 3, `too few compose calls to judge:\n  ${calls.join('\n  ')}`);
+  assert.deepEqual(ops.filter((l) => !MAIL_OVERLAY.test(l)), [], 'a compose call of a bench that sends for real did not merge the mail overlay');
+  assert.ok(!calls.some((l) => /\bmailpit\b/.test(l)), `the mailbox was started on a bench declared without one:\n  ${calls.filter((l) => /mailpit/.test(l)).join('\n  ')}`);
+  assert.ok(!calls.some((l) => / openssl /.test(l)), 'the mailbox certificate was minted on a bench without a mailbox');
+  // The demo's hook ran whole, for both tenants, as on the default bench.
+  assert.deepEqual(steps(nodes), ['bin/seed-box.mjs forgeco', 'bin/seed-box.mjs forgecafe', 'bin/store-host.mjs forgeco', 'bin/seed.mjs forgeco',
+    'bin/seed.mjs forgecafe', 'bin/prove-doors.mjs forgeco', 'bin/prove-doors.mjs forgecafe'], `the hook did not run whole:\n  ${nodes.join('\n  ')}`);
+  for (const t of TENANTS) {
+    assert.match(out, new RegExp(`4/8 provision — tenant '${t}' .*operator ${operator}`), `${t} was not provisioned with the declared operator`);
+  }
+  assert.match(out, new RegExp(`the code is MAILED to ${operator}`), 'the summary does not say the code is mailed');
+  assert.ok(!out.includes(PROD_PASS), 'the SMTP password reached the output');
+});
+
+test('⛔ IB-9 · the switch is off in git: bench/bench.env declares no FORGE_BENCH_MAILBOX nor FORGE_SMTP_*, and .gitignore keeps bench/smtp.pass out', () => {
+  const code = (text) => text.split('\n').filter((l) => !/^\s*#/.test(l));
+  const declared = code(readFileSync(join(ROOT, 'bench', 'bench.env'), 'utf8')).filter((l) => /^(FORGE_BENCH_MAILBOX|FORGE_SMTP_[A-Z]+|FORGE_BENCH_SMTP_CA_FILE)=/.test(l));
+  assert.deepEqual(declared, [], 'bench/bench.env switches the mail on for every developer of this repository — it is a line for YOUR copy or your shell');
+  // The section that tells a developer how is there (its names commented out), or the switch is undiscoverable.
+  assert.match(readFileSync(join(ROOT, 'bench', 'bench.env'), 'utf8'), /^# FORGE_BENCH_MAILBOX=none$/m, 'bench/bench.env no longer documents FORGE_BENCH_MAILBOX=none');
+  assert.ok(code(readFileSync(join(ROOT, '.gitignore'), 'utf8')).includes('bench/smtp.pass'), '.gitignore does not ignore bench/smtp.pass — the SMTP password of a developer would be one `git add .` from the repository');
+  // And the committed operator is fictitious: switched on as committed, the kit refuses it before anything starts.
+  const { rc, out, calls } = up({ FORGE_BENCH_MAILBOX: 'none', FORGE_SMTP_HOST: 'smtp.ib9-guard.internal', FORGE_SMTP_USER: 'u', FORGE_SMTP_FROM: 'bench@mail.example.test', FORGE_SMTP_PASS: PROD_PASS });
+  assert.equal(rc, 1, `the committed operator was accepted on a bench that sends:\n${out.slice(-1500)}`);
+  assert.match(out, /FORGE_ADMIN_SEED_EMAIL=operator@bench\.example\.test is at a reserved test domain/);
+  assert.deepEqual(composeOps(calls), [], 'something was started before the refusal');
 });

@@ -3,26 +3,26 @@
   "source": {
     "repository": "forge",
     "path": "templates/instance/bench",
-    "commit": "b072a7433857ad2fdd74176b42ef5a4ef9e911af",
+    "commit": "3acffcd0f6a73d1746ec8bb5c32bddecf9fac957",
     "committed": "2026-10-11"
   },
   "files": {
     "bench/Caddyfile.tls": "ecc9e245f21f84584e21e75cd7edfa8ee30480d1b64f915db9a78acb816ce138",
     "bench/certs/README.md": "c3cf90685e05599b375eebc29fdb3fb20c78a3d4d0352823fdec98b9f222219f",
-    "bench/compose.bench.yml": "caae7a51f21139ebe878b9ebdbf282770c151ba6f4ecf47ff7a3ac3375c186e7",
+    "bench/compose.bench.yml": "0d0acf98396b63bc0ed910571cc5517d87b2d8b5c72c03faae371d4573170e8f",
     "bench/compose.edge-tls.yml": "5aa9f3edff45f56903aadc2b16dcf72076e025c7114d33ec8a1a43edbff56227",
     "bench/compose.sh": "3498eec130515e634e7b37ab6ee006cc83ce33b6016ae2fd3325ffe93fc79771",
     "bench/down.sh": "9bf5b3a0004fe871837a8461a8768874d388b9c1a7ef42cebfb015963a09e8cb",
-    "bench/lib.sh": "29825f943bd35c16925e27df5c5c5c88f519814cd764301ce4323824c53af012",
-    "bench/mail.sh": "e6625980e9219e0e0733ef6696261e04ff52d6b6f1609fc0724d4241736b5a2c",
+    "bench/lib.sh": "5f07bb57593c4176e6b0f2c30980d3e122b447a129f614ef77cec4d6b59ed748",
+    "bench/mail.sh": "84fe9174685c97f038ef6bc4b9ba0aa6180a5e42e10bdc55e40f79814e987423",
     "bench/promote.sh": "243028262ff6dc6c2d8c84e5134768be21695b76984d4d75e6a93806ba714e9e",
     "bench/seed.example.sh": "f131fed7268d05c269566b7f60bcfdb287a4f3760c5a3f68218256f563c5f116",
-    "bench/up.sh": "ec6c4bdeb29d8644dbbbeb4938dc84678cb65e87096a08fd1761754c73e7c2d3"
+    "bench/up.sh": "6813b56daf17b66e684a98c0386e2fa6840c07257b6db2e9c60b6fd36fe3544d"
   },
   "declaration": {
     "bench/bench.env": {
       "why": "the kit SEAM: copied from the kit at the same commit and then declared for this box. It is ours to edit; it is the only file under bench/ that is.",
-      "kit_sha256": "14dc470448ed9726823074878f1df80c4cb4b0e57fe75b07c75d0c7e929e3358"
+      "kit_sha256": "dec27be236d8d1164707d58aa34d2c6ce928aaa4fb764b9b49b939b0527aa1a6"
     }
   }
 }

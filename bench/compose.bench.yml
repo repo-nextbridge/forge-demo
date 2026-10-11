@@ -45,7 +45,9 @@ services:
       retries: 20
 
   # The mailbox. Nothing it receives leaves this machine: there is no relay configured, and the kernel's four
-  # FORGE_SMTP_* point here and nowhere else. The web face is where a login code is read.
+  # FORGE_SMTP_* point here and nowhere else. The web face is where a login code is read. The one way around it
+  # is declared, never inherited: FORGE_BENCH_MAILBOX=none (bench/lib.sh 5c) adds a generated overlay that
+  # removes this service and hands the kernel the SMTP the bench declares.
   #
   # The three flags are the kernel's mail driver's contract, measured against it (nodemailer, `requireTLS`):
   #   · --smtp-tls-cert/-key   the driver ALWAYS sends STARTTLS; without TLS the send dies `502 5.5.1 Not implemented`

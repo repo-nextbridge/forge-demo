@@ -85,6 +85,10 @@ bench_load_declarations() {
     # …and the https door a declared door asks for (`…:https`, section 2b) is moved by its own name.
     case "$entry" in *:https) declared="$declared$(bench_https_door_name "${entry%%:*}") " ;; esac
   done
+  # …and with the mailbox declared away (FORGE_BENCH_MAILBOX=none, section 5c) the five FORGE_SMTP_* are the
+  # bench's: it sends for real through them, and the password has no place but this shell or bench/smtp.pass.
+  # Without that declaration they stay production's, and are dropped like the rest.
+  [ "$(bench_mailbox_declared "$file")" != none ] || declared="$declared${BENCH_SMTP_NAMES[*]} "
   BENCH_SHELL_DROPPED=''
   for name in $(compgen -e); do
     case "$name" in
@@ -194,8 +198,8 @@ bench_expand_declarations() {
       out="$out${BASH_REMATCH[1]}"
       value="${BASH_REMATCH[3]}"
       case "$ref" in
-        FORGE_BENCH_POSTGRES_PASSWORD | FORGE_VAULT_KEY | FORGE_BENCH_OPERATOR_TOKEN* | FORGE_ADMIN_SERVICE_TOKEN | FORGE_ADMIN_PLATFORM_TOKEN | DATABASE_URL)
-          bench_die "bench/bench.env: $name refers to \${$ref}, one of the bench's own secrets — they stay in .forge-bench/secrets.env. Nothing was started." ;;
+        FORGE_BENCH_POSTGRES_PASSWORD | FORGE_VAULT_KEY | FORGE_BENCH_OPERATOR_TOKEN* | FORGE_ADMIN_SERVICE_TOKEN | FORGE_ADMIN_PLATFORM_TOKEN | DATABASE_URL | FORGE_SMTP_PASS)
+          bench_die "bench/bench.env: $name refers to \${$ref}, one of the bench's own secrets — they stay where they are kept (.forge-bench/secrets.env, bench/smtp.pass). Nothing was started." ;;
       esac
       [ -n "${!ref+set}" ] ||
         bench_die "bench/bench.env: $name refers to \${$ref}, which nothing has set by the time the bench derives its values (the address, the ports, the tenants, bench/bench.env itself). Nothing was started."
@@ -741,6 +745,172 @@ bench_put_secret() {
   mv "$tmp" "$file"
 }
 
+# ── 5c. where the mail goes ──────────────────────────────────────────────────────────────────────────────────
+#
+# BY DEFAULT, NOWHERE: the bench brings a mailbox (compose.bench.yml, `mailpit`) and points the kernel's four
+# FORGE_SMTP_* at it as LITERALS, so no value of this shell or of bench/bench.env can send a message off this
+# machine by accident. That stays the default, and a bench.env that never heard of this section merges exactly
+# as before.
+#
+# ★ BUT A LITERAL IS ALSO A PRISON. Measured 2026-10-11, following the docs only: the Forge repository's bench sent
+# a login code through a real provider with four FORGE_SMTP_* and FORGE_ADMIN_SEED_EMAIL in its `.env`; an
+# instance's bench could not — the overlay's `FORGE_SMTP_HOST: mailpit` beats every value a developer can give,
+# and the only way out was editing the kit. So the mailbox is DECLARED away:
+#
+#   FORGE_BENCH_MAILBOX=none   no mailbox; the kernel sends for real through the SMTP this bench declares
+#
+# and then a generated overlay (.forge-bench/mail.compose.yml, merged LAST — bench_compose) removes the mailbox
+# and hands the kernel the declared values BY REFERENCE (`${FORGE_SMTP_PASS:-}`): the password is interpolated
+# by compose from this process, never written to a file of the bench, never printed.
+#
+#   FORGE_SMTP_HOST · FORGE_SMTP_USER · FORGE_SMTP_FROM   bench/bench.env (or the shell)
+#   FORGE_SMTP_PORT                                       optional (the kernel's default: 587)
+#   FORGE_SMTP_PASS                                       ⛔ never bench/bench.env (it is checked in): the shell, or
+#                                                         bench/smtp.pass (git-ignored, yours, survives `down -v`)
+#   FORGE_BENCH_SMTP_CA_FILE                              optional: the CA of an SMTP whose certificate no public CA
+#                                                         signs (a company relay, a test server) — the kernel
+#                                                         always speaks TLS to it (STARTTLS required, or 465)
+#
+# What is refused, by name, BEFORE anything starts (bench_mail_check): an incomplete set (the kernel refuses a
+# partial one too, but only after the box is half up); the password in bench/bench.env, or in a bench/smtp.pass
+# git tracks; FORGE_SMTP_* declared in bench/bench.env while the mailbox is the bench's (it would be ignored in
+# silence); and — the monorepo's rule, docs/guides/admin-demo.md — a box that SENDS mail with no
+# FORGE_ADMIN_SEED_EMAIL, or with one at a reserved test domain: operator login is invite-only, the code cannot
+# be switched off, and a placeholder answers 550 and takes /login down.
+# @env FORGE_BENCH_MAILBOX optional — Where an instance bench's mail goes: unset (or `1`, the reference instance's spelling) → the bench's own mailbox, nothing leaves the machine; `none` → no mailbox, the kernel sends for real through the FORGE_SMTP_* the bench declares (the password from the shell or bench/smtp.pass, never bench.env).
+# @env FORGE_BENCH_SMTP_CA_FILE optional — With FORGE_BENCH_MAILBOX=none: a CA file (relative to the instance root) the kernel trusts for the declared SMTP, when no public CA signs its certificate. Unset: the public CAs only.
+BENCH_SMTP_NAMES=(FORGE_SMTP_HOST FORGE_SMTP_PORT FORGE_SMTP_USER FORGE_SMTP_PASS FORGE_SMTP_FROM)
+BENCH_SMTP_PASS_FILE="$BENCH_ROOT/bench/smtp.pass"
+BENCH_MAIL_OVERLAY="$BENCH_STATE/mail.compose.yml"
+
+# bench_mailbox_declared <bench.env> — the declaration as the shell or the file gives it, before the file is
+# folded in (section 1 needs it to know which names of the shell are the bench's).
+bench_mailbox_declared() {
+  if [ -n "${FORGE_BENCH_MAILBOX+set}" ]; then
+    printf '%s' "$FORGE_BENCH_MAILBOX"
+  else
+    sed -n 's/^FORGE_BENCH_MAILBOX=//p' "$1" | tail -1 | tr -d "\"' "
+  fi
+}
+
+# bench_mailbox — `bench` or `none`; anything else is refused.
+# ⚠️ THE NAME IS SHARED WITH THE REFERENCE INSTANCE, AND SO IS ITS `1`. Its own box (bin/box-up.sh, `.env`) reads
+# FORGE_BENCH_MAILBOX=1 as "this box has a mail catcher" (docs/guides/bench-vocabulary.md, "where the login code
+# goes"), so `1` means the mailbox here too. What differs is ABSENCE, and on purpose: there, a deployment
+# declares nothing and keeps its real provider; here, a bench is never a deployment, so declaring nothing keeps
+# the mailbox — sending for real takes the one word `none`, never an empty value.
+bench_mailbox() {
+  case "${FORGE_BENCH_MAILBOX:-bench}" in
+    bench | 1) printf bench ;;
+    none) printf none ;;
+    *) bench_die "FORGE_BENCH_MAILBOX=${FORGE_BENCH_MAILBOX} — it is \`none\` (send for real, through FORGE_SMTP_*), or unset / \`1\` (the bench's own mailbox). Nothing was started." ;;
+  esac
+}
+
+# bench_reserved_address <email> — the kernel's rule, spelled once more in shell: a reserved, never-deliverable
+# domain (RFC 2606 / RFC 6761). Kept equal to apps/api/src/demo-operator.ts::isReservedAddress by
+# scripts/boot/instance-bench-kit.guard.test.ts, which runs both over the same addresses.
+bench_reserved_address() {
+  local domain
+  domain="$(printf '%s' "${1#*@}" | tr '[:upper:]' '[:lower:]')"
+  [[ "$1" == *@* ]] || domain=''
+  [[ "$domain" =~ \.(test|invalid|example|localhost)$ ]] || [[ "$domain" =~ (^|\.)example\.(com|net|org)$ ]]
+}
+
+# bench_smtp_secret — the password, when the shell did not give one: bench/smtp.pass, its first line. Read into
+# this process only; compose interpolates it into the kernel (the overlay names it, it never holds it).
+bench_smtp_secret() {
+  [ "$(bench_mailbox 2>/dev/null)" = none ] || return 0
+  [ -z "${FORGE_SMTP_PASS:-}" ] || return 0
+  [ -s "$BENCH_SMTP_PASS_FILE" ] || return 0
+  FORGE_SMTP_PASS="$(head -n 1 "$BENCH_SMTP_PASS_FILE" | tr -d '\r')"
+  export FORGE_SMTP_PASS
+}
+
+# bench_mail_check — every refusal of this section, before the first side effect. Values are never printed;
+# names are.
+bench_mail_check() {
+  local file="$BENCH_ROOT/bench/bench.env" name value mode missing=() in_file=()
+  mode="$(bench_mailbox)" || exit 1
+  if [ "$mode" = bench ]; then
+    for name in "${BENCH_SMTP_NAMES[@]}"; do
+      grep -qE "^$name=.+" "$file" && in_file+=("$name")
+    done
+    [ "${#in_file[@]}" = 0 ] ||
+      bench_die "bench/bench.env declares ${in_file[*]}, and the mail of this bench goes to its own mailbox (FORGE_BENCH_MAILBOX unset) — they would be ignored in silence. To send for real, declare FORGE_BENCH_MAILBOX=none; to keep the mailbox, remove them. Nothing was started."
+    return 0
+  fi
+  grep -qE '^FORGE_SMTP_PASS=.+' "$file" &&
+    bench_die "bench/bench.env carries FORGE_SMTP_PASS — that file is checked in. Give the password in the shell (FORGE_SMTP_PASS=… bash bench/up.sh) or in bench/smtp.pass (git-ignored), and remove the line. Nothing was started."
+  if [ -f "$BENCH_SMTP_PASS_FILE" ] && git -C "$BENCH_ROOT" ls-files --error-unmatch bench/smtp.pass >/dev/null 2>&1; then
+    bench_die "bench/smtp.pass is tracked by git — the SMTP password would travel with the repository. \`git rm --cached bench/smtp.pass\` (the template's .gitignore ignores it), and change the password. Nothing was started."
+  fi
+  for name in FORGE_SMTP_HOST FORGE_SMTP_USER FORGE_SMTP_FROM; do
+    value="${!name:-}"
+    [ -n "${value// /}" ] || missing+=("$name")
+  done
+  [ -n "${FORGE_SMTP_PASS:-}" ] || missing+=('FORGE_SMTP_PASS (the shell, or bench/smtp.pass)')
+  if [ "${#missing[@]}" -gt 0 ]; then
+    echo "[bench] ⛔ FORGE_BENCH_MAILBOX=none: this bench has no mailbox and sends for real, and the SMTP it sends through is" >&2
+    echo "[bench]    incomplete — missing:" >&2
+    for name in "${missing[@]}"; do echo "[bench]      $name" >&2; done
+    echo "[bench]    HOST, USER and FROM go in bench/bench.env (FORGE_SMTP_PORT optional, 587 by default); the password in the" >&2
+    echo "[bench]    shell or in bench/smtp.pass — never bench/bench.env. Or unset FORGE_BENCH_MAILBOX for the bench's mailbox." >&2
+    echo "[bench]    Nothing was started." >&2
+    exit 1
+  fi
+  [ -z "${FORGE_SMTP_PORT:-}" ] || [[ "$FORGE_SMTP_PORT" =~ ^[0-9]+$ ]] ||
+    bench_die "FORGE_SMTP_PORT=$FORGE_SMTP_PORT is not a port number. Nothing was started."
+  if [ -n "${FORGE_BENCH_SMTP_CA_FILE:-}" ] && [ ! -s "$BENCH_ROOT/$FORGE_BENCH_SMTP_CA_FILE" ]; then
+    bench_die "FORGE_BENCH_SMTP_CA_FILE=$FORGE_BENCH_SMTP_CA_FILE — no such file under the instance root. Nothing was started."
+  fi
+  [ -n "${FORGE_ADMIN_SEED_EMAIL:-}" ] ||
+    bench_die "FORGE_BENCH_MAILBOX=none and FORGE_ADMIN_SEED_EMAIL is empty. Operator login is invite-only and the code cannot be switched off: on a bench that SENDS mail the operator must be a mailbox somebody reads. Declare yours in bench/bench.env. Nothing was started."
+  ! bench_reserved_address "$FORGE_ADMIN_SEED_EMAIL" ||
+    bench_die "FORGE_BENCH_MAILBOX=none and FORGE_ADMIN_SEED_EMAIL=$FORGE_ADMIN_SEED_EMAIL is at a reserved test domain: this bench SENDS mail, the code would be refused 550 and /login would have nobody who can get in. Declare a mailbox you read. Nothing was started."
+}
+
+# bench_mail_overlay — written (FORGE_BENCH_MAILBOX=none) or removed (the bench's mailbox) on every `up`, so the
+# way back is the same gesture. Merged last by bench_compose, after the fronts' overlay.
+#   · `mailpit: !reset null` — the service is gone, so `up` never starts it and `--remove-orphans` takes down
+#     the one a previous run left; the kernel's `depends_on` loses it the same way (merged, a dependency on a
+#     service that does not exist makes the whole project invalid)
+#   · the five FORGE_SMTP_* by REFERENCE — compose fills them from this process, so a value never lands here
+#   · NODE_EXTRA_CA_CERTS — the bench's mailbox certificate means nothing to a real SMTP; replaced by the
+#     declared CA (copied beside it, into the directory compose.bench.yml already mounts) or emptied
+#     (`!reset` does not remove a key of `environment` — measured, compose 5.3.1 — and Node ignores an empty one)
+bench_mail_overlay() {
+  local ca=''
+  if [ "$(bench_mailbox)" != none ]; then
+    rm -f "$BENCH_MAIL_OVERLAY" "$BENCH_STATE/mail/smtp-ca.crt"
+    return 0
+  fi
+  mkdir -p "$BENCH_STATE/mail"
+  if [ -n "${FORGE_BENCH_SMTP_CA_FILE:-}" ]; then
+    cp "$BENCH_ROOT/$FORGE_BENCH_SMTP_CA_FILE" "$BENCH_STATE/mail/smtp-ca.crt"
+    chmod 644 "$BENCH_STATE/mail/smtp-ca.crt"
+    ca=/forge-bench-mail/smtp-ca.crt
+  else
+    rm -f "$BENCH_STATE/mail/smtp-ca.crt"
+  fi
+  cat >"$BENCH_MAIL_OVERLAY" <<YAML
+# GENERATED by bench/up.sh from FORGE_BENCH_MAILBOX=none (bench/lib.sh, section 5c). Rewritten on every \`up\`;
+# removed when the mailbox is the bench's again. No value of the SMTP is written here: compose fills them in.
+services:
+  mailpit: !reset null
+  kernel:
+    environment:
+      FORGE_SMTP_HOST: \${FORGE_SMTP_HOST:-}
+      FORGE_SMTP_PORT: \${FORGE_SMTP_PORT:-}
+      FORGE_SMTP_USER: \${FORGE_SMTP_USER:-}
+      FORGE_SMTP_PASS: \${FORGE_SMTP_PASS:-}
+      FORGE_SMTP_FROM: \${FORGE_SMTP_FROM:-}
+      NODE_EXTRA_CA_CERTS: '$ca'
+    depends_on:
+      mailpit: !reset null
+YAML
+}
+
 # ── 6. the fronts ────────────────────────────────────────────────────────────────────────────────────────────
 #
 # Each front's declaration becomes, at most, one service REPLACEMENT in a generated overlay
@@ -937,6 +1107,8 @@ bench_compose() {
   for extra in ${FORGE_BENCH_COMPOSE_FILES:-}; do args+=(-f "$BENCH_ROOT/$extra"); done
   args+=(-f "$BENCH_ROOT/bench/compose.bench.yml" -f "$BENCH_ROOT/bench/compose.edge-tls.yml")
   [ -f "$BENCH_STATE/fronts.compose.yml" ] && args+=(-f "$BENCH_STATE/fronts.compose.yml")
+  # Only when the mailbox is declared away (section 5c): absent, the bench's calls are what they always were.
+  [ -f "$BENCH_MAIL_OVERLAY" ] && args+=(-f "$BENCH_MAIL_OVERLAY")
   docker compose --project-directory "$BENCH_ROOT" --env-file "$BENCH_ROOT/bench/bench.env" "${args[@]}" "$@"
 }
 
@@ -1054,6 +1226,7 @@ bench_prepare() {
   bench_address
   bench_images
   bench_source_secrets
+  bench_smtp_secret
   if bench_multi_tenant; then
     # More than one tenant: the admin runs in HOST MODE, as production runs a multi-brand box — no tenant
     # pinned, no per-tenant login-driver (it would win over the platform credential), the tenant decided by

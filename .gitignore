@@ -58,3 +58,6 @@ gold/
 # kit's own (templates/instance/.gitignore at the commit bench-kit.lock names).
 .forge-bench/
 bench/certs/*.pem
+# ★ IB-9 — the SMTP password of a bench that sends for real (FORGE_BENCH_MAILBOX=none, bench/bench.env) — never
+# committed. The kit's own line (templates/instance/.gitignore at the commit bench-kit.lock names).
+bench/smtp.pass
