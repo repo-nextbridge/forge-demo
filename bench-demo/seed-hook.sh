@@ -18,13 +18,16 @@
 #                                  claim moves with the address
 #    7     the café's fork and the totem, started here (they are held by the kit: FORGE_BENCH_AFTER_HOOK)
 #    8     seed          × tenant  the CURATED catalogue
-#    9-12  only with FORGE_DEMO_BENCH_DATASET=1 in the shell: the MASSIVE catalogue (seed-demo, ~23 min on a
+#    9     only with FORGE_DEMO_BENCH_DATASET=1 in the shell: the MASSIVE catalogue (seed-demo, ~23 min on a
 #          bench, README "What it costs") for every tenant seed/box.json gives the dataset to (`dataset: true` —
 #          box-up's rule: the coffee shop is never filled with shoes), speaking every minute through box-up's OWN
-#          block (read out of bin/box-up.sh between its markers); then, for EVERY tenant, the shop window (11)
-#          and the data verdict (12). Without the massive, verify-seed is RED by construction (measured
-#          2026-10-10: "7 check(s) NOT settled" — it grades the catalogue the one-shot fills), so 12 runs only
-#          after 9.
+#          block (read out of bin/box-up.sh between its markers)
+#    10    seed-history × tenant   the PAST (SH-2): 180 days of dated orders, in the kernel through the kit's
+#                                  compose, inside the mail silence — on every `up` unless FORGE_DEMO_BENCH_HISTORY=0;
+#                                  a tenant that already has one keeps it (see `seed_the_past` below)
+#    10b-12 only with the dataset: the queue drained, then, for EVERY tenant, the shop window (11) and the data
+#          verdict (12). Without the massive, verify-seed is RED by construction (measured 2026-10-10: "7
+#          check(s) NOT settled" — it grades the catalogue the one-shot fills), so 12 runs only after 9.
 #    14-bis prove-doors  × tenant  every door of the tenant's stores, opened anonymously — the café's fork and
 #                                  the counter's totem included
 #
@@ -90,6 +93,154 @@ counter_tenant="$(jq -r '.tenants[] | select(any(.stores[]; .handle == "balcao")
 in_bench "$counter_tenant" ||
   die "the café ('$counter_tenant', the tenant of seed/box.json that owns the counter) is not a tenant of this bench ($FORGE_BENCH_TENANT_IDS) — its fork and totem are held for after this hook (FORGE_BENCH_AFTER_HOOK) and could not start."
 
+# ── 10 · THE PAST — box-up's step 10, the same kernel script in the same place (after 8 and 9, before 11) ──
+#
+# ★ SH-2 — WHY THE KIT BENCH RUNS IT NOW. Without it a dev bench is born with ~40 orders per tenant, every one
+# stamped TODAY, and the admin home's dashboard (30 days by default) is all but empty from day one. The past is
+# `node dist/seed-history.js --tenant <t>` INSIDE the kernel (only its own dispatcher can date an order; the
+# public door cannot, by design), run through the KIT's compose like step 9, for every tenant, as box-up does.
+#
+# ⛔ AND IT IS box-up's STEP, NOT A NEW ONE: inside the mail silence (the curated seed of step 8 silences the
+# buyer's order mail; the window of step 11 re-arms it — and REFUSES if it is armed), with the one delivery
+# method the history sells through (`seed-history` stops dead on two active delivery methods: it will not pick
+# one at random) and the others re-armed by a trap however this hook ends. bin/box-up.sh `10 · the past` carries
+# every measurement behind each line; this is that step with the kit's credentials and the loopback door.
+#
+# ★ A BENCH THAT ALREADY HAS A PAST (every `up` after the first). `seed-history` of the image forge.lock pins
+# (v0.3.2) is reset+seed: it finds an order older than half its window, prints SKIPPING, writes nothing and
+# exits 0 with `"skipped":true`. Here that is not a failure — it is "this tenant already has its past", said by
+# name — and the dates are NOT completed to today: the bench's past ends on the day of its first `up`.
+#
+# ★ THE MODE THAT COMPLETES IT (SH-1, in the product) reaches this hook with the next cut of the images. It is
+# DETECTED IN THE IMAGE — the kernel's own dist/seed-history.js is read for the flag — never from a version
+# typed here; when it is there and the plain run skipped, the hook runs it again with that flag.
+# shellcheck source=../bin/history-topup.sh
+. "$HERE/bin/history-topup.sh"
+HISTORY_KEEP="${FORGE_HISTORY_KEEP_METHOD:-Entrega Padrão}"
+HISTORY_WROTE=0
+SILENCED=''
+REARM_TENANT=''
+# Every read and command of this step goes to the shop's loopback door, as the scripts above do.
+history_methods() { # <tenant> → id \t name \t active   (delivery only)
+  curl -fsS -m 15 "$api/v1/read/internal/shipping_methods_admin" -H "authorization: Bearer $(token_of "$1")" -H "x-forge-tenant: $1" |
+    jq -r '.[] | select(.kind=="delivery") | [.id, .name, (.active|tostring)] | @tsv'
+}
+# ⚠️ THE FIELD IS `method_id`, NOT `id` (box-up measured the kernel's validation_failed).
+set_method_active() { # <tenant> <method_id> <true|false>
+  curl -fsS -m 15 -X POST "$api/v1/commands/shipping.method.update" -H "authorization: Bearer $(token_of "$1")" \
+    -H "x-forge-tenant: $1" -H 'content-type: application/json' -d "{\"method_id\":\"$2\",\"active\":$3}" >/dev/null
+}
+rearm_history() {
+  local id
+  for id in $SILENCED; do
+    if set_method_active "$REARM_TENANT" "$id" true; then
+      say "10 · re-armed delivery method $id in $REARM_TENANT"
+    else
+      echo "[bench-demo] ⛔ COULD NOT RE-ARM delivery method $id in $REARM_TENANT — re-arm it by hand: POST $api/v1/commands/shipping.method.update {\"method_id\":\"$id\",\"active\":true}" >&2
+    fi
+  done
+  SILENCED=''
+}
+# The flag of the completing mode, if THIS bench's kernel image reads it (bin/history-topup.sh); empty otherwise.
+image_topup_flag() {
+  bash "$HERE/bench/compose.sh" run --rm --no-deps -T --entrypoint cat kernel dist/seed-history.js </dev/null 2>/dev/null | history_topup_flag
+}
+history_run() { # <tenant> <log> [flag] — the kernel's one-shot, through the kit's compose; its rc
+  bash "$HERE/bench/compose.sh" run --rm ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
+    kernel node dist/seed-history.js --tenant "$1" ${3:+"$3"} </dev/null >"$2" 2>&1
+}
+seed_the_past() {
+  if [ "${FORGE_DEMO_BENCH_HISTORY:-1}" = 0 ]; then
+    say "10 · skipped — asked with FORGE_DEMO_BENCH_HISTORY=0: the dashboard's 7/30/90 days will hold only today's orders"
+    report "10 skipped — asked with FORGE_DEMO_BENCH_HISTORY=0 (the past: README §2)"
+    return 0
+  fi
+  local t armed keep_seen id name active hlog hrc topup started methods already='' unsold=''
+  trap 'rearm_history' EXIT INT TERM
+  for t in $FORGE_BENCH_TENANT_IDS; do
+    REARM_TENANT="$t"
+    # ★ A TENANT WITH NO DELIVERY METHOD AT ALL HAS NOTHING TO SELL A PAST THROUGH. Measured 2026-10-11 on the
+    # first kit bench with this step (sh2, block 87): forgeco without the massive catalogue had NO shipping method
+    # (`shipping_methods_admin` answered []) — its logistics, like its catalogue, are the dataset's and come with
+    # step 9. box-up never meets this (it always runs 9 for the dataset's tenant). So the tenant is named and
+    # skipped, never a red `up`; a tenant WITH methods but not the one kept is still box-up's refusal, below.
+    methods="$(history_methods "$t")" || die "10 · could not read the delivery methods of $t (above)."
+    if [ -z "$methods" ]; then
+      say "10 · $t has no delivery method — its logistics come with the massive catalogue (step 9, FORGE_DEMO_BENCH_DATASET=1); no past is written for it"
+      unsold="$unsold $t"
+      continue
+    fi
+    # ⛔ THE MAILBOX GUARD (box-up's, and the parameter is `store`, not `store_id` — the kernel ignores the wrong
+    # one SILENTLY and answers the tenant's defaults): no past is written into a tenant whose buyer mail is armed.
+    armed="$(curl -fsS -m 15 "$FORGE_BENCH_KERNEL_URL/v1/read/internal/stores" -H "authorization: Bearer $(token_of "$t")" -H "x-forge-tenant: $t" |
+      jq -r '.[].id' | while read -r sid; do
+        curl -fsS -m 15 "$api/v1/read/internal/notification_types?store=$sid" -H "authorization: Bearer $(token_of "$t")" -H "x-forge-tenant: $t" |
+          jq -r --arg s "$sid" '.[] | select((.key|startswith("order.")) or (.key|contains("review_request")))
+            | select(.channels[] | select(.channel_key=="email") | .enabled) | "\($s) \(.key)"'
+      done)" || die "10 · could not read the notification channels of $t — no past is written that cannot be proved silent."
+    [ -z "$armed" ] || die "10 · REFUSING to seed the past for $t: buyer order mail is ARMED on: $(printf '%s ' $armed)— step 8 silences it and step 11 re-arms it; the past belongs between them."
+    keep_seen=0
+    while IFS=$'\t' read -r id name active; do
+      [ "$active" = true ] || continue
+      if [ "$name" = "$HISTORY_KEEP" ]; then keep_seen=1; continue; fi
+      set_method_active "$t" "$id" false || die "10 · could not silence delivery method \"$name\" ($id) in $t."
+      SILENCED="$SILENCED $id"
+    done <<<"$methods"
+    [ "$keep_seen" = 1 ] || die "10 · $t has no active delivery method named \"$HISTORY_KEEP\" — set FORGE_HISTORY_KEEP_METHOD to the one the past sells through. Nothing was seeded."
+    say "10 · the past ($t) — seed-history in the kernel, through the kit's compose, mail silent, one delivery method"
+    hlog="$(mktemp)"
+    started=$SECONDS
+    history_run "$t" "$hlog" && hrc=0 || hrc=$?
+    if [ "$hrc" = 0 ] && grep -q '"skipped":true' "$hlog"; then
+      topup="$(image_topup_flag)"
+      if [ -n "$topup" ]; then
+        say "10 · $t already has a past — this image completes it to today ($topup)"
+        history_run "$t" "$hlog" "$topup" && hrc=0 || hrc=$?
+      fi
+    fi
+    tail -4 "$hlog" >&2
+    if [ "$hrc" != 0 ]; then
+      rm -f "$hlog"
+      die "10 · the past failed for $t (rc=$hrc) — the kernel's own words are above. The delivery methods are re-armed either way."
+    elif grep -q '"skipped":true' "$hlog"; then
+      say "10 · $t ALREADY HAS A PAST — kept as it is. seed-history of this image does not complete it to today (it has no $HISTORY_TOPUP_FLAG): the next cut of the images brings it (SH-1)."
+      already="$already $t"
+    else
+      HISTORY_WROTE=1
+      say "10 · $t · the past written in $((SECONDS - started)) s"
+    fi
+    rm -f "$hlog"
+    rearm_history
+  done
+  trap - EXIT INT TERM
+  [ -z "$unsold" ] || report "10 · no past for:$unsold — no delivery method on this bench; it comes with the massive catalogue (FORGE_DEMO_BENCH_DATASET=1)"
+  [ -z "$already" ] || report "10 · already had a past:$already — kept, NOT completed to today (this image's seed-history has no $HISTORY_TOPUP_FLAG; the next cut — README §2)"
+}
+
+# 10b · box-up's wait for the dispatcher (the window re-arms the buyer's mail; ~1 466 dated orders drain
+# asynchronously — measured on box-up's first birth with the past: the tail went out through the re-armed door).
+drain_the_queue() {
+  local t fingerprint pending_total tot pend last='' quiet_since=$SECONDS started=$SECONDS
+  say "10b · waiting for the notification queue to go quiet before the window re-arms the mail"
+  while :; do
+    fingerprint=''; pending_total=0
+    for t in $FORGE_BENCH_TENANT_IDS; do
+      tot="$(curl -fsS -m 15 "$api/v1/read/internal/notifications?limit=1" -H "authorization: Bearer $(token_of "$t")" -H "x-forge-tenant: $t" | jq -r '.total')" ||
+        die "10b · could not read the notification queue of $t — the window would re-arm the mail over it."
+      pend="$(curl -fsS -m 15 "$api/v1/read/internal/notifications?limit=1&status=pending" -H "authorization: Bearer $(token_of "$t")" -H "x-forge-tenant: $t" | jq -r '.total')" || pend=0
+      fingerprint="$fingerprint $t:$tot"; pending_total=$((pending_total + pend))
+    done
+    if [ "$fingerprint" = "$last" ] && [ "$pending_total" = 0 ]; then
+      [ $((SECONDS - quiet_since)) -ge 30 ] && break
+    else
+      last="$fingerprint"; quiet_since=$SECONDS
+    fi
+    [ $((SECONDS - started)) -lt 600 ] || die "10b · the notification queue did not go quiet in 600 s (last:$fingerprint) — stopping before the window re-arms the mail."
+    sleep 5
+  done
+  say "10b · queue quiet —$last"
+}
+
 for tenant in $FORGE_BENCH_TENANT_IDS; do
   as_tenant "$tenant"
   say "6 · seed-box ($tenant)"
@@ -151,6 +302,13 @@ if [ "${FORGE_DEMO_BENCH_DATASET:-}" = 1 ]; then
     say "9 · seed-demo ($tenant, store $handle) — the massive catalogue; it speaks every ${FORGE_SEED_HEARTBEAT_S:-60} s"
     seed_demo_speaking "$tenant" "$handle" || die "seed-demo failed for $tenant (above)."
   done
+fi
+
+seed_the_past
+
+if [ "${FORGE_DEMO_BENCH_DATASET:-}" = 1 ]; then
+  # 10b · the window below RE-ARMS the buyer's mail, so the queue the past filled must be quiet first.
+  [ "$HISTORY_WROTE" = 0 ] || drain_the_queue
   for tenant in $FORGE_BENCH_TENANT_IDS; do
     as_tenant "$tenant"
     say "11 · the shop window ($tenant)"
@@ -163,10 +321,10 @@ if [ "${FORGE_DEMO_BENCH_DATASET:-}" = 1 ]; then
     host_node bin/verify-content.mjs --tenant "$tenant" --api "$api" || die "verify-content: $tenant did not settle (above)."
   done
 else
-  say "9-12 · skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1 (~23 min); this bench holds the curated one"
-  report "9-12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1 (~23 min); this bench holds the curated one"
+  say "9, 11, 12 · skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1 (~23 min); this bench holds the curated one"
+  report "9, 11, 12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1 (~23 min); this bench holds the curated one"
 fi
-report "10, 13-15 and the roteiro are bin/box-up.sh's (history, edge/bucket, warming, configuration verdict) — README §2"
+report "13-15 and the roteiro are bin/box-up.sh's (edge/bucket, warming, configuration verdict) — README §2"
 
 for tenant in $FORGE_BENCH_TENANT_IDS; do
   as_tenant "$tenant"

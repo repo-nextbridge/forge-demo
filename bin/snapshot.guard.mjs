@@ -418,3 +418,52 @@ test('a reset restores FIRST and then asks every verdict; a red verdict is a red
     p.cleanup();
   }
 });
+
+// ── ★ SH-2 · THE PAST OF A RESET BOX — the reset ASKS THE IMAGE whether it can complete a past, and says which ───
+// The image forge.lock pins (v0.3.2) cannot (seed-history is reset+seed and skips a tenant with a past), so a reset
+// serves the gold's past FROZEN on the day it was taken. The completing mode is SH-1's and arrives with the next
+// cut; it is detected in the kernel image's own dist/seed-history.js (bin/history-topup.sh), never from a version.
+// Even when the image has it, the reset does not call it yet (a restored box's buyer mail is armed) — and says so.
+function pastRun(args, { topUp }) {
+  const dir = mkdtempSync(join(tmpdir(), 'demo-reset-past-'));
+  mkdirSync(join(dir, 'bin'));
+  mkdirSync(join(dir, 'deploy'));
+  mkdirSync(join(dir, 'fake'));
+  writeFileSync(join(dir, 'deploy/stag.env'), '');
+  cpSync(join(ROOT, 'bin/demo-reset.sh'), join(dir, 'bin/demo-reset.sh'));
+  cpSync(join(ROOT, 'bin/history-topup.sh'), join(dir, 'bin/history-topup.sh'));
+  writeFileSync(join(dir, 'forge.lock'), JSON.stringify({ images: { kernel: { ref: 'ghcr.io/example/kernel@sha256:fake' } } }));
+  const rec = `printf '%s %s\\n' "$(basename "$0")" "$*" >> "${dir}/calls.log"; exit 0\n`;
+  writeFileSync(join(dir, 'bin/prove-shop.mjs'), `(await import('node:fs')).appendFileSync('${dir}/calls.log', 'prove-shop\\n');\n`);
+  writeFileSync(join(dir, 'bin/birth-remote.sh'), rec);
+  writeFileSync(join(dir, 'bin/snapshot.sh'), rec);
+  // docker: `run --rm --entrypoint cat <ref> dist/seed-history.js` answers the image's script, recorded.
+  writeFileSync(join(dir, 'fake/docker'), `#!/usr/bin/env bash\nprintf 'docker %s\\n' "$*" >> "${dir}/calls.log"\n` +
+    `echo 'const tenant = flag("tenant") ?? "demo";'\n${topUp ? 'echo \'const topUp = flag("top-up");\'\n' : ''}`);
+  chmodSync(join(dir, 'fake/docker'), 0o755);
+  const r = spawnSync('bash', [join(dir, 'bin/demo-reset.sh'), ...args], {
+    cwd: dir, encoding: 'utf8', env: { ...process.env, PATH: `${join(dir, 'fake')}:${process.env.PATH}` },
+  });
+  let calls = '';
+  try { calls = readFileSync(join(dir, 'calls.log'), 'utf8'); } catch {}
+  rmSync(dir, { recursive: true, force: true });
+  return { ...r, calls };
+}
+
+test('★ SH-2 · a reset says its past is FROZEN when the pinned kernel image cannot complete one — asked of the image', () => {
+  for (const args of [['stag'], ['stag', '--plan']]) {
+    const r = pastRun(args, { topUp: false });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.calls, /^docker run --rm --entrypoint cat ghcr\.io\/example\/kernel@sha256:fake dist\/seed-history\.js$/m, `${args.join(' ')}: the image forge.lock pins was not asked`);
+    assert.match(r.stderr, /the past: FROZEN — the pinned kernel image cannot complete a past \(its seed-history has no --top-up; SH-1, the next cut\)/, `${args.join(' ')}: ${r.stderr}`);
+  }
+});
+
+test('★ SH-2 · when the IMAGE carries the completing mode, the reset says so — and does not call it on a box whose mail is armed', () => {
+  const r = pastRun(['stag'], { topUp: true });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /the past: the pinned kernel image COMPLETES a past to today \(--top-up\) — this reset does NOT call it yet/);
+  assert.doesNotMatch(r.stderr, /FROZEN/);
+  assert.doesNotMatch(r.calls, /seed-history\.js --tenant/, 'the reset wrote a past on a box whose buyer mail is armed');
+  assert.match(r.calls, /^snapshot\.sh restore --env stag$/m, 'the reset itself did not run');
+});

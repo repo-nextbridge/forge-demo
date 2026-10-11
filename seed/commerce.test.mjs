@@ -48,6 +48,7 @@ import {
   SEED_NOISE_TYPES,
   buyerEmail,
   placeOneOrder,
+  firstSkuInStock,
   appAction,
 } from './commerce.mjs';
 
@@ -1116,6 +1117,8 @@ function fakeCheckout({ metadata = {} } = {}) {
         if (name === 'internal/orders_admin') return { items: [] };
         if (name === 'products')
           return { items: [{ handle: 'forge-alvorada', skus: [{ id: 'sku_1', status: 'active', metadata }] }] };
+        // SH-2: the default sku is the first one IN STOCK, so the journey now asks this read too.
+        if (name === 'availability_by_skus') return [{ sku_id: 'sku_1', available: 5, backorder: null }];
         if (name === 'payment_methods') return { methods: ['pix'], providers: [{ app_id: 'payment-reference' }] };
         if (name === 'shipping_options')
           return { options: [{ kind: 'delivery', method_id: 'shm_1' }] };
@@ -1213,6 +1216,99 @@ test('★★ the ORDER ID is carried out — the confirmation does not publish i
   });
   assert.equal(order.order_id, 'ord_1');
   assert.equal(order.number, 7, 'the confirmation\'s own fields are still there');
+});
+
+// ── ★★ SH-2 — THE DEFAULT SKU HAS STOCK (measured on pctop, 2026-10-11) ──────────────────────────────────
+//
+// The massive bench went red at step 11, twice, on a fresh machine: `cart.add_line → 409 insufficient_stock`,
+// because the live proof took the FIRST ACTIVE sku of the listing and that one had `available: 0`. On ms-s1 the
+// first one happened to be stocked, so nothing here could have seen it. This port reproduces pctop: the first
+// active sku of the listing is out, the second is not — and the old default picks the first.
+function pctopShop({ secondAvailable = 3 } = {}) {
+  const commands = [];
+  const asked = [];
+  return {
+    commands,
+    asked,
+    port: {
+      log: (line) => asked.push(['log', line]),
+      command: async (name, input) => {
+        commands.push({ name, input });
+        if (name === 'cart.create') return { cart_id: 'cart_1' };
+        if (name === 'cart.add_line') {
+          // The kernel's own refusal, as pctop saw it — so a regression is a thrown 409, not a quiet pass.
+          if (input.sku_id === 'sku_01M4NEMX_OUT') throw new Error('409 insufficient_stock (sku_01M4NEMX_OUT)');
+          if (input.sku_id === 'sku_ALSO_OUT' && secondAvailable <= 0) throw new Error('409 insufficient_stock (sku_ALSO_OUT)');
+        }
+        if (name === 'checkout.place_order') return { order_id: 'ord_1' };
+        return {};
+      },
+      read: async (name, params) => {
+        asked.push([name, params]);
+        if (name === 'internal/orders_admin') return { items: [] };
+        if (name === 'products')
+          return {
+            items: [
+              { handle: 'first-on-the-list', skus: [{ id: 'sku_01M4NEMX_OUT', status: 'active' }] },
+              { handle: 'second', skus: [{ id: 'sku_DRAFT', status: 'draft' }, { id: 'sku_ALSO_OUT', status: 'active' }] },
+            ],
+            total: 2,
+          };
+        if (name === 'availability_by_skus')
+          return params.sku_ids.split(',').map((id) => ({
+            sku_id: id,
+            available: id === 'sku_ALSO_OUT' ? secondAvailable : 0,
+            backorder: null,
+          }));
+        if (name === 'payment_methods') return { methods: ['pix'], providers: [{ app_id: 'payment-reference' }] };
+        if (name === 'shipping_options') return { options: [{ kind: 'delivery', method_id: 'shm_1' }] };
+        if (name === 'order_confirmation') return { number: 9, status: 'pending_payment' };
+        throw new Error(`the journey asked for a read this fake port does not serve: ${name}`);
+      },
+    },
+  };
+}
+
+test('★★ SH-2 · the first active sku has NO stock (pctop) — the live proof takes the first one that HAS', async () => {
+  const { port, commands, asked } = pctopShop();
+  const order = await placeOneOrder({ ...port, store: STORE_TAKING_ORDERS, buyer: liveProofBuyerOf('cafe'), what: 'live proof' });
+  const line = commands.find((c) => c.name === 'cart.add_line');
+  assert.equal(
+    line.input.sku_id,
+    'sku_ALSO_OUT',
+    'the default picked a sku without stock — the 409 insufficient_stock pctop measured at step 11',
+  );
+  assert.equal(order.order_id, 'ord_1');
+  const availability = asked.find(([name]) => name === 'availability_by_skus');
+  assert.ok(availability, 'the stock was never asked — the listing says what is on sale, not what is in stock');
+  assert.equal(availability[1].store, 'sto_cafe', 'availability asked without THIS store — another shop\'s stock');
+  assert.ok(!availability[1].sku_ids.split(',').includes('sku_DRAFT'), 'an inactive sku was offered to the stock read');
+});
+
+test('⛔ SH-2 · active skus and NONE in stock — no cart is opened, and the log says it BY NAME', async () => {
+  const { port, commands, asked } = pctopShop({ secondAvailable: 0 });
+  const order = await placeOneOrder({ ...port, store: STORE_TAKING_ORDERS, buyer: liveProofBuyerOf('cafe'), what: 'live proof' });
+  assert.equal(order, null);
+  assert.deepEqual(commands, [], 'a cart was opened for a sku nobody can sell');
+  const said = asked.filter(([k]) => k === 'log').map(([, line]) => line).join('\n');
+  assert.match(said, /NO SKU WITH STOCK — it publishes 2 active sku\(s\)/);
+  assert.match(said, /insufficient_stock/);
+});
+
+test('★ SH-2 · a sku in stock on a LATER page is found — the listing is walked, not its first page alone', async () => {
+  const pages = {
+    1: { items: [{ handle: 'a', skus: [{ id: 'sku_a', status: 'active' }] }], total: 2 },
+    2: { items: [{ handle: 'b', skus: [{ id: 'sku_b', status: 'active' }] }], total: 2 },
+  };
+  const read = async (name, params) => {
+    if (name === 'products') return pages[params.page];
+    if (name === 'availability_by_skus')
+      return params.sku_ids.split(',').map((id) => ({ sku_id: id, available: id === 'sku_b' ? 1 : 0 }));
+    throw new Error(`unexpected read ${name}`);
+  };
+  const found = await firstSkuInStock({ store: { id: 'sto_1' }, read, pageSize: 1 });
+  assert.equal(found.sku?.id, 'sku_b');
+  assert.equal(found.active, 2);
 });
 
 // ★★★ ONE FUNCTION, ONE SHAPE — AND THE RE-RUN BRANCH USED TO HAVE ITS OWN.
