@@ -3,26 +3,26 @@
   "source": {
     "repository": "forge",
     "path": "templates/instance/bench",
-    "commit": "f847b301f276f6ff174ed0b7465a545d1d7dbd55",
+    "commit": "4478fc230d23cbf72b0b82194e3bfe91c8f67985",
     "committed": "2026-10-10"
   },
   "files": {
     "bench/Caddyfile.tls": "07b3436b5a714631c28bd8cc69c5cfd942b1f3d3452a496e47771b3d6507f67b",
     "bench/certs/README.md": "c3cf90685e05599b375eebc29fdb3fb20c78a3d4d0352823fdec98b9f222219f",
-    "bench/compose.bench.yml": "1639963dc6f70c7e2f078ac4b8edb26864765466fd2276d935353f3916afb715",
+    "bench/compose.bench.yml": "caae7a51f21139ebe878b9ebdbf282770c151ba6f4ecf47ff7a3ac3375c186e7",
     "bench/compose.edge-tls.yml": "5aa9f3edff45f56903aadc2b16dcf72076e025c7114d33ec8a1a43edbff56227",
     "bench/compose.sh": "3498eec130515e634e7b37ab6ee006cc83ce33b6016ae2fd3325ffe93fc79771",
-    "bench/down.sh": "35012115cd7c747b2bee98bd37c601afc691291333c2e6a878c50256c7788ae7",
-    "bench/lib.sh": "1693c390eb5b461a04ce6ed171243dda76c062278b06fc2e05234b92076475df",
+    "bench/down.sh": "9bf5b3a0004fe871837a8461a8768874d388b9c1a7ef42cebfb015963a09e8cb",
+    "bench/lib.sh": "509cd2e7e68dc0728d2208dac99f70b27d997da0198c07fcaa515a936ee17ef5",
     "bench/mail.sh": "e6625980e9219e0e0733ef6696261e04ff52d6b6f1609fc0724d4241736b5a2c",
     "bench/promote.sh": "243028262ff6dc6c2d8c84e5134768be21695b76984d4d75e6a93806ba714e9e",
-    "bench/seed.example.sh": "3493079d62b40ef6eca2834a5ab57d0a7b6dc2880583a93eafac415a39a13634",
-    "bench/up.sh": "4640b1a155691c75b561259e83612306d8f684949870079c4d3ec9aeabb7e073"
+    "bench/seed.example.sh": "f131fed7268d05c269566b7f60bcfdb287a4f3760c5a3f68218256f563c5f116",
+    "bench/up.sh": "51acb67eeca8811b5f07f704cd93431dc5304b85ae602e041e12e3efa9981cd5"
   },
   "declaration": {
     "bench/bench.env": {
       "why": "the kit SEAM: copied from the kit at the same commit and then declared for this box. It is ours to edit; it is the only file under bench/ that is.",
-      "kit_sha256": "0b9c786b4cf2ce257620e10662ca9599495bfa7d21c06bb7693ffae50d994a48"
+      "kit_sha256": "92c7014e2561dc3cd6a2cbc0a05498bb420aca43399e220ee62fe439161891c1"
     }
   }
 }

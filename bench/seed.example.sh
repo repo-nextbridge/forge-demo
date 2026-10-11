@@ -5,9 +5,11 @@
 #
 #   FORGE_BENCH_SEED_HOOK=bash bench/seed.example.sh
 #
-# bench/up.sh runs the hook after the box is up, from this repository's root, with:
+# bench/up.sh runs the hook after the box is up, from this repository's root, with (among others — the whole
+# contract is at step 7 of bench/up.sh: every tenant, the origins, the CA of a promoted bench, the files to
+# write what the hook learned and what it skipped):
 #   FORGE_BENCH_KERNEL_URL           the kernel, as this machine reaches it
-#   FORGE_BENCH_TENANT               the tenant the bench was born with
+#   FORGE_BENCH_TENANT               the tenant the bench was born with (the first, with several)
 #   FORGE_BENCH_STORE_ID             its store
 #   FORGE_BENCH_OPERATOR_TOKEN_FILE  a file holding the operator credential (read it; never print it)
 #

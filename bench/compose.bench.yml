@@ -15,9 +15,16 @@
 #   ~ caddy      loopback ports instead of 80/443; the hostnames are `http://:80` and `http://:81` (any host,
 #                plain http), set by bench/lib.sh — the Caddyfile itself is not touched
 
+# ★ THE TWO SERVICES THE BENCH BRINGS ARE NEVER BEHIND A PROFILE. An instance whose own compose declares a
+# `postgres` or a `mailpit` for something of its own, behind a profile (the reference instance keeps its mailbox
+# behind `bench-mailbox`), would hand that profile to the bench's service when the two merge — and the kernel,
+# which depends on both, would make the whole project invalid: «service "kernel" depends on undefined service
+# "mailpit"», nothing created (measured on the reference instance, 2026-10-10). `profiles: !reset []` keeps them
+# the bench's, unconditionally.
 services:
   postgres:
     image: postgres:18
+    profiles: !reset []
     restart: unless-stopped
     # The container's /dev/shm is 64 MB by default, and Postgres puts a parallel query's shared tuple store
     # there: a big read in the middle of a seed dies with `could not resize shared memory segment … No space
@@ -49,6 +56,7 @@ services:
   # beside it, on a network nothing else is on.
   mailpit:
     image: axllent/mailpit:v1.31.1
+    profiles: !reset []
     restart: unless-stopped
     command:
       - --smtp-tls-cert=/certs/bench-mail.crt
