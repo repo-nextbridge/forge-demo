@@ -144,6 +144,7 @@ for i in "${!BENCH_TENANTS[@]}"; do
 done
 rm -f "$out" "$err"
 store_id="${store_ids[0]}"
+claims=()
 if bench_multi_tenant; then
   # HOST MODE (section 1b of lib.sh). The admin's one credential — the box's, not a tenant's — re-minted on
   # every `up` like the operators' (--revoke-previous: the admin is recreated with the new one in step 5).
@@ -154,10 +155,48 @@ if bench_multi_tenant; then
   bench_put_secret FORGE_ADMIN_PLATFORM_TOKEN "$platform_token"
   # The admin directory keys on the AUTHORITY a browser sends (host:port), so every spelling of every tenant's
   # door is claimed — by the kernel's own one-shot (`admin-host.js set`), one container for all of them.
-  claims=()
   for i in "${!BENCH_TENANTS[@]}"; do
     for authority in $(bench_admin_claims "$i"); do claims+=("$authority" "${BENCH_TENANTS[$i]}"); done
   done
+fi
+# ★ WHAT THE BENCH CLAIMED AND NO LONGER DOES IS RELEASED. A promotion moves the admin's addresses, and the
+# directory keeps every claim until somebody releases it: promoted to 192.168.1.221 and back, the bench left
+# `192.168.1.221:<NN41> → <tenant>` behind and said nothing (measured on the reference instance, IB-4/IB-5). The
+# kernel lists no claims (it answers one host at a time, read.admin.by_host), so the bench keeps its own record —
+# .forge-bench/admin-claims, `<authority> <tenant>` per line, the claims of its last `up` — and releases, with the
+# kernel's own one-shot (`admin-host.js remove`), every line of it that this run does not claim again. BEFORE the
+# claims: `set` refuses a host another tenant holds (a conflict, not a takeover), so an address that changes
+# tenant (the tenants re-ordered, a tenant gone) is freed first and then claimed. A claim the bench never made
+# (by hand, by another tool) is not in the record and is never touched. `bench/down.sh -v` drops the record with
+# the database it describes.
+claims_file="$BENCH_STATE/admin-claims"
+released=()
+if [ -s "$claims_file" ]; then
+  while read -r authority tenant; do
+    [ -n "$authority" ] || continue
+    for ((j = 0; j < ${#claims[@]}; j += 2)); do
+      [ "${claims[$j]} ${claims[$((j + 1))]}" != "$authority $tenant" ] || continue 2
+    done
+    released+=("$authority")
+  done <"$claims_file"
+fi
+if [ "${#released[@]}" -gt 0 ]; then
+  release_err="$(mktemp)"
+  # shellcheck disable=SC2016 # the loop is the container's shell's, over the arguments after it
+  if ! bench_compose run --rm --no-deps kernel sh -c \
+    'for host; do node dist/admin-host.js remove "$host" >/dev/null || exit 1; done' \
+    admin-releases "${released[@]}" 2>"$release_err"; then
+    cat "$release_err" >&2
+    rm -f "$release_err"
+    bench_die "releasing the admin addresses this bench no longer serves failed (above). Its record (.forge-bench/admin-claims) is kept, so the next \`up\` tries again."
+  fi
+  rm -f "$release_err"
+  for authority in "${released[@]}"; do bench_say "    admin $authority released — this bench no longer serves it"; done
+fi
+if bench_multi_tenant; then
+  # The record is written BEFORE the claims and holds them, so a run that dies half-way still knows what it may
+  # have left in the directory.
+  for ((i = 0; i < ${#claims[@]}; i += 2)); do printf '%s %s\n' "${claims[$i]}" "${claims[$((i + 1))]}"; done >"$claims_file"
   claim_err="$(mktemp)"
   # shellcheck disable=SC2016 # the loop is the container's shell's, over the arguments after it
   if ! bench_compose run --rm --no-deps kernel sh -c \
@@ -169,6 +208,8 @@ if bench_multi_tenant; then
   fi
   rm -f "$claim_err"
   for ((i = 0; i < ${#claims[@]}; i += 2)); do bench_say "    admin ${claims[$i]} → ${claims[$((i + 1))]}"; done
+else
+  rm -f "$claims_file"
 fi
 bench_source_secrets
 bench_multi_tenant || [ -n "${FORGE_ADMIN_SERVICE_TOKEN:-}" ] ||
@@ -294,13 +335,21 @@ for ((i = 1; i < ${#BENCH_TENANTS[@]}; i++)); do
   admin_door "$(bench_tenant_admin_origin "$i" loopback)" "${BENCH_TENANTS[$i]}"
   [ "$BENCH_DESTINATION" = localhost ] || admin_door "$(bench_tenant_admin_origin "$i")" "${BENCH_TENANTS[$i]}"
 done
-for door in ${FORGE_BENCH_DOORS:-}; do
-  name="${door%%:*}"
-  code="$(http_code "http://localhost:${!name}/")"
+declared_door() { # <name> <url> <edge port>
+  local code
+  code="$(http_code "$2")"
   case "$code" in
-    '' | 000) bench_say "  ❌ the declared door $name — http://localhost:${!name}/ does not answer (the edge's :${door##*:})" && proved=1 ;;
-    *) bench_say "  ✅ the declared door $name is published — http://localhost:${!name}/ answers $code (the edge's :${door##*:}; what it answers is yours)" ;;
+    '' | 000) bench_say "  ❌ the declared door $1 — $2 does not answer (the edge's :$3)" && proved=1 ;;
+    *) bench_say "  ✅ the declared door $1 is published — $2 answers $code (the edge's :$3; what it answers is yours)" ;;
   esac
+}
+for door in ${FORGE_BENCH_DOORS:-}; do
+  bench_declared_door "$door"
+  declared_door "$DOOR_NAME" "http://localhost:${!DOOR_NAME}/" "$DOOR_EDGE"
+  # Promoted, a door that asked for https is proved on the address another device opens — with the same trust
+  # as the shop's https door (the edge's local CA or your certificates; a tailnet's are public).
+  [ -z "$DOOR_HTTPS" ] || [ "$BENCH_DESTINATION" = localhost ] ||
+    declared_door "$DOOR_HTTPS" "https://$BENCH_HOST:${!DOOR_HTTPS}/" "$DOOR_EDGE"
 done
 [ "$proved" = 0 ] || bench_die 'the bench is up but something it owns is not answering (above).'
 
@@ -383,8 +432,16 @@ else
   bench_say "  admin     $FORGE_BENCH_ADMIN_ORIGIN/"
 fi
 for door in ${FORGE_BENCH_DOORS:-}; do
-  name="${door%%:*}"
-  bench_say "  $name  http://localhost:${!name}/   (declared — the edge's :${door##*:})"
+  bench_declared_door "$door"
+  if [ "$BENCH_DESTINATION" = localhost ]; then
+    bench_say "  $DOOR_NAME  http://localhost:${!DOOR_NAME}/   (declared — the edge's :$DOOR_EDGE)"
+  elif [ -n "$DOOR_HTTPS" ]; then
+    bench_say "  $DOOR_HTTPS  https://$BENCH_HOST:${!DOOR_HTTPS}/   (declared — the edge's :$DOOR_EDGE; on this machine also http://localhost:${!DOOR_NAME}/)"
+  else
+    # ⛔ Not quiet about it: promoted, the bench is reached from another device, and this door is not.
+    bench_say "  $DOOR_NAME  http://localhost:${!DOOR_NAME}/   (declared — the edge's :$DOOR_EDGE) ⚠️ LOOPBACK ONLY: not reachable from another"
+    bench_say "    device at $BENCH_HOST. To serve it there by https, declare it with :https — $DOOR_NAME:<suffix>:$DOOR_EDGE:https in FORGE_BENCH_DOORS."
+  fi
 done
 [ "$BENCH_DESTINATION" = localhost ] ||
   bench_say "  …and on this machine, still: $loopback_origin/ · $loopback_admin_origin/   (back: bash bench/promote.sh localhost)"

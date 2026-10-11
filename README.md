@@ -134,9 +134,10 @@ override, read in that one file. `node bin/release-tree.mjs` says what this mach
 (`templates/instance/bench/`), copied into `bench/` **unchanged** — `bench-kit.lock` names the Forge commit and
 each file's sha256, and `bin/bench-kit.guard.mjs` goes red, saying *"this is a product requirement, not a local
 fix"*, the day a file of it is edited. This box is the product's first client: what the kit cannot express here
-is written down as a requirement on the kit (the table below), never patched into the copy. Since IB-5 the kit
-is the one of IB-4 (Forge `4478fc230`), and the bench holds **the whole topology of `seed/box.json`**: both
-tenants, their four stores, the café's own storefront and the counter's totem.
+is written down as a requirement on the kit (the table below), never patched into the copy. Since IB-7 the kit
+is the one of IB-6 (Forge `b072a7433`; IB-5 took IB-4's, `4478fc230`), and the bench holds **the whole topology of
+`seed/box.json`**: both tenants, their four stores, the café's own storefront and the counter's totem — reachable
+by https from another device when promoted (`NN63`).
 
 ```bash
 bash bench/up.sh                              # up: forgeco + forgecafe, the curated catalogue, café, totem, two admins
@@ -159,7 +160,7 @@ Doors on block `NN` (default 82), all on `127.0.0.1`:
 | `NN00` | the shop — forgeco's vitrine at `/`, the café's fork at `/s/<café store id>` (the id is in the summary and in `.forge-bench/hook.env`) | `NN43` https |
 | `NN01` | admin, forgeco | `NN41` https |
 | `NN21` | admin, forgecafe — the kit's admin runs in **host mode** (one admin, the tenant read from the address) | `NN81` https |
-| `NN03` | the counter's totem (declared to the kit: `FORGE_BENCH_DOORS`) | ⚠️ stays loopback-only — see the table below |
+| `NN03` | the counter's totem (declared to the kit: `FORGE_BENCH_DOORS=FORGE_TOTEM_HTTP_PORT:03:82:https`) | `NN63` https (`FORGE_TOTEM_HTTPS_PORT`; `NN03` stays on this machine too) |
 | `NN04` · `NN05` | the mailbox (the login codes) · the kernel | — |
 
 Sign in at either admin door as `operator@bench.example.test`; the code is in the mailbox (`bash bench/mail.sh`).
@@ -205,8 +206,7 @@ segment); 14-bis, which opens the café by id, grades 8/8 on both. Open the caf�
 | what this box does | on the kit bench | why / where it stays |
 |---|---|---|
 | `--tenant` (DX-I5): only the tenants you work on | ❌ both, always | the hook needs the café (its fork and totem are held for after it); a bench of forgeco alone would be `FORGE_BENCH_TENANTS=` in the shell **and** an empty `FORGE_BENCH_AFTER_HOOK` — not offered → `bin/box-up.sh --tenant` |
-| the **totem** reached from another device (promoted) | ❌ `NN03` stays on `127.0.0.1` | a declared door is loopback-only in the kit — no https site for it when promoted (**product requirement**, IB-4 ABERTO 1: a 4th field `…:82:https`) → `bin/box-up.sh --promote` |
-| the admin claims of an address the bench LEFT | ❌ kept in the directory | after `promote.sh localhost` the `<ip>:NN41 → forgeco` claims stay (harmless: same tenant); box-up releases them (IB-4 ABERTO 2) |
+| the admin claims of an address a bench **older than IB-7** left | ❌ kept in the directory | the kit releases only what it recorded itself (`.forge-bench/admin-claims`, kit of IB-6); a bench promoted under the IB-5 kit and brought back before taking this one keeps its `<ip>:NN41/NN81` claims until `bash bench/down.sh -v` |
 | the **admin switcher** between the two brands (`FORGE_ADMIN_SIBLINGS`, box-up 3d) | ❌ | not a kit concern; each admin door is reached by its own address |
 | the box's other credentials: bulk reader (4b), `/enter` access keys (5b) | ❌ | the kit mints the platform credential only; the gate is retired (§4) |
 | **10** the past (`seed-history`) | ❌ | a box-up one-shot inside the silence (§ "Step 10 has two halves") |
@@ -219,6 +219,19 @@ What it covers since IB-5 and did not under IB-3: the **two tenants** and their 
 `FORGE_BENCH_AFTER_HOOK`, the ids handed back through `.forge-bench/hook.env`, the café's edge rule generated
 from box-up's own template), the **shared photo cache** (`FORGE_BENCH_KEEP_VOLUMES`), and the origin that moves
 with a promotion without a re-assignment per service (`FORGE_PUBLIC_ORIGIN=${FORGE_BENCH_ORIGIN}`).
+
+What it covers since IB-7 (kit of IB-6, `b072a7433`) and did not under IB-5: the **totem from another device** —
+the door is declared `:https`, so a promoted bench serves the counter on `https://<address>:NN63/` with the
+bench's CA (the kit's step 6 proves it there; without the 4th field the summary says `⚠️ LOOPBACK ONLY`) — and
+the **way back releases** the admin claims the promotion made (`promote.sh localhost`: *«admin <ip>:NN41
+released — this bench no longer serves it»*; the directory keeps only `localhost:NN01`/`NN21`).
+
+Measured on a clean clone of `ib/7-demo-totem-promovido`, project `ib7`, block 69, 2026-10-11, `tailscale` replaced
+by a recorder (0 calls), Node at the floor `bin/require-node.sh` reads: `up` **43 s**; `promote.sh 192.168.1.221`
+**40 s** — the totem 200 by `https://192.168.1.221:6963/` with `.forge-bench/trust.pem` ("Forge Café · Balcão";
+without the CA curl exit 60, plain http on the IP exit 7), the vitrine and the café 200 by https, admin login by
+https on `:6981` (forgecafe); `promote.sh localhost` **34 s** — both IP claims released, `:6963` exit 7, the totem
+200 on `:6903`; `down.sh -v` **12 s**.
 
 ### The full birth — `bin/box-up.sh`, both tenants, every verdict
 
