@@ -80,7 +80,11 @@ bench_load_declarations() {
   else
     doors="$(sed -n 's/^FORGE_BENCH_DOORS=//p' "$file" | tail -1 | tr -d "\"'")"
   fi
-  for entry in $doors; do declared="$declared${entry%%:*} "; done
+  for entry in $doors; do
+    declared="$declared${entry%%:*} "
+    # …and the https door a declared door asks for (`…:https`, section 2b) is moved by its own name.
+    case "$entry" in *:https) declared="$declared$(bench_https_door_name "${entry%%:*}") " ;; esac
+  done
   BENCH_SHELL_DROPPED=''
   for name in $(compgen -e); do
     case "$name" in
@@ -240,10 +244,35 @@ BENCH_PORTS_KEPT=''
 #     Caddyfile serves on the edge's :82 — `FORGE_TOTEM_HTTP_PORT:03:82` publishes it on <block>03 as
 #     FORGE_TOTEM_HTTP_PORT, which the shell may set to move it like any other door.
 #
-# A declared door is a LOOPBACK door: promoted, it keeps serving this machine; it gets no https door of its own.
+# A declared door is a LOOPBACK door unless it says otherwise. A fourth field, `:https`, asks for an https door
+# of its own when the bench is promoted — `FORGE_TOTEM_HTTP_PORT:03:82:https` — because a totem on a tablet, or
+# any extra front of a client, is reached from ANOTHER device, and off localhost only https keeps the fronts'
+# `Secure` cookies (section 3). That door:
+#
+#   · is named after the loopback one, `_HTTP_PORT` → `_HTTPS_PORT` (or `_PORT` → `_HTTPS_PORT`): the shell moves
+#     it like any other door (FORGE_TOTEM_HTTPS_PORT=…);
+#   · lands on the suffix 6<d>, <d> being the last digit of the loopback suffix (03 → 63). Why the sixties: the
+#     kit's own https doors are the forties (41 admin · 43 shop) and the further tenants' the eighties (8x), so
+#     neither row can take it; 6x is the first decade no door of the bench uses. Two https doors that land on
+#     one suffix (03 and 13) are refused by name, like any collision;
+#   · promoted to a host or IP, is a site of the bench's https edge (edge-tls) on the SAME container port as the
+#     production edge's (`https://<host>:82 → caddy:82`), generated into .forge-bench/tls-doors/ and imported by
+#     bench/Caddyfile.tls; on a tailnet, one more `tailscale serve` door onto the loopback one. On localhost
+#     nothing changes — the loopback door is the door.
+#
+# A door declared WITHOUT `:https` stays on loopback when promoted, and the run says so instead of keeping quiet.
 # Entries "<NAME>:<suffix>:<service>:<container port>".
-# @env FORGE_BENCH_DOORS optional — Doors of an instance bench beyond its own (a totem, a second front the instance's Caddyfile serves on another edge port): `<NAME>:<suffix>:<edge port>` entries, space separated — published on <block><suffix> as NAME, on loopback.
+# @env FORGE_BENCH_DOORS optional — Doors of an instance bench beyond its own (a totem, a second front the instance's Caddyfile serves on another edge port): `<NAME>:<suffix>:<edge port>[:https]` entries, space separated — published on <block><suffix> as NAME, on loopback; with `:https`, a promoted bench also serves it by https on <block>6<last digit of the suffix>.
 BENCH_DOORS=()
+# The declared doors that asked for https: "<https NAME>:<edge port>:<loopback NAME>".
+BENCH_TLS_DOORS=()
+# bench_https_door_name <NAME> — the name of the https door of declared door <NAME>.
+bench_https_door_name() {
+  case "$1" in
+    *_HTTP_PORT) printf '%s_HTTPS_PORT' "${1%_HTTP_PORT}" ;;
+    *) printf '%s_HTTPS_PORT' "${1%_PORT}" ;;
+  esac
+}
 bench_ports() {
   # FORGE_BENCH_PORT_BLOCK is described once, where the Forge repository's own bench reads it.
   local block="${FORGE_BENCH_PORT_BLOCK:-82}" entry name suffix i seen=' ' names=' '
@@ -253,16 +282,26 @@ bench_ports() {
   esac
   bench_tenants
   BENCH_DOORS=()
+  BENCH_TLS_DOORS=()
   for ((i = 1; i < ${#BENCH_TENANTS[@]}; i++)); do
     BENCH_DOORS+=("FORGE_BENCH_ADMIN_HTTP_PORT_$((i + 1)):2$i:caddy:81" "FORGE_BENCH_ADMIN_HTTPS_PORT_$((i + 1)):8$i:edge-tls:444")
   done
   for entry in ${FORGE_BENCH_DOORS:-}; do
-    [[ "$entry" =~ ^(FORGE_[A-Z0-9_]+_PORT):([0-9][0-9]):([1-9][0-9]{0,4})$ ]] ||
-      bench_die "FORGE_BENCH_DOORS: '$entry' is not <NAME>:<suffix>:<edge port> — e.g. FORGE_TOTEM_HTTP_PORT:03:82 (a FORGE_…_PORT name, two digits, the port the edge's Caddyfile listens on). Nothing was started."
+    [[ "$entry" =~ ^(FORGE_[A-Z0-9_]+_PORT):([0-9][0-9]):([1-9][0-9]{0,4})(:https)?$ ]] ||
+      bench_die "FORGE_BENCH_DOORS: '$entry' is not <NAME>:<suffix>:<edge port>[:https] — e.g. FORGE_TOTEM_HTTP_PORT:03:82 (a FORGE_…_PORT name, two digits, the port the edge's Caddyfile listens on; :https to reach it by https when promoted). Nothing was started."
+    name="${BASH_REMATCH[1]}"
+    suffix="${BASH_REMATCH[2]}"
     case "${BASH_REMATCH[3]}" in
       80 | 81) bench_die "FORGE_BENCH_DOORS: '$entry' — the edge's :${BASH_REMATCH[3]} is the bench's own (the shop's and the admin's door). Nothing was started." ;;
     esac
-    BENCH_DOORS+=("${BASH_REMATCH[1]}:${BASH_REMATCH[2]}:caddy:${BASH_REMATCH[3]}")
+    BENCH_DOORS+=("$name:$suffix:caddy:${BASH_REMATCH[3]}")
+    [ -n "${BASH_REMATCH[4]}" ] || continue
+    # The https edge listens on the production edge's port number; 443 and 444 are its own two sites.
+    case "${BASH_REMATCH[3]}" in
+      443 | 444) bench_die "FORGE_BENCH_DOORS: '$entry' — :https on the edge's :${BASH_REMATCH[3]} would land on the https edge's own site (443 shop · 444 admin). Nothing was started." ;;
+    esac
+    BENCH_DOORS+=("$(bench_https_door_name "$name"):6${suffix:1:1}:edge-tls:${BASH_REMATCH[3]}")
+    BENCH_TLS_DOORS+=("$(bench_https_door_name "$name"):${BASH_REMATCH[3]}:$name")
   done
   BENCH_PORTS_KEPT=''
   for entry in "${BENCH_PORT_LAYOUT[@]}" ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do
@@ -270,7 +309,7 @@ bench_ports() {
     suffix="${entry#*:}"
     suffix="${suffix%%:*}"
     # Two doors on one suffix would be one port published twice — compose would refuse it half-way through `up`.
-    case "$seen" in *" $suffix "*) bench_die "two doors of this bench land on the suffix $suffix ($name and another) — FORGE_BENCH_DOORS must pick a suffix none of the bench's doors uses (00 01 04 05 41 43, 2x/8x for further tenants). Nothing was started." ;; esac
+    case "$seen" in *" $suffix "*) bench_die "two doors of this bench land on the suffix $suffix ($name and another) — FORGE_BENCH_DOORS must pick a suffix none of the bench's doors uses (00 01 04 05 41 43, 2x/8x for further tenants, 6<d> for a declared door's https). Nothing was started." ;; esac
     case "$names" in *" $name "*) bench_die "two doors of this bench are named $name. Nothing was started." ;; esac
     seen="$seen$suffix "
     names="$names$name "
@@ -280,6 +319,18 @@ bench_ports() {
     fi
     export "$name=$block$suffix"
   done
+}
+
+# bench_declared_door <entry of FORGE_BENCH_DOORS> — its parts, already validated by bench_ports: DOOR_NAME,
+# DOOR_EDGE (the edge's port) and DOOR_HTTPS (the name of its https door, empty when it asked for none).
+DOOR_NAME='' DOOR_EDGE='' DOOR_HTTPS=''
+bench_declared_door() {
+  local rest="${1#*:}"
+  DOOR_NAME="${1%%:*}"
+  rest="${rest#*:}"
+  DOOR_EDGE="${rest%%:*}"
+  DOOR_HTTPS=''
+  case "$1" in *:https) DOOR_HTTPS="$(bench_https_door_name "$DOOR_NAME")" ;; esac
 }
 
 # bench_tenant_admin_port <index> [https] — the port of tenant <index>'s admin door (0 is the first tenant's).
@@ -531,6 +582,13 @@ bench_tailnet_doors() {
   # …and each further tenant's admin door (section 1b).
   for ((i = 1; i < ${#BENCH_TENANTS[@]}; i++)); do
     printf '%s http://127.0.0.1:%s\n' "$(bench_tenant_admin_port "$i" https)" "$(bench_tenant_admin_port "$i")"
+  done
+  # …and each declared door that asked for https (section 2b), onto its loopback door.
+  local door https loopback
+  for door in ${BENCH_TLS_DOORS[@]+"${BENCH_TLS_DOORS[@]}"}; do
+    https="${door%%:*}"
+    loopback="${door##*:}"
+    printf '%s http://127.0.0.1:%s\n' "${!https}" "${!loopback}"
   done
 }
 
@@ -796,12 +854,41 @@ bench_fronts_overlay() {
   mv "$out.tmp" "$out"
 }
 
+# bench_tls_door_sites — the https edge's site for each declared door that asked for https (section 2b), one
+# file per door in .forge-bench/tls-doors/, imported by bench/Caddyfile.tls (`import /etc/caddy/doors/*.caddy`; a
+# glob that matches nothing is no error — measured, caddy 2, 2026-10-10). Rewritten whole on every `up`, so a
+# door taken out of FORGE_BENCH_DOORS leaves no site behind. Prints a fingerprint of what it wrote: Caddy reads
+# its sites at start, and compose recreates the edge only when its config changes (the certificates' label, the
+# same reason).
+BENCH_TLS_DOORS_DIR="$BENCH_STATE/tls-doors"
+bench_tls_door_sites() {
+  local door name target
+  rm -rf "$BENCH_TLS_DOORS_DIR"
+  [ "${#BENCH_TLS_DOORS[@]}" -gt 0 ] || return 0
+  mkdir -p "$BENCH_TLS_DOORS_DIR"
+  for door in "${BENCH_TLS_DOORS[@]}"; do
+    name="${door%%:*}"
+    target="${door#*:}"
+    target="${target%%:*}"
+    {
+      echo "# GENERATED by bench/up.sh from FORGE_BENCH_DOORS (…:$target:https) — do not edit."
+      echo "# $name: the edge's :$target, by https, to the production edge's :$target."
+      echo "https://{\$FORGE_BENCH_TLS_HOST}:$target {"
+      echo '	import bench_tls'
+      echo "	reverse_proxy caddy:$target"
+      echo '}'
+    } >"$BENCH_TLS_DOORS_DIR/$name.caddy"
+  done
+  cat "$BENCH_TLS_DOORS_DIR"/*.caddy | cksum | tr -d ' '
+}
+
 # bench_doors_overlay — the edge's ports, written WHOLE when the bench has doors beyond the six (section 2b):
 # the bench's own two plus every further one, replacing the list compose.bench.yml gives (this file is merged
 # after it). With no further door nothing is written, and the edge is exactly compose.bench.yml's. Literal
 # values, like everything in this generated file, and regenerated on every `up`.
 bench_doors_overlay() {
-  local entry name rest service target caddy='' edge=''
+  local entry name rest service target caddy='' edge='' sites
+  sites="$(bench_tls_door_sites)"
   for entry in ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do
     name="${entry%%:*}"
     rest="${entry#*:}"
@@ -826,6 +913,13 @@ bench_doors_overlay() {
     echo "      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:$FORGE_HTTPS_PORT:443'"
     echo "      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:$FORGE_ADMIN_HTTPS_PORT:444'"
     printf '%s' "$edge"
+  fi
+  if [ -n "$sites" ]; then
+    # The declared doors' https sites, where bench/Caddyfile.tls imports them from.
+    echo '    volumes:'
+    echo "      - ./.forge-bench/tls-doors:/etc/caddy/doors:ro"
+    echo '    labels:'
+    echo "      forge.bench.tls-doors: '$sites'"
   fi
 }
 

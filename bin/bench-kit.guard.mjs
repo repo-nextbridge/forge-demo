@@ -23,7 +23,11 @@
 //      hands Node the certificates the kit proved it with (FORGE_BENCH_CA_FILE; without a CA the first live
 //      promotion went red: every door «fetch failed»).
 //
-// The real runs (a clean clone promoted to a LAN IP and back): RESULTADOS-ib-3 (one tenant), RESULTADOS-ib-5 (two).
+//      Since IB-7 (kit of IB-6) the totem's door is declared `:https`: promoted, the kit serves and proves it on
+//      https://<address>:<block>63/ too, and the way back releases the admin addresses the promotion claimed.
+//
+// The real runs (a clean clone promoted to a LAN IP and back): RESULTADOS-ib-3 (one tenant), RESULTADOS-ib-5 (two),
+// RESULTADOS-ib-7 (the totem by https on the IP).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -259,4 +263,18 @@ test('★ PROMOTED to an IP, the hook claims the https door and hands Node the c
     // FORGE_BENCH_CA_FILE: the file the kit's own step 6 trusted (trust.pem), not a guess at ca.crt.
     assert.match(l, / ca=\S+\/\.forge-bench\/trust\.pem$/, `Node was not handed the certificates the kit proved the doors with: ${l}`);
   }
+  // ★ IB-7 (kit of IB-6): the totem's door is declared `:https`, so a promoted bench serves the counter on
+  // <block>63 and the kit's own step 6 proves it there. Without the 4th field (the kit of IB-4/IB-5) the totem
+  // stayed on 127.0.0.1:<block>03 — a tablet on the LAN had no counter (README §2 listed it as not covered).
+  assert.match(out, /✅ the declared door FORGE_TOTEM_HTTPS_PORT is published — https:\/\/192\.0\.2\.20:7163\/ answers 200/,
+    'promoted, the kit never proved the totem by https on the promoted address (bench/bench.env FORGE_BENCH_DOORS lost `:https`?)');
+  assert.match(out, /FORGE_TOTEM_HTTPS_PORT {2}https:\/\/192\.0\.2\.20:7163\//, 'the promoted summary does not hand out the totem\'s https door');
+  assert.doesNotMatch(out, /LOOPBACK ONLY/, 'promoted, the kit says a declared door of the demo stays on this machine');
+});
+
+test('★ on localhost the totem keeps its loopback door and no https one (the 4th field only acts when promoted)', () => {
+  const { rc, out } = up();
+  assert.equal(rc, 0, `bench/up.sh on localhost did not finish:\n${out.slice(-2500)}`);
+  assert.match(out, /✅ the declared door FORGE_TOTEM_HTTP_PORT is published — http:\/\/localhost:7103\/ answers 200/);
+  assert.doesNotMatch(out, /FORGE_TOTEM_HTTPS_PORT|:7163/, 'a localhost bench handed out an https door for the totem');
 });
