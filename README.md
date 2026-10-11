@@ -256,19 +256,27 @@ Two limits, both said by the hook and repeated in the kit's report:
 - **forgeco gets its past only with the dataset** (`FORGE_DEMO_BENCH_DATASET=1`). Without it forgeco has **no
   delivery method at all** (its logistics, like its catalogue, are the dataset's), so there is nothing to sell a
   past through: *«10 · forgeco has no delivery method — its logistics come with the massive catalogue»*.
-- **A later `up` keeps the past it has and does not complete it to today.** `seed-history` of the images
-  `forge.lock` pins (v0.3.2) is reset+seed: it SKIPS a tenant that already has a past (exit 0, `"skipped":true`),
-  and the hook says *«forgecafe ALREADY HAS A PAST — kept as it is … (it has no --top-up)»*. So a bench's past ends
-  on the day of its first `up`, and its 7-day window empties a week later. The mode that completes
-  `(last day, today]` is the product's (SH-1) and arrives **with the next cut of the images**; the hook reads the
-  kernel image's own `dist/seed-history.js` for it (`bin/history-topup.sh`) and, when it is there, re-runs the
-  skipped tenant with it — nothing to change here but the pin. Until then, a fresh past is `bash bench/down.sh -v`
-  and `up` again.
+- **On the pinned images a later `up` keeps the past it has and does not complete it to today.** Every `up` makes
+  the same plain run, `seed-history --tenant <t>`, and reads what it did in its own JSON report
+  (`bin/history-mode.sh`). `seed-history` of the images `forge.lock` pins (v0.3.2) is reset+seed: it SKIPS a tenant
+  that already has a past (exit 0, `"skipped":true`, no `mode`), and the hook says *«forgecafe ALREADY HAS A PAST —
+  kept, NOT completed to today»*. So a bench's past ends on the day of its first `up`, and its 7-day window empties
+  a week later; until the next cut, a fresh past is `bash bench/down.sh -v` and `up` again.
+- **From the next cut on, the same `up` completes it.** Since SH-1 (product PR #659) the script has **no flag**: it
+  decides by the tenant's state and reports `"mode"` — `full` (a past written), `top-up` (a recorded past completed
+  to today), `up-to-date` (nothing to add), `refused` (a past it will not touch; its log says why). The hook says
+  each by name (*«its past COMPLETED TO TODAY in 3 s (51 orders added)»*, *«already up to date — nothing added»*,
+  *«REFUSED to touch this past»*); none is a red `up`. Nothing changes here but the pin. Measured 2026-10-11 with
+  the kernel built from the product at `e0f025738` answering the hook's one-shot on a bench whose café past ended
+  ten days ago (`--end 2026-10-01`): 7d **0 → 33 orders, 0/7 → 7/7 days**; 30d **87 → 133, 20/30 → 30/30**; the
+  next `up`: *«up to date»*, the numbers unchanged.
 
-**The demo's reset** (`bin/demo-reset.sh`) asks the same image and says it on every run and `--plan`: today *«the
-past: FROZEN»* — a restored box serves the gold's past, ending on the day the gold was taken. When the image
-carries the completing mode the reset says so and still does **not** call it: a restored box has its buyer mail
-armed and two delivery methods active, and how a live box is silenced for it is not decided yet.
+**The demo's reset** (`bin/demo-reset.sh`) asks the pinned kernel image which of the two it holds (the mode
+`"up-to-date"` is in a state-deciding script's text and not in v0.3.2's) and says it on every run and `--plan`:
+today *«the past: FROZEN»* — a restored box serves the gold's past, ending on the day the gold was taken. With an
+image that completes by itself the reset says so (*«completes a recorded past to today by itself (seed-history
+--tenant <t>, no flag, "mode":"top-up") — this reset does NOT run it yet»*): a restored box has its buyer mail armed
+and two delivery methods active, and how a live box is silenced for it is not decided yet.
 
 **The live proof order picks a sku IN STOCK** (`seed/commerce.mjs`, `firstSkuInStock`): the first active sku of the
 store's listing with `available > 0` in `availability_by_skus`, not the first active one. Measured on another
