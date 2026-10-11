@@ -109,7 +109,8 @@ say "3c/7 · the café is $cafe_store, its counter $counter — handed to the ki
 mkdir -p caddy/extra-local
 sed -n '/^  cat > "$HERE\/caddy\/extra-local\/coffee.caddy" <<CADDY$/,/^CADDY$/p' bin/box-up.sh | sed '1d;$d' |
   sed "s/\${CAFE_STORE}/$cafe_store/g" >caddy/extra-local/coffee.caddy
-grep -q "$cafe_store" caddy/extra-local/coffee.caddy || die "bin/box-up.sh no longer carries step 3c's template."
+grep -q "handle /s/$cafe_store\*" caddy/extra-local/coffee.caddy ||
+  die "the café's edge rule does not route its store ($cafe_store) — bin/box-up.sh's step 3c template moved or changed."
 # caddy/Caddyfile.local runs with `admin off` — a reload is a restart.
 bash "$HERE/bench/compose.sh" restart caddy </dev/null >/dev/null 2>&1 || die "the edge did not restart with the café's rule."
 
