@@ -1,0 +1,102 @@
+# THE BENCH OVERLAY — merged ON TOP of ../compose.yml by bench/up.sh, never run alone.
+#
+# It ADDS what a laptop lacks and REPLACES only what cannot stay as production has it. Everything else — the
+# kernel's environment, the four images from forge.lock, the edge's routing (caddy/Caddyfile, unchanged) — is
+# production's, so the box you test here is the box you deploy. Call compose through `bash bench/compose.sh …`
+# (it passes this file, your overrides and the generated fronts overlay together).
+#
+# What changes, and why:
+#   + postgres   production uses a MANAGED Postgres (compose.yml says so); a bench brings its own, same major (18)
+#   + mailpit    the kernel runs NODE_ENV=production, where the transport that prints a login code to the log
+#                does not exist — so the bench gives it a mailbox that keeps every message on this machine
+#   ~ kernel     its database and its mail point at the two above; it is published on loopback for a front or a
+#                script you run on this machine
+#   ~ admin      the public addresses it prints are the bench's own doors, not https://<your domain>
+#   ~ caddy      loopback ports instead of 80/443; the hostnames are `http://:80` and `http://:81` (any host,
+#                plain http), set by bench/lib.sh — the Caddyfile itself is not touched
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    # The container's /dev/shm is 64 MB by default, and Postgres puts a parallel query's shared tuple store
+    # there: a big read in the middle of a seed dies with `could not resize shared memory segment … No space
+    # left on device`, which names neither the cause nor the container. Measured on a 2 GB instance box,
+    # 2026-09-16. tmpfs costs what it holds, not what it declares.
+    shm_size: 256m
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: ${FORGE_BENCH_POSTGRES_PASSWORD:?run the bench through bench/up.sh — it mints this bench's own database password}
+      POSTGRES_DB: forge
+    volumes:
+      # PG 18+ mounts the parent directory, not /var/lib/postgresql/data.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U forge -d forge']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # The mailbox. Nothing it receives leaves this machine: there is no relay configured, and the kernel's four
+  # FORGE_SMTP_* point here and nowhere else. The web face is where a login code is read.
+  #
+  # The three flags are the kernel's mail driver's contract, measured against it (nodemailer, `requireTLS`):
+  #   · --smtp-tls-cert/-key   the driver ALWAYS sends STARTTLS; without TLS the send dies `502 5.5.1 Not implemented`
+  #   · --smtp-auth-accept-any the four variables travel together, so the driver always sends AUTH
+  #   · --smtp-auth-allow-insecure  AUTH is offered before the upgrade; without it the credential is refused
+  # The certificate is minted by bench/up.sh into .forge-bench/mail (self-signed, for the name `mailpit`), and
+  # the kernel trusts it through NODE_EXTRA_CA_CERTS below. It authenticates a throwaway collector to a kernel
+  # beside it, on a network nothing else is on.
+  mailpit:
+    image: axllent/mailpit:v1.31.1
+    restart: unless-stopped
+    command:
+      - --smtp-tls-cert=/certs/bench-mail.crt
+      - --smtp-tls-key=/certs/bench-mail.key
+      - --smtp-auth-accept-any
+      - --smtp-auth-allow-insecure
+    volumes:
+      - ./.forge-bench/mail:/certs:ro
+    ports:
+      - '${FORGE_BENCH_BIND:-127.0.0.1}:${FORGE_MAIL_HTTP_PORT:-8204}:8025'
+    # The image carries this probe already; it is restated here because a third-party image's probe is
+    # declared where the box can see it.
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 5
+
+  kernel:
+    environment:
+      DATABASE_URL: postgres://forge:${FORGE_BENCH_POSTGRES_PASSWORD:?run the bench through bench/up.sh}@postgres:5432/forge
+      FORGE_SMTP_HOST: mailpit
+      FORGE_SMTP_PORT: '1025'
+      FORGE_SMTP_USER: bench
+      FORGE_SMTP_PASS: bench
+      FORGE_SMTP_FROM: bench@mail.example.test
+      NODE_EXTRA_CA_CERTS: /forge-bench-mail/bench-mail.crt
+    volumes:
+      - ./.forge-bench/mail:/forge-bench-mail:ro
+    ports:
+      - '${FORGE_BENCH_BIND:-127.0.0.1}:${FORGE_KERNEL_PORT:-8205}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+
+  admin:
+    environment:
+      FORGE_API_PUBLIC_URL: ${FORGE_BENCH_ORIGIN:?run the bench through bench/up.sh}
+      FORGE_STOREFRONT_PUBLIC_URL: ${FORGE_BENCH_ORIGIN:?run the bench through bench/up.sh}
+
+  caddy:
+    # `!override`, because compose MERGES port lists: without it the bench would also claim 80 and 443.
+    ports: !override
+      - '${FORGE_BENCH_BIND:-127.0.0.1}:${FORGE_HTTP_PORT:-8200}:80'
+      - '${FORGE_BENCH_BIND:-127.0.0.1}:${FORGE_ADMIN_HTTP_PORT:-8201}:81'
+
+volumes:
+  pgdata:

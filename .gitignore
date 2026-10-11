@@ -52,3 +52,9 @@ cycle-logs/
 # On a bench it lands here, beside the box it was taken from; it is never committed, for the reason
 # `.secrets` is not.
 gold/
+
+# ★ IB-3 — what the Forge bench kit mints (`bash bench/up.sh`: its own secrets, the mailbox certificate, the
+# generated fronts overlay, a promotion's address); `bash bench/down.sh -v` removes it. The two lines are the
+# kit's own (templates/instance/.gitignore at the commit bench-kit.lock names).
+.forge-bench/
+bench/certs/*.pem
