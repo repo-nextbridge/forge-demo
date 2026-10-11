@@ -1,4 +1,4 @@
-// ★★ IB-3 — THE LOCAL BENCH IS THE FORGE KIT, UNCHANGED, AND THIS BOX ENTERS IT ONLY THROUGH ITS SEAMS.
+// ★★ IB-3/IB-5 — THE LOCAL BENCH IS THE FORGE KIT, UNCHANGED, AND THIS BOX ENTERS IT ONLY THROUGH ITS SEAMS.
 //
 //   node --test bin/bench-kit.guard.mjs      (or: bash bin/test.sh)
 //
@@ -13,14 +13,17 @@
 //   2. NOTHING UNDER bench/ THE LOCK DOES NOT NAME — a file ADDED to the kit's directory is a fork too. The
 //      one file of ours there is bench/bench.env, the kit's declared seam, and the lock says so.
 //   3. THE KIT RUNS THE DEMO'S HOOK — `bench/up.sh` itself, run in a COPY of this repository with `docker`,
-//      `curl` and `node` replaced by recorders (nothing starts): the hook bench/bench.env declares is called,
-//      and it calls this box's own seed (seed-box, store-host, seed, prove-doors) with the kit's credential,
-//      which never reaches the output. With FORGE_DEMO_BENCH_DATASET=1 it also runs the massive one-shot
-//      THROUGH THE KIT (bench/compose.sh), then the window and the data verdict — and without it, none of them.
-//      Promoted to an IP, it claims the https door and hands Node the CA the kit exported (without it, the first
-//      live promotion went red: every door «fetch failed»).
+//      `curl` and `node` replaced by recorders (nothing starts). Since IB-5 (kit of IB-4) the bench holds BOTH
+//      tenants of seed/box.json: the hook seeds each with ITS credential (the file .forge-bench/tenants.json
+//      names), hands the kit what only it learns (the café's store and the counter's, .forge-bench/hook.env —
+//      what the café's fork and the totem start with), generates the café's edge rule from box-up's own
+//      template, and opens every door of both. With FORGE_DEMO_BENCH_DATASET=1 it also runs the massive one-shot
+//      THROUGH THE KIT (bench/compose.sh) for the tenant the dataset is about — never the café — then the window
+//      and the data verdict for both; without it, none of them. Promoted to an IP, it claims the https door and
+//      hands Node the certificates the kit proved it with (FORGE_BENCH_CA_FILE; without a CA the first live
+//      promotion went red: every door «fetch failed»).
 //
-// The real run (a clean clone, block 66, promoted to a LAN IP and back) is in RESULTADOS-ib-3.
+// The real runs (a clean clone promoted to a LAN IP and back): RESULTADOS-ib-3 (one tenant), RESULTADOS-ib-5 (two).
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -74,14 +77,24 @@ test('★ bench/ holds nothing the lock does not name (a file added to the kit i
   assert.deepEqual(extra, [], `bench/ carries file(s) the kit did not ship: ${extra.join(', ')}.\n\n${REQUIREMENT}`);
 });
 
+
 // ── 3 · the kit's own up.sh, run in a copy of this repository with recorders for docker, curl and node ────────
 
-const FAKE_OPERATOR = 'fake-operator-credential-ib3-9f1c';
-const FAKE_DRIVER = 'fake-driver-credential-ib3-77a0';
-const FAKE_STORE = 'sto_01FAKEIB3STORE0000000000';
+const TENANTS = ['forgeco', 'forgecafe'];
+// What the recorders mint per tenant — compared here, never written to the log the assertions read.
+const operatorOf = (t) => `fake-operator-${t}-ib5-9f1c`;
+const driverOf = (t) => `fake-driver-${t}-ib5-77a0`;
+const storeOf = (t) => `sto_FAKE${t.toUpperCase()}`;
+const PLATFORM = 'fake-platform-credential-ib5-4e2b';
+const COUNTER = 'sto_FAKECOUNTERBALCAO';
 
+// docker: records each call (and, for an `up`, the two ids the café's services start with), and answers what
+// the kit asks — the project's services (FORGE_BENCH_AFTER_HOOK is checked against them), provision-ref per
+// tenant, the platform credential, the mailbox certificate, the promoted edge's CA.
 const FAKE_DOCKER = String.raw`#!/usr/bin/env bash
-echo "docker $*" >> "$IB3_LOG"
+line="docker $*"
+case "$*" in *' up '*) line="$line ⟨totem=$FORGE_TOTEM_STORE_ID coffee=$FORGE_COFFEE_STORE_ID⟩" ;; esac
+echo "$line" >> "$IB5_LOG"
 if [ "$1" = run ]; then
   # the mailbox certificate: docker run … -v <dir>:/out postgres:18 openssl …
   while [ $# -gt 0 ]; do case "$1" in -v) out="$(printf %s "$2" | sed 's#:/out$##')"; shift 2 ;; *) shift ;; esac; done
@@ -89,30 +102,40 @@ if [ "$1" = run ]; then
 fi
 [ "$1" = ps ] && exit 0
 case "$*" in
+  *'config --services'*) printf '%s\n' postgres redis mailpit kernel storefront checkout admin caddy storefront-coffee totem ;;
   *dist/provision-ref.js*)
-    printf '  operator token\n  %s\n  login-driver token\n  %s\n' "$IB3_OP" "$IB3_DRV" >&2
-    echo "$IB3_STORE" ;;
+    t="$(printf '%s\n' "$@" | sed -n 's/^FORGE_REF_TENANT=//p')"; [ -n "$t" ] || t=forgeco
+    printf '  operator token\n  fake-operator-%s-ib5-9f1c\n  login-driver token\n  fake-driver-%s-ib5-77a0\n' "$t" "$t" >&2
+    echo "sto_FAKE$(printf %s "$t" | tr '[:lower:]' '[:upper:]')" ;;
+  *dist/admin-platform-token.js*) echo "$IB5_PLATFORM" ;;
   *dist/seed-demo.js*) echo '[seed-demo] done (fake)' ;;
   # a promoted bench exports the edge's local CA: … cp edge-tls:/data/caddy/pki/authorities/local/root.crt <dest>
   *' cp edge-tls:'*) for last in "$@"; do :; done; echo 'FAKE CA' > "$last" ;;
 esac
 exit 0
 `;
-const FAKE_CURL = `#!/usr/bin/env bash\nprintf 200\n`;
-// node: the version require-node.sh asks, then every script the hook runs, with whether it carried the KIT's
-// credential (compared here, never written down).
+// curl: the kit's door probes get 200; the hook's one read (the café's stores, to learn the counter) gets them.
+const FAKE_CURL = String.raw`#!/usr/bin/env bash
+case "$*" in
+  */v1/read/internal/stores*) printf '[{"id":"%s","handle":"cafe"},{"id":"%s","handle":"balcao"}]' "$IB5_CAFE_STORE" "$IB5_COUNTER" ;;
+  *) printf 200 ;;
+esac
+`;
+// node: the version require-node.sh asks, then every script the hook runs, with WHOSE credential it carried
+// (the tenant it was minted for — the credential itself is never written down).
 const FAKE_NODE = String.raw`#!/usr/bin/env bash
 case "$1" in -v|--version) echo v24.18.0; exit 0 ;; esac
-tok=absent; [ "$FORGE_OPERATOR_TOKEN" = "$IB3_OP" ] && tok=kit; [ -n "$FORGE_OPERATOR_TOKEN" ] && [ "$tok" = absent ] && tok=OTHER
+tok=absent
+case "$FORGE_OPERATOR_TOKEN" in fake-operator-*-ib5-9f1c) tok="$(printf %s "$FORGE_OPERATOR_TOKEN" | sed 's/^fake-operator-//; s/-ib5-9f1c$//')" ;; ?*) tok=OTHER ;; esac
 ca="$NODE_EXTRA_CA_CERTS"; [ -n "$ca" ] || ca=none
 ds="$FORGE_SEED_DATASET_DIR"; [ -n "$ds" ] || ds=none
-echo "node $* ds=$ds token=$tok ca=$ca" >> "$IB3_LOG"
+echo "node $* ds=$ds token=$tok ca=$ca" >> "$IB5_LOG"
 exit 0
 `;
 
 /** A copy of what `bench/up.sh` and the hook read, outside this repository, with the three recorders first on PATH. */
 function benchCopy() {
-  const dir = mkdtempSync(join(tmpdir(), 'ib3-kit-'));
+  const dir = mkdtempSync(join(tmpdir(), 'ib5-kit-'));
   const shop = join(dir, 'shop');
   for (const p of ['bench', 'bench-demo', 'bin/images-from-lock.sh', 'bin/require-node.sh', 'bin/box-up.sh', 'forge.lock',
     'compose.yml', 'compose.override.yml', 'seed/box.json']) {
@@ -128,76 +151,112 @@ function benchCopy() {
   return { dir, shop, fake, log: join(dir, 'calls.log') };
 }
 
+const read = (path) => (existsSync(path) ? readFileSync(path, 'utf8') : '');
+
 function up(extraEnv = {}) {
   const c = benchCopy();
   const env = {
     PATH: `${c.fake}:/usr/bin:/bin`,
     HOME: c.dir,
-    COMPOSE_PROJECT_NAME: 'ib3-guard',
+    COMPOSE_PROJECT_NAME: 'ib5-guard',
     FORGE_BENCH_PORT_BLOCK: '71',
-    IB3_LOG: c.log,
-    IB3_OP: FAKE_OPERATOR,
-    IB3_DRV: FAKE_DRIVER,
-    IB3_STORE: FAKE_STORE,
+    IB5_LOG: c.log,
+    IB5_PLATFORM: PLATFORM,
+    IB5_CAFE_STORE: storeOf('forgecafe'),
+    IB5_COUNTER: COUNTER,
     ...extraEnv,
   };
   const r = spawnSync('bash', [join(c.shop, 'bench', 'up.sh')], { cwd: c.shop, env, encoding: 'utf8' });
-  const calls = existsSync(c.log) ? readFileSync(c.log, 'utf8').split('\n').filter(Boolean) : [];
+  const calls = read(c.log).split('\n').filter(Boolean);
+  const state = join(c.shop, '.forge-bench');
+  const files = {
+    tenants: read(join(state, 'tenants.json')),
+    hookEnv: read(join(state, 'hook.env')),
+    coffee: read(join(c.shop, 'caddy', 'extra-local', 'coffee.caddy')),
+  };
   rmSync(c.dir, { recursive: true, force: true });
-  return { rc: r.status, out: `${r.stdout}${r.stderr}`, calls, nodes: calls.filter((l) => l.startsWith('node ')) };
+  return { rc: r.status, out: `${r.stdout}${r.stderr}`, calls, files, nodes: calls.filter((l) => l.startsWith('node ')) };
 }
 
-test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds THIS box with the kit\'s credential', () => {
-  const { rc, out, nodes, calls } = up();
+const script = (l) => l.split(' ')[1] + (l.includes('--phase window') ? ' window' : '');
+const tenantOf = (l) => / --tenant (\S+) /.exec(l)?.[1];
+const steps = (nodes) => nodes.map((l) => `${script(l)} ${tenantOf(l)}`);
+
+test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds BOTH tenants, each with its own credential', () => {
+  const { rc, out, nodes, calls, files } = up();
   assert.equal(rc, 0, `bench/up.sh (the kit's) did not finish on the copy:\n${out.slice(-2500)}`);
-  assert.match(out, /7\/7 the seed hook: bash bench-demo\/seed-hook\.sh/, 'the kit did not announce the demo\'s hook');
-  const scripts = nodes.map((l) => l.split(' ')[1]);
+  assert.match(out, /7\/8 the seed hook: bash bench-demo\/seed-hook\.sh/, 'the kit did not announce the demo\'s hook');
+  // The kit was told about both tenants, and the hook read them from the kit's own list.
+  assert.deepEqual(JSON.parse(files.tenants).map((t) => t.tenant), TENANTS, 'the kit did not provision the two tenants of seed/box.json');
   assert.deepEqual(
-    scripts,
-    ['bin/seed-box.mjs', 'bin/store-host.mjs', 'bin/seed.mjs', 'bin/prove-doors.mjs'],
-    `the hook did not run the box's seed in box-up's order (6, 6b, 8, 14-bis):\n  ${nodes.join('\n  ')}`,
+    steps(nodes),
+    ['bin/seed-box.mjs forgeco', 'bin/seed-box.mjs forgecafe', 'bin/store-host.mjs forgeco', 'bin/seed.mjs forgeco',
+      'bin/seed.mjs forgecafe', 'bin/prove-doors.mjs forgeco', 'bin/prove-doors.mjs forgecafe'],
+    `the hook did not run the box's seed in box-up's order, for both tenants (6, 6b, 8, 14-bis):\n  ${nodes.join('\n  ')}`,
   );
   for (const l of nodes) {
-    assert.match(l, /--tenant forgeco /, `not the kit's tenant: ${l}`);
     assert.match(l, /--api http:\/\/localhost:7100( |$)/, `not the shop's loopback door of block 71: ${l}`);
-    assert.match(l, / token=kit /, `not the credential the kit minted and filed: ${l}`);
+    // Each tenant's script carries THAT tenant's credential, the one the kit filed for it.
+    assert.match(l, new RegExp(` token=${tenantOf(l)} `), `not the credential the kit minted for ${tenantOf(l)}: ${l}`);
     // On localhost there is no CA to hand over, and none is invented.
     assert.match(l, / ca=none$/, `a CA was handed to Node on a localhost bench: ${l}`);
   }
-  assert.match(nodes[1], new RegExp(`--origin http://localhost:7100 --store ${FAKE_STORE} `), 'store-host did not claim the kit\'s origin for the kit\'s store');
-  assert.ok(!out.includes(FAKE_OPERATOR) && !out.includes(FAKE_DRIVER), 'a credential the kit minted reached the output');
-  // Without the ask, the massive one-shot never runs, and neither do the steps that need it.
+  assert.match(nodes[2], new RegExp(`--origin http://localhost:7100 --store ${storeOf('forgeco')} `), 'store-host did not claim the kit\'s origin for the root store');
+  for (const secret of [...TENANTS.flatMap((t) => [operatorOf(t), driverOf(t)]), PLATFORM]) {
+    assert.ok(!out.includes(secret), 'a credential the kit minted reached the output');
+  }
+  // What only the hook can learn reaches the kit, and the café's two services start WITH it — before 14-bis
+  // opens their doors (left to the kit's step 8 they answered 502 to it, measured live in IB-4).
+  assert.equal(files.hookEnv, `FORGE_COFFEE_STORE_ID=${storeOf('forgecafe')}\nFORGE_TOTEM_STORE_ID=${COUNTER}\n`, 'the hook did not hand the kit the café\'s two ids');
+  const cafeUp = calls.findIndex((l) => / up -d --wait --no-deps storefront-coffee totem /.test(l));
+  assert.ok(cafeUp >= 0, `the café's fork and the totem were never started:\n  ${calls.join('\n  ')}`);
+  assert.match(calls[cafeUp], new RegExp(`⟨totem=${COUNTER} coffee=${storeOf('forgecafe')}⟩`), `the café's services started without what the hook learned: ${calls[cafeUp]}`);
+  assert.match(calls[cafeUp], /-f \S+\/bench\/compose\.bench\.yml/, `the café's services did not go through the kit's compose: ${calls[cafeUp]}`);
+  assert.ok(cafeUp < calls.findIndex((l) => l.startsWith('node bin/prove-doors.mjs')), 'the café\'s doors were opened before its services started');
+  // The café's edge rule, from box-up's own template, with the café's id — and the edge restarted to read it.
+  assert.match(files.coffee, new RegExp(`handle /s/${storeOf('forgecafe')}\\* \\{\\n\\theader X-Forge-Served-By "storefront-coffee"`), `the café's edge rule was not generated:\n${files.coffee}`);
+  assert.ok(calls.some((l) => / restart caddy/.test(l)), 'the edge was not restarted with the café\'s rule');
+  // Without the ask, the massive one-shot never runs, and neither do the steps that need it — and the kit says so.
   assert.ok(!calls.some((l) => l.includes('seed-demo')), 'seed-demo ran on a bench that did not ask for the dataset');
-  assert.ok(!scripts.includes('bin/verify-seed.mjs'), 'verify-seed ran with no massive catalogue: it is red by construction there');
-  assert.match(out, /9-12 · skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1/);
+  assert.ok(!nodes.some((l) => /verify-seed|--phase window/.test(l)), 'the window or verify-seed ran with no massive catalogue: verify-seed is red by construction there');
+  assert.match(out, /the seed hook reports:\n.*· 9-12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1/);
 });
 
-test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT, speaking, then the window and the verdict', () => {
+test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT for the dataset\'s tenant only, then the window and the verdict for both', () => {
   const { rc, out, nodes, calls } = up({ FORGE_DEMO_BENCH_DATASET: '1' });
   assert.equal(rc, 0, `bench/up.sh with the dataset asked did not finish:\n${out.slice(-2500)}`);
   // ⛔ A container path never reaches a host script: bench/bench.env says /app/seed-dataset for the KERNEL.
   // Measured live 2026-10-10 without this: step 11 «FORGE_SEED_DATASET_DIR=/app/seed-dataset holds no …».
   for (const l of nodes) assert.match(l, / ds=\/\S+\/shop\/seed\/dataset /, `a host script was handed a container path (or none): ${l}`);
   const seedDemo = calls.filter((l) => l.includes('dist/seed-demo.js'));
-  assert.equal(seedDemo.length, 1, `seed-demo should run once:\n  ${calls.join('\n  ')}`);
+  // ⛔ ONE run, for forgeco: the café is never filled with the footwear dataset (box-up's step 9 rule, 02/09).
+  assert.equal(seedDemo.length, 1, `seed-demo should run once, for the dataset's tenant:\n  ${seedDemo.join('\n  ')}`);
   // Through bench/compose.sh: the kit's file list (its overlay), never a bare `docker compose`.
   assert.match(seedDemo[0], /-f \S+\/bench\/compose\.bench\.yml/, `seed-demo did not go through the kit's compose: ${seedDemo[0]}`);
   assert.match(seedDemo[0], /-e FORGE_REF_TENANT=forgeco -e FORGE_REF_STORE_HANDLE=forge -e FORGE_SEED_DEMO=1 /);
   assert.match(out, /seed-demo for "forgeco" ended after 0 min \(rc=0\)/, 'box-up\'s speaking block did not run');
-  assert.deepEqual(
-    nodes.map((l) => l.split(' ').slice(1, 2).concat(l.includes('--phase window') ? ['window'] : []).join(' ')),
-    ['bin/seed-box.mjs', 'bin/store-host.mjs', 'bin/seed.mjs', 'bin/seed.mjs window', 'bin/verify-seed.mjs', 'bin/verify-content.mjs', 'bin/prove-doors.mjs'],
-  );
+  assert.match(out, /9 · forgecafe does not carry the example dataset/, 'the café was skipped without a word');
+  assert.deepEqual(steps(nodes), [
+    'bin/seed-box.mjs forgeco', 'bin/seed-box.mjs forgecafe', 'bin/store-host.mjs forgeco',
+    'bin/seed.mjs forgeco', 'bin/seed.mjs forgecafe',
+    'bin/seed.mjs window forgeco', 'bin/seed.mjs window forgecafe',
+    'bin/verify-seed.mjs forgeco', 'bin/verify-content.mjs forgeco', 'bin/verify-seed.mjs forgecafe', 'bin/verify-content.mjs forgecafe',
+    'bin/prove-doors.mjs forgeco', 'bin/prove-doors.mjs forgecafe',
+  ]);
+  for (const l of nodes) assert.match(l, new RegExp(` token=${tenantOf(l)} `), `not the credential the kit minted for ${tenantOf(l)}: ${l}`);
+  assert.ok(!/· 9-12 skipped/.test(out), 'the kit was told 9-12 were skipped on a run that ran them');
 });
 
-test('★ PROMOTED to an IP, the hook claims the https door and hands Node the CA the kit exported (14-bis opens it there)', () => {
-  // Measured 2026-10-10 without this: every door «fetch failed», «NOT ONE door of forgeco was opened», the `up` red.
+test('★ PROMOTED to an IP, the hook claims the https door and hands Node the certificates the kit proved it with', () => {
+  // Measured 2026-10-10 (IB-3) without a CA: every door «fetch failed», «NOT ONE door of forgeco was opened».
   const { rc, out, nodes } = up({ FORGE_BENCH_ADDRESS: '192.0.2.20' });
   assert.equal(rc, 0, `bench/up.sh promoted to 192.0.2.20 did not finish:\n${out.slice(-2500)}`);
-  assert.equal(nodes.length, 4, `the hook ran ${nodes.length} script(s):\n  ${nodes.join('\n  ')}`);
-  assert.match(nodes[1], /--origin https:\/\/192\.0\.2\.20:7143 /, `store-host did not claim the promoted https door: ${nodes[1]}`);
+  assert.equal(nodes.length, 7, `the hook ran ${nodes.length} script(s):\n  ${nodes.join('\n  ')}`);
+  const claim = nodes.find((l) => l.startsWith('node bin/store-host.mjs'));
+  assert.match(claim, /--origin https:\/\/192\.0\.2\.20:7143 /, `store-host did not claim the promoted https door: ${claim}`);
   for (const l of nodes) {
     assert.match(l, /--api http:\/\/localhost:7100( |$)/, `promoted, the scripts still talk through the loopback door: ${l}`);
-    assert.match(l, / ca=\S+\/\.forge-bench\/ca\.crt$/, `Node was not handed the kit's local CA: ${l}`);
+    // FORGE_BENCH_CA_FILE: the file the kit's own step 6 trusted (trust.pem), not a guess at ca.crt.
+    assert.match(l, / ca=\S+\/\.forge-bench\/trust\.pem$/, `Node was not handed the certificates the kit proved the doors with: ${l}`);
   }
 });

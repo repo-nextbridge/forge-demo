@@ -60,8 +60,11 @@ bench_die() {
 # Google pair) is dropped from this process before compose can read it, and the run says how many.
 BENCH_SHELL_DROPPED=''
 BENCH_SHELL_ADDRESS=''
+# The names bench/bench.env gave a value that REFERS to another (`FORGE_PUBLIC_ORIGIN=${FORGE_BENCH_ORIGIN}`),
+# expanded once the bench has derived what they refer to (section 1c).
+BENCH_DERIVED_NAMES=''
 bench_load_declarations() {
-  local file="$BENCH_ROOT/bench/bench.env" line name value declared=' '
+  local file="$BENCH_ROOT/bench/bench.env" line name value declared=' ' doors entry
   [ -f "$file" ] || bench_die "no bench/bench.env — it is the file that declares this bench (copy it from the template)."
   # The address is the one name with THREE sources (section 3): what the shell says has to be told apart from
   # what bench/bench.env says, so it is remembered before the file is folded in.
@@ -70,6 +73,14 @@ bench_load_declarations() {
     name="${line%%=*}"
     [[ "$name" =~ ^[A-Z_][A-Z0-9_]*$ ]] && declared="$declared$name "
   done <"$file"
+  # A door the instance declares (FORGE_BENCH_DOORS, section 2) is named by a variable of its own, and this shell
+  # may set that variable to move the door — so those names are the bench's too, not production's.
+  if [ -n "${FORGE_BENCH_DOORS+set}" ]; then
+    doors="$FORGE_BENCH_DOORS"
+  else
+    doors="$(sed -n 's/^FORGE_BENCH_DOORS=//p' "$file" | tail -1 | tr -d "\"'")"
+  fi
+  for entry in $doors; do declared="$declared${entry%%:*} "; done
   BENCH_SHELL_DROPPED=''
   for name in $(compgen -e); do
     case "$name" in
@@ -84,7 +95,11 @@ bench_load_declarations() {
     unset "$name"
     BENCH_SHELL_DROPPED="${BENCH_SHELL_DROPPED}${BENCH_SHELL_DROPPED:+ }$name"
   done
-  [ -z "$BENCH_SHELL_DROPPED" ] ||
+  # Inside the bench's own seed hook (which calls `bash bench/compose.sh …` to start what it needs) this shell
+  # is the bench's: what it carries was derived by `up` and is derived again here — dropped all the same, but
+  # not announced as production's (measured on the reference instance's hook: 17 names, every one the bench's).
+  # @env FORGE_BENCH_HOOK_ENV_FILE optional — Set by an instance bench for its seed hook: the file (.forge-bench/hook.env) where the hook writes, NAME=value per line, what it learned (a store id that exists only after the seed); every later compose call of the bench reads it.
+  [ -z "$BENCH_SHELL_DROPPED" ] || [ -n "${FORGE_BENCH_HOOK_ENV_FILE:-}" ] ||
     bench_say "ignored $(wc -w <<<"$BENCH_SHELL_DROPPED" | tr -d ' ') variable(s) of this shell the bench does not declare (production's, most likely): $BENCH_SHELL_DROPPED"
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in '' | '#'*) continue ;; esac
@@ -96,7 +111,95 @@ bench_load_declarations() {
     # The shell already spoke (even to say "empty") — keep it.
     [ -n "${!name+set}" ] && continue
     export "$name=$value"
+    case "$value" in *'${'*) BENCH_DERIVED_NAMES="${BENCH_DERIVED_NAMES}${BENCH_DERIVED_NAMES:+ }$name" ;; esac
   done <"$file"
+}
+
+# ── 1b. the tenants ──────────────────────────────────────────────────────────────────────────────────────────
+#
+# One tenant is the default, and it is the one FORGE_REF_TENANT / FORGE_REF_STORE_HANDLE / FORGE_REF_STORE_NAME
+# name — a bench.env that never heard of this section is born exactly as before. A box that carries MORE than one
+# brand (the reference instance: a shoe shop and a café, two tenants) lists them all, the first being the one the
+# shop's door serves:
+#
+#   FORGE_BENCH_TENANTS=<id>:<store handle>:<store name>; <id>:<store handle>:<store name>; …
+#
+# Each one is provisioned by production's own one-shot, gets an operator credential of its own (filed, never
+# printed — .forge-bench/tenants/<id>.token) and an admin door of its own. With more than one, the admin of
+# forge.lock runs as production runs a multi-brand box: ONE container in HOST MODE (FORGE_ADMIN_TENANT empty),
+# the tenant decided by the address the browser opened, with a platform credential the bench mints for it —
+# and the bench claims each tenant's admin address in the kernel's admin directory, on every `up` (a promotion
+# moves the addresses).
+# @env FORGE_BENCH_TENANTS optional — The tenants an instance bench is born with, when more than one: `<id>:<store handle>:<store name>` entries separated by `;`, the first one served by the shop's door. Unset: the one tenant FORGE_REF_TENANT names.
+BENCH_TENANTS=()
+BENCH_TENANT_HANDLES=()
+BENCH_TENANT_NAMES=()
+bench_tenants() {
+  local entries entry id rest handle name i
+  BENCH_TENANTS=() BENCH_TENANT_HANDLES=() BENCH_TENANT_NAMES=()
+  if [ -z "${FORGE_BENCH_TENANTS:-}" ]; then
+    BENCH_TENANTS=("${FORGE_REF_TENANT:-}")
+    BENCH_TENANT_HANDLES=("${FORGE_REF_STORE_HANDLE:-}")
+    BENCH_TENANT_NAMES=("${FORGE_REF_STORE_NAME:-}")
+    return 0
+  fi
+  IFS=';' read -ra entries <<<"$FORGE_BENCH_TENANTS"
+  for entry in "${entries[@]}"; do
+    entry="$(printf '%s' "$entry" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    [ -n "$entry" ] || continue
+    id="${entry%%:*}"
+    rest="${entry#*:}"
+    handle="${rest%%:*}"
+    name="${rest#*:}"
+    if [ "$rest" = "$entry" ] || [ "$name" = "$rest" ] || [ -z "$name" ] ||
+      ! [[ "$id" =~ ^[a-z][a-z0-9_]*$ ]] || ! [[ "$handle" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+      bench_die "FORGE_BENCH_TENANTS: '$entry' is not <id>:<store handle>:<store name> (an id is lowercase letters, digits and _, starting with a letter; a handle lowercase letters, digits and -). Nothing was started."
+    fi
+    for i in "${!BENCH_TENANTS[@]}"; do
+      [ "${BENCH_TENANTS[$i]}" != "$id" ] || bench_die "FORGE_BENCH_TENANTS names the tenant '$id' twice. Nothing was started."
+    done
+    BENCH_TENANTS+=("$id")
+    BENCH_TENANT_HANDLES+=("$handle")
+    BENCH_TENANT_NAMES+=("$name")
+  done
+  [ "${#BENCH_TENANTS[@]}" -gt 0 ] || bench_die 'FORGE_BENCH_TENANTS is set and lists no tenant. Nothing was started.'
+  # Each further tenant's admin door is a suffix of the block (section 2): 21–29 and, promoted, 81–89.
+  [ "${#BENCH_TENANTS[@]}" -le 10 ] || bench_die "FORGE_BENCH_TENANTS lists ${#BENCH_TENANTS[@]} tenants; a bench serves at most 10 (each one's admin door is a suffix of the port block). Nothing was started."
+}
+# bench_multi_tenant — true when the admin of this bench serves more than one tenant (host mode).
+bench_multi_tenant() { [ "${#BENCH_TENANTS[@]}" -gt 1 ]; }
+
+# ── 1c. values derived from what the bench derives ───────────────────────────────────────────────────────────
+#
+# A compose file of this instance that names its OWN variables for what the bench computes (its production
+# compose reads FORGE_PUBLIC_ORIGIN; the bench calls the same address FORGE_BENCH_ORIGIN) says so in
+# bench/bench.env by REFERENCE, and the bench expands it once the address, the ports and the tenants exist:
+#
+#   FORGE_PUBLIC_ORIGIN=${FORGE_BENCH_ORIGIN}
+#
+# So a promotion moves it too. Only `${NAME}` is expanded, and a reference to something unset is refused rather
+# than expanded to nothing — an empty origin is a box that answers and links nowhere. The bench's own secrets are
+# not referable: a secret copied into a declared name leaves the place it is kept.
+bench_expand_declarations() {
+  local name value out ref
+  for name in $BENCH_DERIVED_NAMES; do
+    value="${!name-}"
+    out=''
+    while [[ "$value" =~ ^([^$]*)\$\{([A-Za-z_][A-Za-z0-9_]*)\}(.*)$ ]]; do
+      ref="${BASH_REMATCH[2]}"
+      out="$out${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[3]}"
+      case "$ref" in
+        FORGE_BENCH_POSTGRES_PASSWORD | FORGE_VAULT_KEY | FORGE_BENCH_OPERATOR_TOKEN* | FORGE_ADMIN_SERVICE_TOKEN | FORGE_ADMIN_PLATFORM_TOKEN | DATABASE_URL)
+          bench_die "bench/bench.env: $name refers to \${$ref}, one of the bench's own secrets — they stay in .forge-bench/secrets.env. Nothing was started." ;;
+      esac
+      [ -n "${!ref+set}" ] ||
+        bench_die "bench/bench.env: $name refers to \${$ref}, which nothing has set by the time the bench derives its values (the address, the ports, the tenants, bench/bench.env itself). Nothing was started."
+      out="$out${!ref}"
+    done
+    case "$value" in *'${'*) bench_die "bench/bench.env: $name=… holds a reference the bench does not expand (only \${NAME} is). Nothing was started." ;; esac
+    export "$name=$out$value"
+  done
 }
 
 # ── 2. the port block ────────────────────────────────────────────────────────────────────────────────────────
@@ -121,23 +224,75 @@ BENCH_PORT_LAYOUT=(
   FORGE_ADMIN_HTTPS_PORT:41 # the admin's https door, when promoted
 )
 BENCH_PORTS_KEPT=''
+#
+# ── 2b. the doors beyond the six ─────────────────────────────────────────────────────────────────────────────
+#
+# Every door the bench publishes on the edge is in ONE list the bench writes into the edge's `ports:` itself —
+# the edge's ports are REPLACED by the bench (`ports: !override`, compose.bench.yml), and a port another file
+# adds to the edge would be dropped by that replacement without a word (measured on the reference instance,
+# 2026-10-10: its counter's door, `127.0.0.1:<NN03>:82` in its own compose, absent from the merged bench). So a
+# door is never smuggled in through a compose file — it is DECLARED here, and section 7 refuses the smuggled one
+# by name. Two kinds:
+#
+#   · each further tenant's admin door (section 1b): tenant n ≥ 2 → NN2<n-1> on loopback, NN8<n-1> https when
+#     promoted, both onto the admin's site of the edge — the same admin container, told apart by the address;
+#   · the instance's own: FORGE_BENCH_DOORS="<NAME>:<suffix>:<edge port> …", e.g. a totem the instance's
+#     Caddyfile serves on the edge's :82 — `FORGE_TOTEM_HTTP_PORT:03:82` publishes it on <block>03 as
+#     FORGE_TOTEM_HTTP_PORT, which the shell may set to move it like any other door.
+#
+# A declared door is a LOOPBACK door: promoted, it keeps serving this machine; it gets no https door of its own.
+# Entries "<NAME>:<suffix>:<service>:<container port>".
+# @env FORGE_BENCH_DOORS optional — Doors of an instance bench beyond its own (a totem, a second front the instance's Caddyfile serves on another edge port): `<NAME>:<suffix>:<edge port>` entries, space separated — published on <block><suffix> as NAME, on loopback.
+BENCH_DOORS=()
 bench_ports() {
   # FORGE_BENCH_PORT_BLOCK is described once, where the Forge repository's own bench reads it.
-  local block="${FORGE_BENCH_PORT_BLOCK:-82}" entry name suffix
+  local block="${FORGE_BENCH_PORT_BLOCK:-82}" entry name suffix i seen=' ' names=' '
   case "$block" in
     1[1-9] | [2-9][0-9]) ;;
     *) bench_die "FORGE_BENCH_PORT_BLOCK=$block is not a port block. It is two digits, 11 to 99 (10xx and below are privileged): every door of this bench lands on <block>xx. Nothing was started." ;;
   esac
+  bench_tenants
+  BENCH_DOORS=()
+  for ((i = 1; i < ${#BENCH_TENANTS[@]}; i++)); do
+    BENCH_DOORS+=("FORGE_BENCH_ADMIN_HTTP_PORT_$((i + 1)):2$i:caddy:81" "FORGE_BENCH_ADMIN_HTTPS_PORT_$((i + 1)):8$i:edge-tls:444")
+  done
+  for entry in ${FORGE_BENCH_DOORS:-}; do
+    [[ "$entry" =~ ^(FORGE_[A-Z0-9_]+_PORT):([0-9][0-9]):([1-9][0-9]{0,4})$ ]] ||
+      bench_die "FORGE_BENCH_DOORS: '$entry' is not <NAME>:<suffix>:<edge port> — e.g. FORGE_TOTEM_HTTP_PORT:03:82 (a FORGE_…_PORT name, two digits, the port the edge's Caddyfile listens on). Nothing was started."
+    case "${BASH_REMATCH[3]}" in
+      80 | 81) bench_die "FORGE_BENCH_DOORS: '$entry' — the edge's :${BASH_REMATCH[3]} is the bench's own (the shop's and the admin's door). Nothing was started." ;;
+    esac
+    BENCH_DOORS+=("${BASH_REMATCH[1]}:${BASH_REMATCH[2]}:caddy:${BASH_REMATCH[3]}")
+  done
   BENCH_PORTS_KEPT=''
-  for entry in "${BENCH_PORT_LAYOUT[@]}"; do
+  for entry in "${BENCH_PORT_LAYOUT[@]}" ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do
     name="${entry%%:*}"
     suffix="${entry#*:}"
+    suffix="${suffix%%:*}"
+    # Two doors on one suffix would be one port published twice — compose would refuse it half-way through `up`.
+    case "$seen" in *" $suffix "*) bench_die "two doors of this bench land on the suffix $suffix ($name and another) — FORGE_BENCH_DOORS must pick a suffix none of the bench's doors uses (00 01 04 05 41 43, 2x/8x for further tenants). Nothing was started." ;; esac
+    case "$names" in *" $name "*) bench_die "two doors of this bench are named $name. Nothing was started." ;; esac
+    seen="$seen$suffix "
+    names="$names$name "
     if [ -n "${!name:-}" ]; then
       BENCH_PORTS_KEPT="${BENCH_PORTS_KEPT}${BENCH_PORTS_KEPT:+ }$name=${!name}"
       continue
     fi
     export "$name=$block$suffix"
   done
+}
+
+# bench_tenant_admin_port <index> [https] — the port of tenant <index>'s admin door (0 is the first tenant's).
+bench_tenant_admin_port() {
+  local var
+  if [ "$1" = 0 ]; then
+    if [ "${2:-}" = https ]; then var=FORGE_ADMIN_HTTPS_PORT; else var=FORGE_ADMIN_HTTP_PORT; fi
+  elif [ "${2:-}" = https ]; then
+    var="FORGE_BENCH_ADMIN_HTTPS_PORT_$(($1 + 1))"
+  else
+    var="FORGE_BENCH_ADMIN_HTTP_PORT_$(($1 + 1))"
+  fi
+  printf '%s' "${!var}"
 }
 
 # ── 3. the address: born on `localhost`, promoted to a host, an IP or a tailnet ──────────────────────────────
@@ -292,6 +447,31 @@ bench_address() {
   fi
 }
 
+# bench_tenant_admin_origin <index> [loopback] — the origin a browser opens for tenant <index>'s admin: the
+# promoted https door, or (on localhost, or asked for `loopback`) the loopback one.
+bench_tenant_admin_origin() {
+  if [ "$1" = 0 ] && [ "${2:-}" != loopback ]; then
+    printf '%s' "$FORGE_BENCH_ADMIN_ORIGIN"
+  elif [ "$BENCH_DESTINATION" = localhost ] || [ "${2:-}" = loopback ]; then
+    printf 'http://localhost:%s' "$(bench_tenant_admin_port "$1")"
+  else
+    printf 'https://%s:%s' "$BENCH_HOST" "$(bench_tenant_admin_port "$1" https)"
+  fi
+}
+
+# bench_admin_claims <index> — every `host:port` a browser sends for tenant <index>'s admin, which the kernel's
+# admin directory has to map to that tenant in host mode (it keys on the authority, port included): the loopback
+# door as `localhost`, and, promoted, the https door under each host the store answers for.
+bench_admin_claims() {
+  local host claims="localhost:$(bench_tenant_admin_port "$1")"
+  if [ "$BENCH_DESTINATION" != localhost ]; then
+    for host in $(bench_store_hosts); do
+      [ "$host" = localhost ] || claims="$claims $host:$(bench_tenant_admin_port "$1" https)"
+    done
+  fi
+  printf '%s' "$claims"
+}
+
 # ── 3b. the https doors of a promoted bench ──────────────────────────────────────────────────────────────────
 #
 # Two publishers, one per destination, and each runs ONLY for its own: the host destination brings up the
@@ -346,7 +526,12 @@ bench_tls_edge_down() {
 
 # The doors `tailscale serve` publishes for this bench: "<https port> <loopback target>", one per line.
 bench_tailnet_doors() {
+  local i
   printf '%s http://127.0.0.1:%s\n' "$FORGE_HTTPS_PORT" "$FORGE_HTTP_PORT" "$FORGE_ADMIN_HTTPS_PORT" "$FORGE_ADMIN_HTTP_PORT"
+  # …and each further tenant's admin door (section 1b).
+  for ((i = 1; i < ${#BENCH_TENANTS[@]}; i++)); do
+    printf '%s http://127.0.0.1:%s\n' "$(bench_tenant_admin_port "$i" https)" "$(bench_tenant_admin_port "$i")"
+  done
 }
 
 # bench_tailnet_door_target <https-port> — what `tailscale serve` proxies <port>'s root to today, or nothing.
@@ -453,6 +638,41 @@ bench_source_secrets() {
   # The base compose interpolates `${DATABASE_URL:?}` before the overlay is merged, so it is SET here, to the
   # bench's own database — never inherited (see bench_load_declarations).
   export DATABASE_URL="postgres://forge:${FORGE_BENCH_POSTGRES_PASSWORD:-not-minted}@postgres:5432/forge"
+  bench_hook_state
+}
+
+# ── 5b. what the seed hook learned ───────────────────────────────────────────────────────────────────────────
+#
+# Some values exist only AFTER the seed: the id of a store the hook created, a counter's store a totem serves.
+# The hook writes them, one `NAME=value` per line, into the file it is handed (FORGE_BENCH_HOOK_ENV_FILE =
+# .forge-bench/hook.env), and from then on every compose call of this bench sees them — the services declared
+# in FORGE_BENCH_AFTER_HOOK are started after the hook for exactly this reason (bench/up.sh, step 8). Read as
+# DATA, never sourced: a line is a name and a value, nothing in it runs. The names the bench derives itself are
+# refused — a hook may teach the box something new, not move its database or its doors.
+BENCH_HOOK_ENV="$BENCH_STATE/hook.env"
+bench_hook_state() {
+  local line name value
+  [ -f "$BENCH_HOOK_ENV" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in '' | '#'*) continue ;; esac
+    name="${line%%=*}"
+    value="${line#*=}"
+    [[ "$name" =~ ^[A-Z_][A-Z0-9_]*$ ]] && [ "$name" != "$line" ] ||
+      bench_die ".forge-bench/hook.env (written by the seed hook) carries a line that is not NAME=value: '$line'"
+    case "$name" in
+      FORGE_BENCH_* | DATABASE_URL | FORGE_VAULT_KEY | FORGE_ADMIN_SERVICE_TOKEN | FORGE_ADMIN_PLATFORM_TOKEN | FORGE_ADMIN_TENANT | \
+        COMPOSE_PROJECT_NAME | FORGE_DOMAIN | FORGE_ADMIN_DOMAIN | FORGE_MEDIA_BASE_URL | FORGE_STORE_HOSTS | *_IMAGE)
+        bench_die ".forge-bench/hook.env sets $name, which the bench derives itself — a hook teaches the box new values, it does not move the bench's own." ;;
+    esac
+    case " $(bench_door_names) " in *" $name "*) bench_die ".forge-bench/hook.env sets $name, one of the bench's doors — doors are declared in bench/bench.env." ;; esac
+    case "$value" in \"*\") value="${value:1:${#value}-2}" ;; \'*\') value="${value:1:${#value}-2}" ;; esac
+    export "$name=$value"
+  done <"$BENCH_HOOK_ENV"
+}
+# bench_door_names — the name of every door this bench publishes.
+bench_door_names() {
+  local entry
+  for entry in "${BENCH_PORT_LAYOUT[@]}" ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do printf '%s ' "${entry%%:*}"; done
 }
 # bench_put_secret NAME VALUE — replace one line of secrets.env without ever echoing the value.
 bench_put_secret() {
@@ -568,11 +788,45 @@ bench_fronts_overlay() {
           ;;
       esac
     done
+    bench_doors_overlay
   } >"$out.tmp" || exit 1
   # An empty map, so the file is a valid overlay when every front is the image.
   grep -q '^  [a-z]' "$out.tmp" || sed -i.bak 's/^services:$/services: {}/' "$out.tmp"
   rm -f "$out.tmp.bak"
   mv "$out.tmp" "$out"
+}
+
+# bench_doors_overlay — the edge's ports, written WHOLE when the bench has doors beyond the six (section 2b):
+# the bench's own two plus every further one, replacing the list compose.bench.yml gives (this file is merged
+# after it). With no further door nothing is written, and the edge is exactly compose.bench.yml's. Literal
+# values, like everything in this generated file, and regenerated on every `up`.
+bench_doors_overlay() {
+  local entry name rest service target caddy='' edge=''
+  for entry in ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do
+    name="${entry%%:*}"
+    rest="${entry#*:}"
+    rest="${rest#*:}"
+    service="${rest%%:*}"
+    target="${rest#*:}"
+    case "$service" in
+      caddy) caddy="$caddy      - '${FORGE_BENCH_BIND:-127.0.0.1}:${!name}:$target'"$'\n' ;;
+      edge-tls) edge="$edge      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:${!name}:$target'"$'\n' ;;
+    esac
+  done
+  if [ -n "$caddy" ]; then
+    echo '  caddy:'
+    echo '    ports: !override'
+    echo "      - '${FORGE_BENCH_BIND:-127.0.0.1}:$FORGE_HTTP_PORT:80'"
+    echo "      - '${FORGE_BENCH_BIND:-127.0.0.1}:$FORGE_ADMIN_HTTP_PORT:81'"
+    printf '%s' "$caddy"
+  fi
+  if [ -n "$edge" ]; then
+    echo '  edge-tls:'
+    echo '    ports: !override'
+    echo "      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:$FORGE_HTTPS_PORT:443'"
+    echo "      - '${FORGE_BENCH_TLS_BIND:-0.0.0.0}:$FORGE_ADMIN_HTTPS_PORT:444'"
+    printf '%s' "$edge"
+  fi
 }
 
 # ── 7. compose, the one way this bench calls it ──────────────────────────────────────────────────────────────
@@ -585,11 +839,80 @@ bench_fronts_overlay() {
 bench_compose() {
   local args=(-f "$BENCH_ROOT/compose.yml") extra
   [ -f "$BENCH_ROOT/compose.override.yml" ] && args+=(-f "$BENCH_ROOT/compose.override.yml")
-  # @env FORGE_BENCH_COMPOSE_FILES optional — Extra compose files (relative to the instance root, space-separated) a local bench merges after its own overlay, for a front or a service the instance adds.
+  # @env FORGE_BENCH_COMPOSE_FILES optional — Extra compose files (relative to the instance root, space-separated) a local bench merges before its own overlay (so the overlay's guarantees — its database, its mailbox, the edge's ports — hold over them), for a front or a service the instance adds.
   for extra in ${FORGE_BENCH_COMPOSE_FILES:-}; do args+=(-f "$BENCH_ROOT/$extra"); done
   args+=(-f "$BENCH_ROOT/bench/compose.bench.yml" -f "$BENCH_ROOT/bench/compose.edge-tls.yml")
   [ -f "$BENCH_STATE/fronts.compose.yml" ] && args+=(-f "$BENCH_STATE/fronts.compose.yml")
   docker compose --project-directory "$BENCH_ROOT" --env-file "$BENCH_ROOT/bench/bench.env" "${args[@]}" "$@"
+}
+
+# bench_compose_read … — compose asked a QUESTION (config), which only has to read the files: before step 1 a
+# virgin bench has no secrets yet, and the base compose refuses to interpolate without them.
+bench_compose_read() {
+  (
+    export FORGE_BENCH_POSTGRES_PASSWORD="${FORGE_BENCH_POSTGRES_PASSWORD:-not-minted}" FORGE_VAULT_KEY="${FORGE_VAULT_KEY:-not-minted}"
+    bench_compose "$@"
+  )
+}
+
+# bench_seam_doors — ⛔ A DOOR NEVER VANISHES WITHOUT A WORD. The files merged BEFORE the bench's overlay (your
+# compose.override.yml, FORGE_BENCH_COMPOSE_FILES) may publish ports on the edge — production's way of adding a
+# door — and the overlay REPLACES the edge's ports after them, so on the bench each such port would simply not
+# be there. Asked of compose itself (the edge's published container ports with those files, against
+# compose.yml's alone): a container port they add that no door of the bench covers (80, 81, FORGE_BENCH_DOORS)
+# is refused by name, before anything is started. Why declared doors and not a later merge of those files:
+# the bench's overlay is what points the box at the bench's own database and mailbox, and a file merged after
+# it could undo that by accident; and a declared door moves with the block, appears in the summary and is
+# refused when it collides — a port in a compose file does none of that.
+bench_seam_doors() {
+  local seams=() names='' extra base all target covered=' 80 81 ' entry missing=''
+  [ -f "$BENCH_ROOT/compose.override.yml" ] && seams+=(-f "$BENCH_ROOT/compose.override.yml") && names='compose.override.yml'
+  for extra in ${FORGE_BENCH_COMPOSE_FILES:-}; do
+    seams+=(-f "$BENCH_ROOT/$extra")
+    names="${names}${names:+, }$extra"
+  done
+  [ "${#seams[@]}" -gt 0 ] || return 0
+  edge_targets() {
+    local json
+    # Before step 1 a virgin bench has no secrets yet; compose only has to READ the files here (bench_compose_read).
+    json="$(export FORGE_BENCH_POSTGRES_PASSWORD="${FORGE_BENCH_POSTGRES_PASSWORD:-not-minted}" FORGE_VAULT_KEY="${FORGE_VAULT_KEY:-not-minted}"
+      docker compose --project-directory "$BENCH_ROOT" --env-file "$BENCH_ROOT/bench/bench.env" -f "$BENCH_ROOT/compose.yml" "$@" \
+      config --format json 2>"$BENCH_STATE/.seam-doors.err")" || {
+      cat "$BENCH_STATE/.seam-doors.err" >&2
+      bench_die "could not read the edge's ports from compose.yml${1:+ with $names} (above) — refusing rather than guessing whether a door would vanish."
+    }
+    rm -f "$BENCH_STATE/.seam-doors.err"
+    printf '%s' "$json" | jq -r '.services.caddy.ports[]?.target' | sort -u
+  }
+  mkdir -p "$BENCH_STATE"
+  base=" $(edge_targets | tr '\n' ' ') "
+  all="$(edge_targets "${seams[@]}")"
+  for entry in ${BENCH_DOORS[@]+"${BENCH_DOORS[@]}"}; do
+    case "$entry" in *:caddy:*) covered="$covered${entry##*:} " ;; esac
+  done
+  for target in $all; do
+    case "$base" in *" $target "*) continue ;; esac
+    case "$covered" in *" $target "*) continue ;; esac
+    missing="$missing $target"
+  done
+  [ -n "$missing" ] || return 0
+  echo "[bench] ⛔ the edge's port(s)${missing} are published by a file merged before the bench's overlay" >&2
+  echo "[bench]    ($names). The bench REPLACES the edge's ports, so on this bench those doors would not exist —" >&2
+  echo "[bench]    and nothing would say so. Declare each one as a door of the bench, in bench/bench.env:" >&2
+  for target in $missing; do echo "[bench]      FORGE_BENCH_DOORS=… FORGE_<NAME>_PORT:<two-digit suffix>:$target" >&2; done
+  echo "[bench]    Nothing was started." >&2
+  exit 1
+}
+
+# bench_profiles — every profile this instance's compose declares, as `--profile <p>` arguments, the bench's own
+# `edge-tls` last. ⚠️ A profiled service's container survives `down` (and `down -v`) when its profile is not
+# named — measured 2026-10-10, compose 5.3.1 — so taking a bench down names them all.
+bench_profiles() {
+  local p
+  for p in $(bench_compose_read config --profiles 2>/dev/null); do
+    [ "$p" = edge-tls ] || printf -- '--profile\n%s\n' "$p"
+  done
+  printf -- '--profile\nedge-tls\n'
 }
 
 # ── 8. one project per checkout ──────────────────────────────────────────────────────────────────────────────
@@ -637,7 +960,15 @@ bench_prepare() {
   bench_address
   bench_images
   bench_source_secrets
-  # The admin serves the bench's one tenant.
-  export FORGE_ADMIN_TENANT="${FORGE_ADMIN_TENANT-${FORGE_REF_TENANT:-}}"
+  if bench_multi_tenant; then
+    # More than one tenant: the admin runs in HOST MODE, as production runs a multi-brand box — no tenant
+    # pinned, no per-tenant login-driver (it would win over the platform credential), the tenant decided by
+    # the admin address the browser opened (section 1b).
+    export FORGE_ADMIN_TENANT='' FORGE_ADMIN_SERVICE_TOKEN=''
+  else
+    # The admin serves the bench's one tenant.
+    export FORGE_ADMIN_TENANT="${FORGE_ADMIN_TENANT-${FORGE_REF_TENANT:-}}"
+  fi
+  bench_expand_declarations
   bench_project
 }
