@@ -45,6 +45,21 @@ done
 . "$HERE/bin/require-node.sh"
 require_node || exit 1
 
+# ⛔ A CONTAINER PATH MAY NEVER REACH A HOST PROCESS (README §2, and `host_node` in bin/box-up.sh, which this
+# mirrors). bench/bench.env declares FORGE_SEED_DATASET_DIR=/app/seed-dataset for the KERNEL, and the kit exports
+# it into this hook too. Measured 2026-10-10 on the first live run with the dataset: step 9 rc=0 after 29 min,
+# then step 11 died «FORGE_SEED_DATASET_DIR=/app/seed-dataset holds no forge-seed-dataset.json». So every host
+# script gets the dataset's HOST path (FORGE_SEED_DATASET_HOST_DIR, made absolute) and no other /app or /data path.
+host_node() {
+  local ds="${FORGE_SEED_DATASET_HOST_DIR:-}" name value blank=()
+  case "$ds" in '' | /*) ;; *) ds="$HERE/${ds#./}" ;; esac
+  while IFS='=' read -r name value; do
+    case "$name" in FORGE_*) ;; *) continue ;; esac
+    case "$value" in /app | /app/* | /data | /data/*) blank+=("$name=") ;; esac
+  done < <(env)
+  env ${blank[@]+"${blank[@]}"} FORGE_SEED_DATASET_DIR="$ds" node "$@"
+}
+
 tenant="$FORGE_BENCH_TENANT"
 api="http://localhost:$FORGE_HTTP_PORT"
 # ⛔ PROMOTED TO A HOST OR IP, THE STORE'S ADDRESS IS THE https DOOR, and the scripts below follow it: 6b claims
@@ -60,14 +75,14 @@ FORGE_OPERATOR_TOKEN="$(cat "$FORGE_BENCH_OPERATOR_TOKEN_FILE")"
 export FORGE_OPERATOR_TOKEN
 
 say "6 · seed-box ($tenant)"
-node bin/seed-box.mjs --tenant "$tenant" --api "$api" || die "seed-box failed for $tenant (above)."
+host_node bin/seed-box.mjs --tenant "$tenant" --api "$api" || die "seed-box failed for $tenant (above)."
 
 say "6b · the root store claims $FORGE_BENCH_ORIGIN"
-node bin/store-host.mjs --tenant "$tenant" --api "$api" --origin "$FORGE_BENCH_ORIGIN" --store "$FORGE_BENCH_STORE_ID" ||
+host_node bin/store-host.mjs --tenant "$tenant" --api "$api" --origin "$FORGE_BENCH_ORIGIN" --store "$FORGE_BENCH_STORE_ID" ||
   die "the root store could not claim $FORGE_BENCH_ORIGIN (above)."
 
 say "8 · the curated data ($tenant)"
-node bin/seed.mjs --tenant "$tenant" --api "$api" || die "the curated seed failed for $tenant (above)."
+host_node bin/seed.mjs --tenant "$tenant" --api "$api" || die "the curated seed failed for $tenant (above)."
 
 if [ "${FORGE_DEMO_BENCH_DATASET:-}" = 1 ]; then
   # box-up's speaking seed, sourced from box-up itself: `dc` and `note` are the two names it calls, given
@@ -81,13 +96,13 @@ if [ "${FORGE_DEMO_BENCH_DATASET:-}" = 1 ]; then
   say "9 · seed-demo ($tenant, store $handle) — the massive catalogue; it speaks every ${FORGE_SEED_HEARTBEAT_S:-60} s"
   seed_demo_speaking "$tenant" "$handle" || die "seed-demo failed for $tenant (above)."
   say "11 · the shop window ($tenant)"
-  node bin/seed.mjs --tenant "$tenant" --api "$api" --phase window || die "the window failed for $tenant (above)."
+  host_node bin/seed.mjs --tenant "$tenant" --api "$api" --phase window || die "the window failed for $tenant (above)."
   say "12 · the verdict over the data ($tenant)"
-  node bin/verify-seed.mjs --tenant "$tenant" --api "$api" || die "verify-seed: $tenant did not settle (above)."
-  node bin/verify-content.mjs --tenant "$tenant" --api "$api" || die "verify-content: $tenant did not settle (above)."
+  host_node bin/verify-seed.mjs --tenant "$tenant" --api "$api" || die "verify-seed: $tenant did not settle (above)."
+  host_node bin/verify-content.mjs --tenant "$tenant" --api "$api" || die "verify-content: $tenant did not settle (above)."
 else
   say "9-12 · skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1 (~23 min); this bench holds the curated one"
 fi
 
 say "14-bis · every door of $tenant, opened anonymously"
-node bin/prove-doors.mjs --tenant "$tenant" --api "$api" || die "a door of $tenant does not answer as it must (above)."
+host_node bin/prove-doors.mjs --tenant "$tenant" --api "$api" || die "a door of $tenant does not answer as it must (above)."

@@ -128,6 +128,62 @@ override, read in that one file. `node bin/release-tree.mjs` says what this mach
 
 ## 2. Bringing it up
 
+### ★★★ The everyday bench: the Forge kit, as a client uses it (IB-3)
+
+**A developer working on this demo brings it up with the bench the Forge instance template ships**
+(`templates/instance/bench/`), copied into `bench/` **unchanged** — `bench-kit.lock` names the Forge commit and
+each file's sha256, and `bin/bench-kit.guard.mjs` goes red, saying *"this is a product requirement, not a local
+fix"*, the day a file of it is edited. This box is the product's first client: what the kit cannot express here
+is written down as a requirement on the kit (the table below), never patched into the copy.
+
+```bash
+bash bench/up.sh                              # up: forgeco, its two stores, the curated catalogue, admin login
+bash bench/promote.sh 192.168.1.20            # promote: https on any address of this machine (or `tailnet`)
+bash bench/promote.sh localhost               # …and back
+bash bench/down.sh -v                         # down, data and minted secrets dropped (`down.sh` keeps them)
+FORGE_DEMO_BENCH_DATASET=1 bash bench/up.sh   # the massive catalogue too (step 9 + 11 + 12, speaking)
+COMPOSE_PROJECT_NAME=b FORGE_BENCH_PORT_BLOCK=71 bash bench/up.sh   # a second bench on this machine
+```
+
+No `.env`, no `.secrets`, no `env-source.sh`: the kit reads **only** `bench/bench.env` (production's `.env` is
+never read; a FORGE_* of this shell it does not declare is dropped and named) and mints its own database
+password, vault key and credentials into `.forge-bench/` (0600, never printed). Docker, `jq`, `curl` — and Node,
+for this box's seed hook. Doors on block `NN` (default 82): `NN00` shop · `NN01` admin · `NN04` mailbox (the
+login codes) · `NN05` the kernel; promoted, `NN43` https shop · `NN41` https admin. Sign in at the admin door as
+`operator@bench.example.test`; the code is in the mailbox (`bash bench/mail.sh`).
+
+**What is the demo's enters through the kit's three seams, and nothing else:** `bench/bench.env` (the
+declaration — the one file under `bench/` that is ours), `bench-demo/compose.yml` (`FORGE_BENCH_COMPOSE_FILES`)
+and `bench-demo/seed-hook.sh` (`FORGE_BENCH_SEED_HOOK`: steps 6, 6b, 8 and 14-bis of the birth below — and 9,
+11, 12 with the dataset asked). Each file says, line by line, why.
+
+Measured on a clean clone of this branch (no `npm ci`, no `.env`), project `ib3`, block 66, 2026-10-10, `ms-s1`
+(the numbers are also in "What it costs", below):
+
+| gesture | RC | time | what was proved |
+|---|---|---|---|
+| `bash bench/up.sh` from nothing | 0 | **29,4 s** | vitrine `/` 200 (`X-Forge-Served-By: storefront`), `/checkout` 200, `/account/login` 200, `/tenis` 200, an invented path 404; 14-bis «every door of forgeco answers as it must (4)»; admin login with the code read from the bench's mailbox, `/orders` still signed in (cookie `forge_admin_session_forgeco`, Secure) |
+| `bash bench/promote.sh 192.168.1.221` | 0 | **28,6 s** | the same four doors over https on the LAN IP; login on `https://<ip>:NN41`; the kernel's `FORGE_PUBLIC_ORIGIN` = the https door; plain http on the IP refused; `tailscale` executed 0 times |
+| `bash bench/promote.sh localhost` | 0 | **22,6 s** | the https door gone (`curl` exit 7); `FORGE_PUBLIC_ORIGIN` back to the loopback shop door (`NN00`); login again |
+
+#### What the kit bench does not cover — `bin/box-up.sh` keeps it
+
+| what this box does | on the kit bench | why / where it stays |
+|---|---|---|
+| **two tenants** (`forgeco`, `forgecafe` — `seed/box.json`) and **two admin doors** (`:NN01`, `:NN02`) | **forgeco only**, one admin door | the kit provisions ONE tenant (`bench/up.sh:89`) and its admin serves one: `bench/up.sh:43` refuses an empty `FORGE_ADMIN_TENANT`, which is host mode (one admin for both, `FORGE_ADMIN_PLATFORM_TOKEN`) → `bin/box-up.sh` |
+| the **café's fork** and the **totem** (`compose.override.yml`) | **not started** (a profile no one activates, `bench-demo/compose.yml`) | they serve forgecafe; and a door of their own (`:NN03`, `:NN02`) cannot be published: the kit's `ports: !override` on the edge (`bench/compose.bench.yml:97`) is merged AFTER every seam file (`bench/lib.sh:589-590`) → `bin/box-up.sh` |
+| the **massive dataset** (step 9) | ✅ with `FORGE_DEMO_BENCH_DATASET=1`, through `bench/compose.sh`, speaking (box-up's own block) | — |
+| the **shared photo cache** (DX-I3, `FORGE_SEED_PHOTOS_VOLUME`) | ❌ per-bench cache only | `bench/down.sh -v` removes a volume of that name whichever bench created it (measured, compose 5.3.1) — it would empty every bench's cache |
+| project refusal + port block (DX-I3) | ✅ the kit's own (`bench_refuse_foreign_project`, `FORGE_BENCH_PORT_BLOCK`) | layout differs: kit `NN00/01/04/05` + `NN43/41`, box-up `NN00…NN04` + `NN43` — a kit bench and a box-up bench need different blocks |
+| `--tenant` (DX-I5) | n/a — one tenant | → `bin/box-up.sh --tenant` |
+| not warming (DX-I6), the loopback door (DX-I2) | ✅ the kit never warms, so the door the warmer needs is not needed | `--warm` / `--warm-only` → `bin/box-up.sh` |
+| the promotion (`--promote`) | ✅ host/IP/tailnet/localhost (`bench/promote.sh`); the hook re-claims the store's address on every `up` | box-up's six doors and the admin-host claims → `bin/box-up.sh --promote` |
+| verdicts 12–15 and the roteiro | 14-bis ✅ always; 12 ✅ only after 9 (verify-seed is red by construction without the massive); 13, 14, 15 and the roteiro ❌ | 15 grades both tenants and the six faces → `bin/box-up.sh` |
+| the gate (`/enter` access keys, step 5b) | ❌ | the gate is retired (§4); the keys stay in `bin/box-up.sh` |
+| the remote birth, deploy, reset cycle | untouched | `bin/birth-remote.sh`, `bin/deploy.sh`, `bin/box-cycle.sh` |
+
+### The full birth — `bin/box-up.sh`, both tenants, every verdict
+
 On a bench, in order. Every step is idempotent except the two one-shots, which say so.
 
 ```bash
@@ -540,6 +596,8 @@ step 14, every verdict green; `--warm-only` then warmed the café's 15 pages in 
 | warming, `--warm-only --tenant forgecafe` after that birth (15 urls) | **4 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i6 |
 | step 9 again on a box that already holds the catalogue | **3 min 21 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
 | the 18 582 dataset photos (3,4 GiB), cold | **5–7 min** (inside step 9) | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx0 |
+| **kit bench** `bash bench/up.sh`, clean clone, from nothing — forgeco, curated catalogue, hook through 14-bis (IB-3) | **29,4 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
+| kit bench promoted, `bash bench/promote.sh <LAN IP>` · back, `bash bench/promote.sh localhost` | **28,6 s** · **22,6 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-ib-3 |
 | warming, `--warm-only` (21 615 urls) | **5 min 05 s** | 2026-10-10 | bench, `ms-s1` | RESULTADOS-dx-i2 |
 | warming, reset cycle gesture 4 (after `--promote tailnet`) | **2 409 s** (~40 min) | 2026-09-15 | bench | docs/operations/reset-cycle.md |
 | birth, deployed box | **80–97 min** (seed 51–66 min) | 2026-10-09 | box, 2 vCPU (BV2-4) | stress card (v04) |

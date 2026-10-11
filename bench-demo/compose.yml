@@ -12,18 +12,21 @@
 #      move it too (measured 2026-10-10: `promote.sh 192.168.1.221` → the kernel's FORGE_PUBLIC_ORIGIN
 #      `https://192.168.1.221:<NN43>`, and back to `http://localhost:<NN00>`).
 #   2. The mailbox's PROFILE. compose.yml declares `mailpit` behind `bench-mailbox` (a deployment never
-#      creates it). The kit starts it by name — which works — but takes the bench down with
-#      `down -v` and only the `edge-tls` profile, and compose leaves a profiled service's container, network
-#      and volume behind (measured on the kit, IB-2 §1) ⇒ `bench/down.sh` would end RED on a survivor. On a kit
-#      bench the mailbox is the kit's, unconditionally, so the profile is reset.
+#      creates it), and the kit's overlay makes the kernel DEPEND on `mailpit`. With the profile inactive the
+#      project is invalid and the kit stops at its step 2, before anything is created — measured 2026-10-10
+#      with this entry removed: «service "kernel" depends on undefined service "mailpit": invalid compose
+#      project», `bench/up.sh` RC 1. On a kit bench the mailbox is the kit's, unconditionally: profile reset.
 #   3. The café's services OFF. compose.override.yml is merged by the kit whether we ask or not (lib.sh,
 #      `bench_compose`), and it brings `storefront-coffee` and `totem`. Both serve the forgecafe tenant, which
 #      a kit bench does not have (the kit provisions ONE tenant — README §2). Behind a profile nobody
-#      activates, they are not created; the totem would otherwise start on `sto_PENDING_SEED`.
+#      activates, they are not created (the totem would otherwise be created with the placeholder id bench/bench.env
+#      carries only so compose can read compose.override.yml).
 #
 # ⚠️ What is NOT here, on purpose: ports. The kit's overlay publishes the caddy with `ports: !override` AFTER
 # this file, so a door added here (the totem's :82, the café admin's :83) would be dropped without a word —
-# that is a requirement on the kit, listed in README §2, not something to work around in this file.
+# measured 2026-10-10: `127.0.0.1:<NN03>:82` added under `caddy.ports` here → `bash bench/compose.sh config`
+# publishes <NN00> and <NN01> only. That is a requirement on the kit, listed in README §2, not something to work
+# around in this file.
 
 services:
   kernel:

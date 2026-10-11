@@ -105,7 +105,8 @@ const FAKE_NODE = String.raw`#!/usr/bin/env bash
 case "$1" in -v|--version) echo v24.18.0; exit 0 ;; esac
 tok=absent; [ "$FORGE_OPERATOR_TOKEN" = "$IB3_OP" ] && tok=kit; [ -n "$FORGE_OPERATOR_TOKEN" ] && [ "$tok" = absent ] && tok=OTHER
 ca="$NODE_EXTRA_CA_CERTS"; [ -n "$ca" ] || ca=none
-echo "node $* token=$tok ca=$ca" >> "$IB3_LOG"
+ds="$FORGE_SEED_DATASET_DIR"; [ -n "$ds" ] || ds=none
+echo "node $* ds=$ds token=$tok ca=$ca" >> "$IB3_LOG"
 exit 0
 `;
 
@@ -174,6 +175,9 @@ test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds TH
 test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT, speaking, then the window and the verdict', () => {
   const { rc, out, nodes, calls } = up({ FORGE_DEMO_BENCH_DATASET: '1' });
   assert.equal(rc, 0, `bench/up.sh with the dataset asked did not finish:\n${out.slice(-2500)}`);
+  // ⛔ A container path never reaches a host script: bench/bench.env says /app/seed-dataset for the KERNEL.
+  // Measured live 2026-10-10 without this: step 11 «FORGE_SEED_DATASET_DIR=/app/seed-dataset holds no …».
+  for (const l of nodes) assert.match(l, / ds=\/\S+\/shop\/seed\/dataset /, `a host script was handed a container path (or none): ${l}`);
   const seedDemo = calls.filter((l) => l.includes('dist/seed-demo.js'));
   assert.equal(seedDemo.length, 1, `seed-demo should run once:\n  ${calls.join('\n  ')}`);
   // Through bench/compose.sh: the kit's file list (its overlay), never a bare `docker compose`.
