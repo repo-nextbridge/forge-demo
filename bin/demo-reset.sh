@@ -66,31 +66,35 @@ done
 # A restore puts back the gold's bytes, and the gold's past (box-up/birth step 10, `seed-history` — 180 days ending
 # the day of the birth) ends on the day the gold was taken: a month later the dashboard's 7 and 30 days are empty.
 # `seed-history` of the image forge.lock pins (v0.3.2) cannot help — it is reset+seed and SKIPS a tenant that has a
-# past. The mode that completes it to today is SH-1's, in the product, and comes with the next cut of the images.
-# So the reset ASKS THE IMAGE (bin/history-topup.sh: the kernel's own dist/seed-history.js, never a version typed
-# here) and says, on every run and every --plan, which of the two it is.
+# past. Since SH-1 (product PR #659) the same plain `node dist/seed-history.js --tenant <t>`, with NO flag, decides
+# by the tenant's state and completes a recorded past to today (`"mode":"top-up"`); it arrives with the next cut of
+# the images. So the reset ASKS THE IMAGE which of the two it holds (bin/history-mode.sh — the mode literal only a
+# state-deciding script carries, never a version typed here) and says it on every run and every --plan.
 #
-# ⛔ AND EVEN WHEN THE IMAGE HAS IT, THIS RESET DOES NOT CALL IT YET — deliberately. Every past this repository
-# writes is written INSIDE the buyer-mail silence (box-up step 10's mailbox guard; the curated seed silences, the
-# window re-arms), with ONE delivery method active (`seed-history` refuses two). A restored box is the gold: its
-# window has run, its buyer mail is ARMED, both methods are active — and the deployed box speaks real SMTP. Calling
-# the completing mode here needs a decision this slice was not given: how a LIVE box is silenced for it (or whether
-# SH-1's mode is mail-free by construction). So the image is read, the answer is said, and the call waits for that
-# decision (RESULTADOS-sh-2, ABERTO). Nothing below changes the gold.
-# shellcheck source=history-topup.sh
-[ ! -f "$HERE/bin/history-topup.sh" ] || . "$HERE/bin/history-topup.sh"
+# ⛔ AND EVEN WHEN THE IMAGE COMPLETES BY ITSELF, THIS RESET DOES NOT RUN IT YET — deliberately. Every past this
+# repository writes is written INSIDE the buyer-mail silence (box-up step 10's mailbox guard; the curated seed
+# silences, the window re-arms), with ONE delivery method active (`seed-history` refuses two). A restored box is the
+# gold: its window has run, its buyer mail is ARMED, both delivery methods are active — and the deployed box speaks
+# real SMTP. Running the completion here needs a decision this slice was not given: how a LIVE box is silenced for
+# it, and who picks the delivery method (SH-1 measured the same refusal on the product's bench). So the image is
+# read, the answer is said, and the run waits for that decision (RESULTADOS-sh-2, ABERTO). Nothing below changes
+# the gold.
+# shellcheck source=history-mode.sh
+[ ! -f "$HERE/bin/history-mode.sh" ] || . "$HERE/bin/history-mode.sh"
 past_statement() {
-  local ref flag
+  local ref script
   ref="$(jq -r '.images.kernel.ref // empty' "$HERE/forge.lock" 2>/dev/null)"
-  if [ -z "$ref" ] || ! command -v docker >/dev/null 2>&1 || ! command -v history_topup_flag >/dev/null 2>&1; then
+  if [ -z "$ref" ] || ! command -v docker >/dev/null 2>&1 || ! command -v history_completes_by_itself >/dev/null 2>&1; then
     printf '   the past: UNKNOWN — the kernel image forge.lock pins could not be read here (docker or forge.lock missing).\n' >&2
     return 0
   fi
-  flag="$(docker run --rm --entrypoint cat "$ref" dist/seed-history.js 2>/dev/null | history_topup_flag)"
-  if [ -n "$flag" ]; then
-    printf '   the past: the pinned kernel image COMPLETES a past to today (%s) — this reset does NOT call it yet:\n     a restored box has its buyer mail armed (bin/demo-reset.sh, "THE PAST OF A RESET BOX"). The gold keeps the past it was taken with.\n' "$flag" >&2
+  script="$(docker run --rm --entrypoint cat "$ref" dist/seed-history.js 2>/dev/null)"
+  if [ -z "$script" ]; then
+    printf '   the past: UNKNOWN — dist/seed-history.js could not be read out of %s.\n' "$ref" >&2
+  elif printf '%s' "$script" | history_completes_by_itself; then
+    printf '   the past: the pinned kernel image completes a recorded past to today by itself (seed-history --tenant <t>,\n     no flag, "mode":"top-up") — this reset does NOT run it yet: a restored box has its buyer mail armed and two\n     delivery methods active (bin/demo-reset.sh, "THE PAST OF A RESET BOX"). The gold keeps the past it was taken with.\n' >&2
   else
-    printf '   the past: FROZEN — the pinned kernel image cannot complete a past (its seed-history has no %s; SH-1, the next cut).\n     The box serves the gold as taken: its orders end on the day the gold was, and the dashboard'"'"'s 7/30 days age from there.\n' "$HISTORY_TOPUP_FLAG" >&2
+    printf '   the past: FROZEN — the pinned kernel image cannot complete a past (its seed-history is reset+seed: it skips a\n     tenant that has one; SH-1 completes it by itself, the next cut). The box serves the gold as taken: its orders\n     end on the day the gold was, and the dashboard'"'"'s 7/30 days age from there.\n' >&2
   fi
 }
 

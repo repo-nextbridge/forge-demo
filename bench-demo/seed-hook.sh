@@ -24,7 +24,7 @@
 #          block (read out of bin/box-up.sh between its markers)
 #    10    seed-history × tenant   the PAST (SH-2): 180 days of dated orders, in the kernel through the kit's
 #                                  compose, inside the mail silence — on every `up` unless FORGE_DEMO_BENCH_HISTORY=0;
-#                                  a tenant that already has one keeps it (see `seed_the_past` below)
+#                                  a later `up` keeps it (v0.3.2) or completes it to today (an image with SH-1)
 #    10b-12 only with the dataset: the queue drained, then, for EVERY tenant, the shop window (11) and the data
 #          verdict (12). Without the massive, verify-seed is RED by construction (measured 2026-10-10: "7
 #          check(s) NOT settled" — it grades the catalogue the one-shot fills), so 12 runs only after 9.
@@ -106,16 +106,14 @@ in_bench "$counter_tenant" ||
 # one at random) and the others re-armed by a trap however this hook ends. bin/box-up.sh `10 · the past` carries
 # every measurement behind each line; this is that step with the kit's credentials and the loopback door.
 #
-# ★ A BENCH THAT ALREADY HAS A PAST (every `up` after the first). `seed-history` of the image forge.lock pins
-# (v0.3.2) is reset+seed: it finds an order older than half its window, prints SKIPPING, writes nothing and
-# exits 0 with `"skipped":true`. Here that is not a failure — it is "this tenant already has its past", said by
-# name — and the dates are NOT completed to today: the bench's past ends on the day of its first `up`.
-#
-# ★ THE MODE THAT COMPLETES IT (SH-1, in the product) reaches this hook with the next cut of the images. It is
-# DETECTED IN THE IMAGE — the kernel's own dist/seed-history.js is read for the flag — never from a version
-# typed here; when it is there and the plain run skipped, the hook runs it again with that flag.
-# shellcheck source=../bin/history-topup.sh
-. "$HERE/bin/history-topup.sh"
+# ★ ONE PLAIN RUN, ALWAYS, AND ITS REPORT SAYS WHAT HAPPENED (bin/history-mode.sh). Since SH-1 (product PR #659,
+# e0f025738) the script decides by the tenant's state, with no flag: `"mode"` full (a past written) · top-up (a
+# recorded past completed to today) · up-to-date (nothing to add) · refused (a past it will not touch, its own
+# words say why). The image forge.lock pins today (v0.3.2) predates it: a tenant with a past is SKIPPED (exit 0,
+# `"skipped":true`), so a bench's past ends on the day of its first `up` — said by name, never a red `up`. The
+# next cut of the images completes it on every `up` with nothing to change here.
+# shellcheck source=../bin/history-mode.sh
+. "$HERE/bin/history-mode.sh"
 HISTORY_KEEP="${FORGE_HISTORY_KEEP_METHOD:-Entrega Padrão}"
 HISTORY_WROTE=0
 SILENCED=''
@@ -141,13 +139,9 @@ rearm_history() {
   done
   SILENCED=''
 }
-# The flag of the completing mode, if THIS bench's kernel image reads it (bin/history-topup.sh); empty otherwise.
-image_topup_flag() {
-  bash "$HERE/bench/compose.sh" run --rm --no-deps -T --entrypoint cat kernel dist/seed-history.js </dev/null 2>/dev/null | history_topup_flag
-}
-history_run() { # <tenant> <log> [flag] — the kernel's one-shot, through the kit's compose; its rc
+history_run() { # <tenant> <log> — the kernel's one-shot, through the kit's compose; its rc
   bash "$HERE/bench/compose.sh" run --rm ${FORGE_SEED_ACTION_TIMEOUT_MS:+-e "FORGE_EXTENSION_ACTION_TIMEOUT_MS=$FORGE_SEED_ACTION_TIMEOUT_MS"} \
-    kernel node dist/seed-history.js --tenant "$1" ${3:+"$3"} </dev/null >"$2" 2>&1
+    kernel node dist/seed-history.js --tenant "$1" </dev/null >"$2" 2>&1
 }
 seed_the_past() {
   if [ "${FORGE_DEMO_BENCH_HISTORY:-1}" = 0 ]; then
@@ -155,7 +149,7 @@ seed_the_past() {
     report "10 skipped — asked with FORGE_DEMO_BENCH_HISTORY=0 (the past: README §2)"
     return 0
   fi
-  local t armed keep_seen id name active hlog hrc topup started methods already='' unsold=''
+  local t armed keep_seen id name active hlog hrc started methods already='' unsold='' completed='' refused=''
   trap 'rearm_history' EXIT INT TERM
   for t in $FORGE_BENCH_TENANT_IDS; do
     REARM_TENANT="$t"
@@ -191,30 +185,27 @@ seed_the_past() {
     hlog="$(mktemp)"
     started=$SECONDS
     history_run "$t" "$hlog" && hrc=0 || hrc=$?
-    if [ "$hrc" = 0 ] && grep -q '"skipped":true' "$hlog"; then
-      topup="$(image_topup_flag)"
-      if [ -n "$topup" ]; then
-        say "10 · $t already has a past — this image completes it to today ($topup)"
-        history_run "$t" "$hlog" "$topup" && hrc=0 || hrc=$?
-      fi
-    fi
     tail -4 "$hlog" >&2
-    if [ "$hrc" != 0 ]; then
-      rm -f "$hlog"
-      die "10 · the past failed for $t (rc=$hrc) — the kernel's own words are above. The delivery methods are re-armed either way."
-    elif grep -q '"skipped":true' "$hlog"; then
-      say "10 · $t ALREADY HAS A PAST — kept as it is. seed-history of this image does not complete it to today (it has no $HISTORY_TOPUP_FLAG): the next cut of the images brings it (SH-1)."
-      already="$already $t"
-    else
-      HISTORY_WROTE=1
-      say "10 · $t · the past written in $((SECONDS - started)) s"
-    fi
+    [ "$hrc" = 0 ] || { rm -f "$hlog"; die "10 · the past failed for $t (rc=$hrc) — the kernel's own words are above. The delivery methods are re-armed either way."; }
+    case "$(history_outcome "$hlog")" in
+      full) HISTORY_WROTE=1; say "10 · $t · the past written in $((SECONDS - started)) s ($(history_orders "$hlog") orders)" ;;
+      top-up) HISTORY_WROTE=1; completed="$completed $t"
+        say "10 · $t · its past COMPLETED TO TODAY in $((SECONDS - started)) s ($(history_orders "$hlog") orders added)" ;;
+      up-to-date) say "10 · $t · its past is already up to date — nothing added" ;;
+      refused) refused="$refused $t"
+        say "10 · $t · seed-history REFUSED to touch this past (its own words above) — kept as it is" ;;
+      skipped) already="$already $t"
+        say "10 · $t ALREADY HAS A PAST — kept, NOT completed to today: this image's seed-history is reset+seed (no \"mode\" in its report); the next cut of the images completes it by itself (SH-1)." ;;
+      *) rm -f "$hlog"; die "10 · seed-history exited 0 for $t without a report this hook can read (above)." ;;
+    esac
     rm -f "$hlog"
     rearm_history
   done
   trap - EXIT INT TERM
   [ -z "$unsold" ] || report "10 · no past for:$unsold — no delivery method on this bench; it comes with the massive catalogue (FORGE_DEMO_BENCH_DATASET=1)"
-  [ -z "$already" ] || report "10 · already had a past:$already — kept, NOT completed to today (this image's seed-history has no $HISTORY_TOPUP_FLAG; the next cut — README §2)"
+  [ -z "$completed" ] || report "10 · past completed to today:$completed"
+  [ -z "$refused" ] || report "10 · seed-history refused the past of:$refused — kept as it is (its reason is in the log above)"
+  [ -z "$already" ] || report "10 · already had a past:$already — kept, NOT completed to today (this image's seed-history is reset+seed; the next cut completes it — README §2)"
 }
 
 # 10b · box-up's wait for the dispatcher (the window re-arms the buyer's mail; ~1 466 dated orders drain

@@ -113,17 +113,19 @@ case "$*" in
     echo "sto_FAKE$(printf %s "$t" | tr '[:lower:]' '[:upper:]')" ;;
   *dist/admin-platform-token.js*) echo "$IB5_PLATFORM" ;;
   *dist/seed-demo.js*) echo '[seed-demo] done (fake)' ;;
-  # SH-2 · the kernel's own seed-history. Read as a FILE (--entrypoint cat), it is this image's script: with the
-  # completing mode when IB5_HISTORY_TOPUP=1. Run, it answers like v0.3.2: a tenant that already has a past
-  # (IB5_HISTORY_PAST=has) is SKIPPED with exit 0, unless the completing flag was passed.
-  *'--entrypoint cat kernel dist/seed-history.js'*)
-    echo 'const tenant = flag("tenant") ?? "demo";'; [ "$IB5_HISTORY_TOPUP" = 1 ] && echo 'const topUp = flag("top-up");' ;;
+  # SH-2 · the kernel's own seed-history, answering as each image does (report on stdout, words on stderr):
+  # IB5_HISTORY_IMAGE=v032 (the pinned one, the default) has no "mode" and SKIPS a tenant with a past;
+  # IB5_HISTORY_IMAGE=sh1 (product e0f025738) decides by state: full · top-up · up-to-date · refused.
   *dist/seed-history.js*)
-    if [ "$IB5_HISTORY_PAST" = has ] && [[ " $* " != *' --top-up '* ]]; then
-      echo '[seed-history] history: 640 order(s) older than 90 days are already here — SKIPPING.' >&2; echo '{"orders":0,"skipped":true}'
-    else
-      echo '[seed-history] history: done — 733 orders (fake)' >&2; echo '{"orders":733,"skipped":false}'
-    fi ;;
+    img="$IB5_HISTORY_IMAGE"; [ -n "$img" ] || img=v032; past="$IB5_HISTORY_PAST"; [ -n "$past" ] || past=none
+    case "$img:$past" in
+      v032:none) echo '[seed-history] history: done — 720 orders (fake)' >&2; echo '{"orders":720,"skipped":false}' ;;
+      v032:*) echo '[seed-history] history: 306 order(s) older than 90 days are already here — SKIPPING.' >&2; echo '{"orders":0,"skipped":true}' ;;
+      sh1:none) echo '[seed-history] history: done — 720 orders (fake)' >&2; echo '{"orders":720,"skipped":false,"mode":"full"}' ;;
+      sh1:has) echo '[seed-history] history: top-up — 51 orders (fake)' >&2; echo '{"orders":51,"skipped":false,"mode":"top-up"}' ;;
+      sh1:today) echo '[seed-history] history: up to date (fake)' >&2; echo '{"orders":0,"skipped":true,"mode":"up-to-date"}' ;;
+      sh1:foreign) echo '[seed-history] history: 12 order(s) are not a recorded past — refusing (fake)' >&2; echo '{"orders":0,"skipped":true,"mode":"refused"}' ;;
+    esac ;;
   # a promoted bench exports the edge's local CA: … cp edge-tls:/data/caddy/pki/authorities/local/root.crt <dest>
   *' cp edge-tls:'*) for last in "$@"; do :; done; echo 'FAKE CA' > "$last" ;;
 esac
@@ -167,7 +169,7 @@ exit 0
 function benchCopy() {
   const dir = mkdtempSync(join(tmpdir(), 'ib5-kit-'));
   const shop = join(dir, 'shop');
-  for (const p of ['bench', 'bench-demo', 'bin/images-from-lock.sh', 'bin/require-node.sh', 'bin/box-up.sh', 'bin/history-topup.sh', 'forge.lock',
+  for (const p of ['bench', 'bench-demo', 'bin/images-from-lock.sh', 'bin/require-node.sh', 'bin/box-up.sh', 'bin/history-mode.sh', 'forge.lock',
     'compose.yml', 'compose.override.yml', 'seed/box.json']) {
     cpSync(join(ROOT, p), join(shop, p), { recursive: true });
   }
@@ -347,23 +349,42 @@ test('★★ SH-2 · the past is written on every bench: seed-history per tenant
   assert.doesNotMatch(out, /the seed hook reports:[\s\S]*10 (skipped|· already)/, 'the kit was told the past was skipped on a run that wrote it');
 });
 
-test('★ SH-2 · a second `up` (the past is there) does not break: «already has a past», said, and NOT completed by this image', () => {
+// ★ ONE PLAIN RUN PER TENANT, ALWAYS — no flag, no probe of the image before it (SH-1 has no flag: the script
+// decides by state). An earlier version read the image for `--top-up` and would have passed it to the new script,
+// whose text DOES contain "top-up" (a value of `mode`), as a flag it does not read.
+const plainRuns = (calls) =>
+  historyRuns(calls).every((l) => / node dist\/seed-history\.js --tenant \S+$/.test(l)) &&
+  !calls.some((l) => /--entrypoint cat/.test(l));
+
+test('★ SH-2 · a second `up` on the PINNED image (v0.3.2, the past is there) does not break: «already has a past», said, NOT completed', () => {
   const { rc, out, calls } = up({ IB5_HISTORY_PAST: 'has' });
   assert.equal(rc, 0, `a bench that already has a past went red on its next up:\n${out.slice(-2500)}`);
-  assert.match(out, /10 · forgeco ALREADY HAS A PAST — kept as it is\. seed-history of this image does not complete it to today \(it has no --top-up\)/);
+  assert.match(out, /10 · forgeco ALREADY HAS A PAST — kept, NOT completed to today: this image's seed-history is reset\+seed/);
   assert.match(out, /the seed hook reports:[\s\S]*10 · already had a past: forgeco forgecafe — kept, NOT completed to today/);
-  assert.ok(!historyRuns(calls).some((l) => / --top-up/.test(l)), 'a flag this image does not carry was passed to it');
+  assert.ok(plainRuns(calls), `not one plain run per tenant:\n  ${historyRuns(calls).join('\n  ')}`);
   // Even skipped, the delivery method comes back.
   assert.equal(calls.filter((l) => /"method_id":"shm_EXPRESSA","active":true/.test(l)).length, 2, 'a delivery method was left silenced');
 });
 
-test('★ SH-2 · when the IMAGE carries the completing mode, a bench with a past is completed to today with it', () => {
-  const { rc, out, calls } = up({ IB5_HISTORY_PAST: 'has', IB5_HISTORY_TOPUP: '1' });
+test('★ SH-2 · on an image with SH-1 (state decides, no flag) the same plain run COMPLETES the past to today, and says so', () => {
+  const { rc, out, calls } = up({ IB5_HISTORY_PAST: 'has', IB5_HISTORY_IMAGE: 'sh1' });
   assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
-  const topups = historyRuns(calls).filter((l) => / --tenant \S+ --top-up/.test(l));
-  assert.equal(topups.length, 2, `the completing mode was not asked of both tenants:\n  ${historyRuns(calls).join('\n  ')}`);
-  assert.match(out, /10 · forgeco already has a past — this image completes it to today \(--top-up\)/);
+  assert.equal(historyRuns(calls).length, 2, `not ONE run per tenant:\n  ${historyRuns(calls).join('\n  ')}`);
+  assert.ok(plainRuns(calls), `a flag or a probe reached the image:\n  ${calls.filter((l) => /seed-history/.test(l)).join('\n  ')}`);
+  assert.match(out, /10 · forgeco · its past COMPLETED TO TODAY in \d+ s \(51 orders added\)/);
+  assert.match(out, /the seed hook reports:[\s\S]*10 · past completed to today: forgeco forgecafe/);
   assert.doesNotMatch(out, /NOT completed/);
+});
+
+test('★ SH-2 · SH-1 image: up to date adds nothing and says it; refused keeps the past and names it — neither is a red `up`', () => {
+  const today = up({ IB5_HISTORY_PAST: 'today', IB5_HISTORY_IMAGE: 'sh1' });
+  assert.equal(today.rc, 0, today.out.slice(-2500));
+  assert.match(today.out, /10 · forgeco · its past is already up to date — nothing added/);
+  assert.doesNotMatch(today.out, /NOT completed|COMPLETED TO TODAY|ALREADY HAS A PAST/);
+  const foreign = up({ IB5_HISTORY_PAST: 'foreign', IB5_HISTORY_IMAGE: 'sh1' });
+  assert.equal(foreign.rc, 0, foreign.out.slice(-2500));
+  assert.match(foreign.out, /10 · forgeco · seed-history REFUSED to touch this past/);
+  assert.match(foreign.out, /the seed hook reports:[\s\S]*10 · seed-history refused the past of: forgeco forgecafe/);
 });
 
 test('⛔ SH-2 · buyer mail ARMED: no past is written, and the `up` says why', () => {
