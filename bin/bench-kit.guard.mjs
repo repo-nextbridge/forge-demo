@@ -113,15 +113,43 @@ case "$*" in
     echo "sto_FAKE$(printf %s "$t" | tr '[:lower:]' '[:upper:]')" ;;
   *dist/admin-platform-token.js*) echo "$IB5_PLATFORM" ;;
   *dist/seed-demo.js*) echo '[seed-demo] done (fake)' ;;
+  # SH-2 · the kernel's own seed-history, answering as each image does (report on stdout, words on stderr):
+  # IB5_HISTORY_IMAGE=v032 (the pinned one, the default) has no "mode" and SKIPS a tenant with a past;
+  # IB5_HISTORY_IMAGE=sh1 (product e0f025738) decides by state: full · top-up · up-to-date · refused.
+  *dist/seed-history.js*)
+    img="$IB5_HISTORY_IMAGE"; [ -n "$img" ] || img=v032; past="$IB5_HISTORY_PAST"; [ -n "$past" ] || past=none
+    case "$img:$past" in
+      v032:none) echo '[seed-history] history: done — 720 orders (fake)' >&2; echo '{"orders":720,"skipped":false}' ;;
+      v032:*) echo '[seed-history] history: 306 order(s) older than 90 days are already here — SKIPPING.' >&2; echo '{"orders":0,"skipped":true}' ;;
+      sh1:none) echo '[seed-history] history: done — 720 orders (fake)' >&2; echo '{"orders":720,"skipped":false,"mode":"full"}' ;;
+      sh1:has) echo '[seed-history] history: top-up — 51 orders (fake)' >&2; echo '{"orders":51,"skipped":false,"mode":"top-up"}' ;;
+      sh1:today) echo '[seed-history] history: up to date (fake)' >&2; echo '{"orders":0,"skipped":true,"mode":"up-to-date"}' ;;
+      sh1:foreign) echo '[seed-history] history: 12 order(s) are not a recorded past — refusing (fake)' >&2; echo '{"orders":0,"skipped":true,"mode":"refused"}' ;;
+    esac ;;
   # a promoted bench exports the edge's local CA: … cp edge-tls:/data/caddy/pki/authorities/local/root.crt <dest>
   *' cp edge-tls:'*) for last in "$@"; do :; done; echo 'FAKE CA' > "$last" ;;
 esac
 exit 0
 `;
-// curl: the kit's door probes get 200; the hook's one read (the café's stores, to learn the counter) gets them.
+// curl: the kit's door probes get 200; the hook's reads get what a bench answers — the café's stores (to learn
+// the counter), and for step 10 (SH-2) the delivery methods (two active: the history sells through one), the
+// buyer mail's channels (silent, unless IB5_MAIL_ARMED=1) and the notification queue. The hook's reads and
+// commands are recorded (method, url, body — never a header, so never a credential).
 const FAKE_CURL = String.raw`#!/usr/bin/env bash
-case "$*" in
+url=''; data=''; method=GET
+while [ $# -gt 0 ]; do case "$1" in -X) method="$2"; shift 2 ;; -d) data="$2"; shift 2 ;; http*) url="$1"; shift ;; *) shift ;; esac; done
+case "$url" in */v1/*) echo "curl $method $url $data" >> "$IB5_LOG" ;; esac
+case "$url" in
   */v1/read/internal/stores*) printf '[{"id":"%s","handle":"cafe"},{"id":"%s","handle":"balcao"}]' "$IB5_CAFE_STORE" "$IB5_COUNTER" ;;
+  */v1/read/internal/shipping_methods_admin*)
+    # the tenant this read is for is in a header; IB5_NO_METHODS answers [] for every tenant (sh2, 2026-10-11:
+    # forgeco without the massive catalogue has no shipping method at all)
+    [ "$IB5_NO_METHODS" = 1 ] && { printf '[]'; exit 0; }
+    printf '[{"id":"shm_PADRAO","name":"Entrega Padrão","kind":"delivery","active":true},{"id":"shm_EXPRESSA","name":"Entrega Expressa","kind":"delivery","active":true},{"id":"shm_BALCAO","name":"Retirar no balcão","kind":"pickup","active":true}]' ;;
+  */v1/read/internal/notification_types*)
+    printf '[{"key":"order.placed","channels":[{"channel_key":"email","enabled":%s}]}]' "$([ "$IB5_MAIL_ARMED" = 1 ] && echo true || echo false)" ;;
+  */v1/read/internal/notifications*) printf '{"total":0}' ;;
+  */v1/commands/*) printf '{}' ;;
   *) printf 200 ;;
 esac
 `;
@@ -141,7 +169,7 @@ exit 0
 function benchCopy() {
   const dir = mkdtempSync(join(tmpdir(), 'ib5-kit-'));
   const shop = join(dir, 'shop');
-  for (const p of ['bench', 'bench-demo', 'bin/images-from-lock.sh', 'bin/require-node.sh', 'bin/box-up.sh', 'forge.lock',
+  for (const p of ['bench', 'bench-demo', 'bin/images-from-lock.sh', 'bin/require-node.sh', 'bin/box-up.sh', 'bin/history-mode.sh', 'forge.lock',
     'compose.yml', 'compose.override.yml', 'seed/box.json']) {
     cpSync(join(ROOT, p), join(shop, p), { recursive: true });
   }
@@ -223,7 +251,7 @@ test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds BO
   // Without the ask, the massive one-shot never runs, and neither do the steps that need it — and the kit says so.
   assert.ok(!calls.some((l) => l.includes('seed-demo')), 'seed-demo ran on a bench that did not ask for the dataset');
   assert.ok(!nodes.some((l) => /verify-seed|--phase window/.test(l)), 'the window or verify-seed ran with no massive catalogue: verify-seed is red by construction there');
-  assert.match(out, /the seed hook reports:\n.*· 9-12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1/);
+  assert.match(out, /the seed hook reports:\n.*· 9, 11, 12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1/);
 });
 
 test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT for the dataset\'s tenant only, then the window and the verdict for both', () => {
@@ -248,7 +276,13 @@ test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT 
     'bin/prove-doors.mjs forgeco', 'bin/prove-doors.mjs forgecafe',
   ]);
   for (const l of nodes) assert.match(l, new RegExp(` token=${tenantOf(l)} `), `not the credential the kit minted for ${tenantOf(l)}: ${l}`);
-  assert.ok(!/· 9-12 skipped/.test(out), 'the kit was told 9-12 were skipped on a run that ran them');
+  assert.ok(!/· 9, 11, 12 skipped/.test(out), 'the kit was told 9, 11, 12 were skipped on a run that ran them');
+  // SH-2 · box-up's order: 9 (the massive) → 10 (the past, inside the silence) → 10b (the queue drained) → 11.
+  const at = (re) => calls.findIndex((l) => re.test(l));
+  const history = at(/dist\/seed-history\.js --tenant forgeco/);
+  assert.ok(history > at(/dist\/seed-demo\.js/), `the past was written before the massive catalogue (box-up: 9 then 10):\n  ${calls.join('\n  ')}`);
+  assert.ok(at(/notifications\?limit=1&status=pending/) > history, 'the window was not preceded by the queue drain (10b)');
+  assert.ok(at(/^node bin\/seed\.mjs .*--phase window/) > at(/notifications\?limit=1&status=pending/), 'the window re-armed the mail before the queue was drained');
 });
 
 test('★ PROMOTED to an IP, the hook claims the https door and hands Node the certificates the kit proved it with', () => {
@@ -277,4 +311,100 @@ test('★ on localhost the totem keeps its loopback door and no https one (the 4
   assert.equal(rc, 0, `bench/up.sh on localhost did not finish:\n${out.slice(-2500)}`);
   assert.match(out, /✅ the declared door FORGE_TOTEM_HTTP_PORT is published — http:\/\/localhost:7103\/ answers 200/);
   assert.doesNotMatch(out, /FORGE_TOTEM_HTTPS_PORT|:7163/, 'a localhost bench handed out an https door for the totem');
+});
+
+// ── ★★ SH-2 · STEP 10, THE PAST, ON THE KIT BENCH ───────────────────────────────────────────────────────────────
+//
+// Measured 2026-10-11: a kit bench was born with no past — step 10 lived only in bin/box-up.sh — so the admin
+// home's dashboard (30 days by default) was all but empty on a dev bench from day one. The hook now runs box-up's
+// step 10: the kernel's `dist/seed-history.js`, through the KIT's compose, for every tenant, after the curated
+// seed (8) and before the doors (14-bis), inside the mail silence, through ONE delivery method re-armed after.
+const historyRuns = (calls) => calls.filter((l) => / node dist\/seed-history\.js /.test(l));
+
+test('★★ SH-2 · the past is written on every bench: seed-history per tenant, through the kit, inside the silence, one delivery method', () => {
+  const { rc, out, calls } = up();
+  assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
+  const runs = historyRuns(calls);
+  assert.deepEqual(runs.map((l) => / --tenant (\S+)/.exec(l)[1]), TENANTS, `seed-history did not run once per tenant, in order:\n  ${runs.join('\n  ')}`);
+  for (const l of runs) {
+    assert.match(l, /-f \S+\/bench\/compose\.bench\.yml/, `the past did not go through the kit's compose: ${l}`);
+    assert.match(l, / run --rm .*kernel node dist\/seed-history\.js /, `the past did not run inside the kernel: ${l}`);
+  }
+  const at = (re) => calls.findIndex((l) => re.test(l));
+  const lastCurated = calls.map((l) => /^node bin\/seed\.mjs /.test(l)).lastIndexOf(true);
+  assert.ok(calls.indexOf(runs[0]) > lastCurated, 'the past ran before the curated seed — outside the mail silence step 8 opens');
+  assert.ok(calls.indexOf(runs[1]) < at(/^node bin\/prove-doors\.mjs/), 'the past ran after the doors were proved');
+  // The mailbox guard asked, per store, with `store=` (box-up: the kernel ignores `store_id` silently).
+  assert.ok(at(/notification_types\?store=/) >= 0 && at(/notification_types\?store=/) < calls.indexOf(runs[0]), 'no past may be written before the buyer mail is proved silent');
+  // One delivery method while the past is written, the other re-armed after — per tenant.
+  for (const run of runs) {
+    const i = calls.indexOf(run);
+    const before = calls.slice(0, i).filter((l) => /shipping\.method\.update/.test(l)).pop();
+    const after = calls.slice(i).find((l) => /shipping\.method\.update/.test(l));
+    assert.match(before ?? '', /"method_id":"shm_EXPRESSA","active":false/, `the extra delivery method was not silenced before: ${run}`);
+    assert.match(after ?? '', /"method_id":"shm_EXPRESSA","active":true/, `the extra delivery method was not re-armed after: ${run}`);
+  }
+  assert.ok(!calls.some((l) => /shm_PADRAO|shm_BALCAO/.test(l) && /shipping\.method\.update/.test(l)), 'the kept method (or a pickup) was touched');
+  assert.match(out, /10 · forgeco · the past written in \d+ s/);
+  assert.doesNotMatch(out, /the seed hook reports:[\s\S]*10 (skipped|· already)/, 'the kit was told the past was skipped on a run that wrote it');
+});
+
+// ★ ONE PLAIN RUN PER TENANT, ALWAYS — no flag, no probe of the image before it (SH-1 has no flag: the script
+// decides by state). An earlier version read the image for `--top-up` and would have passed it to the new script,
+// whose text DOES contain "top-up" (a value of `mode`), as a flag it does not read.
+const plainRuns = (calls) =>
+  historyRuns(calls).every((l) => / node dist\/seed-history\.js --tenant \S+$/.test(l)) &&
+  !calls.some((l) => /--entrypoint cat/.test(l));
+
+test('★ SH-2 · a second `up` on the PINNED image (v0.3.2, the past is there) does not break: «already has a past», said, NOT completed', () => {
+  const { rc, out, calls } = up({ IB5_HISTORY_PAST: 'has' });
+  assert.equal(rc, 0, `a bench that already has a past went red on its next up:\n${out.slice(-2500)}`);
+  assert.match(out, /10 · forgeco ALREADY HAS A PAST — kept, NOT completed to today: this image's seed-history is reset\+seed/);
+  assert.match(out, /the seed hook reports:[\s\S]*10 · already had a past: forgeco forgecafe — kept, NOT completed to today/);
+  assert.ok(plainRuns(calls), `not one plain run per tenant:\n  ${historyRuns(calls).join('\n  ')}`);
+  // Even skipped, the delivery method comes back.
+  assert.equal(calls.filter((l) => /"method_id":"shm_EXPRESSA","active":true/.test(l)).length, 2, 'a delivery method was left silenced');
+});
+
+test('★ SH-2 · on an image with SH-1 (state decides, no flag) the same plain run COMPLETES the past to today, and says so', () => {
+  const { rc, out, calls } = up({ IB5_HISTORY_PAST: 'has', IB5_HISTORY_IMAGE: 'sh1' });
+  assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
+  assert.equal(historyRuns(calls).length, 2, `not ONE run per tenant:\n  ${historyRuns(calls).join('\n  ')}`);
+  assert.ok(plainRuns(calls), `a flag or a probe reached the image:\n  ${calls.filter((l) => /seed-history/.test(l)).join('\n  ')}`);
+  assert.match(out, /10 · forgeco · its past COMPLETED TO TODAY in \d+ s \(51 orders added\)/);
+  assert.match(out, /the seed hook reports:[\s\S]*10 · past completed to today: forgeco forgecafe/);
+  assert.doesNotMatch(out, /NOT completed/);
+});
+
+test('★ SH-2 · SH-1 image: up to date adds nothing and says it; refused keeps the past and names it — neither is a red `up`', () => {
+  const today = up({ IB5_HISTORY_PAST: 'today', IB5_HISTORY_IMAGE: 'sh1' });
+  assert.equal(today.rc, 0, today.out.slice(-2500));
+  assert.match(today.out, /10 · forgeco · its past is already up to date — nothing added/);
+  assert.doesNotMatch(today.out, /NOT completed|COMPLETED TO TODAY|ALREADY HAS A PAST/);
+  const foreign = up({ IB5_HISTORY_PAST: 'foreign', IB5_HISTORY_IMAGE: 'sh1' });
+  assert.equal(foreign.rc, 0, foreign.out.slice(-2500));
+  assert.match(foreign.out, /10 · forgeco · seed-history REFUSED to touch this past/);
+  assert.match(foreign.out, /the seed hook reports:[\s\S]*10 · seed-history refused the past of: forgeco forgecafe/);
+});
+
+test('⛔ SH-2 · buyer mail ARMED: no past is written, and the `up` says why', () => {
+  const { rc, out, calls } = up({ IB5_MAIL_ARMED: '1' });
+  assert.notEqual(rc, 0, 'a past was let through with the buyer mail armed');
+  assert.match(out, /REFUSING to seed the past for forgeco: buyer order mail is ARMED/);
+  assert.equal(historyRuns(calls).length, 0, 'seed-history ran with the mail armed');
+});
+
+test('★ SH-2 · FORGE_DEMO_BENCH_HISTORY=0 skips the past by name, and the kit\'s report says so', () => {
+  const { rc, out, calls } = up({ FORGE_DEMO_BENCH_HISTORY: '0' });
+  assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
+  assert.equal(historyRuns(calls).length, 0, 'the past ran although it was declined');
+  assert.match(out, /the seed hook reports:[\s\S]*10 skipped — asked with FORGE_DEMO_BENCH_HISTORY=0/);
+});
+
+test('★ SH-2 · a tenant with NO delivery method (forgeco without the massive, measured) is named and skipped — never a red `up`', () => {
+  const { rc, out, calls } = up({ IB5_NO_METHODS: '1' });
+  assert.equal(rc, 0, `a bench whose tenant has no logistics went red:\n${out.slice(-2500)}`);
+  assert.match(out, /10 · forgeco has no delivery method — its logistics come with the massive catalogue/);
+  assert.match(out, /the seed hook reports:[\s\S]*10 · no past for: forgeco forgecafe — no delivery method/);
+  assert.equal(historyRuns(calls).length, 0, 'a past was asked of a tenant with nothing to sell it through');
 });

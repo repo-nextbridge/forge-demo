@@ -1236,7 +1236,8 @@ async function placeLiveOrders({ stores, command, read, log }) {
  *
  * @param buyer     `{name, email}` — the ADDRESS is the idempotence key, the NAME is what the admin shows.
  * @param what      how this order is described in the log ("live proof", "subscription · weekly", …).
- * @param pickSku   chooses the SKU off the store's published catalogue. Default: the first active one.
+ * @param pickSku   chooses the SKU off the store's published catalogue. Default: the first active one WITH
+ *                  STOCK in this store (`firstSkuInStock`, below — and why it is not "the first active one").
  * @param customFields the LINE's declared custom fields, or undefined for an ordinary purchase. This is the
  *                  seam a subscription rides: `sub_plan` is the `subscriptions` app's own `cart_line`
  *                  declaration, the kernel validates it against the declared options and freezes it into
@@ -1274,11 +1275,22 @@ export async function placeOneOrder({ store, command, read, log, buyer, what, pi
     return { ...already, order_id: already.id };
   }
 
-  const catalogue = (await read('products', { store: store.id, limit: 25 }))?.items ?? [];
-  const sku = (pickSku ?? ((products) => products.flatMap((p) => p.skus.filter((k) => k.status === 'active'))[0]))(
-    catalogue,
-  );
-  if (!sku) return skip('it publishes nothing sellable this order could hold');
+  let sku;
+  if (pickSku) {
+    sku = pickSku((await read('products', { store: store.id, limit: 25 }))?.items ?? []);
+    if (!sku) return skip('it publishes nothing sellable this order could hold');
+  } else {
+    const found = await firstSkuInStock({ store, read });
+    if (!found.sku)
+      return skip(
+        found.active === 0
+          ? 'it publishes nothing sellable this order could hold'
+          : `NO SKU WITH STOCK — it publishes ${found.active} active sku(s) and \`availability_by_skus\` answers ` +
+              'available ≤ 0 for every one of them in this store, so a cart line would be refused with ' +
+              '`insufficient_stock`',
+      );
+    sku = found.sku;
+  }
 
   const methods = await read('payment_methods', { store: store.id });
   const method = methods?.methods?.[0];
@@ -1363,6 +1375,45 @@ export async function placeOneOrder({ store, command, read, log, buyer, what, pi
   // contract with the order that signed it (`origin_order_id`), and re-deriving that from a number would be
   // a second key for one fact.
   return { ...confirmation, order_id };
+}
+
+/**
+ * ★★ SH-2 — THE DEFAULT SKU IS THE FIRST ACTIVE ONE THIS STORE CAN ACTUALLY SELL, asked of the read whose NAME
+ * is the question: `availability_by_skus` (public face, scoped to the store's published assortment, folded
+ * over its warehouses — `available = on_hand − reserved`).
+ *
+ * ⛔ MEASURED 2026-10-11 on a fresh machine (pctop), twice and deterministically: the massive bench went red at
+ * step 11 with `cart.add_line → 409 insufficient_stock (sku_01M4NEMX…)`. This journey took the FIRST ACTIVE sku
+ * of the listing without looking at stock, and on that machine it had `available: 0`; on ms-s1 the first one
+ * happened to be stocked. The listing says what is ON SALE; it never said what is IN STOCK — the same two
+ * questions `stock()` in bin/seed.mjs learned to keep apart («ask the read whose NAME is the question»), and
+ * the same day-one case («a box carrying stock from earlier rounds … looks right»).
+ *
+ * It walks the listing in its own order, a page at a time, and stops at the first page that has one — so on a
+ * stocked shop it costs exactly one listing and one availability read, as before plus one. `available` counts
+ * the sellable units only: a backorder promise is NOT stock, and a cart line is what this order needs.
+ *
+ * @returns `{ sku, active }` — the sku (or undefined) and how many active skus were looked at, so a store with
+ *          active skus and no stock is named as THAT, never as «publishes nothing».
+ */
+export async function firstSkuInStock({ store, read, pageSize = 25 }) {
+  let active = 0;
+  for (let page = 1; ; page++) {
+    const listing = await read('products', { store: store.id, limit: pageSize, page });
+    const products = listing?.items ?? [];
+    const skus = products.flatMap((p) => (p.skus ?? []).filter((k) => k.status === 'active'));
+    active += skus.length;
+    // The public read answers at most 100 ids a call (LIST_LIMITS.availability_by_skus.maxIds) and refuses more.
+    for (let i = 0; i < skus.length; i += 100) {
+      const batch = skus.slice(i, i + 100);
+      const rows = (await read('availability_by_skus', { store: store.id, sku_ids: batch.map((k) => k.id).join(',') })) ?? [];
+      const available = new Map((Array.isArray(rows) ? rows : (rows.items ?? [])).map((r) => [r.sku_id, r.available]));
+      const sku = batch.find((k) => (available.get(k.id) ?? 0) > 0);
+      if (sku) return { sku, active };
+    }
+    const total = Number(listing?.total);
+    if (products.length < pageSize || (Number.isFinite(total) && page * pageSize >= total)) return { sku: undefined, active };
+  }
 }
 
 /**

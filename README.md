@@ -172,8 +172,8 @@ nothing there): a kit bench and a box-up bench on one machine need **different b
 one file under `bench/` that is ours: the two tenants, the totem's door, the services held for after the hook,
 `FORGE_PUBLIC_ORIGIN=${FORGE_BENCH_ORIGIN}`, the kept photo cache), `bench-demo/compose.yml`
 (`FORGE_BENCH_COMPOSE_FILES`: the fronts' server-side media base, nothing else now) and `bench-demo/seed-hook.sh`
-(`FORGE_BENCH_SEED_HOOK`: steps 6, 3c/7, 6b, 8 and 14-bis of the birth below for both tenants — and 9, 11, 12
-with the dataset asked). Each file says, line by line, why. What the hook did not do is repeated by the kit at
+(`FORGE_BENCH_SEED_HOOK`: steps 6, 3c/7, 6b, 8, **10** and 14-bis of the birth below for both tenants — and 9,
+10b, 11, 12 with the dataset asked). Each file says, line by line, why. What the hook did not do is repeated by the kit at
 the very end of `up` ("the seed hook reports: …").
 
 **The photo cache is shared.** `bench/bench.env` names DX-I3's volume (`FORGE_SEED_PHOTOS_VOLUME=forge-seed-photos`,
@@ -209,7 +209,7 @@ segment); 14-bis, which opens the café by id, grades 8/8 on both. Open the caf�
 | the admin claims of an address a bench **older than IB-7** left | ❌ kept in the directory | the kit releases only what it recorded itself (`.forge-bench/admin-claims`, kit of IB-6); a bench promoted under the IB-5 kit and brought back before taking this one keeps its `<ip>:NN41/NN81` claims until `bash bench/down.sh -v` |
 | the **admin switcher** between the two brands (`FORGE_ADMIN_SIBLINGS`, box-up 3d) | ❌ | not a kit concern; each admin door is reached by its own address |
 | the box's other credentials: bulk reader (4b), `/enter` access keys (5b) | ❌ | the kit mints the platform credential only; the gate is retired (§4) |
-| **10** the past (`seed-history`) | ❌ | a box-up one-shot inside the silence (§ "Step 10 has two halves") |
+| **10** the past (`seed-history`) | ✅ since SH-2, with two limits | forgeco only with the dataset asked (it has no delivery method without it); not completed to today on a later `up` until the next cut — "The past on the kit bench", below |
 | **13** edge purge / bucket, **14** warming, **15** `verify-config`, the roteiro | ❌ | the kit never warms (and so needs no loopback door, DX-I2); 15 grades the six faces of a box → `bin/box-up.sh` (`--warm`, `--warm-only`, `--verdict-only`) |
 | verdict 12 | ✅ only after 9 | verify-seed is red by construction without the massive catalogue |
 | the remote birth, deploy, reset cycle | untouched | `bin/birth-remote.sh`, `bin/deploy.sh`, `bin/box-cycle.sh` |
@@ -232,6 +232,56 @@ by a recorder (0 calls), Node at the floor `bin/require-node.sh` reads: `up` **4
 without the CA curl exit 60, plain http on the IP exit 7), the vitrine and the café 200 by https, admin login by
 https on `:6981` (forgecafe); `promote.sh localhost` **34 s** — both IP claims released, `:6963` exit 7, the totem
 200 on `:6903`; `down.sh -v` **12 s**.
+
+#### The past on the kit bench (SH-2) — born with 180 days, and what waits for the next cut
+
+The hook runs box-up's step 10 on every `up`: `node dist/seed-history.js --tenant <t>` **inside the kernel,
+through the kit's compose** (`bash bench/compose.sh run --rm kernel …`, like step 9), for every tenant, after the
+curated seed (8) and the massive (9), before the window (11) — inside the buyer-mail silence step 8 opens (the hook
+refuses a past on a tenant whose order mail is armed), with **one** delivery method active (`Entrega Padrão`; the
+others are re-armed by a trap however the hook ends). It is the **default** because it is cheap: the café's 718
+orders took **37 s**, and the whole `up` went from 43 s to **83 s**. `FORGE_DEMO_BENCH_HISTORY=0 bash bench/up.sh`
+declines it, and the kit's final report says so.
+
+What a dev sees, measured on a clean clone, project `sh2`, block 87, 2026-10-11: `read.sales_metrics` for
+forgecafe **7d: 31 orders, R$ 13.596,70, 7 of 7 days with orders · 30d: 130 orders, R$ 57.489,70, 30 of 30 days**
+(90d: 376); the admin home of `:NN21`, signed in, shows "RECEITA 30 dias R$ 57.489,70 · PEDIDOS 130". A second
+`up` (**18 s**) keeps that past and stays green. With `FORGE_DEMO_BENCH_DATASET=1` on the same bench (**28 min
+49 s**, step 9 = 25 min): forgeco's past (720 orders) in **29 s** after the massive, 10b, then 11 and 12 green for
+both tenants and the live proof placed in all four stores; forgeco **7d: 60 orders · 30d: 161, R$ 66.136,40**, the
+same on its admin home at `:NN01`.
+
+Two limits, both said by the hook and repeated in the kit's report:
+
+- **forgeco gets its past only with the dataset** (`FORGE_DEMO_BENCH_DATASET=1`). Without it forgeco has **no
+  delivery method at all** (its logistics, like its catalogue, are the dataset's), so there is nothing to sell a
+  past through: *«10 · forgeco has no delivery method — its logistics come with the massive catalogue»*.
+- **On the pinned images a later `up` keeps the past it has and does not complete it to today.** Every `up` makes
+  the same plain run, `seed-history --tenant <t>`, and reads what it did in its own JSON report
+  (`bin/history-mode.sh`). `seed-history` of the images `forge.lock` pins (v0.3.2) is reset+seed: it SKIPS a tenant
+  that already has a past (exit 0, `"skipped":true`, no `mode`), and the hook says *«forgecafe ALREADY HAS A PAST —
+  kept, NOT completed to today»*. So a bench's past ends on the day of its first `up`, and its 7-day window empties
+  a week later; until the next cut, a fresh past is `bash bench/down.sh -v` and `up` again.
+- **From the next cut on, the same `up` completes it.** Since SH-1 (product PR #659) the script has **no flag**: it
+  decides by the tenant's state and reports `"mode"` — `full` (a past written), `top-up` (a recorded past completed
+  to today), `up-to-date` (nothing to add), `refused` (a past it will not touch; its log says why). The hook says
+  each by name (*«its past COMPLETED TO TODAY in 3 s (51 orders added)»*, *«already up to date — nothing added»*,
+  *«REFUSED to touch this past»*); none is a red `up`. Nothing changes here but the pin. Measured 2026-10-11 with
+  the kernel built from the product at `e0f025738` answering the hook's one-shot on a bench whose café past ended
+  ten days ago (`--end 2026-10-01`): 7d **0 → 33 orders, 0/7 → 7/7 days**; 30d **87 → 133, 20/30 → 30/30**; the
+  next `up`: *«up to date»*, the numbers unchanged.
+
+**The demo's reset** (`bin/demo-reset.sh`) asks the pinned kernel image which of the two it holds (the mode
+`"up-to-date"` is in a state-deciding script's text and not in v0.3.2's) and says it on every run and `--plan`:
+today *«the past: FROZEN»* — a restored box serves the gold's past, ending on the day the gold was taken. With an
+image that completes by itself the reset says so (*«completes a recorded past to today by itself (seed-history
+--tenant <t>, no flag, "mode":"top-up") — this reset does NOT run it yet»*): a restored box has its buyer mail armed
+and two delivery methods active, and how a live box is silenced for it is not decided yet.
+
+**The live proof order picks a sku IN STOCK** (`seed/commerce.mjs`, `firstSkuInStock`): the first active sku of the
+store's listing with `available > 0` in `availability_by_skus`, not the first active one. Measured on another
+machine 2026-10-11: step 11 of the massive bench died twice with `409 insufficient_stock` because the first active
+sku had `available: 0`.
 
 ### The full birth — `bin/box-up.sh`, both tenants, every verdict
 
