@@ -169,6 +169,9 @@ in YOUR inbox: "Sending mail for real", below.
 ⚠️ The admin directory keys on `localhost:<port>`: `http://127.0.0.1:NN01` answers "unknown admin host".
 ⚠️ The doors moved from the `bin/box-up.sh` layout (`NN02` café admin there, `NN21` here; `NN05` the kernel here,
 nothing there): a kit bench and a box-up bench on one machine need **different blocks**.
+Step 6 (`seed-box`) checks each tenant's admin door at the address **the kit** claimed for it (the hook passes
+`--admin-host` from `.forge-bench/tenants.json`, MZ-6), so a kit bench no longer warns «admin host
+localhost:NN02 answers (nobody)» about box-up's café door; `bin/box-up.sh` passes nothing and keeps its own rule.
 
 **What is the demo's enters through the kit's seams, and nothing else:** `bench/bench.env` (the declaration — the
 one file under `bench/` that is ours: the two tenants, the totem's door, the services held for after the hook,
@@ -565,9 +568,12 @@ printed is the **last** run's, so a URL that failed only because of the birth's 
 answer. A URL that is really broken fails twice.
 
 ⛔ **One half of step 14 still fails the birth: a store `seed/box.json` DECLARES and the box does not hold**
-(`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it" — and step 14 is the
-**only** step that can see it: step 12 grades the stores the **port reports** and step 14-bis opens the doors
-of the stores the **port reports**, so a store that was never created is a store neither of them asks about.
+(`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it". Step 14 is **not**
+the only step that sees it: since `b72eca4` step 14-bis (`bin/prove-doors.mjs`) walks the stores `seed/box.json`
+declares against the ones the port lists, and a declared store the box does not hold is a ✗ there too (exit 1,
+"declared in seed/box.json and NOT in this box"). The two are stated in both files because neither runs the
+other. Step 12 still does **not** see it: it grades the stores the **port reports** (it compares handles only to
+catch a wrong credential, so one missing store of two passes it).
 `bin/reset-complete.guard.mjs` executes the real exit block and holds both halves in place.
 
 ⚠️ **Which stores have a page is the PORT's answer, and a skip is ANNOUNCED.** The same read that lists the
@@ -1735,6 +1741,13 @@ A window slot with no picture renders wrong, and the wrongness does not show up 
 written **inside the image** (`home.hero · cafe · 1504x560`), at the size measured from the art that already
 serves that slot. They are deterministic (same slot, same bytes, so a re-run uploads nothing) and they are
 obviously not final.
+
+★ **"A re-run uploads nothing" holds under both storage drivers (MZ-6, 13/10).** The seed decides "already
+in the library" by reading each library asset's bytes back and comparing hashes. It reads the kernel's
+`/v1/media/local/<key>` first and, when that is not served (an s3/R2 driver mounts no local route), the `url`
+the kernel stamps on the `assets` row — the bucket's public address. Before this, an online rebirth found an
+empty index and uploaded (and duplicated) every library photograph. The decision is `buildContentIndex` in
+`seed/media.mjs`, proved for both drivers in `seed/media.test.mjs`.
 
 ★ **The coffees' story frames are no longer among them (04/09).** All eighteen real photographs landed in
 `seed/photos/` under the names the dataset already declared, so `resolvePhoto` stops choosing a stand-in and

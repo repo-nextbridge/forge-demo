@@ -256,6 +256,28 @@ test('★★ bench/up.sh runs the hook bench/bench.env declares, and it seeds BO
   assert.match(out, /the seed hook reports:\n.*· 9, 11, 12 skipped — the massive catalogue is asked with FORGE_DEMO_BENCH_DATASET=1/);
 });
 
+// ★ MZ-6/D5 — the kit lays a second tenant's admin on <block>21 (bench/lib.sh bench_ports), not on the
+// `localhost:82NN` seed/box.json declares for box-up. Measured 2026-10-13: every kit bench's step 6 asked the
+// directory about `localhost:<block>02` for the café — a door nobody on the bench claims — and warned
+// «admin host … answers (nobody)» with a repair that would claim it. The hook now hands seed-box the door the
+// kit itself filed (tenants.json `admin_loopback_origin`), on localhost and promoted alike (the loopback door is
+// claimed either way).
+for (const [where, extra] of [['on localhost', {}], ['promoted to an IP', { FORGE_BENCH_ADDRESS: '192.0.2.20' }]]) {
+  test(`★ MZ-6/D5 · ${where}, seed-box verifies the admin door THE KIT claimed for each tenant — the café's is <block>21, never 82NN's <block>02`, () => {
+    const { rc, out, nodes, files } = up(extra);
+    assert.equal(rc, 0, `bench/up.sh did not finish:\n${out.slice(-2500)}`);
+    const filed = Object.fromEntries(JSON.parse(files.tenants).map((t) => [t.tenant, t.admin_loopback_origin]));
+    assert.deepEqual(filed, { forgeco: 'http://localhost:7101', forgecafe: 'http://localhost:7121' }, 'the kit filed other admin doors than this rule was written against');
+    const seedBox = nodes.filter((l) => l.startsWith('node bin/seed-box.mjs'));
+    assert.equal(seedBox.length, 2, `seed-box ran ${seedBox.length} time(s):\n  ${nodes.join('\n  ')}`);
+    for (const l of seedBox) {
+      const door = new URL(filed[tenantOf(l)]).host;
+      assert.match(l, new RegExp(` --admin-host ${door}( |$)`), `seed-box for ${tenantOf(l)} was not handed the admin door the kit claimed (${door}): ${l}`);
+    }
+    assert.ok(!seedBox.some((l) => /--admin-host localhost:7102( |$)/.test(l)), 'the café was verified on box-up\'s <block>02 again');
+  });
+}
+
 test('★ FORGE_DEMO_BENCH_DATASET=1: the massive one-shot runs THROUGH THE KIT for the dataset\'s tenant only, then the window and the verdict for both', () => {
   const { rc, out, nodes, calls } = up({ FORGE_DEMO_BENCH_DATASET: '1' });
   assert.equal(rc, 0, `bench/up.sh with the dataset asked did not finish:\n${out.slice(-2500)}`);
