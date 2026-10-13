@@ -1736,6 +1736,13 @@ written **inside the image** (`home.hero · cafe · 1504x560`), at the size meas
 serves that slot. They are deterministic (same slot, same bytes, so a re-run uploads nothing) and they are
 obviously not final.
 
+★ **"A re-run uploads nothing" holds under both storage drivers (MZ-6, 13/10).** The seed decides "already
+in the library" by reading each library asset's bytes back and comparing hashes. It reads the kernel's
+`/v1/media/local/<key>` first and, when that is not served (an s3/R2 driver mounts no local route), the `url`
+the kernel stamps on the `assets` row — the bucket's public address. Before this, an online rebirth found an
+empty index and uploaded (and duplicated) every library photograph. The decision is `buildContentIndex` in
+`seed/media.mjs`, proved for both drivers in `seed/media.test.mjs`.
+
 ★ **The coffees' story frames are no longer among them (04/09).** All eighteen real photographs landed in
 `seed/photos/` under the names the dataset already declared, so `resolvePhoto` stops choosing a stand-in and
 the eighteen `placeholder-*-historia-*` files were retired. What is left is the nine WINDOW slots (hero,

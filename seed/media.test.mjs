@@ -9,7 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { planRepoint, resolvePhoto, reuseKey, sha256 } from './media.mjs';
+import { buildContentIndex, planRepoint, resolvePhoto, reuseKey, sha256 } from './media.mjs';
 
 const SEED = dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +36,61 @@ test('same bytes under a DIFFERENT name → no reuse: the name is half the ident
 test('a name the library has never seen → no reuse', () => {
   assert.equal(reuseKey(index(), 'brand-new.png', NEW), null);
   assert.equal(reuseKey(new Map(), 'alvorada.png', OLD), null);
+});
+
+
+// ── the content index under BOTH storage drivers (MZ-6/D1) ──────────────────────────────────────────────
+//
+// The two drivers are simulated by what the kernel would answer: the local driver mounts
+// `/v1/media/local/*` and serves the bytes there; an s3 driver mounts nothing there (404) and the bytes live
+// at the bucket address the kernel stamps as the asset row's `url`. The index must find the library BOTH ways,
+// or an online rebirth re-uploads (and duplicates) every library photograph.
+
+const API = 'http://kernel.example.test';
+const BYTES = Buffer.from('the 733x1266 re-cut');
+const ROW = { filename: 'alvorada.png', provider_key: 'tenant_x/01abc-alvorada.png' };
+
+/** A fake `fetch` that serves BYTES at exactly one address and 404s everything else. */
+const servingAt = (address) => async (url) =>
+  url === address
+    ? new Response(BYTES, { status: 200 })
+    : new Response('not found', { status: 404 });
+
+test('local driver: the library is indexed through the kernel\'s own local route', async () => {
+  const row = { ...ROW, url: `http://localhost:8900/v1/media/local/${ROW.provider_key}` };
+  const index = await buildContentIndex([row], {
+    api: API,
+    fetch: servingAt(`${API}/v1/media/local/${ROW.provider_key}`),
+  });
+  assert.equal(reuseKey(index, 'alvorada.png', sha256(BYTES)), ROW.provider_key);
+});
+
+test('★ s3 driver: no local route — the index reads the url the kernel stamped, and finds the library', async () => {
+  // ⚠️ THIS IS THE DEFECT. The index read only `/v1/media/local/<key>`; under s3 that is a 404 for every row,
+  // the index came back empty, and the online rebirth uploaded every library photograph again.
+  const row = { ...ROW, url: `https://media.example.test/${ROW.provider_key}` };
+  const index = await buildContentIndex([row], { api: API, fetch: servingAt(row.url) });
+  assert.equal(reuseKey(index, 'alvorada.png', sha256(BYTES)), ROW.provider_key);
+});
+
+test('a stamped host that cannot be reached (fetch throws) is not fatal: the row is just not indexed', async () => {
+  const row = { ...ROW, url: 'http://kernel:3000/v1/media/local/x' };
+  const index = await buildContentIndex([row], {
+    api: API,
+    fetch: async (url) => {
+      if (url === row.url) throw new TypeError('fetch failed');
+      return new Response('not found', { status: 404 });
+    },
+  });
+  assert.equal(index.size, 0);
+});
+
+test('an asset whose bytes answer nowhere is not indexed (an orphan row stays harmless)', async () => {
+  const index = await buildContentIndex([{ ...ROW, url: `https://media.example.test/${ROW.provider_key}` }], {
+    api: API,
+    fetch: servingAt('https://elsewhere.example.test/nothing'),
+  });
+  assert.equal(index.size, 0);
 });
 
 // ── what to do about the product's reference ───────────────────────────────────────────────────────────

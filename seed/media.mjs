@@ -160,3 +160,52 @@ export function planMediaList(refs, want) {
   }
   return { attach, detach: images.filter((m) => !keep.has(m.id)).map((m) => m.id) };
 }
+
+/**
+ * ★★ WHERE AN ASSET'S BYTES CAN BE READ BACK FROM, in the order to try them — the content index's only I/O
+ * decision, here so both drivers can be proved without a kernel (MZ-6/D1, 2026-10-13).
+ *
+ * ⚠️ THE INDEX USED TO KNOW ONE ADDRESS, AND IT ONLY EXISTS UNDER ONE DRIVER. It read
+ * `${api}/v1/media/local/<key>`, which the kernel mounts only when its backend has a local store
+ * (`apps/api/src/media-adapter.ts`, product `b072a7433`: `if (!store) return;` before the GET route). Under an s3
+ * driver every read answered not-ok, every asset was skipped as an "orphan", the index came back EMPTY, and an
+ * online rebirth uploaded every library photograph again — a fresh key and a duplicate row per run, in silence.
+ *
+ * ⇒ The local route stays FIRST (it is the address that answers on every bench, and it is the kernel itself, so
+ * it cannot hang on a host this machine does not reach), and the `url` the kernel STAMPS on each `assets` row
+ * (`${FORGE_MEDIA_BASE_URL}/<key>`, `packages/core/src/read/internal-capabilities.ts` `assets`) is the second:
+ * under a bucket driver that is the bucket's own public address, the bytes the shop serves. Undo the second
+ * entry and `seed/media.test.mjs` goes red on the s3 case.
+ */
+export function assetByteSources(api, asset) {
+  const local = `${api}/v1/media/local/${asset.provider_key}`;
+  return asset.url && asset.url !== local ? [local, asset.url] : [local];
+}
+
+/**
+ * Build the content index — filename -> Map<sha256, provider_key> — from the library rows.
+ *
+ * An asset whose bytes answer nowhere is not a match for anything; it is simply not indexed. Refusing the whole
+ * run over one orphan row would make a harmless leftover fatal. A source that THROWS (a stamped host this
+ * machine cannot resolve) counts as not answering and the next one is tried.
+ *
+ * @param fetchImpl injected so the two drivers can be simulated; the seed passes the global `fetch`.
+ */
+export async function buildContentIndex(assets, { api, fetch: fetchImpl }) {
+  const byName = new Map();
+  await Promise.all(
+    assets.map(async (a) => {
+      if (!a.filename || !a.provider_key) return;
+      for (const src of assetByteSources(api, a)) {
+        const res = await fetchImpl(src).catch(() => null);
+        if (!res?.ok) continue;
+        const sha = sha256(Buffer.from(await res.arrayBuffer()));
+        const byHash = byName.get(a.filename) ?? new Map();
+        byHash.set(sha, a.provider_key);
+        byName.set(a.filename, byHash);
+        return;
+      }
+    }),
+  );
+  return byName;
+}

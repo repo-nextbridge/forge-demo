@@ -41,7 +41,7 @@ import { mimeOf, resolveMediaFile, seedForge } from '../seed/forge.mjs';
 // (a request id). `mayRetry` is the other half: whether a gateway 5xx may be sent again, which is a question
 // about the METHOD and not about the command.
 import { httpFailure, mayRetry } from '../seed/failure.mjs';
-import { planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs';
+import { buildContentIndex, planMediaList, resolvePhoto, reuseKey, sha256 } from '../seed/media.mjs';
 // WHICH SKUs STILL NEED STOCKING — a function, and it takes BOTH reads on purpose. See the file: the version
 // that trusted `stock_levels` alone could not stock a product that had never been stocked, in silence.
 import { createMinted, unresolved } from '../seed/minted.mjs';
@@ -761,24 +761,9 @@ async function customFields() {
 const contentIndex = (() => {
   /** filename -> Map<sha256, provider_key>. Built once, then kept current by upload() itself. */
   let building = null;
-  const build = async () => {
-    const assets = await readAll('assets');
-    const byName = new Map();
-    await Promise.all(
-      assets.map(async (a) => {
-        if (!a.filename || !a.provider_key) return;
-        const res = await fetch(`${api}/v1/media/local/${a.provider_key}`);
-        // An asset whose bytes are gone is not a match for anything; it is simply not indexed. Refusing the
-        // whole run over one orphan row would make a harmless leftover fatal.
-        if (!res.ok) return;
-        const sha = sha256(Buffer.from(await res.arrayBuffer()));
-        const byHash = byName.get(a.filename) ?? new Map();
-        byHash.set(sha, a.provider_key);
-        byName.set(a.filename, byHash);
-      }),
-    );
-    return byName;
-  };
+  // The read-back itself lives in seed/media.mjs (`buildContentIndex`), where both storage drivers are proved:
+  // under s3 the kernel mounts no `/v1/media/local/*`, and the index reads the url the kernel stamped instead.
+  const build = async () => buildContentIndex(await readAll('assets'), { api, fetch });
   return {
     async lookup(filename, sha) {
       building ??= build();
