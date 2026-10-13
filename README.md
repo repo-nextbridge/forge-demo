@@ -169,6 +169,9 @@ in YOUR inbox: "Sending mail for real", below.
 ⚠️ The admin directory keys on `localhost:<port>`: `http://127.0.0.1:NN01` answers "unknown admin host".
 ⚠️ The doors moved from the `bin/box-up.sh` layout (`NN02` café admin there, `NN21` here; `NN05` the kernel here,
 nothing there): a kit bench and a box-up bench on one machine need **different blocks**.
+Step 6 (`seed-box`) checks each tenant's admin door at the address **the kit** claimed for it (the hook passes
+`--admin-host` from `.forge-bench/tenants.json`, MZ-6), so a kit bench no longer warns «admin host
+localhost:NN02 answers (nobody)» about box-up's café door; `bin/box-up.sh` passes nothing and keeps its own rule.
 
 **What is the demo's enters through the kit's seams, and nothing else:** `bench/bench.env` (the declaration — the
 one file under `bench/` that is ours: the two tenants, the totem's door, the services held for after the hook,

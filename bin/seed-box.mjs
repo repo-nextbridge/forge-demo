@@ -5,6 +5,7 @@
 //
 //   node bin/seed-box.mjs --tenant forgeco
 //   node bin/seed-box.mjs --tenant forgecafe
+//   … --admin-host localhost:8921   (the kit's hook: the admin door the KIT claimed, verified in place of box.json's)
 //
 // It reads `seed/box.json` and applies the entry whose `id` matches. It is the piece that PREPARES THE
 // TERRAIN; `bin/seed.mjs` and the `demo-data` app are what FILL it. Two pieces filling is how one of them
@@ -401,7 +402,13 @@ async function verifyAdminHost() {
   // 8201 — a door nobody on that bench claims — and printed a repair that would claim ANOTHER bench's admin.
   const block = process.env.FORGE_BENCH_PORT_BLOCK ?? '';
   const door = /^localhost:82(\d\d)$/.exec(spec.admin_host);
-  const adminHost = block && door ? `localhost:${block}${door[1]}` : spec.admin_host;
+  // ★ MZ-6/D5 — UNDER THE KIT, THE DOOR IS THE ONE THE KIT CLAIMED, and the hook passes it (`--admin-host`, from
+  // .forge-bench/tenants.json `admin_loopback_origin`). The kit lays a second tenant's admin on <block>21, not on
+  // the `localhost:82NN` seed/box.json declares for box-up: measured 2026-10-13, every kit bench printed
+  // «admin host localhost:<NN>02 answers (nobody)» for the café — a door nobody on that bench claims — and a
+  // repair that would claim it. Without the flag (box-up), the derivation below is unchanged.
+  const kitDoor = argOf('--admin-host');
+  const adminHost = kitDoor || (block && door ? `localhost:${block}${door[1]}` : spec.admin_host);
   const res = await fetch(`${api}/v1/read/admin.by_host?host=${encodeURIComponent(adminHost)}`);
   const body = await res.json().catch(() => ({}));
   const claimed = body?.tenant_id ?? body?.tenant ?? null;
@@ -411,8 +418,10 @@ async function verifyAdminHost() {
   }
   log(
     `⚠️ admin host ${adminHost} answers ${claimed ?? '(nobody)'} , expected ${tenant}.\n` +
-      `  This script cannot claim it (no credential on this box holds platform.tenant.write). Claim it with:\n` +
-      `    docker compose run --rm kernel node dist/admin-host.js set ${adminHost} ${tenant}`,
+      `  This script cannot claim it (no credential on this box holds platform.tenant.write). ` +
+      (kitDoor
+        ? `The kit claims this door\n  at its step 3: re-run \`bash bench/up.sh\` (it re-claims every admin door it owns).`
+        : `Claim it with:\n    docker compose run --rm kernel node dist/admin-host.js set ${adminHost} ${tenant}`),
   );
 }
 

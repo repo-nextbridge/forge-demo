@@ -232,10 +232,16 @@ drain_the_queue() {
   say "10b · queue quiet —$last"
 }
 
+# ★ MZ-6/D5 — seed-box verifies the admin door THE KIT claimed for each tenant (its loopback admin origin in
+# tenants.json: forgeco on <block>01, the café on <block>21), not seed/box.json's `localhost:82NN`, which is
+# box-up's layout. Without it every kit bench warned «admin host localhost:<block>02 answers (nobody)».
+admin_door_of() { jq -r --arg t "$1" '.[] | select(.tenant == $t) | .admin_loopback_origin' "$FORGE_BENCH_TENANTS_FILE" | sed 's#^[a-z]*://##; s#/.*$##'; }
 for tenant in $FORGE_BENCH_TENANT_IDS; do
   as_tenant "$tenant"
-  say "6 · seed-box ($tenant)"
-  host_node bin/seed-box.mjs --tenant "$tenant" --api "$api" || die "seed-box failed for $tenant (above)."
+  door="$(admin_door_of "$tenant")"
+  [ -n "$door" ] && [ "$door" != null ] || die "the kit filed no admin origin for $tenant (tenants.json admin_loopback_origin)."
+  say "6 · seed-box ($tenant, admin door $door)"
+  host_node bin/seed-box.mjs --tenant "$tenant" --api "$api" --admin-host "$door" || die "seed-box failed for $tenant (above)."
 done
 
 # 3c/7 · What the café's two services need, learned here and handed to the kit: the café's store (provisioned by

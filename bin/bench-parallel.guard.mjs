@@ -284,3 +284,21 @@ test('step 6 asks the directory about the MOVED admin door too — and its repai
   const uses = [...fn[0].matchAll(/spec\.admin_host/g)].length;
   assert.equal(uses, 3, `verifyAdminHost reads spec.admin_host ${uses}× — beyond the presence check and the derivation, every use must be the moved door`);
 });
+
+// ★ MZ-6/D5 — the other half of bin/bench-kit.guard.mjs's rule: the hook hands `--admin-host`, and seed-box must
+// let it WIN over the 82NN derivation (a flag read and then ignored would keep the «answers (nobody)» warning on
+// every kit bench), while a run without it (box-up) keeps the derivation. Code only, comments out.
+test('MZ-6/D5 · step 6: the admin door the kit hands (`--admin-host`) wins over the derivation; without it, box-up\'s rule is unchanged', () => {
+  const code = read('bin/seed-box.mjs').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const fn = code.match(/async function verifyAdminHost\(\) \{[\s\S]*?\n\}\n/);
+  assert.ok(fn, 'bin/seed-box.mjs no longer has verifyAdminHost()');
+  const flag = /const (\w+) = argOf\('--admin-host'\);/.exec(fn[0]);
+  assert.ok(flag, 'verifyAdminHost no longer reads --admin-host — under the kit it asks about a door the kit never claimed');
+  const pick = /const adminHost = (.+);/.exec(fn[0]);
+  assert.ok(pick, 'verifyAdminHost no longer names the door it asks about `adminHost`');
+  assert.ok(
+    pick[1].startsWith(`${flag[1]} ||`),
+    `the kit's door does not come first in \`const adminHost = ${pick[1]}\` — the derivation would win over it`,
+  );
+  assert.match(pick[1], /FORGE_BENCH_PORT_BLOCK|block && door/, 'without the flag, the port-block derivation is gone');
+});
