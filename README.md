@@ -134,8 +134,8 @@ override, read in that one file. `node bin/release-tree.mjs` says what this mach
 (`templates/instance/bench/`), copied into `bench/` **unchanged** — `bench-kit.lock` names the Forge commit and
 each file's sha256, and `bin/bench-kit.guard.mjs` goes red, saying *"this is a product requirement, not a local
 fix"*, the day a file of it is edited. This box is the product's first client: what the kit cannot express here
-is written down as a requirement on the kit (the table below), never patched into the copy. Since IB-9 the kit
-is the one of IB-8 (Forge `3acffcd0f`; IB-7 took IB-6's, `b072a7433`; IB-5 took IB-4's, `4478fc230`), and the bench holds **the whole topology of
+is written down as a requirement on the kit (the table below), never patched into the copy. Since MZ-7 the kit
+is the one of MZ-5 (Forge `066095e15`; IB-9 took IB-8's, `3acffcd0f`; IB-7 took IB-6's, `b072a7433`; IB-5 took IB-4's, `4478fc230`), and the bench holds **the whole topology of
 `seed/box.json`**: both tenants, their four stores, the café's own storefront and the counter's totem — reachable
 by https from another device when promoted (`NN63`).
 
@@ -147,6 +147,19 @@ bash bench/down.sh -v                         # down, data and minted secrets dr
 FORGE_DEMO_BENCH_DATASET=1 bash bench/up.sh   # the massive catalogue too (step 9 + 11 + 12, speaking)
 COMPOSE_PROJECT_NAME=b FORGE_BENCH_PORT_BLOCK=71 bash bench/up.sh   # a second bench on this machine
 ```
+
+**The bench's name (kit of MZ-5).** `bench/bench.env` declares no `COMPOSE_PROJECT_NAME`, so the kit names the
+bench `<directory>-<8 hex of this copy's real path>` (a clone in `…/mz7` is `mz7-6b9c0a97`): two copies with the
+same directory name are two benches with nothing declared, and the same copy gets the same name on every run. A
+second bench on this machine still needs its own **port block**; the name is only worth declaring when you want
+to choose it. ★ **A bench born before (project = the directory's name alone) is found, not duplicated:** the
+`up` says *«this copy's bench was born as project 'mz7' … kept, and recorded in .forge-bench/project»* and goes
+on with the same volumes; `bash bench/down.sh -v` drops the record, and the next bench is born under the new name.
+Measured 2026-10-13 on a clean clone in `…/mz7`, block 89: born with the old kit as `mz7`; the kit of MZ-5 over it,
+nothing declared → kept `mz7` by its containers, the same `mz7_pgdata` (creation time unchanged) and the past kept
+(*«forgecafe ALREADY HAS A PAST»*), no `mz7-6b9c0a97_*` volume; after a `down` without `-v` and with no record
+(the state of a bench downed under the old kit) → kept again, by its volumes and its minted secrets; after
+`down -v` → the next name is `mz7-6b9c0a97`.
 
 No `.env`, no `.secrets`, no `env-source.sh`: the kit reads **only** `bench/bench.env` (production's `.env` is
 never read; a FORGE_* of this shell it does not declare is dropped and named) and mints its own database
@@ -238,6 +251,11 @@ password *«incomplete — missing: FORGE_SMTP_PASS … Nothing was started»*; 
 reserved test domain… Nothing was started»*; declared, `up` **29 s**, no `mailpit` container, the hook whole
 (14-bis 4/4 and 8/8), and one login code per tenant arrived at the outside SMTP for the declared operator (an
 address no tenant invited: 200 and no message); back to the mailbox **30 s**; `down -v` **12 s**.
+
+★ **Declaring the mailbox away on a bench that had one no longer warns about an orphan (kit of MZ-5).** The
+`mailpit` container of the previous `up` is removed at step 2 (`--remove-orphans`). Measured 2026-10-13, block 89,
+stand-in SMTP on this machine's LAN address: **0** «Found orphan containers» lines on the `up`, `mailpit`
+removed at step 2; the same `up` with the kit's previous `bench/up.sh` (the control): **2** (steps 2 and 3).
 
 #### What the kit bench does not cover — `bin/box-up.sh` keeps it
 

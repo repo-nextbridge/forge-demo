@@ -1189,11 +1189,57 @@ bench_profiles() {
 # Compose stamps the directory it ran from on every container (`com.docker.compose.project.working_dir`), so a
 # project can say which copy owns it, and `up` and `down` refuse one another copy owns — before any side effect.
 # ⚠️ It sees containers. After `down` a project has at most volumes, which carry no directory.
+#
+# ★ MZ-5/P23 — THE DEFAULT IS NO LONGER THE BASENAME ALONE. Until 2026-10-13 an undeclared name was compose's
+# (`shop`), so two homonym copies met the refusal above and the second one had to be named by hand. Now an
+# undeclared name is `<basename>-<8 hex of the copy's real path>` (`shop-1a2b3c4d`): two homonym copies get two
+# benches with nothing declared, and the same copy gets the same name on every run. What still WINS, in order:
+#   1. COMPOSE_PROJECT_NAME in the shell (or in bench/bench.env, folded into the shell before this runs);
+#   2. a name the compose files or the env file give (`name:`), i.e. one compose resolves that is not the
+#      directory's own basename — a name equal to the basename cannot be told from compose's default and gets
+#      the suffix: declare another one;
+#   3. the name recorded in .forge-bench/project — the transition, below.
+# ★ THE TRANSITION (a bench born under the old rule, project `shop`): the new name would be a NEW bench, born
+# empty beside the old one, silently. So the old name is kept — and recorded, so a later `down` that leaves only
+# volumes does not lose it — when this copy owns it: a container of `shop` stamped with THIS directory, or no
+# container of `shop` at all but its volumes and this copy's minted secrets (.forge-bench/secrets.env, the
+# password the old database was created with). `down -v` removes .forge-bench/ and with it the record: the next
+# `up` is born under the new name. Measured 2026-10-13 on a vanilla kit with two homonym copies (`…/a/mz5bench`,
+# `…/b/mz5bench`): both up at once as `mz5bench-8596886c` and `mz5bench-8ba21de9` (before: the second refused);
+# a bench born under the old kit was found by its containers and, after a `down`, by its volumes.
+bench_project_default() {
+  local base here sum
+  base="$(basename "$BENCH_ROOT" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-' | sed 's/^[-_]*//')"
+  here="$(cd "$BENCH_ROOT" && pwd -P)"
+  sum="$(printf '%s' "$here" | cksum | cut -d' ' -f1)"
+  printf '%s-%08x' "${base:-bench}" "$sum"
+}
+
 bench_project() {
+  local resolved base legacy_owner record="$BENCH_STATE/project"
   if [ -z "${COMPOSE_PROJECT_NAME:-}" ]; then
-    COMPOSE_PROJECT_NAME="$(bench_compose config --no-interpolate --format json 2>/dev/null | jq -r '.name // empty')" || true
-    [ -n "$COMPOSE_PROJECT_NAME" ] ||
+    resolved="$(bench_compose_read config --no-interpolate --format json 2>/dev/null | jq -r '.name // empty')" || true
+    [ -n "$resolved" ] ||
       bench_die "could not ask \`docker compose\` which project this bench is. Refusing rather than guessing: an unanswered question here is how one bench recreates another."
+    base="$(basename "$BENCH_ROOT" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-' | sed 's/^[-_]*//')"
+    if [ "$resolved" != "$base" ]; then
+      COMPOSE_PROJECT_NAME="$resolved"
+    elif [ -s "$record" ]; then
+      COMPOSE_PROJECT_NAME="$(head -n 1 "$record")"
+    else
+      legacy_owner="$(docker ps -a --filter "label=com.docker.compose.project=$resolved" \
+        --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null | sort -u)" || true
+      if { [ -n "$legacy_owner" ] && [ "$(cd "$legacy_owner" 2>/dev/null && pwd -P)" = "$(cd "$BENCH_ROOT" && pwd -P)" ]; } ||
+        { [ -z "$legacy_owner" ] && [ -f "$BENCH_STATE/secrets.env" ] &&
+          [ -n "$(docker volume ls -q --filter "label=com.docker.compose.project=$resolved" 2>/dev/null)" ]; }; then
+        COMPOSE_PROJECT_NAME="$resolved"
+        mkdir -p "$BENCH_STATE"
+        printf '%s\n' "$COMPOSE_PROJECT_NAME" >"$record"
+        bench_say "this copy's bench was born as project '$COMPOSE_PROJECT_NAME' (the directory's name alone, the rule before 2026-10-13) — kept, and recorded in .forge-bench/project. \`bash bench/down.sh -v\` drops it; the next bench is then '$(bench_project_default)'."
+      else
+        COMPOSE_PROJECT_NAME="$(bench_project_default)"
+      fi
+    fi
   fi
   export COMPOSE_PROJECT_NAME
 }

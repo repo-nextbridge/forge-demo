@@ -106,7 +106,13 @@ if [ "$mailbox" = bench ]; then
   bench_compose up -d --wait postgres redis mailpit
 else
   bench_say "2/8 postgres + redis — no mailbox: the kernel sends for real through $FORGE_SMTP_HOST:${FORGE_SMTP_PORT:-587} as $FORGE_SMTP_FROM"
-  bench_compose up -d --wait postgres redis
+  # --remove-orphans HERE, not only in step 5 (MZ-5/P24). A bench whose mailbox was just declared away still has
+  # the `mailpit` container of its last `up`, and once the overlay drops the service (`mailpit: !reset null`)
+  # that container is an orphan, and compose warned «Found orphan containers ([…-mailpit-1])» on every call
+  # until step 5 removed it — measured 2026-10-13, compose 5.3.1, kit vanilla: TWO warnings on one `up` (this
+  # step's `up` and step 3's `run`), ZERO with the flag here. An orphan is a service no file of this bench
+  # declares any more, so this is what step 5 already did, earlier. Delete the flag and the warnings come back.
+  bench_compose up -d --wait --remove-orphans postgres redis
 fi
 
 # ── 3 ──────────────────────────────────────────────────────────────────────────────────────────────────────
