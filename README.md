@@ -568,9 +568,12 @@ printed is the **last** run's, so a URL that failed only because of the birth's 
 answer. A URL that is really broken fails twice.
 
 ⛔ **One half of step 14 still fails the birth: a store `seed/box.json` DECLARES and the box does not hold**
-(`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it" — and step 14 is the
-**only** step that can see it: step 12 grades the stores the **port reports** and step 14-bis opens the doors
-of the stores the **port reports**, so a store that was never created is a store neither of them asks about.
+(`bin/warm-box.mjs` exits **3**). That is not warmth — it is "the birth did not build it". Step 14 is **not**
+the only step that sees it: since `b72eca4` step 14-bis (`bin/prove-doors.mjs`) walks the stores `seed/box.json`
+declares against the ones the port lists, and a declared store the box does not hold is a ✗ there too (exit 1,
+"declared in seed/box.json and NOT in this box"). The two are stated in both files because neither runs the
+other. Step 12 still does **not** see it: it grades the stores the **port reports** (it compares handles only to
+catch a wrong credential, so one missing store of two passes it).
 `bin/reset-complete.guard.mjs` executes the real exit block and holds both halves in place.
 
 ⚠️ **Which stores have a page is the PORT's answer, and a skip is ANNOUNCED.** The same read that lists the
