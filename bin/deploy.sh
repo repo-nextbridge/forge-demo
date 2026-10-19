@@ -423,6 +423,7 @@ if [ "$PLAN" = 'yes' ]; then
   note "                $FORGE_ADMIN_IMAGE"
   note "                ${FORK_IMAGES[*]}"
   note "would bring up: $BRINGING"
+  note "would check   : every bind mount of the running containers, by content — recreating only what diverged"
   printf '\n%s ✓ plan only. The fence above DID run, against the real lock.\n\n' "$TAG"
   exit 0
 fi
@@ -530,6 +531,33 @@ note 'migrated'
 remote_compose "${COMPOSE_FILES[@]}" up -d --remove-orphans $UP_ARGS >/dev/null \
   || die 'the stack did not come up. `docker compose ps` on the host says which container.'
 note "up        $BRINGING"
+
+# ── 6a · ★★ THE MOUNTS: DOES EVERY RUNNING CONTAINER SERVE WHAT STEP 4 JUST DELIVERED? ──────────────────────
+#
+# ⛔ MEASURED ON THE STAGING BOX, 2026-10-19: this deploy exited 0 with every face answering, and the edge was
+# serving the Caddyfile of 10/10 — the host held the new one (`grep -c forge_noindex` → 7), the container the
+# old (→ 0). `tar -x` above gives every file a NEW inode, a bind-mounted file pins the OLD one, and the `up`
+# above does not recreate a service whose definition did not change. The rule, the measure and why it is by
+# CONTENT live in `box_refresh_stale_mounts` (bin/remote-box.sh); here is only where it runs: after `up`, so it
+# walks the containers that are really serving, and before the birth, so the birth is handed a current box.
+# Delete this step and the deploy is green over a stale edge again — bin/stale-mounts.guard.mjs says so.
+mounts_report="$(remote_refresh_stale_mounts "${COMPOSE_FILES[@]}")" \
+  || die "the stale-mount check failed on the host (see above). The stack is up, but it may be serving config
+     from before this delivery — \`docker compose up -d --force-recreate --no-deps <service>\` there re-reads it."
+while read -r kind svc what dst src why; do
+  case "$kind" in
+    stale)     note "stale     $svc serves an old $what at $dst (from $src): $why" ;;
+    recreated) note "recreated $svc — so that it serves the $dst it was just delivered" ;;
+    checked)   note "mounts    $svc file(s) + $what director(ies) checked by content inside the running containers" ;;
+  esac
+done <<<"$mounts_report"
+# ⚠️ No `checked` line means the walk never ran (the host answered and measured nothing); say so by name rather
+# than letting "nothing recreated" stand for a measure that was not taken.
+if ! grep -q '^checked ' <<<"$mounts_report"; then
+  note '⚠️ mounts    the host returned NO measure — whether the containers serve the delivered config is UNKNOWN'
+elif ! grep -q '^recreated ' <<<"$mounts_report"; then
+  note 'mounts    nothing recreated — every running container already serves what was delivered'
+fi
 
 # ── 6b · ⛔⛔ THE BIRTH, AND ONLY WHEN IT WAS ASKED FOR BY NAME ────────────────────────────────────────────
 #
