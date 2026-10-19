@@ -2372,7 +2372,17 @@ the list that is missing the key the next slice adds.
    what this instance's pre-release lock carries — is carried over the same ssh connection. The digest is
    asserted on both ends, so the tag is only ever a handle for finding the bytes.
 6. **Migrate, then up.** One-shot, never a boot hook, exactly as the model says.
-7. **The verdict.** The six faces, probed from OUTSIDE the box — DNS, certificate and the edge's choice of
+7. **The mounts.** Every bind mount the running containers really have (`docker inspect`, not a list) is
+   compared on the box: a file by **content** (`docker exec … cat`, never `docker cp`), a directory by inode and
+   entries. A service that serves something other than what step 4 delivered is recreated
+   (`up -d --force-recreate --no-deps`), only that one, and the deploy prints which and why; a deploy that
+   changed no config recreates nothing. **Why it exists:** `tar -x` gives every delivered file a new inode, a
+   bind-mounted file pins the old one, and `up -d` does not recreate an unchanged service — on 2026-10-19 the
+   staging edge kept serving a Caddyfile a week old after a green deploy (host `grep -c forge_noindex` → 7,
+   container → 0). `caddy reload` does not fix that; only a recreate does. By hand on a box:
+   `docker compose up -d --force-recreate --no-deps caddy`. The rule is `box_refresh_stale_mounts` in
+   `bin/remote-box.sh`, graded with real containers by `bin/stale-mounts.guard.mjs`.
+8. **The verdict.** The six faces, probed from OUTSIDE the box — DNS, certificate and the edge's choice of
    container are three things a `curl` on the host proves none of.
 
 ### ⛔⛔ A deploy is not a birth — and that is why they are two files

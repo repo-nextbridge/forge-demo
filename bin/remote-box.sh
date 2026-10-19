@@ -8,6 +8,7 @@
 #   remote_compose -f compose.yml -f compose.override.yml up -d postgres redis
 #   remote_env_put FORGE_COFFEE_STORE_ID sto_01J…
 #   remote_secret_put forge-operator-token "$value"
+#   remote_refresh_stale_mounts -f compose.yml -f compose.override.yml    recreate what serves a stale mount
 #
 # ── ★★ WHY THIS FILE EXISTS AT ALL, WHICH IS THE ONLY INTERESTING THING ABOUT IT ────────────────────────────
 #
@@ -236,4 +237,137 @@ remote_secret_has() { # <name>   → 0 when the box carries it
 # credential does not fail loudly at the port, it fails as "unauthorized", which reads like a broken box.
 remote_secret_get() { # <name>   → the value, or empty
   "${REMOTE_SSH[@]}" "sed -n 's/^$1=//p' $(printf '%q' "$REMOTE_BOX_DIR/.secrets") 2>/dev/null | head -1" </dev/null
+}
+
+# ── ★★★ STALE MOUNTS — DOES THE RUNNING CONTAINER STILL SERVE WHAT THE DEPLOY JUST DELIVERED? ──────────────
+#
+# ⛔ MEASURED ON THE STAGING BOX, 2026-10-19 (deploy of main 1f1146a, rc=0, every face 200/307). MZ-9 put
+# `import forge_noindex` in every site of `caddy/Caddyfile`. After the deploy the HOST's
+# `/opt/forge-demo/caddy/Caddyfile` held the snippet (`grep -c forge_noindex` → 7), the edge's
+# `/etc/caddy/Caddyfile` did not (`docker exec forge-demo-caddy-1 grep -c forge_noindex` → 0), the container
+# dated from 10/10, and no face answered `X-Robots-Tag`. A green deploy, serving last week's edge.
+#
+# ★ THE CLASS. A bind mount of a FILE pins the INODE, not the path. `bin/deploy.sh` delivers with `tar -x`,
+# and GNU tar replaces an existing file with a NEW inode — measured with tar 1.35: same path, inode
+# 7845134 → 7845137, even when the bytes are identical. The container keeps the old, now-unlinked inode
+# mapped at its destination. `docker compose up -d` does not recreate it (the service definition did not
+# change), and `caddy reload` re-reads that same dead inode. Only a RECREATE re-resolves the mount.
+#
+# ★ SO THE QUESTION IS ASKED BY CONTENT, from inside the container's mount namespace, for every bind mount
+# the containers REALLY have (`docker inspect`, never a list kept here — a config file added to compose next
+# month is covered the day it is added):
+#   · a FILE: sha256 of the host side vs `docker exec … cat` of the container side. ⚠️ NEVER `docker cp`: for a
+#     bind mount it resolves the path on the HOST and would compare host against host forever (the product's
+#     `infra/cicd/config-mount-selftest.sh` caught exactly that). And never the inode: tar gives every file a
+#     new one on every deploy, so an inode rule would recreate the whole box on every push.
+#   · a DIRECTORY: the same class, a different measure — the directory's inode (`stat -c %i`, host vs
+#     container) and then a digest of its top-level names, because a recycled inode number can make a replaced
+#     directory answer with the old one's. tar keeps an existing directory's inode (measured: 7845133/7845135
+#     unchanged across two deliveries), so for a deploy this is a check that normally finds nothing — it is
+#     here for the folder someone replaced by hand (`rm -rf` + recreate, `mv`), which goes stale the same way.
+#   Different ⇒ that service is recreated (`up -d --force-recreate --no-deps`, only the ones that diverged).
+#   Equal ⇒ nothing happens, so a deploy that changes no config costs no downtime.
+#
+# ⚠️ AN UNREADABLE SIDE COUNTS AS DIFFERENT. No `cat` in an image, a destination gone: the hash is empty or a
+# sentinel and compares unequal. The failure direction is "make it current", never "assume it already is" — a
+# needless recreate costs seconds, and the miss above shipped a whole edge that nobody was serving.
+#
+# ⚠️ AND A `docker` THAT CANNOT RUN IS RED, NOT QUIET. Every read below tolerates failure, so a dead docker
+# would yield no mounts, no findings and a reassuring "nothing stale" — the one answer this must never give by
+# accident. Hence the preflight, and the `checked` line the caller reads to know a measure was taken at all.
+#
+# The design is the product's (`infra/cicd/refresh-stale-mounts.sh` + `probe-live-mounts.sh`, which close this
+# class for the product's own deploy); this is the instance's own copy, because the product does not ship it.
+#
+# Usage: box_refresh_stale_mounts <compose command…>      (runs where the containers are; DOCKER_CMD overrides
+#                                                          `docker` with an ARRAY, e.g. DOCKER_CMD=(sudo docker))
+# stdout, one finding per line, for the caller to report:
+#   stale <service> file|dir <container path> <host path> <why>
+#   recreated <service>
+#   checked <files> <dirs>
+# Returns 1 when docker cannot run or a recreate failed.
+box_refresh_stale_mounts() {
+  local -a compose_cmd=("$@")
+  local -a docker_cmd=("${DOCKER_CMD[@]:-docker}")
+  local svc cid mounts src dst host_side cont_side why stale='' files=0 dirs=0 attempt
+
+  if ! "${docker_cmd[@]}" version >/dev/null 2>&1; then
+    echo "stale-mounts: cannot run \`${docker_cmd[*]}\` — nothing was measured, so this is a failure and not a pass" >&2
+    return 1
+  fi
+
+  for svc in $("${compose_cmd[@]}" config --services 2>/dev/null); do
+    cid="$("${compose_cmd[@]}" ps -q "$svc" 2>/dev/null || true)"
+    [ -n "$cid" ] || continue
+    mounts="$("${docker_cmd[@]}" inspect -f \
+      '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}|{{.Destination}}{{println}}{{end}}{{end}}' \
+      "$cid" 2>/dev/null || true)"
+
+    while IFS='|' read -r src dst; do
+      [ -n "${src:-}" ] && [ -n "${dst:-}" ] || continue
+      why=''
+      if [ -f "$src" ]; then
+        files=$((files + 1))
+        host_side="$(sha256sum <"$src" | cut -d' ' -f1)"
+        cont_side="$("${docker_cmd[@]}" exec "$cid" cat "$dst" 2>/dev/null | sha256sum | cut -d' ' -f1)"
+        [ "$host_side" = "$cont_side" ] || why='content differs (the container holds the file this path named before the delivery)'
+      elif [ -d "$src" ]; then
+        dirs=$((dirs + 1))
+        host_side="$(stat -c '%i' "$src" 2>/dev/null || echo host-unreadable)"
+        cont_side="$("${docker_cmd[@]}" exec "$cid" stat -c '%i' "$dst" 2>/dev/null || echo container-unreadable)"
+        if [ "$host_side" != "$cont_side" ]; then
+          why="directory inode differs (host $host_side, container $cont_side)"
+        else
+          # Two attempts: a write into a live folder between the two listings is a real race, not a finding.
+          for attempt in 1 2; do
+            host_side="$({ ls -A -- "$src" 2>/dev/null || true; } | LC_ALL=C sort | sha256sum | cut -d' ' -f1)"
+            cont_side="$({ "${docker_cmd[@]}" exec "$cid" ls -A "$dst" 2>/dev/null || true; } | LC_ALL=C sort | sha256sum | cut -d' ' -f1)"
+            [ "$host_side" != "$cont_side" ] || break
+          done
+          [ "$host_side" = "$cont_side" ] || why='directory entries differ (same inode number, a different directory)'
+        fi
+      else
+        continue
+      fi
+      [ -n "$why" ] || continue
+      echo "stale $svc $([ -f "$src" ] && echo file || echo dir) $dst $src $why"
+      case " $stale " in *" $svc "*) ;; *) stale="$stale $svc" ;; esac
+    done <<MOUNTS
+$mounts
+MOUNTS
+  done
+
+  local rc=0
+  if [ -n "$stale" ]; then
+    # `--no-deps`: the stale service and NOTHING else. Measured with compose 5.3.1 on 2026-10-19: without it,
+    # `up -d --force-recreate edge` STARTS a dependency that was stopped (it does not recreate a running one),
+    # so repairing a stale edge would bring back a front somebody stopped on purpose, and wait on its health.
+    # shellcheck disable=SC2086 # deliberate word splitting: the list is service names built above.
+    if "${compose_cmd[@]}" up -d --force-recreate --no-deps $stale >&2; then
+      for svc in $stale; do echo "recreated $svc"; done
+    else
+      echo "stale-mounts: recreating${stale} FAILED" >&2
+      rc=1
+    fi
+  fi
+  echo "checked $files $dirs"
+  return "$rc"
+}
+
+# ── … AND THE SAME, ON THE BOX: the function above travels on stdin and runs THERE, in one ssh session ──────
+#
+# ★ ON THE BOX, because both halves of the comparison live there — the host file and the container — and a
+# walk driven from here would cost an ssh round trip per mount. The function's TEXT is what travels
+# (`declare -f`), so the box needs no file of this repository beyond what the deploy already delivers, and
+# there is one author of the rule. Same project name and same `env-source.sh` as `remote_compose`, so it walks
+# exactly the containers that `remote_compose … up` just brought up.
+remote_refresh_stale_mounts() { # <docker compose args…>   → box_refresh_stale_mounts' report on stdout
+  local quoted='' a
+  for a in "$@"; do quoted+=" $(printf '%q' "$a")"; done
+  "${REMOTE_SSH[@]}" "cd $(printf '%q' "$REMOTE_BOX_DIR") \
+    && export COMPOSE_PROJECT_NAME=${REMOTE_BOX_PROJECT:-forge-demo} \
+    && set -a && . ./env-source.sh >/dev/null && . ./bin/images-from-lock.sh >/dev/null && set +a \
+    && bash -s -- docker compose$quoted" \
+    <<<"$(declare -f box_refresh_stale_mounts)
+box_refresh_stale_mounts \"\$@\""
 }
