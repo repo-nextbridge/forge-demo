@@ -12,7 +12,7 @@
 import type { TemplateManifest } from '@forgeco/storefront-kit/slots/registry';
 import * as kitSubtemplates from '@forgeco/storefront-kit/subtemplates';
 import { expect, test } from 'vitest';
-import { TEMPLATE_MANIFESTS } from '@/templates/registry';
+import { KIT_CHROME_MANIFESTS, TEMPLATE_MANIFESTS } from '@/templates/registry';
 
 // `import.meta.glob` is a Vite/vitest compile-time macro (not in the Next app's tsconfig lib): it must be
 // called DIRECTLY to be transformed, so we augment the type instead of aliasing it.
@@ -43,7 +43,10 @@ function isManifest(v: unknown): v is TemplateManifest {
 }
 
 test('every declared template/subtemplate manifest is registered in TEMPLATE_MANIFESTS', () => {
-  const registered = new Set(TEMPLATE_MANIFESTS.map((m) => m.template));
+  // ★ MZ-9 — or in KIT_CHROME_MANIFESTS: the kit's header/footer are KNOWN to <Slot> (the gallery renders
+  // them) and deliberately not published, because <CoffeeChrome> draws one of their slots. Registered on
+  // purpose, in the other list, with the reason beside it — never forgotten.
+  const registered = new Set([...TEMPLATE_MANIFESTS, ...KIT_CHROME_MANIFESTS].map((m) => m.template));
   const found = new Set<string>();
   for (const [path, mod] of Object.entries(modules)) {
     for (const value of Object.values(mod)) {

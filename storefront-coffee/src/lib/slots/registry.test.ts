@@ -14,20 +14,15 @@ test('the real registry discovers the slots declared by the shipped templates', 
   expect(reg.has('list.above_shelf')).toBe(true);
 });
 
-test('discovery covers the new templates (home/header/footer) with no central-list change', () => {
+test('discovery covers the new templates (home/footer) with no central-list change', () => {
   // The SF-PAGES templates declared their slots in their own manifests; the SAME discovery finds them.
+  // ★ MZ-9 — `header.*` and the rest of `footer.*` left this list with the kit's chrome manifests: this fork
+  // publishes the chrome slots <CoffeeChrome> draws (`components/coffee/coffee-chrome.manifest.ts`).
   const reg = slotRegistry();
-  for (const name of [
-    'home.hero',
-    'home.below_shelf',
-    'header.start',
-    'header.end',
-    'footer.start',
-    'footer.end',
-  ]) {
+  for (const name of ['home.hero', 'home.below_shelf', 'footer.end']) {
     expect(reg.has(name), `slot ${name} should be discovered`).toBe(true);
   }
-  expect(reg.get('header.end')?.template).toBe('header');
+  expect(reg.get('footer.end')?.template).toBe('footer');
 });
 
 test("★ CHECKOUT-APP (C1) — the checkout slots are NOT this registry's any more", () => {
@@ -43,8 +38,10 @@ test("★ CHECKOUT-APP (C1) — the checkout slots are NOT this registry's any m
   for (const name of ['checkout.payment', 'order.top', 'account.top']) {
     expect(reg.has(name), `${name} belongs to the checkout deployable now`).toBe(false);
   }
-  // …and the chrome's slots are in BOTH, because both wear it.
-  expect(reg.get('header.end')?.template).toBe('header');
+  // ★ MZ-9 — …and the kit chrome's slots are NOT in both any more: the checkout wears the kit's chrome, this
+  // fork wears <CoffeeChrome>, and each publishes what it draws. `footer.end` is the one they share.
+  expect(reg.has('header.end')).toBe(false);
+  expect(reg.get('footer.end')?.template).toBe('footer');
 });
 test('a NEW slot declared in a template is discovered — no central list / kernel edit', () => {
   // Declaring a slot = adding it to a template manifest. Discovery is a function of the declarations.

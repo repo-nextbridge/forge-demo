@@ -39,13 +39,20 @@
 	admin off
 }
 
+# ★ MZ-9 — THE SAME NOINDEX AS `caddy/Caddyfile`, ON EVERY LISTENER OF THIS FILE TOO. The why, the `defer`
+# and its measurement, and why robots.txt blocks nothing yet are written there, once. The copy is here so the
+# header can be MEASURED on a bench before a box carries it — a rule only production can show is a rule nobody
+# checks — and `bin/noindex-edge.guard.mjs` holds the two snippets byte for byte equal: this file cannot
+# import the other one (compose mounts each Caddyfile alone), so equality is graded instead of shared.
+(forge_noindex) {
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		defer
+	}
+}
+
 :80 {
-	# ── ⚠️ O MESMO REMENDO DE SEO QUE `caddy/Caddyfile` CARREGA, e ele está aqui para poder ser MEDIDO ──────
-	# A razão inteira, o que o aposenta e por que é adivinhação estão lá, uma vez. Sem esta cópia o cabeçalho
-	# só existiria numa caixa implantada, e uma regra que só pode ser conferida em produção é uma regra que
-	# ninguém confere. ⛔ As duas cópias saem juntas no dia em que a PLP do produto emitir `noindex`.
-	@faceted expression {http.request.uri.query}.contains("cf.") || {http.request.uri.query}.contains("option.")
-	header @faceted X-Robots-Tag "noindex, follow"
+	import forge_noindex
 
 	# ── the kernel's own faces, on the same paths production uses ──────────────────────────────────────────
 	handle /v1/* {
@@ -187,12 +194,14 @@
 # The map itself is DATA, written by `platform.admin_host.set` (bin/seed.mjs does it): `localhost:8201` → the
 # shoe tenant, `localhost:8202` → the coffee tenant. Changing a published port here means rewriting that claim.
 :81 {
+	import forge_noindex
 	reverse_proxy admin:3000
 }
 
 # THE SECOND TENANT'S ADMIN. Same container, different door — see the block above for why the port carries the
 # meaning. Published as ${FORGE_ADMIN2_HTTP_PORT} by compose.yml.
 :83 {
+	import forge_noindex
 	reverse_proxy admin:3000
 }
 
@@ -209,5 +218,6 @@
 # So the order is: `caddy validate` first, reload second, and only then curl all four entry points. Measured
 # after this block was added (2026-09-01) — the numbers are in RELATORIO-T-C.md.
 :82 {
+	import forge_noindex
 	reverse_proxy totem:3000
 }

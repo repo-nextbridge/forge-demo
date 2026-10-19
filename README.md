@@ -1445,6 +1445,23 @@ declared in **both** compose and the Caddyfile, because Caddy's `{$VAR:fallback}
 variable that is present and EMPTY. A forgotten variable now costs **one face**, and step 15
 (`bin/verify-config.mjs`) names it.
 
+### ⛔ None of the six is meant to be found — `X-Robots-Tag: noindex, nofollow` on every one (MZ-9)
+
+The domain's indexing focus is the institutional site, so **the whole demo stays out of search engines**: a
+fictional shop, its brand and its fictional structured data (prices, stock, reviews) gain nothing there.
+Every site block of `caddy/Caddyfile` — the six above, and any you add in `caddy/extra/` — starts with
+`import forge_noindex`, and `caddy/Caddyfile.local` carries the same snippet on all four listeners so it can
+be seen on a bench (`curl -sI http://localhost:8200/ | grep -i x-robots-tag`). It is `defer`red, so the edge
+has the last word over anything a front emits (measured: without it, an upstream's own `X-Robots-Tag` arrives
+as a second value). `bin/noindex-edge.guard.mjs` is red for a site block without it.
+
+⚠️ **robots.txt still blocks nothing, on purpose.** A crawler that robots.txt keeps out never fetches the page,
+so it never sees the `noindex`, and what is already indexed stays indexed. A `Disallow: /` may come **after**
+the index has drained — not together with the header, which it would switch off.
+
+The PLP-with-facet patch (`noindex, follow` on a `cf.`/`option.` query) is gone with it: under a header that
+already says `noindex` for every page it was a second, contradicting answer (`follow`) to the same question.
+
 ### ★ Two tenants, four stores — and only THREE of them on the street
 
 | tenant | store | theme | on the reference vitrine? |
@@ -2106,6 +2123,16 @@ in the fork's own footer, in the place `FooterDefault` publishes it, and adds th
 `bin/fork-slot-reach.guard.mjs` compares what this box's declarations POINT AT against what each of its forks
 really DRAWS, per shop, and reddens naming the pair. `bin/front-app-reach.guard.mjs` grades the other half and
 was correctly green the whole time — which is exactly why nothing said anything.
+
+★ **MZ-9 — and the opposite half: the fork no longer OFFERS what it does not draw.** Its registry used to
+aggregate the kit's `headerManifest`/`footerManifest` — eleven chrome slots — while `CoffeeChrome` draws one, so
+the café's `GET /api/slots` (which Compose asks since the product's CS-1, #668) offered ten places no shelf page
+has. The fork now declares its own chrome (`storefront-coffee/src/components/coffee/coffee-chrome.manifest.ts`,
+just `footer.end`); the kit's chrome stays *known* to `<Slot>` because the `/ui-storefront` gallery renders it,
+and is not *published*. To publish another chrome slot, mount it in `CoffeeChrome` **and** name it in that
+manifest — `CoffeeChrome.slots.guard.test.ts` is red for either half alone. ⚠️ The route still lists the
+`header.*`/`footer.*` the **checkout** draws on `/checkout*` of the same hostname (`SIBLING_SLOTS`, generated
+from the release); a block placed there reaches the checkout pages, not the shelf.
 
 ⛔ **The login box (`account.brand`) is NOT one of them, and the line is the DEPLOYABLE (trava 4).** That
 screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable

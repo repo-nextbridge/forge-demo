@@ -64,6 +64,37 @@
 # would stop the whole file loading, and your STORE with it. The per-credential cap is inside the kernel and
 # is always on. The recipe for the edge layer, if you want it, is in the doc above.
 
+# ★★★ MZ-9 — THE WHOLE DEMO STAYS OUT OF THE INDEX, ON EVERY HOSTNAME (decided 2026-10-19). The domain's
+# indexing focus is the institutional site; a fictional shop in a search engine gains nothing and can hurt —
+# the brand competing with its own demo, fictional structured data (prices, stock, reviews) attributed to a
+# domain that is not selling anything. So EVERY site block of this file imports this snippet: the six faces,
+# the admins, the counter, and the doors the shops hand to non-browsers. `bin/noindex-edge.guard.mjs`
+# reads the code of this file and is red for a site block that does not.
+#
+# ⚠️ `nofollow` TOO, AND THAT IS THE OPPOSITE OF THE PATCH THIS REPLACES. Until MZ-9 only a PLP with a facet
+# query got `noindex, follow` (the `@faceted` block): the store was meant to be found and its facets were not.
+# Now nothing is meant to be found, so following the links buys nothing. That block is GONE, not kept as
+# "redundant": two `header` directives naming the same field is two answers, and the later one wins — the
+# faceted PLP would have said `follow` while the rest of the store said `nofollow`.
+#
+# ⚠️⚠️ `defer`, AND IT IS MEASURED (caddy:2 v2.11.4, 2026-10-19, an upstream that sets `X-Robots-Tag: all`):
+#     header X-Robots-Tag "…"            → the response carries BOTH values: `noindex, nofollow` and `all`
+#     header { X-Robots-Tag "…"; defer } → the response carries ONE: `noindex, nofollow`
+# `reverse_proxy` ADDS the upstream's headers to what the edge already set, so without `defer` a front that
+# one day emits its own `X-Robots-Tag` gets a vote here. Deferred, the edge has the last word. The measured
+# cost: a 502 Caddy writes itself (upstream down) leaves without the header — a 5xx is never indexed, so
+# that is the right side to lose.
+#
+# ⛔ AND NO `Disallow: /` IN robots.txt — NOT YET. A crawler blocked by robots.txt never fetches the page, so
+# it never SEES this header, and the URLs already indexed stay indexed (as bare links). The order is: this
+# header first, the index drains, THEN a `Disallow` may follow. Writing them together disables this one.
+(forge_noindex) {
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		defer
+	}
+}
+
 # ★★★ ONE SHOP HOSTNAME, DEFINED ONCE. Every store of this box serves the SAME doors — that is not tidiness,
 # it is the path split itself: a hostname that carries `/checkout*` and a sibling that does not is a shop
 # whose buyer meets the other shop's 404 with a full cart. Copied by hand into three site blocks this is
@@ -74,38 +105,6 @@
 #
 #   {args[0]} — the compose service serving the VITRINE at this hostname (`storefront`, or a fork of it).
 (forge_shop_host) {
-	# ── ⚠️⚠️ A REMENDO CONSCIENTE: `noindex` NA PLP COM FACETA, NO EDGE, PORQUE A RELEASE AINDA NÃO O EMITE ──
-	#
-	# ⛔ O PROBLEMA, E ELE NÃO É DO EDGE. Uma listagem com faceta é uma URL por combinação: `?cf.marca=x`,
-	# `?option.cor=y`, e as duas juntas. São milhares de endereços que mostram o mesmo catálogo recortado, e um
-	# robô que os indexa gasta o orçamento de rastreio da loja em páginas que ninguém deveria procurar —
-	# conteúdo duplicado, canônico disputado, e a home competindo com as suas próprias facetas.
-	#
-	# ⛔ O CONSERTO DURÁVEL É DO PRODUTO: a PLP emitindo `<meta name="robots" content="noindex, follow">` (ou o
-	# cabeçalho) quando a rota carrega faceta, porque só ela sabe o que é faceta e o que é uma categoria de
-	# verdade. Este bloco é o edge adivinhando pela QUERY, que é tudo o que o edge tem.
-	#
-	# ⇒ ★ O QUE APOSENTA ESTE BLOCO, escrito para poder ser cobrado: **a demo adotar uma release que já emita
-	# `noindex` na PLP com faceta**. Esta caixa assa de `release/v0.3.0` (veja `forge.lock`), que não o tem.
-	# Quando `forge.lock` apontar para uma release que o tenha, apague daqui — duas respostas para a mesma
-	# pergunta é pior do que nenhuma, e a do produto é a que sabe a diferença entre faceta e categoria.
-	#
-	# ⚠️ `follow`, E NÃO `noindex, nofollow`. A página não deve ser INDEXADA e os links dela continuam valendo:
-	# um `nofollow` cortaria o caminho do robô até os produtos que só a faceta lista.
-	# ⚠️ É a QUERY, nunca o caminho — `cf.` e `option.` são os prefixos que o kit emite para campo customizado
-	# e para opção de variante. Uma categoria de verdade é caminho (`/tenis`) e não passa por aqui.
-	#
-	# ★ MEDIDO, com `caddy:2` local, antes de entrar aqui (o `expression` é módulo padrão da imagem, e uma
-	# diretiva que este binário não conhecesse derrubaria o arquivo INTEIRO — veja o aviso sobre rate-limit no
-	# topo). `/` e `/tenis` → sem cabeçalho; `/tenis?page=2` → sem cabeçalho; `/tenis?cf.marca=nike` e
-	# `/tenis?option.cor=preto` → `X-Robots-Tag: noindex, follow`.
-	# ⚠️ E A IMPRECISÃO ESTÁ MEDIDA TAMBÉM, NÃO SUPOSTA: é `contains` sobre a query INTEIRA, então
-	# `/busca?q=cf.x` — um VALOR que contém a string — também recebe o cabeçalho. Para um remendo isso é o lado
-	# certo de errar (uma busca não deve ser indexada de qualquer jeito), e é a razão pela qual o conserto
-	# durável é do produto: só ele sabe se a rota tem faceta, em vez de adivinhar por substring.
-	@faceted expression {http.request.uri.query}.contains("cf.") || {http.request.uri.query}.contains("option.")
-	header @faceted X-Robots-Tag "noindex, follow"
-
 	# Who may reach the control face. Empty is not something `remote_ip` accepts, so "nobody" is written as
 	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
 	# in FORGE_CONTROL_ALLOW_CIDR (space-separated) if you want it reachable, and leave it alone otherwise.
@@ -242,6 +241,7 @@
 	tls {
 		load /etc/caddy/certs
 	}
+	import forge_noindex
 	import forge_shop_host storefront
 }
 
@@ -249,6 +249,7 @@
 # a fork — its whole thesis is that a theme plus data plus composition is enough — so what makes this address
 # the outlet is only which store the kernel's directory says answers here.
 {$FORGE_OUTLET_DOMAIN:outlet.unset.localhost} {
+	import forge_noindex
 	import forge_shop_host storefront
 }
 
@@ -257,6 +258,7 @@
 # checkout we host, exactly like every other shop's. That is the customisation posture this demo exists to
 # show, at an address.
 {$FORGE_CAFE_DOMAIN:cafe.unset.localhost} {
+	import forge_noindex
 	import forge_shop_host storefront-coffee
 	# ⚠️⚠️ THE ONE DOOR THIS HOSTNAME NEEDS AND ITS SIBLINGS DO NOT, AND ITS ABSENCE IS SILENT. The fork
 	# carries `assetPrefix: '/_coffee'` in its image (storefront-coffee/next.config.mjs) — unconditionally,
@@ -283,10 +285,12 @@
 # is not an extra, and a hostname that only exists in an untracked file is a hostname no guard can grade.
 
 {$FORGE_ADMIN_DOMAIN:admin.unset.localhost} {
+	import forge_noindex
 	reverse_proxy admin:3000
 }
 
 {$FORGE_CAFE_ADMIN_DOMAIN:admin-cafe.unset.localhost} {
+	import forge_noindex
 	reverse_proxy admin:3000
 }
 
@@ -308,6 +312,7 @@
 # per-site. The kernel's own faces are NOT routed here on purpose — the totem talks to the kernel
 # server-side over the compose network, and a till has no reason to expose a command face to a room.
 {$FORGE_TOTEM_DOMAIN:totem.unset.localhost} {
+	import forge_noindex
 	reverse_proxy totem:3000
 }
 
