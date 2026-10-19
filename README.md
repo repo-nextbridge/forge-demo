@@ -1445,6 +1445,23 @@ declared in **both** compose and the Caddyfile, because Caddy's `{$VAR:fallback}
 variable that is present and EMPTY. A forgotten variable now costs **one face**, and step 15
 (`bin/verify-config.mjs`) names it.
 
+### ⛔ None of the six is meant to be found — `X-Robots-Tag: noindex, nofollow` on every one (MZ-9)
+
+The domain's indexing focus is the institutional site, so **the whole demo stays out of search engines**: a
+fictional shop, its brand and its fictional structured data (prices, stock, reviews) gain nothing there.
+Every site block of `caddy/Caddyfile` — the six above, and any you add in `caddy/extra/` — starts with
+`import forge_noindex`, and `caddy/Caddyfile.local` carries the same snippet on all four listeners so it can
+be seen on a bench (`curl -sI http://localhost:8200/ | grep -i x-robots-tag`). It is `defer`red, so the edge
+has the last word over anything a front emits (measured: without it, an upstream's own `X-Robots-Tag` arrives
+as a second value). `bin/noindex-edge.guard.mjs` is red for a site block without it.
+
+⚠️ **robots.txt still blocks nothing, on purpose.** A crawler that robots.txt keeps out never fetches the page,
+so it never sees the `noindex`, and what is already indexed stays indexed. A `Disallow: /` may come **after**
+the index has drained — not together with the header, which it would switch off.
+
+The PLP-with-facet patch (`noindex, follow` on a `cf.`/`option.` query) is gone with it: under a header that
+already says `noindex` for every page it was a second, contradicting answer (`follow`) to the same question.
+
 ### ★ Two tenants, four stores — and only THREE of them on the street
 
 | tenant | store | theme | on the reference vitrine? |
