@@ -4,10 +4,13 @@
 
 import { footerVariants, headerVariants } from '@forgeco/storefront-kit/subtemplates';
 import { expect, test } from 'vitest';
-import { slotRegistry } from '@/templates/registry';
+import { knownSlotRegistry } from '@/templates/registry';
 
 test('the new subtemplate slots are discovered without editing any central list', () => {
-  const reg = slotRegistry();
+  // ★ MZ-9 — asked of the KNOWN registry (what <Slot> accepts), not the published one: this fork renders the
+  // kit's header and footer only in its gallery and its control, and publishes none of their slots but the
+  // `footer.end` <CoffeeChrome> draws. The published half is `CoffeeChrome.slots.guard.test.ts`'s.
+  const reg = knownSlotRegistry();
   for (const name of ['header.announcement', 'header.account', 'header.minicart', 'footer.aside']) {
     expect(reg.has(name), `slot ${name} should be discovered`).toBe(true);
   }

@@ -2124,6 +2124,16 @@ in the fork's own footer, in the place `FooterDefault` publishes it, and adds th
 really DRAWS, per shop, and reddens naming the pair. `bin/front-app-reach.guard.mjs` grades the other half and
 was correctly green the whole time — which is exactly why nothing said anything.
 
+★ **MZ-9 — and the opposite half: the fork no longer OFFERS what it does not draw.** Its registry used to
+aggregate the kit's `headerManifest`/`footerManifest` — eleven chrome slots — while `CoffeeChrome` draws one, so
+the café's `GET /api/slots` (which Compose asks since the product's CS-1, #668) offered ten places no shelf page
+has. The fork now declares its own chrome (`storefront-coffee/src/components/coffee/coffee-chrome.manifest.ts`,
+just `footer.end`); the kit's chrome stays *known* to `<Slot>` because the `/ui-storefront` gallery renders it,
+and is not *published*. To publish another chrome slot, mount it in `CoffeeChrome` **and** name it in that
+manifest — `CoffeeChrome.slots.guard.test.ts` is red for either half alone. ⚠️ The route still lists the
+`header.*`/`footer.*` the **checkout** draws on `/checkout*` of the same hostname (`SIBLING_SLOTS`, generated
+from the release); a block placed there reaches the checkout pages, not the shelf.
+
 ⛔ **The login box (`account.brand`) is NOT one of them, and the line is the DEPLOYABLE (trava 4).** That
 screen is the **checkout**'s — hosted by us, forked by nobody — so a mark there has to be configurable
 *without* a fork, which makes it a capability of the **product**: the OOTB `chrome` app carries it from pk28
