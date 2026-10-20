@@ -25,12 +25,15 @@
 #     because that is the question the PAIR answers: a token or a host map that does not match the restored
 #     database opens no door, while every row count is equal to the gold.
 #   · THE VITRINE'S CACHE IS NOT PURGED BY A SEPARATE STEP, AND THAT IS MEASURED, NOT FORGOTTEN. The restore's
-#     box-down REMOVES every container and its start recreates them; no front keeps its render cache on a volume
-#     (compose.yml: the fronts mount only `themes` and `i18n`, read-only; no `cacheHandler` in any front). So
-#     the cache `seed/purge.mjs` busts — which reaches the reference vitrine only — dies with its container,
-#     together with the café fork's and the checkout's, which that hook cannot reach at all. Measured on the
-#     proof box of 2026-10-09: a stale render planted in three fronts, 0 left after the restore; the control
-#     (a plain `restart`) kept it. `bin/snapshot.guard.mjs` holds the volume half of that sentence.
+#     box-down REMOVES every container and its start recreates them, so the render cache in each container's
+#     layer dies with it — the reference vitrine's (the one `seed/purge.mjs` busts), the café fork's and the
+#     checkout's, which that hook cannot reach at all. Measured on the proof box of 2026-10-09: a stale render
+#     planted in three fronts, 0 left after the restore; the control (a plain `restart`) kept it.
+#     ⚠️ SINCE FORGE v0.3.3 THE DATA CACHE OF THREE FRONTS IS ON A VOLUME (`storefront_cache`,
+#     `storefront_coffee_cache`, `totem_cache` — the kit's `cacheHandler`, with a ceiling), and a volume survives
+#     `down`. The sentence above stays true only because box-down calls those three STATE and destroys them,
+#     and the gold carries none (`discard` in bin/snapshot-pair.mjs). `bin/snapshot.guard.mjs` holds that every
+#     writable mount is classified; `bin/box-volumes.guard.mjs` holds that a data-cache volume is STATE.
 #   · NO WARMING BY DEFAULT: step 14 is a report that costs about as long as the reset saves. `--warm` runs it.
 
 set -uo pipefail

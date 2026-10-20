@@ -10,6 +10,8 @@
 // `output: 'standalone'` is gated behind FORGE_BUILD_STANDALONE for the same reason the vitrine gates it:
 // the standalone trace-copy is only needed for the image, and keeping it off the ordinary build keeps
 // `npm run build` deterministic.
+import { fileURLToPath } from 'node:url';
+
 const standalone = process.env.FORGE_BUILD_STANDALONE === '1';
 
 const transpilePackages = ['@forgeco/storefront-kit', '@forge/ext-demo-setup'];
@@ -101,6 +103,15 @@ export default {
   // breakpoints, no unknown viewport — so the totem serves the media URL as it is and keeps one moving part
   // out of a machine that has to survive a day unattended.
   images: { unoptimized: true },
+
+  // ★★★ VC-1 (Forge v0.3.3) — THE DATA CACHE HAS A CEILING HERE TOO, AND `force-dynamic` IS NOT WHY IT NEEDS NONE.
+  // The page renders per request, but the kit's read client asks for `next: { revalidate, tags }` on every
+  // read, and Next 15.2.9 drops caching under `force-dynamic` ONLY for a fetch with no cache config of its own
+  // (`noFetchConfigAndForceDynamic` in next/dist/server/lib/patch-fetch.js). So the menu's reads are Data
+  // Cache entries, written by Next's built-in store with no ceiling, into the container layer. The kit's
+  // handler caps them (FORGE_DATA_CACHE_MAX_MB, LRU) in FORGE_DATA_CACHE_DIR, a volume (compose.override.yml).
+  // `./data-cache-handler.mjs` is the same one-line door the café's fork carries.
+  cacheHandler: fileURLToPath(new URL('./data-cache-handler.mjs', import.meta.url)),
 
   webpack: forkWebpack,
   ...(standalone

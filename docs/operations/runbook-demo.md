@@ -102,6 +102,44 @@ composição desta instância com a procedência que o `forge.lock` declara por 
 como `release` que precise compilar um app desta caixa é uma RECUSA — e não existe jeito de pular.
 Detalhe em `README.md` §7.
 
+### 2.2-bis ★★★ O disco (Forge v0.3.3) — o cache das vitrines tem teto, a borda tem log, o kernel tem alarme
+
+**Por quê:** em 19/10 a caixa de produção desta demo encheu os 96 GB de disco com o cache de dados da vitrine
+(86 GB em `.next/cache/fetch-cache`, na camada do contêiner), o Postgres caiu em `disk_full` e a borda não tinha
+**nenhuma** linha de acesso para dizer quem gerou o tráfego. A v0.3.3 trouxe as três peças; esta caixa liga as três.
+
+| peça | onde está ligada | volume | o que o `box-down` faz com ele |
+|---|---|---|---|
+| **cache de dados com teto** (`cacheHandler` do kit, LRU, 2048 MiB por front, pausa abaixo de 5 % / 1 GiB livre) | `storefront` (a imagem do produto já traz o handler), `storefront-coffee` e `totem` (`next.config.mjs` + `data-cache-handler.mjs` de cada fork) | `storefront_cache`, `storefront_coffee_cache`, `totem_cache` em `/var/cache/forge-storefront` | **estado** — destruído (é derivado do banco; um restore volta com ele vazio) |
+| **log de acesso da borda** (snippet `(access_log)`: 100 MiB, 5 rodados em gzip, 30 dias; `email`/`code`/`state` e `Referer` fora) | os seis site blocks de `caddy/Caddyfile` (+ a receita de `caddy/extra/`) | `caddy_logs` em `/var/log/caddy` | **registro** — mantido no renascimento, `--all` apaga |
+| **alarme de disco** (`disk_alarm state=high` no log + faixa vermelha no admin) | `kernel` — `FORGE_DISK_ALARM_PERCENT=85`, `FORGE_DISK_WATCH_PATH=/` em `deploy/box.env` | — | — |
+
+Os três tetos somam ~6 GiB no pior caso, contra os 86 GB de UM front sem teto. Os botões
+(`FORGE_DATA_CACHE_MAX_MB`, `FORGE_DATA_CACHE_MIN_FREE_PERCENT`) valem para os três fronts de uma vez.
+`bin/data-cache.guard.mjs` e `bin/access-log-edge.guard.mjs` ficam vermelhos se um front perder o volume ou
+o handler, ou um site perder o `import access_log`.
+
+**Na caixa, depois do deploy:**
+
+```bash
+docker compose exec caddy tail -f /var/log/caddy/access.log                     # a borda, ao vivo
+docker compose exec caddy cat /var/log/caddy/access.log | jq -r '.request.client_ip' | sort | uniq -c | sort -rn | head
+docker compose exec storefront du -sh /var/cache/forge-storefront               # idem storefront-coffee, totem
+docker compose logs storefront storefront-coffee totem | grep forge-data-cache  # "writing to … ceiling 2048 MiB"
+docker compose logs kernel | grep 'disk_alarm state='                           # nada = abaixo de 85 %
+```
+
+⚠️ **O handler do café e do totem está DENTRO da imagem deles**, não no compose: o deploy desta mudança só os
+liga depois que o `bake.yml` da `main` assar as duas imagens de novo e o lock dessa assada for adotado (o mesmo
+caminho dos PRs #40/#43). Com o lock antigo, o volume e as variáveis chegam e o fork ainda grava na camada do
+contêiner — o log `[forge-data-cache] writing to /var/cache/forge-storefront` é a prova de que a imagem nova
+está no ar. A vitrine de referência já está ligada com o lock atual (a imagem pinada traz o handler).
+
+⚠️ **Disco que já sobe cheio** mostra a faixa no primeiro minuto — é verdade, não defeito. Limpar o cache de
+um front é seguro a qualquer momento (volta do kernel na próxima visita):
+`docker compose stop storefront && docker compose run --rm --no-deps --entrypoint sh storefront -c 'rm -rf /var/cache/forge-storefront/*' && docker compose start storefront`
+(o mesmo com `storefront-coffee` ou `totem`; receita de `docs/operations/storefront-data-cache.md` do produto).
+
 ### 2.3 O nascimento remoto — `bin/birth-remote.sh <env>`
 
 ```bash
@@ -119,8 +157,8 @@ bash bin/deploy.sh stag --birth           # entrega, sobe E nasce, num gesto só
 bash bin/box-down.sh --env stag && bash bin/deploy.sh stag --birth
 ```
 
-O `box-down --env` destrói os volumes de estado no host e mantém identidade e cache (certificados, conta
-ACME, `.secrets`, cache de fotos); o `deploy.sh --birth` entrega, sobe a caixa num banco VAZIO e passa para o
+O `box-down --env` destrói os volumes de estado no host (inclusive o cache de dados dos três fronts) e mantém
+identidade, registro e cache (certificados, conta ACME, `.secrets`, o log de acesso da borda, cache de fotos); o `deploy.sh --birth` entrega, sobe a caixa num banco VAZIO e passa para o
 `birth-remote.sh`, que lê o diretório vazio como renascimento e diz isso em voz alta.
 
 ⛔ **A recusa julga o ESTADO, não o token nem o volume.** Ela começa no registro do próprio nascimento
@@ -193,7 +231,7 @@ as tabelas e compara com o ouro** → o par de volta, nome a nome → `migrate` 
 | armadilha | o que foi medido | o que a ferramenta faz |
 |---|---|---|
 | Redis | `packages/db/src/cache.ts:1-4` (produto): «speed, never truth», TTL de 1 h | descartado (estado do `box-down`), re-deriva do banco |
-| cache das vitrines | nenhum front monta volume gravável nem tem `cacheHandler`; render plantado em 3 fronts → 0 depois do restore; `restart` simples o manteve | o `down` + `--force-recreate` mata o que `seed/purge.mjs` purga **e** o que ele não alcança (café, checkout) |
+| cache das vitrines | até a v0.3.2 nenhum front montava volume gravável: render plantado em 3 fronts → 0 depois do restore; `restart` simples o manteve. **Desde a v0.3.3** o cache de dados de `storefront`, `storefront-coffee` e `totem` mora em volume (`*_cache`) e sobreviveria a um `down` | os três volumes são **estado** do `box-down` e `discard` no ouro (`bin/snapshot-pair.mjs`): o restore os destrói e volta com eles vazios; o `--force-recreate` segue matando o resto (o cache de páginas e o do checkout, que o `seed/purge.mjs` não alcança) |
 | mídia no R2 | o conector só assina `GET`/`HEAD`/`PUT` (`apps/api/src/storage-connector.ts:25-27,352`, produto); o seed faz `HEAD` e só `PUT` o que falta; `box-down` só mexe em volumes | **nada apaga objeto do bucket** — o ouro vale enquanto o bucket existir |
 | versão | as migrações do kernel lidas **da imagem** que a caixa roda | ouro mais NOVO que o kernel é **recusado**; mais velho → `migrate` aplica o que falta |
 

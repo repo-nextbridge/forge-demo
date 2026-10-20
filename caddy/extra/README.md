@@ -43,6 +43,7 @@ box:
 ```caddy
 admin.marca-dois.exemplo.com.br {
 	import forge_noindex
+	import access_log
 	reverse_proxy admin:3000
 }
 ```
@@ -50,6 +51,11 @@ admin.marca-dois.exemplo.com.br {
 `import forge_noindex` is the demo's `X-Robots-Tag: noindex, nofollow` (MZ-9): every hostname of this box
 stays out of search engines, and a file here is imported after `caddy/Caddyfile` defined the snippet, so it
 resolves (measured with `caddy:2` v2.11.4). Leave it out and that hostname is the one face a crawler indexes.
+
+`import access_log` is the edge's access log (Forge v0.3.3, VC-2): one line per request in
+`/var/log/caddy/access.log`, rolled at 100 MiB, five gzipped files kept, `email`/`code`/`state` and `Referer`
+redacted. Same rule, same reason it resolves: leave it out and that hostname is the one face nobody can audit
+the day the box fills up. `bin/access-log-edge.guard.mjs` holds this recipe to it.
 
 **4. Reload the edge.** Caddy reads its configuration when it starts, so a new file here does not reach a
 running container on its own:

@@ -26,14 +26,17 @@ import { test } from 'node:test';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..');
 const script = readFileSync(join(repo, 'bin/box-down.sh'), 'utf8');
-const compose = readFileSync(join(repo, 'compose.yml'), 'utf8');
+// ★ v0.3.3 — BOTH FILES. `compose.override.yml` declares the café's and the totem's data-cache volumes beside the
+// services that mount them, and compose merges the two top-level `volumes:` blocks; a guard that read one file
+// would call those two orphans of box-down.
+const COMPOSE_FILES = ['compose.yml', 'compose.override.yml'];
 
-/** The volumes `compose.yml` declares, from its top-level `volumes:` block. */
-function declaredVolumes() {
+/** The volumes one compose file declares, from its top-level `volumes:` block (none → empty). */
+export function volumesOf(text) {
   // ⚠️ `\Z` is NOT a JavaScript anchor — it is a literal Z, and writing it here made this parse read
   // nothing while looking correct. The end-of-input anchor in JS is `$(?![\s\S])`.
-  const block = /^volumes:\n([\s\S]*?)(?=^\S|$(?![\s\S]))/m.exec(compose);
-  assert.ok(block, 'compose.yml has no top-level `volumes:` block — this guard is reading the wrong file.');
+  const block = /^volumes:\n([\s\S]*?)(?=^\S|$(?![\s\S]))/m.exec(text);
+  if (!block) return new Set();
   return new Set(
     block[1]
       .split('\n')
@@ -42,6 +45,15 @@ function declaredVolumes() {
       .map((m) => m[1]),
   );
 }
+
+/** The volumes the box declares, across both compose files. */
+function declaredVolumes() {
+  const main = volumesOf(readFileSync(join(repo, 'compose.yml'), 'utf8'));
+  assert.ok(main.size > 0, 'compose.yml has no top-level `volumes:` block — this guard is reading the wrong file.');
+  return new Set(COMPOSE_FILES.flatMap((f) => [...volumesOf(readFileSync(join(repo, f), 'utf8'))]));
+}
+
+const KINDS = ['STATE', 'IDENTITY', 'RECORD', 'CACHE'];
 
 /** A category list as `bin/box-down.sh` writes it: `NAME='a b c'`. */
 function category(name) {
@@ -53,20 +65,20 @@ function category(name) {
 test('every volume the compose declares is classified by box-down', () => {
   const declared = declaredVolumes();
   assert.ok(declared.size > 0, 'read no volumes from compose.yml — the parse is broken, not the tree.');
-  const classified = new Set([...category('STATE'), ...category('IDENTITY'), ...category('CACHE')]);
+  const classified = new Set(KINDS.flatMap((k) => [...category(k)]));
   const unclassified = [...declared].filter((v) => !classified.has(v));
   assert.deepEqual(
     unclassified,
     [],
     `compose.yml declares volume(s) that bin/box-down.sh never names: ${unclassified.join(', ')}. ` +
       'Decide which kind each is — destroyed (STATE), kept because it is this box at this address ' +
-      '(IDENTITY), or re-fetchable (CACHE) — and add it to that list.',
+      '(IDENTITY), what the box wrote down about itself (RECORD), or re-fetchable (CACHE) — and add it to that list.',
   );
 });
 
 test('box-down names no volume the compose does not declare', () => {
   const declared = declaredVolumes();
-  const classified = [...category('STATE'), ...category('IDENTITY'), ...category('CACHE')];
+  const classified = KINDS.flatMap((k) => [...category(k)]);
   const orphan = classified.filter((v) => !declared.has(v));
   assert.deepEqual(orphan, [], `bin/box-down.sh classifies volume(s) this box no longer has: ${orphan.join(', ')}.`);
 });
@@ -97,6 +109,47 @@ test('⟂ the database IS state — this guard did not make everything precious'
   }
 });
 
+// ── ★★ v0.3.3 — THE FRONTS' DATA CACHES DIE WITH THE DATABASE; THE EDGE'S LOG DOES NOT ─────────────────────
+//
+// Until v0.3.3 the fronts kept their cached port reads in the container layer, so every `down` dropped them and
+// a restore served nothing stale (`bin/demo-reset.sh` says it measured that). VC-1 put them on volumes, and a
+// volume survives `down` — so the property now holds only if box-down DESTROYS them, i.e. calls them STATE.
+// The access log is the opposite case: kept across a rebirth, because the days before it are what it is for.
+
+/** Every named volume a compose file mounts at the data-cache directory the service declares. */
+export function dataCacheVolumes(text) {
+  const out = [];
+  for (const m of text.matchAll(/FORGE_DATA_CACHE_DIR:\s*(\S+)/g)) {
+    const dir = m[1];
+    const rest = text.slice(m.index);
+    const mount = new RegExp(`^ {6}- ([a-z0-9_]+):${dir.replace(/[/.]/g, '\\$&')}\\s*$`, 'm').exec(rest);
+    if (mount) out.push(mount[1]);
+  }
+  return out;
+}
+
+test('★★ every front data-cache volume is STATE — a restore may not serve a render of the previous database', () => {
+  const state = category('STATE');
+  const caches = COMPOSE_FILES.flatMap((f) => dataCacheVolumes(readFileSync(join(repo, f), 'utf8')));
+  assert.ok(caches.length >= 3, `read only ${caches.length} data-cache volume(s) — storefront, café and totem each mount one`);
+  for (const v of caches) {
+    assert.ok(state.has(v), `${v} holds a front's cached port reads and is not STATE: a restore would keep it.`);
+  }
+});
+
+test("★ the edge's access log is kept by a rebirth (RECORD), never destroyed as STATE", () => {
+  assert.ok(category('RECORD').has('caddy_logs'), 'caddy_logs left RECORD');
+  assert.ok(!category('STATE').has('caddy_logs'), 'caddy_logs is STATE: every rebirth erases the edge log of the days before it');
+});
+
+test('control: the data-cache reader sees a mount at the declared directory, and only that one', () => {
+  const svc = (dir, mount) =>
+    `  x:\n    environment:\n      FORGE_DATA_CACHE_DIR: ${dir}\n    volumes:\n      - ./themes:/t:ro\n      - ${mount}\n`;
+  assert.deepEqual(dataCacheVolumes(svc('/var/cache/forge-storefront', 'a_cache:/var/cache/forge-storefront')), ['a_cache']);
+  assert.deepEqual(dataCacheVolumes(svc('/var/cache/forge-storefront', 'a_cache:/elsewhere')), []);
+  assert.deepEqual(volumesOf('services:\n  x: {}\nvolumes:\n  a:\n  # b:\n  c:\n'), new Set(['a', 'c']));
+});
+
 // ── ★★★ THE DESTINATION MOVED; THE RULES DID NOT ────────────────────────────────────────────────────────────
 //
 // ⛔ MEASURED 2026-09-17: there was no way to tear a DEPLOYED box down. `bin/box-cycle.sh` calls `box-down.sh`
@@ -116,10 +169,11 @@ test('★★★ `--env` exists, and it routes through the ONE place that knows h
   );
 });
 
-test('★★★ the three category lists exist EXACTLY ONCE — a remote run reads the same ones', () => {
+test('★★★ the four category lists exist EXACTLY ONCE — a remote run reads the same ones', () => {
   for (const [name, re] of [
     ['STATE', /^STATE=/gm],
     ['IDENTITY', /^IDENTITY=/gm],
+    ['RECORD', /^RECORD=/gm],
     ['CACHE', /^CACHE=/gm],
   ]) {
     const hits = script.match(re) ?? [];
