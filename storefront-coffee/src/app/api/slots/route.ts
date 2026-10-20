@@ -20,16 +20,15 @@
 // `target` (the grammar the kernel/admin validate). Public read (slot names are not a secret — they are
 // implied by the rendered page) and cheap; the admin proxies it, so no CORS concern.
 
-import { publishSlots } from '@forgeco/storefront-kit/slots/registry';
 import { NextResponse } from 'next/server';
-import { SIBLING_SLOTS } from '@/lib/slots/generated/sibling-slots';
-import { slotRegistry } from '@/templates/registry';
+import { publishedStorefrontSlots } from '@/lib/slots/published';
 
 export function GET(): NextResponse {
   // Order = declaration order (own registry first, then each sibling's, both preserving manifest + slot array
   // order). The Compose editor shows slots in the order the theme declares them — never re-alphabetized.
   return NextResponse.json({
     surface: 'storefront',
-    slots: publishSlots('storefront', slotRegistry(), SIBLING_SLOTS),
+    // The same catalog the outlet checks placements against (`lib/slots/published.ts`).
+    slots: publishedStorefrontSlots(),
   });
 }

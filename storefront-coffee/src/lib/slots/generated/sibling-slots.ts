@@ -49,6 +49,32 @@ export const SIBLING_SLOTS: readonly SiblingSlots[] = [
           'The order-confirmed step (e.g. a cross-sell shelf or a review/referral prompt).',
       },
       {
+        name: 'checkout.header',
+        template: 'checkout',
+        description:
+          "The funnel's top bar. A block here replaces it (e.g. the store's own logo, step label and security line). Nothing placed: the reference bar. To add a block under the bar without replacing it, use checkout.top.",
+        replaces: true,
+      },
+      {
+        name: 'checkout.footer',
+        template: 'checkout',
+        description:
+          "The funnel's footer. A block here replaces it, payment strip included (e.g. a full footer of the store's own). Nothing placed: the reference footer. To add a trust seal or a legal line above it without losing the payment strip, use checkout.bottom.",
+        replaces: true,
+      },
+      {
+        name: 'checkout.top',
+        template: 'checkout',
+        description:
+          "Under the funnel's top bar, on every checkout step. A block here ADDS (e.g. a free-shipping notice or a delivery promise); the bar stays.",
+      },
+      {
+        name: 'checkout.bottom',
+        template: 'checkout',
+        description:
+          "Above the funnel's footer, on every checkout step. A block here ADDS (e.g. a trust seal or a legal line); the footer and its payment strip stay.",
+      },
+      {
         name: 'order.top',
         template: 'order',
         description:
@@ -73,10 +99,46 @@ export const SIBLING_SLOTS: readonly SiblingSlots[] = [
           "Bottom of the shopper's account screen, after the order history (e.g. a block that offers something about what they bought).",
       },
       {
+        name: 'account.header',
+        template: 'account',
+        description:
+          "The top of the shopper's own screens. A block here replaces the shop's header on them (e.g. the store's own bar for account, login and the order sheet). Nothing placed: the shop's header.",
+        replaces: true,
+      },
+      {
+        name: 'account.footer',
+        template: 'account',
+        description:
+          "The bottom of the shopper's own screens. A block here replaces the shop's footer on them. Nothing placed: the shop's footer.",
+        replaces: true,
+      },
+      {
+        name: 'account.brand',
+        template: 'account',
+        description:
+          "The store's mark above the sign-in box, on the shopper's own screens. A block here replaces the reference wordmark there. Nothing placed: the theme's wordmark.",
+        replaces: true,
+      },
+      {
         name: 'header.announcement',
         template: 'header',
         description:
           'Top announcement bar. Static in the theme in V1; a banner app can take it over (S3).',
+        replaces: true,
+      },
+      {
+        name: 'header.brand',
+        template: 'header',
+        description:
+          "The store's mark in the header BAR. A block here replaces the wordmark (e.g. the store's own logo, or its own name with its own tail). Nothing placed: the theme's wordmark. The mobile menu, the footer and the login box draw marks of their own, each with its own slot.",
+        replaces: true,
+      },
+      {
+        name: 'header.drawer_brand',
+        template: 'header',
+        description:
+          "The store's mark at the head of the mobile menu, behind the hamburger. A block here replaces the drawer's wordmark. Nothing placed: the theme's wordmark.",
+        replaces: true,
       },
       {
         name: 'header.account',
@@ -98,6 +160,13 @@ export const SIBLING_SLOTS: readonly SiblingSlots[] = [
         name: 'header.end',
         template: 'header',
         description: 'Trailing header area (e.g. the cart or account app).',
+      },
+      {
+        name: 'footer.brand',
+        template: 'footer',
+        description:
+          "The footer's brand column: the store's mark and the line under it. A block here replaces BOTH, so the reference wordmark and the Forge signature cede together and a store's own mark is never drawn above our sentence. Nothing placed: the reference wordmark and its tagline.",
+        replaces: true,
       },
       {
         name: 'footer.aside',
