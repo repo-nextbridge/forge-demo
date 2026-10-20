@@ -2001,6 +2001,15 @@ Two ways to spend half an hour deciding a feature is broken when it is not, both
   only it**. `storefront-coffee` holds its own Next cache behind `handle /s/cafe*` and no path on this box
   reaches its revalidation route. `docker compose restart storefront-coffee` is the lever there.
 
+  ★ **POS-DEMO-PURGE (2026-10-20): the KERNEL reaches all three fronts, so a write that emits an event no
+  longer needs either lever.** Its `FORGE_STOREFRONT_URL` is a comma-separated list (`compose.override.yml`,
+  `kernel:`) — `storefront`, `storefront-coffee` and `totem`, each by its process on the compose network, never
+  through the edge — and the totem has its own `/api/revalidate` (`totem/src/app/api/revalidate/route.ts`,
+  the café's contract). The boot line says `storefront cache invalidation ON — 3 target(s)`.
+  `bin/purge-targets.guard.mjs` goes red when a front that mounts a data-cache volume is missing from the
+  list. The manual curl above still reaches the reference vitrine only; for the other two, ask the kernel
+  (any event) or restart the front.
+
 ---
 
 ## 3b. ⭐ THE SEED HAS TWO STEPS, AND THE SECOND ONE RUNS INSIDE THE CONTAINER
