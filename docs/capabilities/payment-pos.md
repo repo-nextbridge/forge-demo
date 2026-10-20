@@ -68,6 +68,12 @@ pagamento não passa por colocação para ser oferecido, ele é resolvido direto
 Consequência concreta nesta caixa: com o `payment-pos` instalado, ele aparece como provedor **também** no
 checkout da loja de cafés e do outlet.
 
+> ★ **v0.3.3 — a OFERTA passou a ser por loja, e o café retém o `payment-pos`.** A instalação continua por
+> tenant; o que mudou é a linha de oferta por (loja, app) (`payment.offer.set`, "Offered per store" na ficha).
+> `seed/coffee.mjs` grava `offered: false` para o café logo depois de instalar (`WITHHELD_HERE`) e nada para o
+> balcão, que segue oferecendo ao totem. No café, `read.payment_methods` deixa de listar o app e o checkout o
+> recusa (`payment_not_offered`). O resto desta seção descreve a caixa antes disso.
+
 > ⚠️ **A frase que estava aqui envelheceu, e ela sustentava a decisão.** Este parágrafo dizia que "hoje
 > **nenhum** provedor de pagamento está instalado no tenant", logo o `payment-pos` viraria o **único** provedor
 > de `pix`/`card` de todas as lojas. Medido em 02/09 na caixa viva, `read.payment_methods` do tenant
