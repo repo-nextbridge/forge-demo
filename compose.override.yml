@@ -141,6 +141,10 @@ services:
       # How long the screen waits before it decides the customer has walked away, clears the basket and
       # returns to "Toque para começar". Seconds.
       FORGE_TOTEM_IDLE_SECONDS: ${FORGE_TOTEM_IDLE_SECONDS:-90}
+      # ★★ POS-DEMO-PURGE (2026-10-20) — THE SAME PURGE SECRET AS EVERY OTHER FRONT, because the kernel now posts
+      # here too (see `kernel:` below) and `totem/src/app/api/revalidate/route.ts` refuses every call when this is
+      # empty. Without it the counter's cache, on a volume since VC-1, lives out its TTL (up to an hour).
+      FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
       # ★ THE GATE'S OWN WIRING, and it is read by the FRONT that renders it — the same two variables
       # `compose.yml` gives the storefront and the checkout, for the same reason: the gate's entry is a
       # Server Component, so its links live where the component runs. They never reach the browser.
@@ -162,6 +166,41 @@ services:
       - totem_cache:/var/cache/forge-storefront
     depends_on:
       - kernel
+
+  # ── ★★ POS-DEMO-PURGE (2026-10-20) · THE KERNEL PURGES EVERY FRONT THAT CACHES, NOT ONLY THE REFERENCE ONE ──
+  #
+  # MEASURED in the v0.3.3 blind rehearsal (phase 7/7b): `compose.yml` names one target,
+  # `http://storefront:3000`, and the kernel boots saying `storefront cache invalidation ON — 1 target(s)`.
+  # Since VC-1 (#45) the café's and the totem's data caches live on volumes and survive a deploy, so a price
+  # changed in the admin reached those two fronts only when the read's TTL ran out — up to an hour.
+  #
+  # The kernel takes a LIST, comma-separated, and posts every event to every entry: published at v0.3.3 in the
+  # product's `docs/guides/demo-local.md` ("A list — several origins separated by commas are all purged") and
+  # `docs/operations/performance.md`, and its boot line counts "N target(s)". ⚠️ The template's own comment
+  # (`templates/instance/compose.yml`) still says "the storefront", singular — the list is not in it.
+  #
+  # Written HERE and not in `compose.yml` for the reason the file's header gives: these two fronts are this
+  # repository's deployables, so the targets that name them live where the services do (compose merges
+  # `environment` by key, so this line wins). The same purge secret as before: each front carries
+  # FORGE_REVALIDATE_SECRET. Every target is the front's PROCESS on the compose network, never its edge.
+  #
+  # MEASURED on a local bench, 2026-10-20 (the three 250 g SKUs of one coffee repriced through the port):
+  # with this list the café's page and the totem's menu showed the new price in 0.6–1.3 s (5 runs); with the
+  # old one-target list both still showed the old price 120 s later while the port already answered the new.
+  #
+  # ⚠️ IT TRIPLES THE POSTS. ONE POST per event per target (one event → one call carrying all its tags, e.g.
+  # `tag=store:<café>&tag=store:<balcão>`), and every event of EVERY tenant goes to every target — the café
+  # receives the main shop's purges and the reverse. An idle box posts nothing; the curated seed of a bench
+  # emitted 588 events in 12 s (≈ 2 900/min → ≈ 8 800 POSTs/min at three targets). A tag a front never cached
+  # answers 200 on all three; only a missing tag (400) or a wrong secret (401) is an error.
+  # ⚠️ A TARGET THAT IS DOWN RETRIES THE WHOLE EVENT (`relay retry … failed on 2 of 3 target(s)`, measured
+  # while the bench held the café and the totem for after its seed hook): the healthy targets are posted
+  # again, and past the relay's attempts the event dead-letters. Start the fronts with the kernel.
+  # `bin/purge-targets.guard.mjs` goes red when a front that mounts a data-cache volume is missing here, or
+  # when a target names no service.
+  kernel:
+    environment:
+      FORGE_STOREFRONT_URL: ${FORGE_STOREFRONT_URL:-http://storefront:3000,http://storefront-coffee:3000,http://totem:3000}
 
   # ── THE ADMIN'S SIBLING SWITCHER (A44) ──────────────────────────────────────────────────────────────────
   #

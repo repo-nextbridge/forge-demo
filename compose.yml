@@ -169,6 +169,8 @@ services:
       # refuses at boot. The seam stays because a box may still want an app of ACTIONS ONLY, with no rebuild.
       FORGE_EXTENSIONS_DIR: ${FORGE_EXTENSIONS_DIR:-}
       # Busting the storefront's cache when something a shopper can see changes. Both are needed.
+      # ⚠️ This default is the reference vitrine alone; `compose.override.yml` (kernel) replaces it with the
+      # list of EVERY front of this box that caches (POS-DEMO-PURGE) — that is the value a box runs with.
       FORGE_STOREFRONT_URL: ${FORGE_STOREFRONT_URL:-http://storefront:3000}
       FORGE_REVALIDATE_SECRET: ${FORGE_REVALIDATE_SECRET:-}
       FORGE_RATE_LIMIT_PER_CREDENTIAL: ${FORGE_RATE_LIMIT_PER_CREDENTIAL:-}
