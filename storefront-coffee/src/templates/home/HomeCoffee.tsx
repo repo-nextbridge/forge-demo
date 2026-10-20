@@ -22,8 +22,8 @@
 import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
 import { formatMoney } from '@forgeco/storefront-kit/money';
 import { MediaImage } from '@forgeco/storefront-kit/MediaImage';
-import { coverMediaOf } from '@forgeco/storefront-kit/sku';
-import { imagesOf, mediaSrc } from '@forgeco/storefront-kit/media/src';
+import { coverImageOf } from '@forgeco/storefront-kit/sku';
+import { mediaSrc } from '@forgeco/storefront-kit/media/src';
 import type { ReactNode } from 'react';
 import { Icon, noteIcon, PathIcon, ScrollHintIcon } from '@/components/coffee/icons';
 import { field, notesOf, priceOf, variantSummary } from '@/lib/coffee/product-view';
@@ -101,7 +101,7 @@ function Dots({ filled, small = false }: { filled: number; small?: boolean }) {
 
 function ProductCard({ product, base }: { product: ProductDoc; base: string }) {
   const price = priceOf(product);
-  const media = imagesOf(coverMediaOf(product))[0];
+  const media = coverImageOf(product);
   // `mediaSrc` answers BOTH halves at once: the master's url and — only when this instance's own media door
   // can serve derivatives of it — the optimizer key. Passing the key when no door exists is what makes a
   // shop request sizes nobody serves.
@@ -160,7 +160,7 @@ export function HomeCoffee({ base, products, reviews, rating, slots }: HomeCoffe
   // The hero's bag is the FIRST coffee's own photo — the house blend, which is the order the catalogue is
   // written in. Derived rather than named: a shop that reorders its coffees does not edit this file.
   const heroProduct = products[0];
-  const heroMedia = heroProduct ? imagesOf(coverMediaOf(heroProduct))[0] : undefined;
+  const heroMedia = heroProduct ? coverImageOf(heroProduct) : undefined;
   const heroShot = mediaSrc(heroMedia);
 
   return (

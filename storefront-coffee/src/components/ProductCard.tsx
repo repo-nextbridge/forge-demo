@@ -14,7 +14,7 @@ import { formatMoney } from '@forgeco/storefront-kit/money';
 import { cardBadges } from '@forgeco/storefront-kit/promo/badges';
 import { displayPrice } from '@forgeco/storefront-kit/promo/display-price';
 import type { ProductDoc } from '@forgeco/storefront-kit/read-client';
-import { coverMediaOf, displaySku } from '@forgeco/storefront-kit/sku';
+import { coverImageOf, displaySku } from '@forgeco/storefront-kit/sku';
 import { type StoreBase, storeHref } from '@forgeco/storefront-kit/store-route';
 import type { ReactNode } from 'react';
 import type { CartModel, VariantOption } from '@/lib/cardModel';
@@ -119,7 +119,7 @@ export function ProductCard({
   sizes?: string;
   priority?: boolean;
 }) {
-  const cover = coverOf(coverMediaOf(product));
+  const cover = coverImageOf(product);
   const src = mediaSrc(cover);
   const sku = displaySku(product);
 
