@@ -33,32 +33,32 @@
   },
   "images": {
     "kernel": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:dbccc9c4c50899a2868214532fa9414d9e5a96050be29e3197a5980bf5cc64a1",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:1bbc6fc65cd5f2c2d611821a95432b9d1b9beea8bdb334d8b03cbeb0f2f33e19",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "storefront": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:12df7cbafcde0eea8cb899d963b314fe0c8b923e945ca94eaa196384737bd66a",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:1b37baf5c046c077db097c29b78a74eba83dc30960e6db720c97e3029e5d8d0e",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "checkout": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:ba13a170397ff5e7f9c7bd9163538044d50b1baf18503812b4f97a989b0f7a3a",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:9a3727040ea8f5403bd5c8cebe58a402a67ac915e80d8a54d63ac5e743a65861",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "admin": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:754776fb9262c6a1e84675c477cf3cf178f5886a78c8df70097ac80f643e7213",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:2c33219cdb4d3ad79c08951885f35543a5bd7ce76608d014ffae421ffdce689f",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "storefront-coffee": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:298eba07d6b246e8d1c4c7552358c8b1868e06d88a37c8e1f61c208d2451f3a2",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:b875433df19a171cf6b388195c087ec1800a8853ccb4a26c2931ca7f98dbb20e",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "totem": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:73f2a0d543461146dfd9b7873cbc25ccc71e0c16b8ae13d8ce304023e843753e",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:57c4084736164d6bafd16e271ed022c542e5e3f1c6330118874a1906c3cf91e9",
       "origin": "own build",
       "built_from": "v0.3.3"
     }
