@@ -180,6 +180,14 @@ services:
       # wrong button. Empty here means the kernel's own default (30/60s), which is what production wants.
       FORGE_PUBLIC_WRITE_LIMIT_PER_IP: ${FORGE_PUBLIC_WRITE_LIMIT_PER_IP:-}
       FORGE_PUBLIC_WRITE_WINDOW_SECONDS: ${FORGE_PUBLIC_WRITE_WINDOW_SECONDS:-}
+      # ★★ v0.3.3 (VC-2) — THE DISK ALARM. The kernel measures the filesystem holding this path INSIDE its
+      # container every minute and, at or above the percentage, logs `disk_alarm state=high` once and paints a
+      # red band on every admin page. Both forwarded the way the template forwards them (`${…:-}`, empty = the
+      # kernel's default: 85 and `/`); `deploy/box.env` declares the values. This box is ONE disk — the
+      # container's `/` is the host disk that also holds pgdata and every cache volume, the one that filled on
+      # 2026-10-19 — so the default path is the right one. See the product's `docs/operations/disk-alarm.md`.
+      FORGE_DISK_ALARM_PERCENT: ${FORGE_DISK_ALARM_PERCENT:-}
+      FORGE_DISK_WATCH_PATH: ${FORGE_DISK_WATCH_PATH:-}
     volumes:
       # Our extensions, read-only: the kernel loads this code, it never writes it.
       - ${FORGE_EXTENSIONS_HOST_DIR:-./extensions}:/app/extensions:ro
@@ -294,8 +302,23 @@ services:
       # setting it there does NOTHING. Measured, and reported upstream as template debt. The demo needs it for
       # real (`outlet`, `coffee-store`), so both fronts get the mount and the variable.
       FORGE_THEMES_DIR: ${FORGE_THEMES_DIR:-/app/themes-instance}
+      # ★★★ v0.3.3 (VC-1) — THE DATA CACHE HAS A CEILING AND A VOLUME, AND THIS BOX IS WHY THE PRODUCT HAS ONE.
+      # Measured 2026-10-19 on this demo's production box: 86 GB of cached port reads in this container's
+      # writable layer (`.next/cache/fetch-cache`, ~200 000 filtered listings), the 96 GB disk at 100 %, and
+      # Postgres dead of `disk_full`. The image's `cacheHandler` (the kit's `data-cache-handler`) keeps those
+      # entries under a byte ceiling with LRU eviction and stops writing when the disk is nearly full; these
+      # lines are the template's, word for word. The directory is FIXED because it is where the volume below
+      # mounts; the ceiling (MiB, empty = 2048) and the free-disk floor (%, empty = 5; writing also pauses
+      # below 1 GiB free) are `.env`'s. ⚠️ The same two knobs reach the café's fork and the totem
+      # (compose.override.yml), each with a volume of its own — so the box's worst case is THREE ceilings.
+      FORGE_DATA_CACHE_DIR: /var/cache/forge-storefront
+      FORGE_DATA_CACHE_MAX_MB: ${FORGE_DATA_CACHE_MAX_MB:-}
+      FORGE_DATA_CACHE_MIN_FREE_PERCENT: ${FORGE_DATA_CACHE_MIN_FREE_PERCENT:-}
     volumes:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
+      # VC-1 — the data cache, off the container layer. Derived from the database, so `bin/box-down.sh` calls
+      # it STATE and a restore starts it empty, exactly as it started when the cache died with the container.
+      - storefront_cache:/var/cache/forge-storefront
     depends_on:
       - kernel
 
@@ -554,6 +577,13 @@ services:
       - ${FORGE_CADDY_EXTRA_DIR:-./caddy/extra}:/etc/caddy/extra:ro
       - caddy_data:/data
       - caddy_config:/config
+      # ★★ v0.3.3 (VC-2) — THE EDGE'S ACCESS LOG, the `(access_log)` snippet of `caddy/Caddyfile`: one JSON line
+      # per request in `/var/log/caddy/access.log`, rolled by Caddy itself at 100 MiB, 5 gzipped files kept,
+      # none older than 30 days — so it cannot be the next disk to fill. A volume so it survives the container
+      # being recreated by a deploy, which is exactly when somebody needs to read it: on 2026-10-19 this edge
+      # had ZERO access lines and nobody could say who generated the traffic that filled the disk.
+      # `bin/box-down.sh` keeps it across a rebirth (RECORD) and `--all` drops it.
+      - caddy_logs:/var/log/caddy
     depends_on:
       - kernel
       - storefront
@@ -669,4 +699,8 @@ volumes:
   redisdata:
   caddy_data:
   caddy_config:
+  # VC-2 — the edge's rolled access log (see the `caddy` service). Bounded by Caddy's own roller.
+  caddy_logs:
+  # VC-1 — the reference storefront's data cache (see the service). Safe to delete: it refills from the kernel.
+  storefront_cache:
   media:

@@ -1158,7 +1158,7 @@ obvious implementation creates a tidy directory of nothing and reports success. 
 
 ```bash
 bash bin/box-down.sh          # state dies, the photo cache lives
-bash bin/box-down.sh --all    # everything, cache included (re-pulls 3.6 GB)
+bash bin/box-down.sh --all    # everything but identity, cache and the edge's log included (re-pulls 3.6 GB)
 ```
 
 ⚠️ **Do not use `docker compose down -v` for this.** One flag takes everything, and it does not distinguish
@@ -1167,7 +1167,9 @@ the two kinds of thing this box holds:
 | | what it is | in a birth proof |
 |---|---|---|
 | `pgdata`, `redisdata`, `media` | **state** — what the box DERIVED | **destroy it**, or nothing is being born |
+| `storefront_cache`, `storefront_coffee_cache`, `totem_cache` | **state** — the three fronts' data caches (Forge v0.3.3, VC-1): cached port reads, under a 2048 MiB ceiling each | **destroy it** — derived from the database; a restore or a birth starts them empty |
 | `seed_photos` | **cache** — 3.6 GB FETCHED from a bucket, re-fetchable | **keep it**; destroying proves nothing and costs the pull again (5–7 min on a bench, 2026-10-10 — "What it costs") |
+| `caddy_logs` | **record** — the edge's access log (Forge v0.3.3, VC-2), rolled by Caddy at 100 MiB × 5 | **keep it** across a rebirth (the days before it are what it is read for); `--all` drops it |
 | `caddy_data`, `caddy_config` | **identity** — the edge's certificates and ACME account | **kept even by `--all`** (the script's header says why); removed by hand — see the next section |
 
 The claim a birth proof makes is *"the box is born from nothing"* — not *"the network is re-read from

@@ -71,6 +71,11 @@ export const STATE_DISPOSITION = {
   pgdata: { how: 'dump', service: 'postgres' },
   redisdata: { how: 'discard' },
   media: { how: 'archive' },
+  // v0.3.3 (VC-1) — the fronts' data caches: derived from the database, so a gold carries none and a restore
+  // starts them empty, as it did when they still died with their containers.
+  storefront_cache: { how: 'discard' },
+  storefront_coffee_cache: { how: 'discard' },
+  totem_cache: { how: 'discard' },
 };
 
 /** box-down's STATE list, read out of the script exactly as `bin/box-volumes.guard.mjs` reads it. */

@@ -85,8 +85,21 @@ services:
       # DIFFERENT scope would delete nothing, which is the silent half `cookie-scope.ts` warns about.
       FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
+      # ★★★ v0.3.3 (VC-1) — THE SAME CEILING THE REFERENCE VITRINE GOT, AND A FORK GETS IT ONLY BY WIRING IT.
+      # The release says so in as many words: "A storefront of your own gets the cap only if it wires the
+      # handler". This one does — `storefront-coffee/next.config.mjs` names `data-cache-handler.mjs`, the
+      # template's one-line door to `@forgeco/storefront-kit/data-cache-handler` — and these are the
+      # template's three lines. Without both, Next's built-in store writes one file per URL into the container
+      # layer and never deletes one: the 86 GB of 2026-10-19 on this box. Same knobs as `compose.yml`'s
+      # vitrine, a volume of its OWN: the handler's LRU index is per process, so two fronts on one directory
+      # would each count only their own bytes against the ceiling.
+      FORGE_DATA_CACHE_DIR: /var/cache/forge-storefront
+      FORGE_DATA_CACHE_MAX_MB: ${FORGE_DATA_CACHE_MAX_MB:-}
+      FORGE_DATA_CACHE_MIN_FREE_PERCENT: ${FORGE_DATA_CACHE_MIN_FREE_PERCENT:-}
     volumes:
       - ${FORGE_THEMES_HOST_DIR:-./themes}:/app/themes-instance:ro
+      # VC-1 — derived from the database, so `bin/box-down.sh` calls it STATE (a restore starts it empty).
+      - storefront_coffee_cache:/var/cache/forge-storefront
     depends_on:
       - kernel
 
@@ -136,6 +149,17 @@ services:
       # DIFFERENT scope would delete nothing, which is the silent half `cookie-scope.ts` warns about.
       FORGE_STOREFRONT_GATE_COOKIE_DOMAIN: ${FORGE_STOREFRONT_GATE_COOKIE_DOMAIN:-}
       FORGE_GATE_ADMIN_URLS: ${FORGE_GATE_ADMIN_URLS:-}
+      # ★★ v0.3.3 (VC-1) — THE TOTEM CACHES TOO, WHICH ITS `force-dynamic` PAGE DOES NOT MAKE OBVIOUS. The page
+      # renders per request, but every read goes through the kit's `createReadClient`, which asks for
+      # `next: { revalidate, tags }` — and Next 15.2.9 turns `force-dynamic` into "do not cache" ONLY for a
+      # fetch with no cache config of its own (`noFetchConfigAndForceDynamic`, next/dist/server/lib/
+      # patch-fetch.js). So the menu's reads ARE Data Cache entries, and `totem/next.config.mjs` names the
+      # kit's handler for the same reason the café's does. Its own volume, same knobs.
+      FORGE_DATA_CACHE_DIR: /var/cache/forge-storefront
+      FORGE_DATA_CACHE_MAX_MB: ${FORGE_DATA_CACHE_MAX_MB:-}
+      FORGE_DATA_CACHE_MIN_FREE_PERCENT: ${FORGE_DATA_CACHE_MIN_FREE_PERCENT:-}
+    volumes:
+      - totem_cache:/var/cache/forge-storefront
     depends_on:
       - kernel
 
@@ -201,3 +225,10 @@ services:
     # storefront, which paints the store with its own theme). `bin/caddy-extra-door.guard.mjs` pairs the two.
     volumes:
       - ${FORGE_CADDY_EXTRA_LOCAL_DIR:-./caddy/extra-local}:/etc/caddy/extra-local:ro
+
+# ★ VC-1 — THE TWO DATA-CACHE VOLUMES OF THIS FILE'S FRONTS, declared beside the services that mount them (compose
+# merges top-level `volumes:` across files). Derived and disposable: `bin/box-down.sh` destroys them with the
+# database, and they refill from the kernel on the next visit.
+volumes:
+  storefront_coffee_cache:
+  totem_cache:

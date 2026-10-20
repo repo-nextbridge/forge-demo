@@ -2,7 +2,7 @@
 # ★★ TEAR THE BOX DOWN SO IT CAN BE BORN AGAIN — destroying STATE and keeping CACHE.
 #
 #   bash bin/box-down.sh              # the normal one: state dies, the photo cache lives
-#   bash bin/box-down.sh --all        # everything but IDENTITY (caddy_*), cache included (you will re-pull 3.6 GB)
+#   bash bin/box-down.sh --all        # everything but IDENTITY (caddy_data/_config), cache and the edge's log included (you will re-pull 3.6 GB)
 #   bash bin/box-down.sh --env prod   # THE SAME GESTURES, on a deployed box (deploy/<env>.env names it)
 #   bash bin/box-down.sh --env prod --plan   # say what WOULD go and what would stay; destroy nothing
 #
@@ -28,6 +28,8 @@
 #   CACHE  is what the box FETCHED and could fetch again — the 3.6 GB photo payload pulled from a bucket.
 #          Destroying it proves nothing: the claim is "the box is born from nothing", not "the network is
 #          re-read from nothing". It costs ~40 minutes and buys no evidence.
+#   RECORD is what the box WROTE DOWN about itself — the edge's access log (v0.3.3). Kept by a rebirth, dropped
+#          by `--all`; bounded by Caddy's own roller, so keeping it costs at most ~150 MiB.
 #   IDENTITY is what the box IS at an address — the edge's TLS certificates and its ACME account key. Same
 #          species as an SSH host key: not derived, not fetched, and re-minting it on every birth is not
 #          hygiene, it is a new machine wearing the old name.
@@ -150,7 +152,12 @@ fi
 # ★ THE STATE VOLUMES, BY NAME. Named explicitly rather than swept, so that adding a volume to `compose.yml`
 # without deciding which kind it is shows up here as a leftover instead of being silently destroyed — or
 # silently kept.
-STATE='pgdata redisdata media'
+# ★ v0.3.3 (VC-1) — THE FRONTS' DATA CACHES ARE STATE, NOT CACHE, AND THE DIFFERENCE IS WHAT THEY ARE MADE OF.
+# `storefront_cache`, `storefront_coffee_cache` and `totem_cache` hold the fronts' cached port reads: DERIVED
+# from the database, exactly like redisdata, and wrong the moment the database is a different one. Until v0.3.3
+# they lived in the containers' writable layer and died with every `down`, which is what `bin/demo-reset.sh`
+# relied on to serve no stale render after a restore. On a volume they would SURVIVE a `down` unless named here.
+STATE='pgdata redisdata media storefront_cache storefront_coffee_cache totem_cache'
 for v in $STATE; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
@@ -171,6 +178,26 @@ for v in $IDENTITY; do
   full="${COMPOSE_PROJECT_NAME}_${v}"
   if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
     note "identity $v — KEPT; TLS certificates and the ACME account are not state. Remove by hand to start over"
+  fi
+done
+
+# ★ v0.3.3 (VC-2) — RECORD: what the box WROTE DOWN about itself — the edge's rolled access log. Not derived (a
+# rebirth cannot re-derive who knocked last week), not fetched, not who the box is. A rebirth KEEPS it, because
+# the days before a rebirth are exactly what someone reads it for; `--all` drops it with the cache. It cannot
+# grow: Caddy rolls it at 100 MiB and keeps 5 gzipped files (caddy/Caddyfile, `(access_log)`).
+RECORD='caddy_logs'
+for v in $RECORD; do
+  full="${COMPOSE_PROJECT_NAME}_${v}"
+  if $DOCKER_SH "docker volume inspect $full" >/dev/null 2>&1; then
+    if [ "$ALL" = 1 ]; then
+      if [ "$PLAN" = 1 ]; then
+        note "record   $v — WOULD BE DESTROYED (--all)"
+      else
+        $DOCKER_SH "docker volume rm $full" >/dev/null 2>&1 && note "record   $v — destroyed (--all)"
+      fi
+    else
+      note "record   $v — KEPT; the edge's access log of the days before this teardown. --all to drop it"
+    fi
   fi
 done
 
@@ -206,9 +233,9 @@ done
 left=$($DOCKER_SH "docker volume ls --format '{{.Name}}'" 2>/dev/null | grep "^${COMPOSE_PROJECT_NAME}_" || true)
 for v in $left; do
   short="${v#"${COMPOSE_PROJECT_NAME}_"}"
-  case " $STATE $IDENTITY $CACHE " in
+  case " $STATE $IDENTITY $RECORD $CACHE " in
     *" $short "*) ;;
-    *) note "⚠️ $short — UNCLASSIFIED: not in this script's state, identity or cache list. Decide which it is and add it." ;;
+    *) note "⚠️ $short — UNCLASSIFIED: not in this script's state, identity, record or cache list. Decide which it is and add it." ;;
   esac
 done
 

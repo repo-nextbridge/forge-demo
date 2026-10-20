@@ -186,6 +186,16 @@ const nextConfig = {
   // performance decision about the whole app rather than a containment one. See
   // `src/lib/derivative-accept.ts`, which is where that trade is written out.
   images: { minimumCacheTTL: 31536000 },
+  // ★★★ VC-1 (Forge v0.3.3) — THE DATA CACHE HAS A CEILING, AND A FORK HAS ONE ONLY IF THIS LINE IS HERE.
+  // Every cached port read is a Next Data Cache entry keyed by its URL, and Next's built-in store writes one
+  // file per key and never deletes one. Measured 2026-10-19 on this demo's production box: 86 GB of them in
+  // the reference vitrine's container layer, the disk at 100 %, Postgres dead of `disk_full`. This fork reads
+  // through the same kit (`revalidate` on every read), so it had the same unbounded store. The handler keeps
+  // the entries under FORGE_DATA_CACHE_MAX_MB with LRU eviction, in FORGE_DATA_CACHE_DIR (a volume, see
+  // compose.override.yml), and stops writing when the disk is nearly full. Remove the line and the unbounded
+  // store is back with no error anywhere. `./data-cache-handler.mjs` is the template's one-line door to the
+  // kit; `bin/data-cache.guard.mjs` holds the line, the file and the volume together.
+  cacheHandler: fileURLToPath(new URL('./data-cache-handler.mjs', import.meta.url)),
   // DEMO CAPTURE — hide the Next dev indicator (the bottom-corner badge) so a screen recording of the local demo
   // shows ZERO framework chrome. Opt-in via FORGE_HIDE_DEV_INDICATORS=1; unset → normal dev, indicator visible.
   //

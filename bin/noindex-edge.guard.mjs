@@ -39,43 +39,18 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import { ROOT, topLevelBlocks } from './box-domains.mjs';
+import { codeOf, sitesOf, sitesWithoutImport, snippetCode as snippetCodeOf } from './edge-text.mjs';
 
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 export const SNIPPET = 'forge_noindex';
 export const SNIPPET_CODE = ['header {', 'X-Robots-Tag "noindex, nofollow"', 'defer', '}'];
 
-/** The file with every comment removed — a `#` at the start of a line or after whitespace (Caddy's rule). */
-export const codeOf = (text) =>
-  text
-    .split('\n')
-    .map((l) => l.replace(/(^|\s)#.*$/, '').replace(/\s+$/, ''))
-    .join('\n');
-
-/** Site blocks of a Caddyfile's CODE: neither the global options block nor a snippet definition. */
-export function sitesOf(text) {
-  return topLevelBlocks(codeOf(text)).filter((b) => b.header !== '' && !/^\(.*\)$/.test(b.header));
-}
-
-/** The body of a snippet definition, code only, trimmed, blank lines out; `null` if it is not defined. */
-export function snippetCode(text, name = SNIPPET) {
-  const b = topLevelBlocks(codeOf(text)).find((x) => x.header === `(${name})`);
-  return b ? b.body.map((l) => l.trim()).filter(Boolean) : null;
-}
-
-/** The site blocks that do NOT import the snippet at their own level (depth 0 of the site's body). */
-export function sitesWithoutNoindex(text, name = SNIPPET) {
-  return sitesOf(text).filter((site) => {
-    let depth = 0;
-    for (const raw of site.body) {
-      const line = raw.trim();
-      if (depth === 0 && new RegExp(`^import\\s+${name}$`).test(line)) return false;
-      if (line.endsWith('{')) depth += 1;
-      if (line === '}') depth -= 1;
-    }
-    return true;
-  });
-}
+// The Caddyfile readers live in `bin/edge-text.mjs` since v0.3.3 (a second guard needed them); these
+// names stay so the rules below read as they did.
+export { codeOf, sitesOf } from './edge-text.mjs';
+export const snippetCode = (text, name = SNIPPET) => snippetCodeOf(text, name);
+export const sitesWithoutNoindex = (text, name = SNIPPET) => sitesWithoutImport(text, name);
 
 /** Lines of CODE naming `X-Robots-Tag` outside the snippet definition. */
 export function strayRobotsHeaders(text, name = SNIPPET) {

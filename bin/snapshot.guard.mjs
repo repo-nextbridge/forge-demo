@@ -306,7 +306,7 @@ test('the judgement runs before box-down in the restore — in the CODE, not in 
 // ── 4 · NOTHING A FRONT RENDERED SURVIVES ───────────────────────────────────────────────────────────────────
 test('every mount is read-only or a volume box-down classifies — no front keeps a render cache across a restore', () => {
   const boxDown = read('bin/box-down.sh');
-  const classified = new Set(['STATE', 'IDENTITY', 'CACHE'].flatMap((k) => (new RegExp(`^${k}='([^']*)'`, 'm').exec(boxDown)?.[1] ?? '').split(/\s+/).filter(Boolean)));
+  const classified = new Set(['STATE', 'IDENTITY', 'RECORD', 'CACHE'].flatMap((k) => (new RegExp(`^${k}='([^']*)'`, 'm').exec(boxDown)?.[1] ?? '').split(/\s+/).filter(Boolean)));
   let seen = 0;
   for (const file of ['compose.yml', 'compose.override.yml']) {
     const lines = read(file).split('\n');

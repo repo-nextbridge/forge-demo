@@ -95,6 +95,41 @@
 	}
 }
 
+# ★★ v0.3.3 (VC-2) — THE ACCESS LOG, AND WHY IT IS A FILE WITH A CEILING. Measured 2026-10-19 on THIS demo's
+# production box: this edge wrote ZERO access lines in 24 h (Caddy logs no request unless a site says `log`),
+# so when the disk filled from the vitrine's cache nobody could say who had generated the traffic. The body is
+# the template's (`templates/instance/caddy/Caddyfile` at v0.3.3), byte for byte; every site block below
+# imports it, and so does a hostname in `caddy/extra/` (its README's recipe). `bin/access-log-edge.guard.mjs`
+# is red for a site that forgets it, a ceiling that goes, or a compose that stops mounting the volume.
+#
+#   · WHERE — `/var/log/caddy/access.log`, in the `caddy_logs` volume (compose.yml), not stdout: Docker's
+#     default `json-file` driver keeps stdout with NO size limit unless the daemon says otherwise, so a busy
+#     edge on stdout is the next disk to fill. Read it with `docker compose exec caddy tail -f /var/log/caddy/access.log`.
+#   · HOW MUCH — rolled at 100 MiB, the 5 newest rolled files kept, gzipped, none older than 30 days.
+#   · WHAT — Caddy's default entry (client IP, method, host, URI, status, timing, request headers; `Cookie`,
+#     `Authorization`, `Proxy-Authorization` already REDACTED by Caddy). On top of it the `email` query value
+#     (the admin's login code step), the OAuth `code` and `state`, and the whole `Referer` are removed. The IP
+#     is personal data under the LGPD and stays on purpose — it is the "who" — under this short retention.
+#   · ⚠️ NO `forwarded_client` HERE: this box has no CDN in front and declares no `trusted_proxies`, so
+#     `client_ip` is the peer's own address. The day a CDN goes in front, both arrive together (template).
+(access_log) {
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 100MiB
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format filter {
+			request>uri query {
+				replace email REDACTED
+				replace code REDACTED
+				replace state REDACTED
+			}
+			request>headers>Referer delete
+		}
+	}
+}
+
 # ★★★ ONE SHOP HOSTNAME, DEFINED ONCE. Every store of this box serves the SAME doors — that is not tidiness,
 # it is the path split itself: a hostname that carries `/checkout*` and a sibling that does not is a shop
 # whose buyer meets the other shop's 404 with a full cart. Copied by hand into three site blocks this is
@@ -242,6 +277,7 @@
 		load /etc/caddy/certs
 	}
 	import forge_noindex
+	import access_log
 	import forge_shop_host storefront
 }
 
@@ -250,6 +286,7 @@
 # the outlet is only which store the kernel's directory says answers here.
 {$FORGE_OUTLET_DOMAIN:outlet.unset.localhost} {
 	import forge_noindex
+	import access_log
 	import forge_shop_host storefront
 }
 
@@ -259,6 +296,7 @@
 # show, at an address.
 {$FORGE_CAFE_DOMAIN:cafe.unset.localhost} {
 	import forge_noindex
+	import access_log
 	import forge_shop_host storefront-coffee
 	# ⚠️⚠️ THE ONE DOOR THIS HOSTNAME NEEDS AND ITS SIBLINGS DO NOT, AND ITS ABSENCE IS SILENT. The fork
 	# carries `assetPrefix: '/_coffee'` in its image (storefront-coffee/next.config.mjs) — unconditionally,
@@ -286,11 +324,13 @@
 
 {$FORGE_ADMIN_DOMAIN:admin.unset.localhost} {
 	import forge_noindex
+	import access_log
 	reverse_proxy admin:3000
 }
 
 {$FORGE_CAFE_ADMIN_DOMAIN:admin-cafe.unset.localhost} {
 	import forge_noindex
+	import access_log
 	reverse_proxy admin:3000
 }
 
@@ -313,6 +353,7 @@
 # server-side over the compose network, and a till has no reason to expose a command face to a room.
 {$FORGE_TOTEM_DOMAIN:totem.unset.localhost} {
 	import forge_noindex
+	import access_log
 	reverse_proxy totem:3000
 }
 
