@@ -14,8 +14,8 @@
     "@fontsource/fraunces": "^5.2.5",
     "@fontsource/poppins": "^5.2.5",
     "@forge/ext-demo-setup": "file:../apps/demo-setup",
-    "@forgeco/contracts": "0.3.2",
-    "@forgeco/storefront-kit": "0.3.2",
+    "@forgeco/contracts": "0.3.3",
+    "@forgeco/storefront-kit": "0.3.3",
     "next": "15.2.9",
     "react": "19.0.0",
     "react-dom": "19.0.0"
