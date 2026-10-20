@@ -16,7 +16,8 @@
 //      does not carry — the vitrine would serve the dirty shop across the reset.
 
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -356,6 +357,103 @@ test('★ a gold that dies with the disk is not a gold: take copies it OFF the b
     assert.equal(back.status, 0, `the restore of a pushed gold failed:\n${back.stderr}`);
     assert.match(readFileSync(join(s.dir, '.secrets'), 'utf8'), /^forge-operator-token=tok-reborn$/m, 'the pushed gold’s pair was not put back');
     assert.match(s.log(), /ssh .*box-down|compose .*down/, 'the remote restore never tore the state down');
+  } finally {
+    s.cleanup();
+  }
+});
+
+// ── ★★ POS-DEMO-TOOLS — `--plan` PLANS ON EVERY VERB THAT TAKES IT, AND IS REFUSED BY NAME WHERE IT CANNOT ──────
+//
+// ⛔ MEASURED 2026-10-20 (the v0.3.3 blind-client rehearsal, phase 6): `take --plan` took a real snapshot and
+// copied it off the box — `--plan` was parsed for every verb and read only by `restore`. The rule: after a
+// `--plan`, THE BOX AND THE OFF-BOX COPY ARE BYTE FOR BYTE WHAT THEY WERE, and the fake docker was never asked
+// for a dump or an archive. The box is the folder `scratchBox` builds, so "nothing was written" is a
+// fingerprint of every file in it, not a reading of the script.
+
+/** Every file under `root` (but the fakes' own call log), with its bytes hashed: `path → sha256`. */
+function fingerprint(root) {
+  const out = {};
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (full !== join(root, 'docker.log')) out[full.slice(root.length)] = createHash('sha256').update(readFileSync(full)).digest('hex');
+    }
+  };
+  walk(root);
+  return out;
+}
+const WRITES = [/pg_dump/, /alpine tar/, /tar -C .* -cf/, /mkdir/, /\bmv\b/, /sha256sum -- /];
+
+/** Runs `args` and holds the plan's promise: exit 0, a PLAN line, and nothing written on the box or here. */
+function assertPlans(s, args, said) {
+  const before = { box: fingerprint(s.dir), home: fingerprint(s.home) };
+  const r = s.run(args);
+  // The writes first: a plan that EXECUTED must be named as that, not as a plan that printed the wrong words.
+  assert.deepEqual(fingerprint(s.dir), before.box, `${args.join(' ')} WROTE ON THE BOX`);
+  assert.deepEqual(fingerprint(s.home), before.home, `${args.join(' ')} wrote the off-box copy`);
+  for (const w of WRITES) {
+    const line = s.log().split('\n').find((l) => w.test(l));
+    assert.equal(line, undefined, `${args.join(' ')} asked for a write: ${line}`);
+  }
+  assertUntouched(s.log(), args.join(' '));
+  assert.equal(r.status, 0, `${args.join(' ')} did not plan:\n${r.stderr}`);
+  assert.match(r.stderr, /PLAN/, `${args.join(' ')} printed no plan:\n${r.stderr}`);
+  assert.match(r.stderr, said, `${args.join(' ')} planned without saying what it would do:\n${r.stderr}`);
+  return r;
+}
+
+test('★★★ `take --plan` PLANS — the bench and a remote box are untouched, and it says what it would carry', () => {
+  // ⇒ SABOTAGE (proved for POS-DEMO-TOOLS): drop the `take_plan` branch from `take` and this goes red on
+  //   `WROTE ON THE BOX` — gold/<label> appears, the fake docker is asked for `pg_dump`.
+  for (const args of [['take', '--plan', '--label', 'novo'], ['take', '--env', 'fake', '--plan', '--label', 'novo']]) {
+    const s = scratchBox();
+    try {
+      assertPlans(s, args, /pgdata · would dump the database/);
+    } finally {
+      s.cleanup();
+    }
+  }
+});
+
+test('⛔ `take --plan` onto a label the box already has says the take WOULD REFUSE, and writes nothing', () => {
+  const s = scratchBox();
+  try {
+    const before = fingerprint(s.dir);
+    const r = s.run(['take', '--plan', '--label', 'g1']);
+    assert.notEqual(r.status, 0, 'a plan read greener than the take it describes');
+    assert.match(r.stderr, /gold\/g1 already exists on the box — the take would refuse/);
+    assert.deepEqual(fingerprint(s.dir), before);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('★★ `pull --plan` and `push --plan` PLAN — neither copy is written', () => {
+  const s = scratchBox();
+  try {
+    // An off-box copy to push, and one to be replaced by the pull — the plan must name the replacement.
+    cpSync(s.g, join(s.home, 'fake', 'g1'), { recursive: true });
+    assertPlans(s, ['pull', '--env', 'fake', '--plan'], /would be REPLACED/);
+    assertPlans(s, ['push', '--env', 'fake', '--label', 'g1', '--plan'], /gold\/g1 would be REPLACED/);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test('⛔ `list --plan` is REFUSED by name — list only reads, and a plan it cannot mean is not run quietly', () => {
+  const s = scratchBox();
+  try {
+    const r = s.run(['list', '--plan']);
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /list only reads — there is nothing for --plan to plan/);
+    assert.equal(s.log(), '', 'the refusal reached the box');
   } finally {
     s.cleanup();
   }

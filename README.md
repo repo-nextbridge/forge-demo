@@ -121,8 +121,12 @@ Release).
 
 **The guards grade against the release, not against a checkout.** `bin/release-tree.mjs` cuts the release's
 tree out of the same oven (`docker run … tar`, ~90 MB, once per oven, cached under `~/.cache/forge-demo/`) and
-every guard that compares this repository with the product reads it. `FORGE_MONOREPO` survives only as a bench
-override, read in that one file. `node bin/release-tree.mjs` says what this machine has and lacks.
+every guard that compares this repository with the product reads it. **When the oven is out of reach** (a laptop
+has no access to its registry), the tree is cut from the **tag's published source archive** instead
+(`gh api repos/<product>/tarball/<tag>`, ~39 MB, ~5 s, same cache, the commit the tag named written in the mark) —
+so `gh` read access to the product repository is enough to grade (POS-DEMO-TOOLS, 2026-10-20). `FORGE_MONOREPO`
+survives only as a bench override, read in that one file. `node bin/release-tree.mjs` says what this machine
+has and lacks.
 
 ---
 
@@ -2322,6 +2326,19 @@ it. Nobody taps ten orders a minute by hand, so the demo never meets this — bu
 
 Edit `forge.lock`, migrate, `up`. There is no merge in it — the apps and themes here keep working across
 versions because they compile against a frozen contract.
+
+★★ **The proof that this repository ADOPTS a release is the strict run, against that release:**
+
+```bash
+npm ci && (cd storefront-coffee && npm ci) && (cd totem && npm ci)
+env -u FORGE_MONOREPO FORGE_STRICT_CHECKS=1 bash bin/test.sh    # must end "NOT CHECKED 0", rc 0
+```
+
+⛔ **Not the plain run.** Measured on the v0.3.3 adoption (2026-10-20): the plain `bin/test.sh` ended `fail 0`
+with 42 NOT CHECKED, and three of those 42 were `bin/app-manifest.mjs` unable to read a single v0.3.3 manifest
+(`CHECKOUT_HEADER_PARTS is not defined` — the block parts v0.3.3 imports from `./parts`). Strict, a rule that
+cannot run is a red, and `bin/app-manifest.test.mjs` grades every product app the lock composes one by one. The
+release tree comes from the oven or the tag's archive (§1), so `gh` access to the product is all it needs.
 
 ```bash
 $EDITOR forge.lock
