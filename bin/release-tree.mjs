@@ -149,9 +149,9 @@ export function pinDiagnosis(pinned, env = process.env) {
     return {
       kind: 'release-unreachable',
       sentence:
-        `VERDICT — THE ${pinned.release} TREE COULD NOT BE READ HERE. It comes from the release's oven: give this ` +
-        `machine one (FORGE_OVEN_IMAGE=<an oven stamped ${pinned.release}>, or \`gh\` access to the ` +
-        `${releaseRepo(env)} Release plus registry access to the oven it names), or point ${BENCH_OVERRIDE} at a ` +
+        `VERDICT — THE ${pinned.release} TREE COULD NOT BE READ HERE. It comes from the release's oven or, failing ` +
+        `that, from the tag's source archive: give this machine \`gh\` read access to ${releaseRepo(env)} (that ` +
+        `alone is enough), or FORGE_OVEN_IMAGE=<an oven stamped ${pinned.release}>, or point ${BENCH_OVERRIDE} at a ` +
         `clean clone at the tag. Nothing about the installed kit is in question — it comes from npm at that version.`,
     };
   }
@@ -391,7 +391,81 @@ function overrideTree(base, tag) {
   return { path: base, head: at, how: `${BENCH_OVERRIDE} (a clean clone at ${tag})`, clean: true };
 }
 
-/** `releaseTree` for a lock that pins a release: the bench override when one is set, else the oven. */
+// ── ★★ POS-DEMO-TOOLS — THE TREE OF A RELEASE FROM ITS PUBLISHED TAG, WHEN THE OVEN IS OUT OF REACH ─────────
+//
+// ⛔ THE DEFECT, MEASURED 2026-10-20 (the blind-client rehearsal of v0.3.3, phases 6–7). The oven lives in a
+// registry a laptop has no access to; so on the machine where a new pin is ADOPTED, every guard that grades
+// against the release said NOT CHECKED (42 of 1532 here), and among them the three rules that would have shown
+// `bin/app-manifest.mjs` could not read a single v0.3.3 manifest. Phase 6 read the run as "nothing broke".
+// The only way to grade was to clone the tag by hand and point `FORGE_MONOREPO` at it.
+//
+// ⇒ THE TAG IS PUBLISHED MATERIAL, and the same `gh` that downloads the Release's `forge.lock` above
+// downloads its source archive: `gh api repos/<repo>/tarball/<tag>` — 39 MB in ~5 s, measured here. It is cut
+// into the same `RELEASE_CACHE/<tag>/tree` with the same mark, carrying the commit the tag named, and it is
+// the SECOND door: the oven, when reachable, stays first, because it is the very bytes the bake read.
+// ⚠️ Remove this door and a strict run on a laptop is red for the wrong reason again (no tree) — and a
+// normal run says NOT CHECKED over exactly the rules an adoption needs.
+
+/** The commit a tag names on the product's repository, as GitHub answers it — or `null` (offline, no access).
+ *  Asked ONCE per process: `fileAtPinned` resolves the tree for every file it reads, and a guard reads dozens. */
+const TAG_COMMITS = new Map();
+const tagCommit = (tag, env) => {
+  const key = `${releaseRepo(env)} ${tag}`;
+  if (!TAG_COMMITS.has(key)) TAG_COMMITS.set(key, run('gh', ['api', `repos/${releaseRepo(env)}/commits/${tag}`, '--jq', '.sha']));
+  return TAG_COMMITS.get(key);
+};
+
+/**
+ * ★★ THE TREE OF `tag`, CUT FROM ITS SOURCE ARCHIVE — `{ path, head, how, clean: true }` or `{ error }`.
+ * Reused while the tag still names the commit it was cut from; re-cut when GitHub says it moved.
+ */
+export function tagArchiveTree(tag, env = process.env) {
+  const path = join(RELEASE_CACHE, tag, 'tree');
+  const commit = tagCommit(tag, env);
+  try {
+    const mark = readJson(join(path, TREE_MARK));
+    if (mark.release === tag && mark.archive && (commit === null || mark.archive === commit)) {
+      const how = `cut from the ${tag} tag's source archive (${releaseRepo(env)} @ ${mark.archive.slice(0, 9)}` +
+        `${commit === null ? ', not re-verified: gh did not answer' : ''})`;
+      return { path, head: tag, how, clean: true };
+    }
+  } catch {
+    /* no tree yet, or one cut from the oven / another commit — cut it below */
+  }
+  if (commit === null) {
+    return { error: `gh could not name the commit of ${tag} on ${releaseRepo(env)} (gh missing, not logged in, or no read access)` };
+  }
+  const staging = `${path}.${process.pid}`;
+  rmSync(staging, { recursive: true, force: true });
+  mkdirSync(staging, { recursive: true });
+  // ⚠️ The archive is asked for by the COMMIT just named, not by the tag, so the bytes are the ones the mark
+  // says even if the tag moves between the two calls.
+  const cut = spawnSync(
+    'sh',
+    ['-c', 'gh api "repos/$1/tarball/$2" | tar -xzf - -C "$3" --strip-components=1', 'cut', releaseRepo(env), commit, staging],
+    { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8', timeout: 10 * 60_000 },
+  );
+  if (cut.status !== 0 || !existsSync(join(staging, 'package.json'))) {
+    rmSync(staging, { recursive: true, force: true });
+    return { error: `the ${tag} source archive could not be cut — ${(cut.stderr || '').trim().split('\n').pop() || 'no package.json in it'}` };
+  }
+  writeFileSync(
+    join(staging, TREE_MARK),
+    `${JSON.stringify({ release: tag, oven: null, archive: commit, repo: releaseRepo(env) }, null, 2)}\n`,
+  );
+  rmSync(path, { recursive: true, force: true });
+  try {
+    renameSync(staging, path);
+  } catch {
+    rmSync(staging, { recursive: true, force: true });
+  }
+  return existsSync(join(path, TREE_MARK))
+    ? { path, head: tag, how: `cut from the ${tag} tag's source archive (${releaseRepo(env)} @ ${commit.slice(0, 9)})`, clean: true }
+    : { error: `${path} could not be written` };
+}
+
+/** `releaseTree` for a lock that pins a release: the bench override when one is set, else the oven, else the
+ *  tag's published source archive. */
 function releaseTreeOfTag(pinned, env) {
   const tag = pinned.release;
   const tried = [];
@@ -403,6 +477,9 @@ function releaseTreeOfTag(pinned, env) {
   const cut = ovenTree(tag, env);
   if (cut.path) return cut;
   tried.push(`the ${tag} oven — ${cut.error}`);
+  const archive = tagArchiveTree(tag, env);
+  if (archive.path) return archive;
+  tried.push(`the ${tag} tag's source archive — ${archive.error}`);
   const diagnosis = pinDiagnosis(pinned, env);
   tried.push(diagnosis.sentence);
   return { tried, diagnosis };

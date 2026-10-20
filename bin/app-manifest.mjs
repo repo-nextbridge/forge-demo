@@ -39,8 +39,8 @@
 // understand is the vacuum every guard in this repository is written against: the rules downstream would all
 // pass, over zero blocks. Every failure here throws with the app and the file named.
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join, posix } from 'node:path';
 import { fileAtPinned, pinnedCommit, ROOT } from './release-tree.mjs';
 
 /** Where an app of THIS box declares itself. */
@@ -92,7 +92,8 @@ const asJs = (src) => src.replace(/\s+as\s+const\b/g, '');
 /** Every top-level `const NAME = …;` of a module, as source. Nothing is evaluated here. */
 function topLevelConsts(src) {
   const out = new Map();
-  for (const match of src.matchAll(/^const ([A-Za-z_$][\w$]*)(?:\s*:[^=]+)?\s*=\s*/gm)) {
+  // `export const` too: a module a manifest IMPORTS from (`./parts`, below) declares its consts exported.
+  for (const match of src.matchAll(/^(?:export\s+)?const ([A-Za-z_$][\w$]*)(?:\s*:[^=]+)?\s*=\s*/gm)) {
     const from = match.index + match[0].length;
     // The initialiser is everything up to the `;` that closes it at depth zero. Taking the balanced region of
     // its first bracket is not enough: `['a'].flatMap(…)` starts with `[` and continues after the `]`.
@@ -100,6 +101,18 @@ function topLevelConsts(src) {
     let end = from;
     for (; end < src.length; end += 1) {
       const c = src[end];
+      // A comment inside an initialiser is prose: an apostrophe in it opens no string, a `;` ends nothing.
+      if (c === '/' && src[end + 1] === '/') {
+        end = src.indexOf('\n', end);
+        if (end < 0) end = src.length;
+        continue;
+      }
+      if (c === '/' && src[end + 1] === '*') {
+        end = src.indexOf('*/', end + 2);
+        if (end < 0) end = src.length;
+        else end += 1;
+        continue;
+      }
       if (c === "'" || c === '"' || c === '`') {
         for (end += 1; end < src.length; end += 1) {
           if (src[end] === '\\') end += 1;
@@ -134,32 +147,100 @@ function arrayAfter(src, pattern, complaint) {
 const mentions = (src) => new Set([...src.matchAll(/\b([A-Z][A-Z0-9_]*)\b/g)].map((m) => m[1]));
 
 /**
+ * `import { A, B as C } from '<spec>'` of a module, as `local name -> { imported, spec }`. Type-only names are
+ * left out: they have no value to bind.
+ */
+function importsOf(src) {
+  const out = new Map();
+  for (const match of src.matchAll(/^import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/gm)) {
+    for (const raw of match[1].split(',')) {
+      const name = raw.trim();
+      if (!name || name.startsWith('type ')) continue;
+      const [imported, local = imported] = name.split(/\s+as\s+/).map((part) => part.trim());
+      out.set(local, { imported, spec: match[2] });
+    }
+  }
+  return out;
+}
+
+/** A relative specifier, as a reader of this repository can follow it: `./parts` → `parts.ts` and friends. */
+const isRelative = (spec) => spec.startsWith('./') || spec.startsWith('../');
+const SPELLINGS = (path) =>
+  /\.(?:ts|mts|js|mjs)$/.test(path) ? [path] : [`${path}.ts`, `${path}.mts`, `${path}.mjs`, `${path}.js`, `${path}/index.ts`];
+
+/**
+ * ★★ POS-DEMO-TOOLS — THE CONSTS A FRAGMENT REACHES, BOUND, INCLUDING THE ONES IT IMPORTS FROM ITS OWN APP.
+ *
+ * ⛔ THE DEFECT, MEASURED 2026-10-20 ON THE v0.3.3 TAG. v0.3.3 gave every block a `parts` list, and twelve of
+ * the product's thirteen manifests that ship blocks spell it as a const IMPORTED from a sibling module —
+ * `import { CHECKOUT_HEADER_PARTS, … } from './parts'` in `extensions/chrome/manifest.ts`. This reader bound
+ * only the consts declared in the manifest itself, so the `blocks` array of `chrome` died on
+ * `CHECKOUT_HEADER_PARTS is not defined`: three rules red in strict mode, and NOT CHECKED in a normal run on a
+ * machine with no release tree — which is how the adoption of v0.3.3 read "nothing broke".
+ *
+ * ⇒ A RELATIVE import is followed: the module is read FROM THE SAME PLACE the manifest was (this box's
+ * `apps/<id>/`, or the release tree at the pin — `module.load`) and only the names reached are bound, each
+ * inside a closure of its own so two modules' private consts never collide. A PACKAGE import
+ * (`@forgeco/contracts`) is not evaluated — it never was — and a name that needs one fails NAMED below.
+ * ⚠️ Undo this and `bin/app-manifest.test.mjs` ("a const IMPORTED from `./parts`…") goes red on the fixture,
+ * and every guard that reads a product manifest goes red in a strict run against v0.3.3.
+ *
+ * @param module `{ where, load(spec) → { text, where, load } | null }`, or `null` when there is nowhere to
+ *   read a sibling from (a bare source handed to `parseBlocks`) — then imports stay unbound, as before.
+ */
+function bindings(src, roots, module) {
+  const consts = topLevelConsts(src);
+  const imports = importsOf(src);
+  const needed = [];
+  const seen = new Set();
+  const need = (name) => {
+    if (seen.has(name)) return;
+    if (consts.has(name)) {
+      seen.add(name);
+      for (const inner of mentions(consts.get(name))) need(inner);
+      needed.push(`const ${name} = ${consts.get(name)};`);
+      return;
+    }
+    const from = imports.get(name);
+    if (!from || !module || !isRelative(from.spec)) return;
+    seen.add(name);
+    const dep = module.load(from.spec);
+    if (!dep) throw new Error(`${module.where}: \`${name}\` is imported from '${from.spec}', which could not be read`);
+    const inner = bindings(asJs(dep.text), [from.imported], dep);
+    needed.push(`const ${name} = (() => {${inner.join('\n')}\nreturn ${from.imported};})();`);
+  };
+  for (const name of roots) need(name);
+  return needed;
+}
+
+/**
  * One array of a manifest, evaluated — the half `parseBlocks` and `parseHooks` share.
  *
  * Only the consts the array really reaches are bound, transitively. Binding ALL of them would drag in the
  * ones built from imported symbols (`extensionManifestSchema`, the i18n catalogs) and throw on a manifest
  * this reader understands perfectly well.
  */
-function evaluateArray(src, pattern, where, what, complaint) {
+function evaluateArray(src, pattern, where, what, complaint, module = null) {
   const array = arrayAfter(src, pattern, complaint);
-  const consts = topLevelConsts(src);
-  const needed = [];
-  const seen = new Set();
-  const walk = (fragment) => {
-    for (const name of mentions(fragment)) {
-      if (seen.has(name) || !consts.has(name)) continue;
-      seen.add(name);
-      walk(consts.get(name));
-      needed.push(`const ${name} = ${consts.get(name)};`);
-    }
-  };
-  walk(array);
+  let needed;
+  try {
+    needed = bindings(src, mentions(array), module);
+  } catch (error) {
+    throw new Error(`${where}: its \`${what}\` array could not be evaluated — ${error.message}`);
+  }
 
   try {
     // eslint-disable-next-line no-new-func -- the subject IS source at a pinned commit; see the header.
     return new Function(`"use strict";${needed.join('\n')}\nreturn ${array};`)();
   } catch (error) {
-    throw new Error(`${where}: its \`${what}\` array could not be evaluated — ${error.message}`);
+    // Name WHERE an unbound name comes from: "X is not defined" alone sent a reader to the manifest's body.
+    const missing = error.message.match(/^(\w+) is not defined$/)?.[1];
+    const from = missing && importsOf(src).get(missing);
+    const hint = from
+      ? ` (\`${missing}\` is imported from '${from.spec}'` +
+        (isRelative(from.spec) ? ', and this read had no way to open sibling modules)' : ', a package this reader does not evaluate)')
+      : '';
+    throw new Error(`${where}: its \`${what}\` array could not be evaluated — ${error.message}${hint}`);
   }
 }
 
@@ -167,7 +248,7 @@ function evaluateArray(src, pattern, where, what, complaint) {
  * The app's blocks, evaluated. Each carries what the manifest declares and nothing this repository invented:
  * `{ component, label?, surface, area?, placement?, config_schema: [{ name, type, optional? }] }`.
  */
-export function parseBlocks(source, where) {
+export function parseBlocks(source, where, module = null) {
   const src = asJs(source);
   const blocks = evaluateArray(
     src,
@@ -175,6 +256,7 @@ export function parseBlocks(source, where) {
     where,
     'blocks',
     () => `${where} declares no \`blocks\` array — this reader is about an app that ships blocks`,
+    module,
   );
 
   // ⛔ ANTI-VACUUM. A reader that quietly returns [] makes every rule downstream green over nothing.
@@ -206,13 +288,14 @@ export function parseBlocks(source, where) {
  * (`seedDefaultPlacements`), so this array is the answer to "where is this block when nobody has dragged it".
  * It is the manifest's, never a seed's and never this repository's.
  */
-export function parseHooks(source, where) {
+export function parseHooks(source, where, module = null) {
   const hooks = evaluateArray(
     asJs(source),
     /\bhooks:\s*\[/,
     where,
     'hooks',
     () => `${where} declares no \`hooks\` array — an app that places nothing at install has \`hooks: []\``,
+    module,
   );
   if (!Array.isArray(hooks)) throw new Error(`${where}: \`hooks\` did not parse to an array`);
   for (const hook of hooks) {
@@ -227,11 +310,37 @@ export function parseHooks(source, where) {
   return hooks;
 }
 
-/** One app's manifest source, from wherever that app's manifest lives — `{ text, where, from }` or `{ tried }`. */
+/**
+ * A module the evaluator may follow relative imports out of: `path` is posix and relative to whatever `read`
+ * reads from, `read(path)` answers a FILE's text or `null`, and `label` says where that is for a reader.
+ */
+function moduleAt(path, read, label) {
+  return {
+    where: `${path}${label}`,
+    load(spec) {
+      for (const candidate of SPELLINGS(posix.join(posix.dirname(path), spec))) {
+        const text = read(candidate);
+        if (typeof text === 'string') return { text, ...moduleAt(candidate, read, label) };
+      }
+      return null;
+    },
+  };
+}
+
+/** A file of this repository by its path relative to ROOT, or `null` (a directory is not a module). */
+const readHere = (rel) => {
+  const full = join(ROOT, rel);
+  return existsSync(full) && statSync(full).isFile() ? readFileSync(full, 'utf8') : null;
+};
+
+/** One app's manifest source, from wherever that app's manifest lives — `{ text, where, from, module }` or
+ *  `{ tried }`. `module` is how the evaluator reaches the app's own sibling modules, from the SAME place. */
 function manifestSource(id) {
   const local = localManifest(id);
-  if (existsSync(local))
-    return { text: readFileSync(local, 'utf8'), where: `apps/${id}/manifest.ts`, from: `apps/${id}` };
+  if (existsSync(local)) {
+    const where = `apps/${id}/manifest.ts`;
+    return { text: readFileSync(local, 'utf8'), where, from: `apps/${id}`, module: moduleAt(where, readHere, '') };
+  }
 
   const pinned = pinnedCommit();
   if (!pinned)
@@ -239,7 +348,19 @@ function manifestSource(id) {
   const rel = releaseManifest(id);
   const found = fileAtPinned(pinned, rel);
   if (found.tried) return { tried: found.tried };
-  return { text: found.text, where: `${rel} @ ${pinned.sha}`, from: found.from };
+  // ⚠️ `fileAtPinned` answers a DIRECTORY with a listing (`tree <rev>:<dir>`), which is not a module.
+  const readPinned = (path) => {
+    const sibling = fileAtPinned(pinned, path);
+    return sibling.tried || sibling.text.startsWith(`tree ${pinned.ref}:`) || sibling.text.startsWith(`tree ${pinned.sha}:`)
+      ? null
+      : sibling.text;
+  };
+  return {
+    text: found.text,
+    where: `${rel} @ ${pinned.sha}`,
+    from: found.from,
+    module: moduleAt(rel, readPinned, ` @ ${pinned.sha}`),
+  };
 }
 
 /**
@@ -249,7 +370,7 @@ function manifestSource(id) {
 export function blocksOf(id) {
   const source = manifestSource(id);
   if (source.tried) return { tried: source.tried };
-  return { blocks: parseBlocks(source.text, source.where), from: source.from };
+  return { blocks: parseBlocks(source.text, source.where, source.module), from: source.from };
 }
 
 /**
@@ -259,7 +380,7 @@ export function blocksOf(id) {
 export function hooksOf(id) {
   const source = manifestSource(id);
   if (source.tried) return { tried: source.tried };
-  return { hooks: parseHooks(source.text, source.where), from: source.from };
+  return { hooks: parseHooks(source.text, source.where, source.module), from: source.from };
 }
 
 /** `component -> [config key, …]`, in the manifest's own order. */

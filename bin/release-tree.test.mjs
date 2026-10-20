@@ -295,3 +295,101 @@ test('★ a directory read from the release answers in the `git show <rev>:<dir>
     rmSync(cut, { recursive: true, force: true });
   }
 });
+
+// ── ★★ POS-DEMO-TOOLS — THE TAG'S SOURCE ARCHIVE, THE DOOR WHEN THE OVEN IS OUT OF REACH ─────────────────────
+//
+// ⛔ MEASURED 2026-10-20: on the laptop where v0.3.3 was adopted the oven's registry is unreachable, so every
+// rule graded against the release said NOT CHECKED — 42 of them — and the three that would have shown the
+// manifest reader broken on v0.3.3 were among them. `tagArchiveTree` cuts the tree from the tag's published
+// source archive through `gh`. Held here with a FAKE `gh` on PATH, in a child process so `RELEASE_CACHE` (read
+// at import) points at a temp directory: no network, no real cache touched.
+
+/** A fake `gh`: names a commit for the tag (or none), serves a tarball for that commit, and logs every call. */
+function fakeGh(dir, { commit }) {
+  const src = join(dir, 'src', 'repo-forge-abc');
+  mkdirSync(join(src, 'extensions', 'probe'), { recursive: true });
+  writeFileSync(join(src, 'package.json'), '{"name":"forge"}\n');
+  writeFileSync(join(src, 'extensions', 'probe', 'manifest.ts'), '// fixture\n');
+  execFileSync('tar', ['-czf', join(dir, 'archive.tgz'), '-C', join(dir, 'src'), 'repo-forge-abc']);
+  mkdirSync(join(dir, 'bin'));
+  const gh = join(dir, 'bin', 'gh');
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+echo "$*" >> "${join(dir, 'calls.log')}"
+case "$2" in
+  */commits/*) ${commit ? `echo ${commit}` : 'exit 1'} ;;
+  */tarball/*) cat "${join(dir, 'archive.tgz')}" ;;
+  *) exit 1 ;;
+esac
+`,
+    { mode: 0o755 },
+  );
+  return dir;
+}
+
+/** `releaseTree(v9.9.9)` in a child with the fake gh first on PATH and no oven: `{ found, calls, cache }`. */
+function treeWithFakeGh(dir) {
+  const cache = join(dir, 'cache');
+  const out = execFileSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '-e',
+      `const { releaseTree } = await import(${JSON.stringify(new URL('./release-tree.mjs', import.meta.url).href)});
+       const found = releaseTree({ ref: 'v9.9.9', sha: 'v9.9.9', release: 'v9.9.9' }, process.env);
+       process.stdout.write(JSON.stringify(found));`,
+    ],
+    {
+      encoding: 'utf8',
+      env: {
+        PATH: `${join(dir, 'bin')}:${process.env.PATH}`,
+        HOME: process.env.HOME,
+        FORGE_RELEASE_CACHE: cache,
+        FORGE_OVEN_IMAGE: 'pos-tools-no-such-oven:none',
+      },
+    },
+  );
+  let calls = [];
+  try {
+    calls = execFileSync('cat', [join(dir, 'calls.log')], { encoding: 'utf8' }).trim().split('\n');
+  } catch {
+    /* gh was never called */
+  }
+  return { found: JSON.parse(out), calls, cache };
+}
+
+test('★★★ no oven, gh answers: the tree is CUT FROM THE TAG\'S SOURCE ARCHIVE, marked, and says so', () => {
+  // ⇒ SABOTAGE (proved for POS-DEMO-TOOLS): drop the `tagArchiveTree` door from `releaseTreeOfTag` and this
+  //   answers `{ tried }` — the NOT CHECKED the v0.3.3 adoption hid behind.
+  const dir = fakeGh(mkdtempSync(join(tmpdir(), 'tag-archive-')), { commit: 'c0ffee0123456789' });
+  try {
+    const { found, calls, cache } = treeWithFakeGh(dir);
+    assert.equal(found.path, join(cache, 'v9.9.9', 'tree'), JSON.stringify(found.tried));
+    assert.match(found.how, /source archive .* @ c0ffee012/);
+    const mark = JSON.parse(execFileSync('cat', [join(found.path, '.forge-release-tree.json')], { encoding: 'utf8' }));
+    assert.equal(mark.release, 'v9.9.9');
+    assert.equal(mark.archive, 'c0ffee0123456789');
+    // ⚠️ The archive is asked for BY THE COMMIT, so the bytes are the ones the mark names.
+    assert.ok(calls.some((c) => /tarball\/c0ffee0123456789$/.test(c)), calls.join('\n'));
+
+    // ★ And it is cut ONCE: the second run re-verifies the tag and reuses the tree.
+    const again = treeWithFakeGh(dir);
+    assert.equal(again.found.path, found.path);
+    assert.equal(again.calls.filter((c) => c.includes('/tarball/')).length, 1, again.calls.join('\n'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('⛔ no oven and gh cannot name the tag: NO tree, and the release verdict says how to get one', () => {
+  const dir = fakeGh(mkdtempSync(join(tmpdir(), 'tag-archive-')), { commit: null });
+  try {
+    const { found } = treeWithFakeGh(dir);
+    assert.equal(found.path, undefined, 'a tree was invented with no commit to cut it from');
+    assert.ok(found.tried.some((line) => /source archive — gh could not name the commit of v9\.9\.9/.test(line)), found.tried.join('\n'));
+    assert.equal(found.diagnosis.kind, 'release-unreachable');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

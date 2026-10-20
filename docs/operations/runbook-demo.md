@@ -211,7 +211,9 @@ bash bin/demo-reset.sh stag               # volta ao ouro, depois prove-shop + -
 ```
 
 **Dois arquivos, de propósito.** `bin/snapshot.sh` é o **mecanismo genérico** (`take` · `restore` · `list` ·
-`pull` · `push`, bancada ou `--env`): não supõe que o dado seja descartável, porque é o modelo do backup e da
+`pull` · `push`, bancada ou `--env`; `--plan` em `take`/`restore`/`pull`/`push` diz o que faria e **não escreve
+nada**, nem na caixa nem aqui — medido em 20/10 que `take --plan` tirava e baixava um ouro de verdade; `list
+--plan` é recusado pelo nome): não supõe que o dado seja descartável, porque é o modelo do backup e da
 recuperação de desastre do produto para clientes — lá, restaurar é recuperar, não resetar.
 `bin/demo-reset.sh` é a **política da Demo**: só tira ouro de caixa provada, e depois de restaurar roda os
 vereditos.
@@ -279,6 +281,12 @@ o lock é artefato do run. Quem adota:
 gh run download <run-id> -n forge-lock -D /tmp/lock && cp /tmp/lock/forge.lock forge.lock
 git switch -c adopt/<release> && git commit -am "adopt: <release> — the lock of bake run <run-id>" && gh pr create
 ```
+
+★★ **A prova da adoção, antes da PR** — o modo ESTRITO, contra a release adotada:
+`env -u FORGE_MONOREPO FORGE_STRICT_CHECKS=1 bash bin/test.sh` tem de terminar **NOT CHECKED 0** e rc 0. A árvore
+da release vem do oven ou, sem acesso ao registry dele, do **arquivo-fonte da tag publicada** (`gh api …/tarball/<tag>`,
+`bin/release-tree.mjs`). ⛔ O modo normal NÃO prova: na v0.3.3 ele deu `fail 0` com 42 NOT CHECKED, e três
+delas eram o avaliador de manifest quebrado (`CHECKOUT_HEADER_PARTS is not defined`) — POS-DEMO-TOOLS, 20/10.
 
 O lock é o que decide o que roda em produção; ele passa por revisão como qualquer código, e o `deploy.sh` lê
 **só o arquivo comitado** — um deploy reproduzível a partir do git, nunca de "o último run que deu verde".

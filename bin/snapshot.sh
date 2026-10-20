@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # ★★★ A SNAPSHOT OF A BORN BOX, AND THE WAY BACK TO IT — generic: it knows what STATE is, never what the data is.
 #
-#   bash bin/snapshot.sh take    [--env <env>] [--label <l>] [--no-copy]   snapshot this box (and copy it off the box)
+#   bash bin/snapshot.sh take    [--env <env>] [--label <l>] [--no-copy] [--plan]  snapshot this box (and copy it off)
 #   bash bin/snapshot.sh restore [--env <env>] [--label <l>] [--plan] [--no-start]
 #   bash bin/snapshot.sh list    [--env <env>]                             the snapshots on the box, and off it
-#   bash bin/snapshot.sh pull    --env <env> [--label <l>]                 copy one off the box (to $FORGE_GOLD_HOME)
-#   bash bin/snapshot.sh push    --env <env> [--label <l>]                 put the off-box copy back on the box
+#   bash bin/snapshot.sh pull    --env <env> [--label <l>] [--plan]        copy one off the box (to $FORGE_GOLD_HOME)
+#   bash bin/snapshot.sh push    --env <env> [--label <l>] [--plan]        put the off-box copy back on the box
+#
+#   --plan  says what the verb WOULD do and writes nothing, on the box or here. `list` only reads: it refuses it.
 #
 # Without `--env` it acts on THIS checkout's bench (project ${COMPOSE_PROJECT_NAME:-forge-preseed}, like
 # `bin/box-down.sh`); with it, on the box `deploy/<env>.env` names, over the same vehicle (`bin/remote-box.sh`).
@@ -71,7 +73,7 @@ die() { printf '\n%s ⛔ %s\n\n' "$TAG" "$*" >&2; exit 1; }
 note() { printf '   %s\n' "$*" >&2; }
 say() { printf '\n\033[1m%s %s\033[0m  (+%ss)\n' "$TAG" "$*" "$SECONDS" >&2; }
 
-USAGE='usage: bash bin/snapshot.sh take|restore|list|pull|push [--env <env>] [--label <l>] [--plan] [--no-start] [--no-copy]'
+USAGE='usage: bash bin/snapshot.sh take|restore|list|pull|push [--env <env>] [--label <l>] [--plan] [--no-start] [--no-copy]  (--plan: not for list)'
 VERB="${1:-}"
 [ -n "$VERB" ] && shift
 ENV_NAME=''
@@ -86,12 +88,19 @@ while [ $# -gt 0 ]; do
     --plan) PLAN=1 ;;
     --no-start) NO_START=1 ;;
     --no-copy) NO_COPY=1 ;;
-    -h|--help) sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown option $1. $USAGE" ;;
   esac
   shift
 done
 case "$VERB" in take|restore|list|pull|push) ;; *) die "$USAGE" ;; esac
+# ⛔ POS-DEMO-TOOLS — A FLAG A VERB ACCEPTS IS A FLAG IT HONOURS. Measured 2026-10-20 (the v0.3.3 blind-client
+# rehearsal, phase 6): `take --plan` TOOK and downloaded a real snapshot, because `--plan` was parsed for every
+# verb and read only by `restore`. `take`, `pull` and `push` now plan (each branch below says what it reads to
+# do so, and it writes nothing); `list` already only reads, so a `--plan` there is a request this tool cannot
+# mean — refused by name rather than quietly run. `bin/snapshot.guard.mjs` holds all four, against a box that
+# is a folder: undo any branch and its rule sees the box written.
+[ "$PLAN" = 1 ] && [ "$VERB" = list ] && die 'list only reads — there is nothing for --plan to plan. Run `bash bin/snapshot.sh list` without it.'
 case "$LABEL" in ''|[A-Za-z0-9]*) ;; *) die "a label is letters, digits, '.', '-' and '_' — not \"$LABEL\"." ;; esac
 case "$LABEL" in *[!A-Za-z0-9._-]*) die "a label is letters, digits, '.', '-' and '_' — not \"$LABEL\"." ;; esac
 
@@ -266,6 +275,8 @@ take() {
   note "state   $(printf '%s' "$state" | awk '{printf "%s=%s ", $1, $2}')"
   note "pair    $(printf '%s' "$names_json" | jq -r '"\(.env|length) .env key(s) · \(.secrets|length) secret(s) + \(.secretFamilies|length) per-tenant famil(ies)"') — named by $BIRTH_AUTHOR"
 
+  if [ "$PLAN" = 1 ]; then take_plan "$label" "$state"; return; fi
+
   local G="gold/$label.partial"
   {
     printf 'G=%q\nNAMES=%q\nSTATE=%q\n' "$G" "$names_json" "$state"
@@ -346,6 +357,41 @@ BOX
   say "take · done · $label"
 }
 
+# ★ POS-DEMO-TOOLS — WHAT A TAKE WOULD DO, ASKED OF THE BOX WITHOUT WRITING ON IT. The refusals of `take` (a
+# STATE volume nobody decided, a pair nobody names) have already run; what is left is read on the box with a
+# SELECT, `docker volume inspect` and `df` only: whether the label is taken (the take would refuse), how big the
+# database a dump would carry is, which archived volumes exist, and the room left beside the gold. Exit 1 when
+# the take would refuse, so a plan never reads greener than the gesture it describes.
+take_plan() { # <label> <state>
+  local label="$1" state="$2"
+  say "PLAN — take · $label · nothing is written, on $WHERE or here"
+  {
+    printf 'G=%q\nSTATE=%q\n' "gold/$label" "$state"
+    cat <<'BOX'
+[ -d "$G" ] && { echo "[snapshot] ⛔ $G already exists on the box — the take would refuse; pick another --label." >&2; exit 1; }
+while read -r vol how service <&3; do
+  [ -n "$vol" ] || continue
+  case "$how" in
+    dump)
+      size="$(printf '%s\n' 'select pg_size_pretty(pg_database_size(current_database()));' | psql_box 2>/dev/null | head -1)"
+      echo "   $vol · would dump the database (${size:-size unknown — is $service up? the take would refuse}), count every table, read the migration ledger" >&2 ;;
+    archive)
+      if docker volume inspect "${COMPOSE_PROJECT_NAME}_$vol" >/dev/null 2>&1; then echo "   $vol · would archive it (present)" >&2
+      else echo "   $vol · absent on this box — would be recorded as absent" >&2; fi ;;
+    discard) echo "   $vol · would not be carried (derived from the database)" >&2 ;;
+  esac
+done 3<<EOF
+$STATE
+EOF
+echo "   room beside the gold: $(df -h . 2>/dev/null | awk 'NR==2{print $4}') free" >&2
+BOX
+  } | on_box || die "PLAN — the take would refuse on $WHERE (the line above says why). Nothing was written."
+  note "then: the pair (lines of .env/.secrets, never printed), the manifest, SHA256SUMS → gold/$label · LATEST → $label"
+  if [ -n "$ENV_NAME" ] && [ "$NO_COPY" = 0 ]; then note "then: copied off the box to $OFFBOX/$label (pull)"
+  elif [ -n "$ENV_NAME" ]; then note "--no-copy: it would live ONLY on the box"; fi
+  say 'PLAN · done — nothing was taken'
+}
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 # PULL / PUSH — the off-box copy, verified against the gold's own sums on arrival
 # ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -353,6 +399,15 @@ pull() {
   [ -n "$ENV_NAME" ] || die 'pull needs --env: a bench gold is already on this machine.'
   local label; label="$(gold_label_on_box)"
   [ -n "$label" ] || die "the box has no gold to copy (no --label and no gold/LATEST on $WHERE)."
+  if [ "$PLAN" = 1 ]; then
+    # Read-only: the size of the gold on the box, and whether a copy here would be replaced.
+    local size; size="$("${REMOTE_SSH[@]}" "du -sh $(printf '%q' "$BOX_DIR/gold/$label") 2>/dev/null | cut -f1" </dev/null)"
+    [ -n "$size" ] || die "PLAN — $WHERE has no gold/$label; the pull would fail. Nothing was written."
+    say "PLAN — pull · $label ($size) → $OFFBOX/$label · nothing is written"
+    if [ -d "$OFFBOX/$label" ]; then note "the copy already here would be REPLACED (once the new one verifies)"; fi
+    note "then: verified against the gold's SHA256SUMS, kept only if it matches"
+    return 0
+  fi
   say "pull · $label → $OFFBOX/$label"
   mkdir -p "$OFFBOX" && chmod 700 "$GOLD_HOME" "$OFFBOX" || die "cannot write $OFFBOX."
   rm -rf "$OFFBOX/$label.partial"; mkdir -m 700 "$OFFBOX/$label.partial"
@@ -369,6 +424,13 @@ push() {
   [ -n "$label" ] || label="$(ls -1 "$OFFBOX" 2>/dev/null | grep -v '\.partial$' | sort | tail -1)"
   [ -n "$label" ] && [ -f "$OFFBOX/$label/manifest.json" ] || die "no off-box gold to push in $OFFBOX."
   (cd "$OFFBOX/$label" && sha256sum --quiet -c SHA256SUMS) || die "the off-box copy no longer matches its own SHA256SUMS."
+  if [ "$PLAN" = 1 ]; then
+    # Read-only: the sums above were checked here; the box is only asked whether it already has that label.
+    say "PLAN — push · $OFFBOX/$label ($(du -sh "$OFFBOX/$label" | cut -f1)) → $WHERE/gold/$label · nothing is written"
+    if "${REMOTE_SSH[@]}" "test -d $(printf '%q' "$BOX_DIR/gold/$label")" </dev/null; then note "the box's gold/$label would be REPLACED"; fi
+    note "then: verified on the box against its SHA256SUMS · LATEST → $label"
+    return 0
+  fi
   say "push · $OFFBOX/$label → $WHERE/gold/$label"
   "${REMOTE_SSH[@]}" "umask 077; mkdir -p $(printf '%q' "$BOX_DIR/gold/$label.partial")" </dev/null || die 'cannot write on the box.'
   tar -C "$OFFBOX/$label" -cf - . | "${REMOTE_SSH[@]}" "tar -C $(printf '%q' "$BOX_DIR/gold/$label.partial") -xf - \

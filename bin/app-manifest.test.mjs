@@ -16,17 +16,21 @@
 // the half a fixture cannot prove.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
   blocksOf,
   configKeysOf,
+  hooksOf,
   logoComponentsOf,
   parseBlocks,
   surfaceSlots,
   wordKeysOf,
   wordmarkComponentsOf,
 } from './app-manifest.mjs';
+import { ROOT } from './release-tree.mjs';
 
 /** A manifest with every shape the two real ones use: a computed schema, a spread, an `as const`, comments
  *  with brackets in them, and a const the blocks never mention. */
@@ -135,6 +139,107 @@ test('⛔ a block whose schema is an identifier NOTHING declares fails loudly, n
     /could not be evaluated/,
   );
 });
+
+// ── ★★ POS-DEMO-TOOLS — v0.3.3 manifests IMPORT their block parts from a sibling module ────────────────────
+//
+// ⛔ MEASURED 2026-10-20 on the v0.3.3 tag: 12 of the 13 product manifests that ship blocks write
+// `parts: [...CHECKOUT_HEADER_PARTS]` with the const imported from `./parts`, and this reader died on
+// `CHECKOUT_HEADER_PARTS is not defined` for every one of them. The fixture below is that shape, written here.
+
+const PARTS_MANIFEST = `
+import { type ExtensionManifest, extensionManifestSchema } from '@forgeco/contracts';
+import { BAR_PARTS, type BarPart, NOTE_PARTS as NOTE } from './parts';
+
+export const manifest: ExtensionManifest = extensionManifestSchema.parse({
+  id: 'fixture',
+  contact: {
+    hooks: [{ component: 'bar', target: 'checkout.header' }],
+    blocks: [
+      { component: 'bar', surface: 'storefront', parts: [...BAR_PARTS], config_schema: [{ name: 'logo', type: 'id' }] },
+      { component: 'note', surface: 'storefront', parts: NOTE, config_schema: [] },
+    ],
+  },
+});
+`;
+
+/** `./parts`, exported the way the product writes it — with its OWN private const and a comment that has an
+ *  apostrophe in it, which a string-aware scan must not read as a quote. */
+const PARTS_MODULE = `
+const COLUMN = 'column';
+/** The bar's names (it's a contract). */
+export const BAR_PARTS = [
+  COLUMN, // the store's column
+  'logo',
+] as const;
+export type BarPart = (typeof BAR_PARTS)[number];
+export const NOTE_PARTS = ['text'] as const;
+`;
+
+/** A module whose only sibling is `./parts`, the way `moduleAt` hands one to the evaluator. */
+const SIBLINGS = {
+  where: 'fixture/manifest.ts',
+  load: (spec) => (spec === './parts' ? { text: PARTS_MODULE, where: 'fixture/parts.ts', load: () => null } : null),
+};
+
+test('★★★ a const IMPORTED from `./parts` is read from the sibling module and bound — the v0.3.3 shape', () => {
+  // ⇒ SABOTAGE (proved for POS-DEMO-TOOLS): make `bindings` skip imports and this throws
+  //   `BAR_PARTS is not defined` — the exact sentence the v0.3.3 `chrome` manifest produced.
+  const blocks = parseBlocks(PARTS_MANIFEST, 'fixture/manifest.ts', SIBLINGS);
+  assert.deepEqual(
+    blocks.map((b) => [b.component, b.parts]),
+    [
+      ['bar', ['column', 'logo']],
+      ['note', ['text']],
+    ],
+  );
+});
+
+test('⛔ an import this read cannot follow fails NAMING the import, never as a bare "is not defined"', () => {
+  assert.throws(
+    () => parseBlocks(PARTS_MANIFEST, 'fixture/manifest.ts'),
+    /BAR_PARTS is not defined \(`BAR_PARTS` is imported from '\.\/parts'/,
+  );
+  const nowhere = { where: 'fixture/manifest.ts', load: () => null };
+  assert.throws(() => parseBlocks(PARTS_MANIFEST, 'fixture/manifest.ts', nowhere), /imported from '\.\/parts', which could not be read/);
+});
+
+/** The product apps this box composes — the ones whose manifest comes from the release, not from `apps/`. */
+const PRODUCT_APPS = JSON.parse(readFileSync(join(ROOT, 'forge.lock'), 'utf8')).composition.apps.filter(
+  (id) => !isThisBoxApp(id),
+);
+function isThisBoxApp(id) {
+  try {
+    return readFileSync(join(ROOT, 'apps', id, 'manifest.ts'), 'utf8').length > 0;
+  } catch {
+    return false;
+  }
+}
+
+test('★★ the composition names product apps — the list the rule below walks is not empty', () => {
+  // ⛔ ANTI-VACUUM: a lock whose apps were all this box's own would make the next rule pass over nothing.
+  assert.ok(PRODUCT_APPS.length >= 10, `forge.lock composes only ${PRODUCT_APPS.length} product app(s)`);
+});
+
+for (const id of PRODUCT_APPS) {
+  test(`★★ the pinned manifest of \`${id}\` is READABLE by this evaluator (blocks and hooks), or NOT CHECKED`, (t) => {
+    // ★ POS-DEMO-TOOLS — THE ADOPTION PROOF. A release whose manifests this reader cannot evaluate must be a
+    // RED here in a strict run (bin/test.sh FORGE_STRICT_CHECKS=1), app by app, and not three reds in the
+    // only three guards that happen to read `chrome`.
+    const hooks = hooksOf(id);
+    if (hooks.tried) {
+      t.skip(`NOT CHECKED — the release tree is not on this machine: ${hooks.tried.join(' · ')}`);
+      return;
+    }
+    assert.ok(Array.isArray(hooks.hooks));
+    try {
+      const read = blocksOf(id);
+      assert.ok(read.blocks.length > 0);
+    } catch (error) {
+      // An app that ships no blocks (a channel, a payment back-end) says so; that is data, not a broken read.
+      if (!/declares no `blocks` array/.test(error.message)) throw error;
+    }
+  });
+}
 
 // ── the two real manifests, which is what a fixture cannot prove ─────────────────────────────────────────
 
