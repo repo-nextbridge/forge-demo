@@ -1,5 +1,5 @@
 {
-  "forgeVersion": "v0.3.2",
+  "forgeVersion": "v0.3.3",
   "node": {
     "minMajor": 24,
     "engines": ">=24"
@@ -33,34 +33,34 @@
   },
   "images": {
     "kernel": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:09b9d0c54028184a949d0bb34ddf23969539f58a7e44ec81ba620ad01f86e016",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:b9920007ef61eccef5a5402786062ca2f103cb2729ca3225cfaafa637df99ba1",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     },
     "storefront": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:9559fce47957cf448a950ff1b704e0a140255c56bc2387bc7f97b2bed94b59a1",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:231f5690f60b729b0e2f11cd1ad4d0c99b0185bc38f6e9a503eb73da53fd6194",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     },
     "checkout": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:71840d63502e9b84fbc19b28f7ecafe7911b3aee4eeb68d7e8a77f3ff7838902",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:db6066bbd60665b30eff846fc089e3e064faa275ca971ca3deb62d0be2e661a1",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     },
     "admin": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:a1834aa64cbc63c3d2b9145cb02c12a4d3b030dcf12510d9eca0a23dc7fb659e",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:4b78e7e32cf004b9723275d0c09af5aee23d395e4b4b16735632a1647137d6b3",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     },
     "storefront-coffee": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:c629895cd39332cdf83e2deedb0d49cc54e88e53a98059f9a1822b81a35b3d58",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:e55511062e79025547f700b551e4dc4ce8079cbfd27c90d6dcbfcc92ca710344",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     },
     "totem": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:a54e677eda074fa6f6d6f9e9e794181dc0274ae47cfad101eca427f432762c33",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:16204b811cdba4c6b94324a7af08221fb964a2cc21e9519a557266bed9240a04",
       "origin": "own build",
-      "built_from": "v0.3.2"
+      "built_from": "v0.3.3"
     }
   },
   "extensions": [],
