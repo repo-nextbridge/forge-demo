@@ -43,7 +43,7 @@ const SEED = dirname(fileURLToPath(import.meta.url));
 const catalog = JSON.parse(readFileSync(join(SEED, 'catalog.json'), 'utf8'));
 
 /** The store this module touches, and the only one. Its handle is the catalogue's own. */
-const STORE_HANDLE = 'cafe';
+export const STORE_HANDLE = 'cafe';
 
 /** The apps this TENANT needs INSTALLED. All are on this box's composition list, which is what puts them in
  *  the image; installing is a separate, per-tenant gesture — the operator's clicks in the admin, spelled as
@@ -51,9 +51,10 @@ const STORE_HANDLE = 'cafe';
  *
  * ⚠️ `payment-pos` IS HERE AND IT IS NOT FOR THIS STORE — it is the counter's, and the counter is the other
  * store of this same tenant. It sits on this list because INSTALLING IS PER TENANT, not per store, and this
- * is the only file that installs anything for `forgecafe`. Measured on the bench of 02/09: the app was
- * COMPOSED into the image (it shows up in the kernel's own `composition.json`) and never installed, so
- * `read.payment_methods` for the counter answered reference/mercadopago/zero and the totem could not
+ * is the only file that installs anything for `forgecafe`. ★ Since v0.3.3 the OFFER is per store, and this
+ * file withholds it from the café right after installing it — see `WITHHELD_HERE`.
+ * Measured on the bench of 02/09: the app was COMPOSED into the image (it shows up in the kernel's own
+ * `composition.json`) and never installed, so `read.payment_methods` for the counter answered reference/mercadopago/zero and the totem could not
  * charge — `checkout.place_order` refused with `payment_app_unavailable` AFTER `cart.set_payment_method`
  * had answered 200. Composed is not installed, and the admin's "Available / Install" was telling the
  * truth nobody read.
@@ -76,6 +77,19 @@ const STORE_HANDLE = 'cafe';
  * café wears no MARK from that declaration (its fork draws its own chrome, and a mark is the customer's
  * content) — the notice is not the customer's content, it is this box saying its prices are not real. */
 export const APPS = ['subscriptions', 'reviews', 'payment-pos'];
+
+/** ★ THE PAYMENT APPS THE CAFÉ DOES NOT OFFER, though the tenant has them installed (v0.3.3, `payment.offer.set`).
+ *
+ * `payment-pos` is the counter's driver — a card machine and a PIX QR on the totem's own screen. Until v0.3.3
+ * an installed payment app was offered in EVERY store of the tenant, so the café's online checkout listed a
+ * provider whose «scan» is a person standing at the counter. The kernel now keeps one offer row per (store,
+ * app): a withheld app is not listed by `read.payment_methods` for that store, and `checkout.place_order` /
+ * `payment.initiate` refuse it by name (`payment_not_offered`). The counter writes no row, so it keeps the
+ * default — every installed app offered, in install order — and the totem charges exactly as before.
+ *
+ * ⚠️ THE ROW BELONGS TO THE STORE, THE INSTALL TO THE TENANT, and the order follows: the kernel refuses an offer
+ * for an app that is not installed (`not_installed`), so `withholdPayments` runs after `installApps`. */
+export const WITHHELD_HERE = ['payment-pos'];
 
 /** ★ THE CURATION. Five in, one out, and the one that is out is out ON PURPOSE (`seed/catalog.json` calls it
  *  a rotating lot). Written as the handles that ARE subscribable rather than as the one that is not: a
@@ -325,6 +339,7 @@ export async function seedCoffee(port) {
   log(`coffee — store ${store.handle} (${store.id}), theme "${store.theme_key ?? 'vanilla'}"`);
 
   await installApps(port);
+  await withholdPayments(port, store);
   await markSubscribable(port, store);
   await subscriberPromotions(port, store);
   await seedPages(port, store);
@@ -346,6 +361,40 @@ async function installApps({ command, read, rows, log }) {
     }
     await command('extension.install', { extension_id: id });
     log(`coffee — app ${id} installed`);
+  }
+}
+
+// ── 1b. what the café does not offer ─────────────────────────────────────────────────────────────────────
+/**
+ * Writes `{ offered: false }` for each of `WITHHELD_HERE` in the café, and nothing for any other store.
+ *
+ * IDEMPOTENT LIKE THE REST: `read.internal.payment_offers` answers, per store, every installed payment app with
+ * its `offered`, and an app the café already withholds is skipped. ⚠️ That read declares no output schema in
+ * the published reference, so its shape (`{ stores: [{ store_id, providers: [{ app_id, offered }] }] }`) is
+ * read defensively: anything this function does not recognise counts as «not withheld yet», and the command —
+ * an upsert keyed by (store, app) — is sent. A second run therefore converges either way; it never deletes.
+ *
+ * ★ THE RESULT IS CHECKED, NOT THE INPUT: the command answers the row it saved, and a café that still offers the
+ * app after this step is a seed failure, not a log line.
+ */
+export async function withholdPayments({ command, read, log, fail }, store) {
+  const offers = await read('payment_offers');
+  const list = (value) => (Array.isArray(value) ? value : []);
+  const here = list(offers?.stores).find((s) => s?.store_id === store.id);
+  for (const id of WITHHELD_HERE) {
+    const row = list(here?.providers).find((p) => p?.app_id === id);
+    if (row?.offered === false) {
+      log(`coffee — payment app ${id} already withheld in ${store.handle}`);
+      continue;
+    }
+    const saved = await command('payment.offer.set', { store_id: store.id, extension_id: id, offered: false });
+    if (saved?.offered !== false) {
+      fail(
+        `payment.offer.set answered ${JSON.stringify(saved)} for ${id} in ${store.handle} — the café still offers ` +
+          'the counter\'s payment app.',
+      );
+    }
+    log(`coffee — payment app ${id} withheld in ${store.handle} (the counter keeps offering it)`);
   }
 }
 

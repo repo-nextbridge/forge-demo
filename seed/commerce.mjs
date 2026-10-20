@@ -1292,10 +1292,16 @@ export async function placeOneOrder({ store, command, read, log, buyer, what, pi
     sku = found.sku;
   }
 
-  const methods = await read('payment_methods', { store: store.id });
-  const method = methods?.methods?.[0];
-  const app = methods?.providers?.[0]?.app_id;
-  if (!method || !app) return skip('no payment app is installed for this tenant');
+  // ★ v0.3.3 — THE METHOD IS THE CHOSEN APP'S OWN, never the union's first. `read.payment_methods` lists only
+  // the apps THIS store offers (`payment.offer.set`; the café withholds the counter's `payment-pos`), and
+  // `methods` is the flat union of theirs. Taking `methods[0]` and `providers[0]` separately paired them by
+  // position: a union that starts with a method only another app serves sends `cart.set_payment_method` a
+  // pair the provider cannot charge. A provider that lists no `methods` is trusted with the union, as before.
+  const offered = await read('payment_methods', { store: store.id });
+  const provider = offered?.providers?.[0];
+  const app = provider?.app_id;
+  const method = (offered?.methods ?? []).find((m) => (provider?.methods ?? [m]).includes(m));
+  if (!method || !app) return skip('this store offers no payment app that serves a method it lists');
 
   const { cart_id } = await command('cart.create', {}, { store: store.id });
   await command(

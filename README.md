@@ -2203,6 +2203,16 @@ change inside this repository can fix it: a per-store offer gate would be a kern
 that does exist is the name: the app is called after a PLACE ("Pagar no balcão"), so that seeing it in the
 coffee store's checkout reads as a misconfiguration and never as a legitimate option.
 
+★ **v0.3.3 — THE OFFER IS PER STORE NOW, AND THE CAFÉ WITHHOLDS IT.** The install is still per tenant; what
+v0.3.3 added is one offer row per (store, app) — `payment.offer.set`, the ficha's "Offered per store". A store
+with no row offers every installed payment app, as before; a withheld app is not listed by
+`read.payment_methods` there, and `checkout.place_order` / `payment.initiate` refuse it (`payment_not_offered`).
+`seed/coffee.mjs` writes the café's row right after it installs the app (`WITHHELD_HERE`), and none for the
+counter, which keeps offering it to the totem. `seed/payments.test.mjs` holds both halves and the order (the
+kernel refuses an offer for an app not installed). The live proof order (`placeOneOrder`, `seed/commerce.mjs`)
+picks the first OFFERED provider and a method that provider serves, so it never pairs a method with an app
+that cannot charge it.
+
 ## 4d. The counter's totem — and why this box runs SIX images, not four
 
 The demo instance is **six images**, and only four of them are the product:

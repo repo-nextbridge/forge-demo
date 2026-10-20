@@ -91,3 +91,123 @@ test('★ the simulator stays: a store with no payment app is a checkout with no
       'which reads as a broken checkout rather than as a missing install.',
   );
 });
+
+// ── v0.3.3 — THE OFFER IS PER STORE: the café stops offering the counter's driver, the counter keeps it ─────
+//
+// `payment.offer.set` (v0.3.3): a store with no row offers every installed payment app; a withheld one is not
+// listed by `read.payment_methods` there and is refused at checkout (`payment_not_offered`). `seed/coffee.mjs`
+// writes the café's row right after it installs `payment-pos`, and no row for the counter.
+
+const { seedCoffee, withholdPayments, WITHHELD_HERE } = await import('./coffee.mjs');
+
+const CAFE = { id: 'sto_cafe', handle: 'cafe' };
+const BALCAO = { id: 'sto_balcao', handle: 'balcao' };
+
+function fakePort(offers, answer = (input) => ({ ...input, position: null })) {
+  const commands = [];
+  const failures = [];
+  return {
+    commands,
+    failures,
+    port: {
+      read: async (name) => (name === 'payment_offers' ? offers : null),
+      command: async (name, input) => {
+        commands.push({ name, input });
+        return answer(input);
+      },
+      log: () => {},
+      fail: (message) => {
+        failures.push(message);
+      },
+    },
+  };
+}
+
+const offersWith = (cafeOffered) => ({
+  stores: [
+    {
+      store_id: CAFE.id,
+      providers: [
+        { app_id: 'payment-reference', methods: ['pix', 'card'], offered: true, position: null },
+        { app_id: 'payment-pos', methods: ['pix', 'card'], offered: cafeOffered, position: null },
+      ],
+    },
+    {
+      store_id: BALCAO.id,
+      providers: [
+        { app_id: 'payment-reference', methods: ['pix', 'card'], offered: true, position: null },
+        { app_id: 'payment-pos', methods: ['pix', 'card'], offered: true, position: null },
+      ],
+    },
+  ],
+});
+
+test('★★ the café withholds `payment-pos` — one row, for the café, and none for the counter', async () => {
+  assert.deepEqual(WITHHELD_HERE, ['payment-pos']);
+  const { port, commands, failures } = fakePort(offersWith(true));
+  await withholdPayments(port, CAFE);
+  assert.deepEqual(failures, []);
+  assert.deepEqual(commands, [
+    { name: 'payment.offer.set', input: { store_id: CAFE.id, extension_id: 'payment-pos', offered: false } },
+  ]);
+  assert.ok(
+    !commands.some((c) => c.input.store_id === BALCAO.id),
+    'a row was written for the counter — the totem charges through payment-pos and must keep the default',
+  );
+});
+
+test('★ a second run converges: an app the café already withholds costs no command', async () => {
+  const { port, commands } = fakePort(offersWith(false));
+  await withholdPayments(port, CAFE);
+  assert.deepEqual(commands, []);
+});
+
+test('a read this seed does not recognise counts as «not withheld yet» — the upsert is sent', async () => {
+  for (const offers of [null, {}, { stores: 'nope' }, { stores: [{ store_id: CAFE.id }] }]) {
+    const { port, commands } = fakePort(offers);
+    await withholdPayments(port, CAFE);
+    assert.equal(commands.length, 1, `shape ${JSON.stringify(offers)} sent ${commands.length} command(s)`);
+  }
+});
+
+test('⛔ THE CONTROL: a kernel that saves the app as still offered is a seed failure, not a log line', async () => {
+  const { port, failures } = fakePort(offersWith(true), (input) => ({ ...input, offered: true }));
+  await withholdPayments(port, CAFE);
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /payment-pos/);
+});
+
+test('⛔ the offer is written AFTER the install — the kernel refuses an offer for an app not installed', async () => {
+  // Driven through `seedCoffee` itself up to the point this rule is about: the order of the two writes.
+  const order = [];
+  const stop = new Error('stop after the two steps this test is about');
+  await assert.rejects(
+    seedCoffee({
+      read: async (name) => {
+        if (name === 'stores') return [CAFE, BALCAO];
+        if (name === 'installed_extensions') return [];
+        if (name === 'payment_offers') return offersWith(true);
+        throw stop;
+      },
+      rows: (payload) => payload ?? [],
+      command: async (name, input) => {
+        order.push(name === 'extension.install' ? `install ${input.extension_id}` : name);
+        return { ...input, position: null };
+      },
+      readAll: async () => {
+        throw stop;
+      },
+      minted: { skusOf: () => [], productOf: () => undefined },
+      log: () => {},
+      fail: (message) => {
+        throw new Error(message);
+      },
+    }),
+    (error) => error === stop,
+  );
+  assert.ok(order.includes('install payment-pos'), `payment-pos was not installed: ${order.join(', ')}`);
+  assert.ok(
+    order.indexOf('payment.offer.set') > order.indexOf('install payment-pos'),
+    `the offer was written before the install: ${order.join(' → ')}`,
+  );
+});

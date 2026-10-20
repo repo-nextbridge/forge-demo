@@ -1101,7 +1101,10 @@ test('★★ the intent is read off the STORE and never off the handle', () => {
 // own suite could not see it — it drives an injected `placeOrder` — so the hole was exactly here.
 
 /** A port that answers the minimum this journey asks for, and records every command. */
-function fakeCheckout({ metadata = {} } = {}) {
+function fakeCheckout({
+  metadata = {},
+  payments = { methods: ['pix'], providers: [{ app_id: 'payment-reference' }] },
+} = {}) {
   const commands = [];
   return {
     commands,
@@ -1119,7 +1122,7 @@ function fakeCheckout({ metadata = {} } = {}) {
           return { items: [{ handle: 'forge-alvorada', skus: [{ id: 'sku_1', status: 'active', metadata }] }] };
         // SH-2: the default sku is the first one IN STOCK, so the journey now asks this read too.
         if (name === 'availability_by_skus') return [{ sku_id: 'sku_1', available: 5, backorder: null }];
-        if (name === 'payment_methods') return { methods: ['pix'], providers: [{ app_id: 'payment-reference' }] };
+        if (name === 'payment_methods') return payments;
         if (name === 'shipping_options')
           return { options: [{ kind: 'delivery', method_id: 'shm_1' }] };
         if (name === 'order_confirmation') return { number: 7, status: 'pending_payment' };
@@ -1130,6 +1133,39 @@ function fakeCheckout({ metadata = {} } = {}) {
 }
 
 const STORE_TAKING_ORDERS = { handle: 'cafe', id: 'sto_cafe', guest_checkout_enabled: false };
+
+test('★ v0.3.3 — the method is one the CHOSEN app serves, never the union\'s first by position', async () => {
+  // The café offers only what `payment.offer.set` left it; `methods` is the union of the offered apps' own.
+  // A union that opens with a method the first provider does not serve must not be paired with it.
+  const { port, commands } = fakeCheckout({
+    payments: {
+      methods: ['promissory', 'pix'],
+      providers: [
+        { app_id: 'payment-reference', methods: ['pix', 'card'] },
+        { app_id: 'payment-promissory', methods: ['promissory'] },
+      ],
+    },
+  });
+  await placeOneOrder({ ...port, store: STORE_TAKING_ORDERS, buyer: liveProofBuyerOf('cafe'), what: 'live proof' });
+  const chosen = commands.find((c) => c.name === 'cart.set_payment_method');
+  assert.deepEqual(chosen.input, { cart_id: 'cart_1', method: 'pix', payment_app: 'payment-reference' });
+  const initiated = commands.find((c) => c.name === 'payment.initiate');
+  assert.equal(initiated.input.method, 'pix');
+});
+
+test('a store whose first provider serves none of the listed methods places no order — it is named, not paired', async () => {
+  const { port, commands } = fakeCheckout({
+    payments: { methods: ['promissory'], providers: [{ app_id: 'payment-reference', methods: ['pix'] }] },
+  });
+  const order = await placeOneOrder({
+    ...port,
+    store: STORE_TAKING_ORDERS,
+    buyer: liveProofBuyerOf('cafe'),
+    what: 'live proof',
+  });
+  assert.equal(order, null);
+  assert.ok(!commands.some((c) => c.name === 'cart.set_payment_method'));
+});
 
 test('★★★ THE PLAN RIDES THE CART LINE — without this key the app mints nothing and every log is green', async () => {
   const { port, commands } = fakeCheckout();

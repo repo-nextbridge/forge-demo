@@ -7,7 +7,7 @@
 
 import { productImageUrls } from '@forgeco/storefront-kit/media/seo';
 import type { MediaRef, ProductDoc } from '@forgeco/storefront-kit/read-client';
-import { coverMediaOf, defaultSku, displaySku } from '@forgeco/storefront-kit/sku';
+import { coverImageOf, defaultSku, displaySku, shownMediaOf } from '@forgeco/storefront-kit/sku';
 import { HOST_BASE } from '@forgeco/storefront-kit/store-route';
 import { render } from '@testing-library/react';
 import { expect, test } from 'vitest';
@@ -116,7 +116,8 @@ test("a product with NO media of its own shows the STARRED sku's photo", () => {
       sku('b', 19990, { media: [img('b.jpg')], is_default: true }),
     ],
   });
-  expect(coverMediaOf(product)).toEqual([img('b.jpg')]); // the STARRED one — never "whichever sku sorted first"
+  expect(shownMediaOf(product)).toEqual([img('b.jpg')]); // the STARRED one — never "whichever sku sorted first"
+  expect(coverImageOf(product)).toEqual(img('b.jpg')); // what the card and the home draw
   expect(productImageUrls(product)).toEqual(['https://cdn/b.jpg']); // og:image + JSON-LD + the category card
 });
 
@@ -125,7 +126,7 @@ test("the PRODUCT's own media always WINS over the star — the default only fil
     media: [img('product.jpg')],
     skus: [sku('a', 9990), sku('b', 19990, { media: [img('b.jpg')], is_default: true })],
   });
-  expect(coverMediaOf(product)).toEqual([img('product.jpg')]);
+  expect(shownMediaOf(product)).toEqual([img('product.jpg')]);
   expect(productImageUrls(product)).toEqual(['https://cdn/product.jpg']);
 });
 
@@ -151,7 +152,7 @@ test("★★ NO star + no product media → the DISPLAY sku's photo: the one who
     skus: [sku('a', 9990, { media: [img('a.jpg')] }), sku('b', 19990, { media: [img('b.jpg')] })],
   });
   // `displaySku` with no star is the CHEAPEST, which is the "a partir de" price the card shows.
-  expect(coverMediaOf(product)).toEqual([img('a.jpg')]);
+  expect(shownMediaOf(product)).toEqual([img('a.jpg')]);
   expect(productImageUrls(product)).toEqual(['https://cdn/a.jpg']);
 });
 
@@ -160,12 +161,13 @@ test('★ …and when the display sku has none, the first variant that HAS one �
     media: [],
     skus: [sku('a', 9990), sku('b', 19990, { media: [img('b.jpg')] })],
   });
-  expect(coverMediaOf(product)).toEqual([img('b.jpg')]);
+  expect(shownMediaOf(product)).toEqual([img('b.jpg')]);
 });
 
 test('★ a product with no photo ANYWHERE still answers nothing — the placeholder is still reachable', () => {
   const product = makeProduct({ media: [], skus: [sku('a', 9990), sku('b', 19990)] });
-  expect(coverMediaOf(product)).toEqual([]);
+  expect(shownMediaOf(product)).toEqual([]);
+  expect(coverImageOf(product)).toBeUndefined();
   expect(productImageUrls(product)).toEqual([]);
 });
 
