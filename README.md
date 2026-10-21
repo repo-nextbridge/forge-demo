@@ -1468,6 +1468,17 @@ the index has drained — not together with the header, which it would switch of
 The PLP-with-facet patch (`noindex, follow` on a `cf.`/`option.` query) is gone with it: under a header that
 already says `noindex` for every page it was a second, contradicting answer (`follow`) to the same question.
 
+**Behind Cloudflare, the edge believes Cloudflare's `X-Forwarded-For` and nobody else's** (FI-BORDA, the
+template's recipe at v0.3.3, README §"Behind a CDN"). `caddy/Caddyfile` opens with `servers { trusted_proxies
+static {$FORGE_TRUSTED_PROXY_CIDRS}; trusted_proxies_strict }`, every site block imports `forwarded_client`, and
+compose hands the edge Cloudflare's published ranges (read 2026-10-21) when the variable is unset — the same on
+stag and prod, inert while the proxy is off, because no TCP peer comes from those ranges. Without it, the
+kernel's per-address caps (ten a minute on `cart.set_buyer`, the coupon, the login code, the e-mail check)
+would count every shopper behind one Cloudflare edge as one person. `FORGE_TRUSTED_PROXY_CIDRS=` (empty) trusts
+nobody: the box as it was. Re-read https://www.cloudflare.com/ips-v4 and `/ips-v6` before switching the proxy on.
+`bin/trusted-proxies-edge.guard.mjs` proves it by HTTP on a real `caddy:2`. The other two gestures are in the
+Cloudflare panel: the origin certificate (`caddy/certs/origin.pem`, see the first site block) and the cache rule.
+
 ### ★ Two tenants, four stores — and only THREE of them on the street
 
 | tenant | store | theme | on the reference vitrine? |

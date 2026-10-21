@@ -42,6 +42,7 @@ box:
 
 ```caddy
 admin.marca-dois.exemplo.com.br {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	reverse_proxy admin:3000
@@ -51,6 +52,11 @@ admin.marca-dois.exemplo.com.br {
 `import forge_noindex` is the demo's `X-Robots-Tag: noindex, nofollow` (MZ-9): every hostname of this box
 stays out of search engines, and a file here is imported after `caddy/Caddyfile` defined the snippet, so it
 resolves (measured with `caddy:2` v2.11.4). Leave it out and that hostname is the one face a crawler indexes.
+
+`import forwarded_client` is what the admin is told the caller's address is (FI-BORDA): the one the edge
+resolved through `trusted_proxies` — behind Cloudflare, the shopper or operator rather than Cloudflare's edge —
+replacing whatever the caller wrote into `X-Forwarded-For`. Leave it out and that hostname passes a forgeable
+header along. `bin/trusted-proxies-edge.guard.mjs` holds this recipe to it.
 
 `import access_log` is the edge's access log (Forge v0.3.3, VC-2): one line per request in
 `/var/log/caddy/access.log`, rolled at 100 MiB, five gzipped files kept, `email`/`code`/`state` and `Referer`

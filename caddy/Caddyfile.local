@@ -35,6 +35,14 @@
 {
 	# Plain HTTP. A self-signed certificate would make the browser treat the bench as hostile; `auto_https off`
 	# also stops Caddy trying to reach Let's Encrypt from a laptop.
+	#
+	# ⚠️ NO `trusted_proxies` HERE, ON PURPOSE (FI-BORDA). That block lives in `caddy/Caddyfile` for the day
+	# Cloudflare stands in front of a BOX; nothing stands in front of this edge but the developer's browser,
+	# `tailscale serve` on loopback, or `caddy/Caddyfile.loopback` — and every one of them is the developer
+	# themself, so believing their `X-Forwarded-For` would buy nothing and the kernel's per-address caps
+	# already count one person here. Absent is exactly "trust nobody", the behaviour this file always had,
+	# even though compose hands this container `FORGE_TRUSTED_PROXY_CIDRS` (it is the same service). The
+	# template at v0.3.3 ships no bench edge to copy from either. `Caddyfile.loopback` stays bare likewise.
 	auto_https off
 	admin off
 }

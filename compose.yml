@@ -573,6 +573,23 @@ services:
       FORGE_CAFE_ADMIN_DOMAIN: ${FORGE_CAFE_ADMIN_DOMAIN:-admin-cafe.unset.localhost}
       FORGE_TOTEM_DOMAIN: ${FORGE_TOTEM_DOMAIN:-totem.unset.localhost}
       FORGE_CONTROL_ALLOW_CIDR: ${FORGE_CONTROL_ALLOW_CIDR:-127.0.0.1/32}
+      # ★★★ FI-BORDA (EDGE-CDN) — THE PEERS WHOSE `X-Forwarded-For` THE EDGE BELIEVES: Cloudflare's published
+      # ranges, read 2026-10-21 from https://www.cloudflare.com/ips-v4 (15) and /ips-v6 (7). Consumed by the
+      # global `trusted_proxies` of caddy/Caddyfile, which says why it exists (the kernel's per-address caps).
+      #
+      # ★ HERE, AND NOT IN `deploy/*.env`, ON PURPOSE. Those files carry secrets and this value is public; this
+      # file is one `bin/deploy.sh` already delivers to the box verbatim (its DELIVER list), so the value
+      # reaches stag and prod in the same gesture, and the SAME value on both is correct: with Cloudflare's
+      # proxy OFF no TCP peer comes from these ranges, so trusting them changes nothing until it is switched on.
+      #
+      # ⚠️ `-` WITHOUT THE COLON, UNLIKE THE LINES ABOVE, AND IT IS THE TEMPLATE'S CONTRACT. UNSET → these
+      # ranges. Present and EMPTY → empty, which the edge reads as "trust nobody" — the box exactly as it was
+      # before this line (measured, bin/trusted-proxies-edge.guard.mjs). That is the off switch, and the
+      # bench kit uses it (bench/lib.sh exports '' or `private_ranges`). A `.env` that sets it wins.
+      #
+      # ⛔ CLOUDFLARE CHANGES THESE LISTS. Re-read both URLs before switching the proxy on, and when they move;
+      # a range missing here is a Cloudflare edge whose shoppers are counted as one, the 429 this prevents.
+      FORGE_TRUSTED_PROXY_CIDRS: '${FORGE_TRUSTED_PROXY_CIDRS-173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32}'
     volumes:
       - ${FORGE_CADDYFILE:-./caddy/Caddyfile}:/etc/caddy/Caddyfile:ro
       - ${FORGE_TLS_CERT_DIR:-./caddy/certs}:/etc/caddy/certs:ro
