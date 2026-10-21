@@ -64,6 +64,42 @@
 # would stop the whole file loading, and your STORE with it. The per-credential cap is inside the kernel and
 # is always on. The recipe for the edge layer, if you want it, is in the doc above.
 
+# ★★★ FI-BORDA (EDGE-CDN, v0.4) — WHO THE SHOPPER IS WHEN A CDN STANDS IN FRONT, AND IT HAS TO BE TRUE
+# BEFORE THE PROXY IS SWITCHED ON. The form is the template's (`templates/instance/caddy/Caddyfile` and its
+# README §"Behind a CDN", both at v0.3.3), copied, not invented.
+#
+# ⛔ THE DEFECT THIS PREVENTS. With Cloudflare's proxy on, every request reaches this box from one of
+# Cloudflare's few edge addresses. The kernel caps the checkout's sensitive steps PER STORE × ADDRESS —
+# `cart.set_buyer`, `cart.apply_coupon`, `customer.request_otp`, `read.email_registered`: ten a minute each —
+# so an edge that does not know who it can believe counts every shopper behind one Cloudflare address as one
+# person, and the eleventh shopper of the minute meets a 429 in the middle of paying, with nobody attacking.
+#
+#   · `trusted_proxies static {$FORGE_TRUSTED_PROXY_CIDRS}` — a SERVER option (this global block), never a
+#     site's. Only a request whose TCP peer is in these ranges has its `X-Forwarded-For` read at all; any
+#     other peer is the shopper itself, whatever it wrote. The value is NOT here: compose.yml hands it to
+#     this container (Cloudflare's published ranges, the same on stag and prod). EMPTY trusts nobody —
+#     measured 2026-10-21, caddy:2 v2.11.4: `caddy validate` → Valid, and the upstream receives the peer,
+#     byte for byte what this file did before the block existed.
+#   · `trusted_proxies_strict` — NOT optional. Without it Caddy believes the LEFTMOST entry of the header,
+#     and the leftmost entry is the one the shopper writes: Cloudflare APPENDS the real address to whatever
+#     the request already carried. Strict reads from the right and stops at the first untrusted hop.
+#     Measured (bin/trusted-proxies-edge.guard.mjs): a trusted peer sending `6.6.6.6, 198.51.100.7` →
+#     strict resolves 198.51.100.7; without the line it resolves 6.6.6.6, the forgery.
+{
+	servers {
+		trusted_proxies static {$FORGE_TRUSTED_PROXY_CIDRS}
+		trusted_proxies_strict
+	}
+}
+
+# What the fronts and the kernel are told the shopper's address is: the one resolved above, REPLACING
+# whatever the caller wrote (the template's snippet, v0.3.3). Every site block below imports it, and so must
+# a hostname in `caddy/extra/`. ⚠️ Without it the upstream gets the header as the caller sent it plus the
+# hops (`6.6.6.6, 198.51.100.7, <peer>`) — measured — and the leftmost entry, the forgeable one, is first.
+(forwarded_client) {
+	request_header X-Forwarded-For {client_ip}
+}
+
 # ★★★ MZ-9 — THE WHOLE DEMO STAYS OUT OF THE INDEX, ON EVERY HOSTNAME (decided 2026-10-19). The domain's
 # indexing focus is the institutional site; a fictional shop in a search engine gains nothing and can hurt —
 # the brand competing with its own demo, fictional structured data (prices, stock, reviews) attributed to a
@@ -110,8 +146,11 @@
 #     `Authorization`, `Proxy-Authorization` already REDACTED by Caddy). On top of it the `email` query value
 #     (the admin's login code step), the OAuth `code` and `state`, and the whole `Referer` are removed. The IP
 #     is personal data under the LGPD and stays on purpose — it is the "who" — under this short retention.
-#   · ⚠️ NO `forwarded_client` HERE: this box has no CDN in front and declares no `trusted_proxies`, so
-#     `client_ip` is the peer's own address. The day a CDN goes in front, both arrive together (template).
+#   · WHOSE IP (FI-BORDA): Caddy's entry carries BOTH — `request.client_ip`, the address RESOLVED through
+#     `trusted_proxies` above (the shopper behind Cloudflare), and `request.remote_ip`, the TCP peer (the
+#     Cloudflare edge that delivered it). The pair is the audit: a line whose two differ was believed on a
+#     trusted hop's word, and the peer says whose. With no CDN in front the two are the same address.
+#     Measured on the real file by bin/trusted-proxies-edge.guard.mjs. `client_ip` is what to count by.
 (access_log) {
 	log {
 		output file /var/log/caddy/access.log {
@@ -140,10 +179,14 @@
 #
 #   {args[0]} — the compose service serving the VITRINE at this hostname (`storefront`, or a fork of it).
 (forge_shop_host) {
-	# Who may reach the control face. Empty is not something `remote_ip` accepts, so "nobody" is written as
+	# Who may reach the control face. Empty is not something `client_ip` accepts, so "nobody" is written as
 	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
 	# in FORGE_CONTROL_ALLOW_CIDR (space-separated) if you want it reachable, and leave it alone otherwise.
-	@control_allowed remote_ip {$FORGE_CONTROL_ALLOW_CIDR:127.0.0.1/32}
+	# ⚠️ `client_ip`, NOT `remote_ip` (FI-BORDA, the template's matcher at v0.3.3): behind Cloudflare the TCP
+	# peer is always a Cloudflare edge, so `remote_ip` would judge the allow-list on Cloudflare's address and
+	# a VPN range could never match. `client_ip` is the address resolved above — the same as the peer when no
+	# trusted hop is involved, so with the proxy off nothing changes.
+	@control_allowed client_ip {$FORGE_CONTROL_ALLOW_CIDR:127.0.0.1/32}
 	handle /v1/control/* {
 		route {
 			reverse_proxy @control_allowed kernel:3000
@@ -276,6 +319,7 @@
 	tls {
 		load /etc/caddy/certs
 	}
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	import forge_shop_host storefront
@@ -285,6 +329,7 @@
 # a fork — its whole thesis is that a theme plus data plus composition is enough — so what makes this address
 # the outlet is only which store the kernel's directory says answers here.
 {$FORGE_OUTLET_DOMAIN:outlet.unset.localhost} {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	import forge_shop_host storefront
@@ -295,6 +340,7 @@
 # checkout we host, exactly like every other shop's. That is the customisation posture this demo exists to
 # show, at an address.
 {$FORGE_CAFE_DOMAIN:cafe.unset.localhost} {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	import forge_shop_host storefront-coffee
@@ -323,12 +369,14 @@
 # is not an extra, and a hostname that only exists in an untracked file is a hostname no guard can grade.
 
 {$FORGE_ADMIN_DOMAIN:admin.unset.localhost} {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	reverse_proxy admin:3000
 }
 
 {$FORGE_CAFE_ADMIN_DOMAIN:admin-cafe.unset.localhost} {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	reverse_proxy admin:3000
@@ -352,6 +400,7 @@
 # per-site. The kernel's own faces are NOT routed here on purpose — the totem talks to the kernel
 # server-side over the compose network, and a till has no reason to expose a command face to a room.
 {$FORGE_TOTEM_DOMAIN:totem.unset.localhost} {
+	import forwarded_client
 	import forge_noindex
 	import access_log
 	reverse_proxy totem:3000

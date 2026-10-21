@@ -124,6 +124,7 @@ o handler, ou um site perder o `import access_log`.
 ```bash
 docker compose exec caddy tail -f /var/log/caddy/access.log                     # a borda, ao vivo
 docker compose exec caddy cat /var/log/caddy/access.log | jq -r '.request.client_ip' | sort | uniq -c | sort -rn | head
+docker compose exec caddy cat /var/log/caddy/access.log | jq -r '"\(.request.client_ip) via \(.request.remote_ip)"' | sort | uniq -c | sort -rn | head  # atrás da Cloudflare: comprador via borda
 docker compose exec storefront du -sh /var/cache/forge-storefront               # idem storefront-coffee, totem
 docker compose logs storefront storefront-coffee totem | grep forge-data-cache  # "writing to … ceiling 2048 MiB"
 docker compose logs kernel | grep 'disk_alarm state='                           # nada = abaixo de 85 %
