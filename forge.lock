@@ -33,32 +33,31 @@
   },
   "images": {
     "kernel": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:1bbc6fc65cd5f2c2d611821a95432b9d1b9beea8bdb334d8b03cbeb0f2f33e19",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-kernel@sha256:c490dbfb65d6938a53bdfa91792aa475ef189f811015f89b9f014f715ff67c3c",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "storefront": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:1b37baf5c046c077db097c29b78a74eba83dc30960e6db720c97e3029e5d8d0e",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront@sha256:ace836a44f84994d0544815da114bc4d6c61a6539e47272522094ad46e9e2c65",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "checkout": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:9a3727040ea8f5403bd5c8cebe58a402a67ac915e80d8a54d63ac5e743a65861",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-checkout@sha256:b59e5338bdfe9b09151b40c255b31324ec182b5c67f5096b8cf51fca9b2c2d5a",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "admin": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-admin@sha256:2c33219cdb4d3ad79c08951885f35543a5bd7ce76608d014ffae421ffdce689f",
-      "origin": "own build",
-      "built_from": "v0.3.3"
+      "ref": "southamerica-east1-docker.pkg.dev/forge-500319/forge-kernel/forge-admin@sha256:ef5f1fc7bfd93e39475fb444b9d42918a5795593fec15793028682d77d78df3f",
+      "origin": "release"
     },
     "storefront-coffee": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:b875433df19a171cf6b388195c087ec1800a8853ccb4a26c2931ca7f98dbb20e",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-storefront-coffee@sha256:b27600594390515a87982d4e5b26cfcfe390a688b8a4e4228d24abd9b4c10d70",
       "origin": "own build",
       "built_from": "v0.3.3"
     },
     "totem": {
-      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:57c4084736164d6bafd16e271ed022c542e5e3f1c6330118874a1906c3cf91e9",
+      "ref": "ghcr.io/repo-nextbridge/forge-demo-totem@sha256:50a694e36bc75bdaa39459ef78d3d1aced4bb83f0f29a0c26dcee534d0b33365",
       "origin": "own build",
       "built_from": "v0.3.3"
     }
