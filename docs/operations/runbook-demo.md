@@ -67,7 +67,7 @@ esta tabela não a inventa, ela a espelha.
 | 1 | a `main` do produto assa e sobe em **Staging/QA** | produto | **Portão 2** — o QA **humano** aprova |
 | 2 | **corta o release**: tag `vX.Y.Z` + deploy na **Referência/Prod** | produto | **Portão 3** |
 | 3 | a Demo **PINA** esse release — os forks e as ferramentas instalam `@forgeco/*@<versão>` do npm | este repositório | §2.1 |
-| 4 | a Demo **ASSA** as seis imagens no CI dela, do oven do release, e publica no GHCR por digest | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
+| 4 | a Demo **ASSA** cinco imagens no CI dela, do oven do release, e publica no GHCR por digest; o admin é o da release (KP-D1) | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
 | 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
 | 6 | **reset + reseed** | a bancada **ou** a VM | bancada: `bin/box-down.sh` + `bin/box-up.sh` — §5 · VM: `bash bin/box-down.sh --env <env> && bash bin/deploy.sh <env> --birth` — §2.3 |
@@ -309,13 +309,26 @@ Public*). Enquanto um pacote estiver privado, o `deploy.sh` dessa imagem falha n
 continua **opcional**: se o `.secrets` da caixa tiver `GHCR_PULL_TOKEN` e `GHCR_PULL_USER`, o host faz
 `docker login ghcr.io` com eles antes do pull (o valor nunca sai do host; só o nome está aqui).
 
+★★ **KP-D1 (21/10) — o ADMIN vem da RELEASE, não do forno.** Nenhum app da demo desenha no admin, então o
+`bin/bake.sh` assa cinco imagens e copia o `images.admin` do `forge.lock` da Release (`--release-lock`; o
+`bake.yml` usa o mesmo lock de onde lê o oven) como `{ ref, origin: "release" }`. Essa imagem mora no Artifact
+Registry **privado** do produto. **Sem chave** (a organização do GCP proíbe chave de conta de serviço): o
+`registry-access.json` (versionado, não é segredo) nomeia a conta de leitura do cliente, e o `bin/deploy.sh`
+(passo 3b), na máquina que faz o deploy, gera um token de 1 h com
+`gcloud auth print-access-token --impersonate-service-account=<conta>`, entrega-o à caixa pelo **stdin do ssh**
+(`docker login -u oauth2accesstoken --password-stdin https://southamerica-east1-docker.pkg.dev`), puxa e faz
+`docker logout` na caixa. Sem `gcloud`, sem conta logada ou sem `roles/iam.serviceAccountTokenCreator` na conta
+⇒ recusa **nomeada antes de entregar qualquer coisa** (`bin/registry-pull.guard.mjs`). Na bancada, o `box-up`
+também puxa o admin: faça o mesmo `docker login` local uma vez.
+
 **O que o CI precisa (nomes; nenhum valor neste repositório):** `vars.WIF_PROVIDER` (o provider `github-demo`
 do pool de Workload Identity, com `artifactregistry.reader` no repositório do oven — sem conta de serviço) e
 `secrets.FORGE_RELEASE_TOKEN` (leitura de conteúdo no repositório do produto, que é **privado**: o
 `GITHUB_TOKEN` deste repositório não lê a Release de outro repositório).
 
 **Como PROVAR, de uma linha:** `jq -e '.provenance // empty' forge.lock` sai **vazio**;
-`jq -r '.images[] | "\(.origin) \(.ref)"' forge.lock` lista **seis** `own build ghcr.io/…@sha256:…`; e
+`jq -r '.images[] | "\(.origin) \(.ref)"' forge.lock` lista **cinco** `own build ghcr.io/…@sha256:…` e o
+**admin** `release southamerica-east1-docker.pkg.dev/…/forge-admin@sha256:…` (KP-D1, abaixo); e
 `bash bin/deploy.sh stag --plan` passa do passo 0. Depois de nascer, `bash bin/verify-composition.sh` compara o
 que o lock pediu com o que o kernel declara.
 

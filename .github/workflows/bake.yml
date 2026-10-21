@@ -1,5 +1,10 @@
-# THE DEMO'S BAKE — the six images this box runs, out of the Forge release it pins, published to this
-# repository's GHCR by digest, and the `forge.lock` that pins them handed back as an artifact.
+# THE DEMO'S BAKE — the five images this box bakes, out of the Forge release it pins, published to this
+# repository's GHCR by digest, and the `forge.lock` that pins them (plus the admin the RELEASE published, by
+# its digest — KP-D1: the admin is pulled, not baked) handed back as an artifact.
+#
+# ★ KP-D1 — THIS JOB NEVER PULLS THE ADMIN. It only copies the admin's ref out of the release's lock (the same
+# file it already downloads for the oven) into the lock it writes; the box pulls it at deploy time with a
+# short-lived token (bin/deploy.sh, step 3). No new credential here.
 #
 # ★ v032/C (spec v032, decision 6). The recipe is `bin/bake.sh` — the SAME script a bench runs through
 # `bin/bake-local.sh`; this file only supplies what a bench does not have: the release's oven (read from the
@@ -108,7 +113,7 @@ jobs:
       - name: Install the release's tools
         run: npm ci --no-audit --no-fund
 
-      - name: Bake the six images and write the lock
+      - name: Bake the five images and write the lock (the admin is the release's)
         env:
           OVEN_IMAGE: ${{ steps.oven.outputs.ref }}
           FORGE_RELEASE: ${{ steps.release.outputs.tag }}
@@ -116,7 +121,7 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           start=$(date +%s)
-          bash bin/bake.sh --registry "${REGISTRY,,}" --tag "${SHA::12}" --lock "$RUNNER_TEMP/forge.lock"
+          bash bin/bake.sh --release-lock "$RUNNER_TEMP/release/forge.lock" --registry "${REGISTRY,,}" --tag "${SHA::12}" --lock "$RUNNER_TEMP/forge.lock"
           echo "bake took $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
 
       # The lock the deploy would take: it must pass the gate bin/deploy.sh applies to stag and prod, and the

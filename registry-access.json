@@ -1,0 +1,19 @@
+{
+  "_readme": [
+    "WHICH REGISTRIES a box of this instance cannot pull from anonymously, and how bin/deploy.sh logs in to each.",
+    "KP-D1 (2026-10-21): the admin is pulled from the Forge release, whose images live in the product's PRIVATE",
+    "Artifact Registry. The customer's access is a READ-ONLY service account with NO KEY (the GCP organization",
+    "forbids service-account keys): the machine that deploys mints a 1-hour token by impersonating it",
+    "(gcloud auth print-access-token --impersonate-service-account=<it>), hands it to the box on ssh's STDIN for",
+    "`docker login`, and logs the box out after the pull. Nothing long-lived stays on the box or on disk here.",
+    "Nothing in this file is a secret: an e-mail names an account and grants nothing by itself. It is not in",
+    "deploy/<env>.env because a registry's door is the same for every environment of this instance, and those",
+    "files are the environment's. Read by bin/deploy.sh (step 3) through lock_gate_pull_logins (bin/lock-gate.sh)."
+  ],
+  "registries": {
+    "southamerica-east1-docker.pkg.dev": {
+      "login": "impersonate",
+      "serviceAccount": "forge-client-demo@forge-500319.iam.gserviceaccount.com"
+    }
+  }
+}

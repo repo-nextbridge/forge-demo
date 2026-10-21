@@ -284,6 +284,76 @@ if [ -n "${missing_secrets// /}" ]; then
 fi
 [ "$HOST_REACHED" = 'yes' ] && note 'secrets   present on the host (names only — no value is read, sent or printed)'
 
+# ── 3b · ★★ KP-D1 — THE REGISTRIES THAT DO NOT ANSWER A STRANGER, ASKED BEFORE ANYTHING IS DELIVERED ────────
+#
+# The admin comes from the Forge RELEASE now (origin `release`, by digest), and the release's images live in the
+# product's PRIVATE Artifact Registry. This instance's access is a read-only service account WITHOUT A KEY —
+# the GCP organization forbids keys (`iam.disableServiceAccountKeyCreation`) — so there is nothing to keep on the
+# box. THIS machine mints a 1-hour token by impersonating that account, holds it in a shell variable, and step 5
+# hands it to the box on ssh's stdin for `docker login`, then logs the box out after the pull.
+#
+# ⛔ HERE, AND NOT AT THE PULL, because a deploy that discovers it cannot pull the admin at step 5 has already
+# delivered compose files and an `.env` that name an image the box cannot get — and the next `up` on that box,
+# by anyone, takes containers down for an image that is not there. Every refusal below comes before step 4.
+# `registry-access.json` says which account opens which registry (not a secret: an e-mail grants nothing).
+say '3b · the registries: can this box pull every image the lock pins?'
+REGISTRY_ACCESS="$HERE/registry-access.json"
+declare -A REGISTRY_TOKEN=()
+REGISTRY_LOGGED_IN=''
+pull_logins="$(lock_gate_pull_logins "$HERE/forge.lock" "$REGISTRY_ACCESS")" \
+  || die "forge.lock or registry-access.json could not be read to decide which registries need a login."
+if [ -z "$pull_logins" ]; then
+  note 'registry  every image is on a registry that answers anonymously — no login'
+fi
+refuse=die; [ "$PLAN" = 'yes' ] && refuse=note
+while IFS=$'\t' read -r img host sa; do
+  [ -n "$img" ] || continue
+  if [ -n "${REGISTRY_TOKEN[$host]+x}" ]; then
+    note "registry  $img ← $host (the same 1-hour login)"
+    continue
+  fi
+  [ -n "$sa" ] || $refuse "the lock pins $img at $host, and that registry refuses an anonymous pull — and registry-access.json
+     names no account to log in as. Add the host there with the read-only service account this instance was
+     given (\"login\": \"impersonate\", \"serviceAccount\": \"<e-mail>\"). Nothing was sent to ${FORGE_DEPLOY_HOST}."
+  [ -n "$sa" ] || continue
+  if [ "$PLAN" = 'yes' ]; then
+    command -v gcloud >/dev/null 2>&1 \
+      || note "⚠️ registry  this machine has no \`gcloud\`, and a real deploy would refuse here: $img is at $host"
+    note "registry  would mint a 1-hour token as $sa and log the box in to $host for $img — logged out after the pull"
+    REGISTRY_TOKEN[$host]=''
+    continue
+  fi
+  command -v gcloud >/dev/null 2>&1 || die "the lock pins $img at $host, and this machine has no \`gcloud\` to mint the token that pulls it.
+     Install the Google Cloud CLI, log in as someone who may impersonate the reader, and deploy again — the token is:
+       gcloud auth print-access-token --impersonate-service-account=$sa
+     Nothing was sent to ${FORGE_DEPLOY_HOST}."
+  # ⚠️ The token goes into a VARIABLE and nowhere else. gcloud's stderr (never the token) goes to a temp file so
+  # the refusal can quote it.
+  gcloud_err="$(mktemp)"
+  token="$(gcloud auth print-access-token --impersonate-service-account="$sa" 2>"$gcloud_err")" || token=''
+  if [ -z "$token" ]; then
+    why="$(tail -n 3 "$gcloud_err" | sed 's/^/       /')"
+    rm -f "$gcloud_err"
+    die "the lock pins $img at $host, and this machine could not mint a token for it as $sa:
+$why
+     Generate the token with:
+       gcloud auth login      (if no account is logged in here)
+       gcloud auth print-access-token --impersonate-service-account=$sa
+     Your account needs roles/iam.serviceAccountTokenCreator on $sa. Nothing was sent to ${FORGE_DEPLOY_HOST}."
+  fi
+  rm -f "$gcloud_err"
+  REGISTRY_TOKEN[$host]="$token"
+  unset token
+  note "registry  $img ← $host: a 1-hour token minted as $sa (held in memory; it reaches the box on ssh stdin only)"
+done <<<"$pull_logins"
+
+# The box keeps no login past this deploy — on success after the pulls, and on ANY exit after a login.
+registry_logout_all() {
+  local h
+  for h in $REGISTRY_LOGGED_IN; do remote_registry_logout "$h"; done
+  REGISTRY_LOGGED_IN=''
+}
+
 # ── 4 · WHAT TRAVELS ────────────────────────────────────────────────────────────────────────────────────────
 say '4 · the box'
 
@@ -371,7 +441,7 @@ else
 fi
 
 assembled="$(mktemp)"
-trap 'rm -f "$assembled"' EXIT
+trap 'rm -f "$assembled"; registry_logout_all' EXIT
 {
   printf '# ASSEMBLED BY bin/deploy.sh — do not edit by hand except through a birth.\n'
   printf '#   declared half : deploy/box.env + deploy/%s.env of this repository\n' "$ENV_NAME"
@@ -472,6 +542,17 @@ ghcr_login() {
   esac
 }
 
+# ★ KP-D1 — the token minted at step 3b, onto the box through ssh's stdin, once per registry (bin/remote-box.sh).
+registry_login() { # <host>
+  case " $REGISTRY_LOGGED_IN " in *" $1 "*) return 0 ;; esac
+  local answer
+  answer="$(printf '%s' "${REGISTRY_TOKEN[$1]}" | remote_registry_login "$1" 2>/dev/null || echo unreachable)"
+  [ "$answer" = 'logged-in' ] || die "the box could not log in to $1 with the token minted at step 3b ($answer). Nothing was pulled from it,
+     and no container was taken down. The token is 1-hour: if this deploy waited long, run it again."
+  REGISTRY_LOGGED_IN="$REGISTRY_LOGGED_IN $1"
+  note "login     $1 — the box holds a 1-hour login until the pulls are done"
+}
+
 ship_image() { # <ref>
   local ref="$1"
   case "$ref" in
@@ -485,6 +566,7 @@ ship_image() { # <ref>
   lock_gate_has_registry "$ref" || die "$ref names no registry and the host does not hold it. A lock like this goes only to a
      bench that already has the bytes (--allow-local); a box is fed by a bake that pushed."
   case "$ref" in ghcr.io/*) ghcr_login ;; esac
+  [ -z "${REGISTRY_TOKEN[${ref%%/*}]+x}" ] || registry_login "${ref%%/*}"
   note "pull      $ref"
   "${SSH[@]}" "docker pull -q '$ref'" >/dev/null \
     || die "the host could not pull $ref. If the package is private, the host needs GHCR_PULL_TOKEN and
@@ -498,6 +580,11 @@ done
 for ref in "${FORK_IMAGES[@]}"; do
   ship_image "$ref"
 done
+if [ -n "${REGISTRY_LOGGED_IN// /}" ]; then
+  registry_logout_all
+  note 'logout    the box holds no registry login any more — the next pull of a release image is the next deploy'
+fi
+for host in "${!REGISTRY_TOKEN[@]}"; do REGISTRY_TOKEN[$host]=''; done
 
 # ── 6 · MIGRATE, THEN UP ────────────────────────────────────────────────────────────────────────────────────
 say '6 · migrate, then up'

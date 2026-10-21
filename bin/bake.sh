@@ -2,8 +2,8 @@
 # ★★★ THE DEMO'S BAKE — the six images this box runs, out of a Forge RELEASE's oven, and the `forge.lock` that
 # pins them. EXECUTE it (it builds images and writes a file); do not source it.
 #
-#   OVEN_IMAGE=<images.oven of the release's forge.lock> bash bin/bake.sh --lock <out>                (bench)
-#   OVEN_IMAGE=… bash bin/bake.sh --registry ghcr.io/<org> --tag <tag> --lock <out>                  (CI: pushes)
+#   OVEN_IMAGE=<images.oven of the release's forge.lock> bash bin/bake.sh --release-lock <release forge.lock> --lock <out>   (bench)
+#   OVEN_IMAGE=… bash bin/bake.sh --release-lock <…> --registry ghcr.io/<org> --tag <tag> --lock <out>                     (CI: pushes)
 #
 # ONE SCRIPT, TWO CALLERS, and that is the point (spec v032, decision 6): `.github/workflows/bake.yml` runs it
 # with `--registry` on every push to `main` that changes one of its inputs (not `forge.lock`, `docs/`, the root
@@ -19,10 +19,21 @@
 #   · the LIST      — `composition.json` of this repository, as is (`"axis": "instance"` declared in it).
 #   · OUR APPS      — `instanceApps[].source`, copied without `node_modules` into the `apps` build context.
 #   · the FORKS     — `storefront-coffee/` and `totem/`, which install `@forgeco/*@<release>` from npm.
+#   · the RELEASE'S LOCK — `--release-lock`, the `forge.lock` asset of that Release, for what this box PULLS.
 #
-# WHAT COMES OUT: kernel, storefront, checkout, admin (the recipe's four targets) + storefront-coffee and totem
-# (the forks' thin Dockerfiles), and a lock: `{ ref, origin: "own build", built_from: <release> }` per image,
-# no `provenance` block. With `--registry` the ref is the digest read back from the registry after the push;
+# WHAT COMES OUT: kernel, storefront, checkout (three of the recipe's four targets) + storefront-coffee and
+# totem (the forks' thin Dockerfiles), and a lock: `{ ref, origin: "own build", built_from: <release> }` per
+# baked image, no `provenance` block — and `admin: { ref, origin: "release" }`, copied from the release's lock.
+#
+# ★★ KP-D1 (2026-10-21) — THE ADMIN IS PULLED, NOT BAKED. The product's doctrine: pull by digest what does not
+# differentiate the box, bake what carries an app that draws a screen. No app of this box draws in the admin
+# (`demo-setup` → storefront, `payment-pos` → checkout), and the product's fence says so: with
+# `admin: release` it stays green, and it turns red the day an instance app declares an admin block
+# (bin/deploy.guard.mjs, the sabotage). The ref is READ from the release's own lock — never typed — and it
+# lives in the product's PRIVATE Artifact Registry: the box pulls it at deploy time with a 1-hour token minted
+# by impersonating a read-only account with no key (registry-access.json; bin/deploy.sh, step 3b). This
+# script never pulls it. Put `admin` back in the loop below and the lock says `own build` again; nothing
+# else has to change. With `--registry` the ref is the digest read back from the registry after the push;
 # without, it is this daemon's image id with NO registry host — the shape `bin/deploy.sh` refuses for stag
 # and prod (bin/lock-gate.sh). ⚠️ `origin` is `own build` in both: measured 2026-10-09, the product's fence
 # (`forge-lock-provenance`, run by bin/deploy.sh) has a CLOSED vocabulary — `release` | `own build` — and
@@ -39,17 +50,20 @@ die() { printf '%s ⛔ %s\n' "$TAG_" "$*" >&2; exit 1; }
 registry=''
 image_tag='local'
 lock_out=''
+release_lock=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --registry) registry="${2:?--registry needs a value, e.g. ghcr.io/<org>}"; shift ;;
     --tag)      image_tag="${2:?--tag needs a value}"; shift ;;
     --lock)     lock_out="${2:?--lock needs a path}"; shift ;;
+    --release-lock) release_lock="${2:?--release-lock needs a path}"; shift ;;
     -h|--help)  sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)          die "unknown argument '$1' (see --help)" ;;
   esac
   shift
 done
 [ -n "$lock_out" ] || die 'name the lock to write: --lock <path>. The bench writes forge.lock; CI writes an artifact.'
+[ -n "$release_lock" ] || die 'name the release'"'"'s forge.lock: --release-lock <path>. The admin is PULLED from it (gh release download <tag> -R repo-nextbridge/forge -p forge.lock).'
 
 # The host's node first: the forks' `npm run build` and the provenance check are host node processes.
 # shellcheck source=bin/require-node.sh
@@ -94,6 +108,31 @@ stamp="$(docker run --rm --network none --entrypoint cat "$OVEN_IMAGE" /forge-ov
 [ "$stamp" = "$release" ] || die "the oven is stamped '${stamp:-<nothing>}' at /forge-oven/release, and this repository pins $release.
      A release's published oven carries its tag; a bench oven gets one with the product's infra/cicd/stamp-oven.sh."
 say "release   $release (the forks' and the tools' pin; the oven is stamped the same)"
+
+# ── WHAT THIS BOX PULLS: the images of the release it does not bake, read from the release's own lock ──────
+#
+# ⚠️ BETWEEN MARKERS so `bin/bake-pulls-admin.guard.mjs` can run THIS block over fabricated release locks
+# without docker. Every refusal names the file and the image, because a lock that pins a different release's
+# admin beside this release's kernel is a mix no release ever shipped.
+# >>> THE IMAGES THIS BOX PULLS FROM THE RELEASE
+PULLED_FROM_RELEASE=(admin)
+[ -f "$release_lock" ] || die "the release's lock '$release_lock' does not exist."
+jq -e . "$release_lock" >/dev/null 2>&1 || die "the release's lock '$release_lock' is not JSON."
+release_lock_version="$(jq -r '.forgeVersion // ""' "$release_lock")"
+[ "$release_lock_version" = "$release" ] \
+  || die "the release's lock '$release_lock' is ${release_lock_version:-<no forgeVersion>}, and this repository pins $release."
+declare -A PULLED=()
+for target in "${PULLED_FROM_RELEASE[@]}"; do
+  entry="$(jq -c --arg k "$target" '.images[$k] | if type == "object" then . elif type == "string" then {ref: ., origin: "release"} else null end' "$release_lock")"
+  ref="$(jq -r '.ref // ""' <<<"$entry")"
+  [ "$(jq -r '.origin // ""' <<<"$entry")" = 'release' ] \
+    || die "the release's lock does not pin $target as origin \"release\" — it is not the release's own $target."
+  [[ "$ref" =~ ^[^/@]+\.[^/@]+/[^@]+@sha256:[0-9a-f]{64}$ ]] \
+    || die "the release's lock pins $target as '${ref:-<nothing>}', not a registry ref by digest."
+  PULLED[$target]="$ref"
+done
+# <<< THE IMAGES THIS BOX PULLS FROM THE RELEASE
+say "pulled    ${PULLED_FROM_RELEASE[*]} — from the $release release's lock, by digest (not baked here)"
 
 # ── THE CONTEXTS: recipe, list, apps — one scratch directory, nothing of this repo beyond them ─────────────
 work="$(mktemp -d -t forge-demo-bake.XXXXXX)"
@@ -154,7 +193,8 @@ ref_of() { # <name:tag>
 }
 
 declare -A REFS=()
-for target in kernel storefront checkout admin; do
+# ⚠️ `admin` is NOT here: it is pulled from the release (above, KP-D1).
+for target in kernel storefront checkout; do
   image="${prefix}${target}:${image_tag}"
   say "baking   $target → $image"
   docker_build_retry -f "$work/Dockerfile" --target "$target" \
@@ -206,6 +246,8 @@ fi
 
 origin='own build'
 image_entry() { jq -n --arg ref "$1" --arg origin "$origin" --arg from "$release" '{ref: $ref, origin: $origin, built_from: $from}'; }
+# A pulled image carries what the release's lock says and nothing else: no `built_from`, nothing was built.
+pulled_entry() { jq -n --arg ref "$1" '{ref: $ref, origin: "release"}'; }
 
 jq -n \
   --arg version "$release" \
@@ -216,7 +258,7 @@ jq -n \
   --argjson kernel "$(image_entry "${REFS[kernel]}")" \
   --argjson storefront "$(image_entry "${REFS[storefront]}")" \
   --argjson checkout "$(image_entry "${REFS[checkout]}")" \
-  --argjson admin "$(image_entry "${REFS[admin]}")" \
+  --argjson admin "$(pulled_entry "${PULLED[admin]}")" \
   --argjson coffee "$(image_entry "${REFS[storefront-coffee]}")" \
   --argjson totem "$(image_entry "${REFS[totem]}")" \
   --argjson dataset "$dataset_json" \
@@ -234,5 +276,5 @@ jq -n \
     why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."
   }' > "$lock_out"
 
-say "wrote     $lock_out — $release × $composition_id, six images, ${registry:+in $registry}${registry:-ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)}"
+say "wrote     $lock_out — $release × $composition_id, five images baked + ${PULLED_FROM_RELEASE[*]} from the release, ${registry:+in $registry}${registry:-ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)}"
 jq -r '.images | to_entries[] | "[bake]   \(.key): \(.value.ref)"' "$lock_out" >&2

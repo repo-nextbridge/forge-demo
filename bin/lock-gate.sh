@@ -70,3 +70,20 @@ lock_gate() { # <lock> <env> <allow-local yes|no>
   printf '[lock-gate]    For a bench box that already holds them, say so: --allow-local.\n' >&2
   return 1
 }
+
+# ── ★★ KP-D1 — WHICH IMAGES OF THE LOCK NEED A LOGIN TO BE PULLED, AND AS WHOM ─────────────────────────────
+#
+# One line per image whose registry will not answer a stranger: `<image>\t<host>\t<service account or empty>`.
+# A host needs a login when `registry-access.json` lists it, OR when it is an Artifact Registry host
+# (`*-docker.pkg.dev`): measured 2026-10-10 (README, dx-i4), an anonymous pull there is refused, so a lock that
+# pins one with no declared way in is a deploy that would die at `docker pull`, after the box was touched. The
+# empty third column is that case, and `bin/deploy.sh` refuses it by name, before delivering anything.
+lock_gate_pull_logins() { # <lock> <registry-access.json (may be absent)>
+  local lock="$1" access="$2" registries='{}'
+  [ -f "$access" ] && registries="$(jq -c '.registries // {}' "$access")"
+  jq -r --argjson reg "$registries" '.images // {} | to_entries[]
+    | [.key, (if (.value | type) == "object" then (.value.ref // "") else (.value // "") end)]
+    | .[1] as $ref | ($ref | split("/")[0]) as $host
+    | select(($ref | contains("/")) and (($reg | has($host)) or ($host | test("-docker\\.pkg\\.dev$"))))
+    | [.[0], $host, ($reg[$host].serviceAccount // "")] | @tsv' "$lock"
+}
