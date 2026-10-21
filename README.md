@@ -63,19 +63,58 @@ monorepo, anywhere**:
 | **our apps** | `apps/<id>/` (`instanceApps[].source`), handed over as the oven's `apps` build context. |
 | **our two fronts** | `storefront-coffee/` and `totem/`, which install `@forgeco/*` **from npm, at the release's exact version** (`bin/fork-release-pin.guard.mjs`). |
 
-**One script, two callers.** `bin/bake.sh` bakes the six images — kernel, storefront, checkout, admin out of
-the recipe, plus the two forks — and writes `forge.lock`:
+**One script, two callers.** `bin/bake.sh` bakes FIVE images — kernel, storefront, checkout out of the recipe,
+plus the two forks — and writes `forge.lock` with a SIXTH it does not bake: the **admin of the release**,
+`{ "ref": "<release registry>/forge-admin@sha256:…", "origin": "release" }`, copied from the Release's own
+`forge.lock` (`--release-lock`; never typed). See [where each image comes from](#where-each-image-comes-from-kp-d1).
 
 - **CI** — `.github/workflows/bake.yml`, on every push to `main` that changes an input of the bake — not one that only changes `forge.lock` (its output), `docs/**` or this README — (and by hand): reads the release this
   repository pins, downloads that Release's `forge.lock`, pulls the oven, runs `bin/bake.sh --registry
   ghcr.io/<org>`, publishes `ghcr.io/<org>/forge-demo-<name>` and uploads the lock as the run's **`forge-lock`
   artifact**.
 - **Bench** — `OVEN_IMAGE=<an oven stamped with the release> bash bin/bake-local.sh`: the same recipe into
-  this daemon. Its refs name no registry host — the one thing that tells a bench lock apart.
+  this daemon. Its refs name no registry host — the one thing that tells a bench lock apart (the admin's does:
+  it is the release's). It downloads the Release's `forge.lock` with your `gh` login, or takes
+  `FORGE_RELEASE_LOCK=<file>`.
+
+### Where each image comes from (KP-D1)
+
+| image | origin in `forge.lock` | registry | how a box pulls it |
+|---|---|---|---|
+| `kernel` · `storefront` · `checkout` | `own build` — baked here, with this box's list | `ghcr.io/repo-nextbridge/forge-demo-*` (public) | anonymously |
+| `storefront-coffee` · `totem` | `own build` — our forks | `ghcr.io/repo-nextbridge/forge-demo-*` (public) | anonymously |
+| `admin` | **`release`** — the Forge release's own, by digest | the product's **private** Artifact Registry (`southamerica-east1-docker.pkg.dev`) | with a **1-hour token**, see below |
+
+**Why the admin is pulled:** the product's doctrine is "pull by digest what does not differentiate the box,
+bake what carries an app that draws a screen". No app of this box draws in the admin (`demo-setup` →
+storefront, `payment-pos` → checkout), and the product's fence (`forge-lock-provenance`, run by
+`bin/deploy.sh` step 1) stays green with `admin: release` — and turns red, naming the admin, the day an app
+here declares an admin block (`bin/deploy.guard.mjs`). The kernel waits for the v0.3.4 cut (it needs the
+mounted-app path).
+
+**The customer gets access through a read-only service account — with no key.** The GCP organization forbids
+service-account keys, so nothing is stored on the box or in this repository: `registry-access.json` (versioned,
+not a secret) names the account per registry, and at deploy time `bin/deploy.sh` (step 3b) mints a short token
+on the machine that deploys —
+
+```bash
+gcloud auth print-access-token --impersonate-service-account=<registry-access.json → serviceAccount>
+```
+
+— holds it in memory, hands it to the box on **ssh's stdin** for `docker login -u oauth2accesstoken
+--password-stdin https://southamerica-east1-docker.pkg.dev`, pulls, and runs `docker logout` on the box. No
+`gcloud`, no logged-in account, or no `roles/iam.serviceAccountTokenCreator` on that account ⇒ the deploy
+refuses **by name, before anything is delivered** (`bin/registry-pull.guard.mjs`). The CI bake never pulls the
+admin; it only writes its ref.
+
+⚠️ **A bench `box-up` pulls the admin too.** Log this machine's docker in once, the same way, before the
+first `box-up` of a lock with `admin: release`:
+`gcloud auth print-access-token --impersonate-service-account=<…> | docker login -u oauth2accesstoken --password-stdin https://southamerica-east1-docker.pkg.dev`.
 
 ### ⚠️ Without GCP: you can RUN this box, you cannot BAKE it (measured 2026-10-10, dx-i4)
 
-**To run it, you need no oven and no cloud account.** The committed `forge.lock` names six images on GHCR by
+**To run it, you need no oven — and, once the lock pins `admin: release` (KP-D1), read access to the release's
+admin** (a 1-hour token, [above](#where-each-image-comes-from-kp-d1)). The five baked images are on GHCR by
 digest, and those packages are public: an anonymous pull token answers **200** for each of the six digests
 (`curl https://ghcr.io/token?scope=repository:repo-nextbridge/forge-demo-kernel:pull`, then the manifest by
 digest — without the token it is 401, and a made-up digest is 404, so the 200 means something). `docker
@@ -2245,7 +2284,8 @@ The demo instance is **six images**, and only four of them are the product:
 
 | image | whose | how it gets here |
 |---|---|---|
-| `kernel` · `storefront` · `checkout` · `admin` | **the product's recipe**, baked with this box's list | `bin/bake.sh`, pinned BY DIGEST in `forge.lock` |
+| `kernel` · `storefront` · `checkout` | **the product's recipe**, baked with this box's list | `bin/bake.sh`, pinned BY DIGEST in `forge.lock` |
+| `admin` | **the product's release**, as published (KP-D1) | copied from the Release's `forge.lock` by `bin/bake.sh` (`origin: "release"`), pulled with a 1-hour token |
 | `storefront-coffee` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
 | `totem` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
 

@@ -239,6 +239,27 @@ remote_secret_get() { # <name>   → the value, or empty
   "${REMOTE_SSH[@]}" "sed -n 's/^$1=//p' $(printf '%q' "$REMOTE_BOX_DIR/.secrets") 2>/dev/null | head -1" </dev/null
 }
 
+# ── ★★ KP-D1 — A REGISTRY LOGIN THAT LASTS ONE DEPLOY, AND WHOSE TOKEN NEVER TOUCHES A DISK HERE ─────────────
+#
+# The Forge release's images live in a PRIVATE Artifact Registry, and the GCP organization forbids
+# service-account keys — so there is no credential to KEEP on the box, by policy, and none is kept. The caller
+# mints a 1-hour token on the machine that deploys (impersonating the read-only account `registry-access.json`
+# names) and pipes it here: it crosses on ssh's STDIN, straight into `docker login --password-stdin` on the
+# box. ⛔ Never in a command line (`ps` on either host would show it), never printed, never in a file here.
+# `remote_registry_logout` is the other half and the caller runs it after the pull: what docker writes to the
+# box's config.json is a token that expires within the hour anyway, and logging out leaves nothing at all.
+#
+# Answers on stdout: `logged-in` or `refused` (docker's own message is dropped — it can echo the user, not the
+# token, but a refusal reads better as a sentence of ours that names the host).
+remote_registry_login() { # <host>   (the token on stdin)
+  "${REMOTE_SSH[@]}" "docker login -u oauth2accesstoken --password-stdin $(printf '%q' "https://$1") >/dev/null 2>&1 \
+    && echo logged-in || echo refused"
+}
+
+remote_registry_logout() { # <host>
+  "${REMOTE_SSH[@]}" "docker logout $(printf '%q' "https://$1") >/dev/null 2>&1 || true" </dev/null
+}
+
 # ── ★★★ STALE MOUNTS — DOES THE RUNNING CONTAINER STILL SERVE WHAT THE DEPLOY JUST DELIVERED? ──────────────
 #
 # ⛔ MEASURED ON THE STAGING BOX, 2026-10-19 (deploy of main 1f1146a, rc=0, every face 200/307). MZ-9 put

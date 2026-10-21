@@ -3,6 +3,7 @@
 # what came out. EXECUTE it (it builds images and writes a file); do not source it.
 #
 #   OVEN_IMAGE=<an oven stamped with the release the forks pin> bash bin/bake-local.sh
+#   FORGE_RELEASE_LOCK=<that release's forge.lock> OVEN_IMAGE=… bash bin/bake-local.sh      (no download)
 #
 # ★ v032/C — IT IS `bin/bake.sh` WITHOUT A REGISTRY, AND NOTHING ELSE. It replaced `bin/build-local.sh`, which
 # copied this repository's apps INTO a Forge checkout and baked from there. There is no checkout now: the
@@ -22,6 +23,23 @@
 # a bake that pushed (`.github/workflows/bake.yml`). Commit it only on a branch that
 # says why.
 
+#
+# ★ KP-D1 — AND THE RELEASE'S OWN LOCK, because the admin is no longer baked: `bin/bake.sh` copies its ref out
+# of that file. CI downloads it with FORGE_RELEASE_TOKEN; here it is `FORGE_RELEASE_LOCK`, or downloaded with
+# your own `gh` login (the product repository is private: no access, no lock — and this says so).
+
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec bash "$here/bin/bake.sh" --lock "${FORGE_LOCK_OUT:-$here/forge.lock}" "$@"
+release_lock="${FORGE_RELEASE_LOCK:-}"
+if [ -z "$release_lock" ]; then
+  tag="v$(jq -r '.devDependencies["@forgeco/cli"]' "$here/package.json")"
+  fetched="$(mktemp -d -t forge-release-lock.XXXXXX)"
+  trap 'rm -rf "$fetched"' EXIT
+  gh release download "$tag" -R repo-nextbridge/forge -p forge.lock -D "$fetched" >&2 || {
+    printf '[bake] ⛔ could not download the forge.lock of the %s Release (gh, repo-nextbridge/forge). Set FORGE_RELEASE_LOCK to a copy of it.\n' "$tag" >&2
+    exit 1
+  }
+  release_lock="$fetched/forge.lock"
+fi
+# Not `exec`: the trap above removes the downloaded lock when the bake is done with it.
+bash "$here/bin/bake.sh" --release-lock "$release_lock" --lock "${FORGE_LOCK_OUT:-$here/forge.lock}" "$@"
