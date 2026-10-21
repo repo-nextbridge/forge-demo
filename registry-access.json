@@ -13,7 +13,7 @@
   "registries": {
     "southamerica-east1-docker.pkg.dev": {
       "login": "impersonate",
-      "serviceAccount": "forge-client-demo@forge-500319.iam.gserviceaccount.com"
+      "serviceAccount": "forge-client-demo@forge-500319.iam.gserviceaccount.com", "_private": "forge-private-ok: functional — a GCP service account (a machine identity, not a person); bin/deploy.sh impersonates exactly this one"
     }
   }
 }
