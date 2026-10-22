@@ -315,5 +315,17 @@ jq -n \
     why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."
   }' > "$lock_out"
 
-say "wrote     $lock_out — $release × $composition_id, four images baked + ${PULLED_FROM_RELEASE[*]} from the release, $(jq -r 'join(", ")' <<<"$mounted_json") mounted, ${registry:+in $registry}${registry:-ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)}"
+# >>> WHERE THE IMAGES LIVE
+# ⛔ MZ-DEMO (2026-10-22) — THIS WAS `${registry:+in $registry}${registry:-ONLY in this daemon …}` INLINE, and
+# `${registry:-X}` is "$registry when it is set", not "nothing when it is set": with `--registry` both halves
+# expanded and bake.yml logged `in ghcr.io/repo-nextbridgeghcr.io/repo-nextbridge` on every push to main. Only
+# the message was wrong (the refs come from `ref_of`), but it is the line a reader trusts for where the images
+# went. Graded by RUNNING this block in bin/bake-where.guard.mjs; put the old expression back and it is red.
+if [ -n "$registry" ]; then
+  where="in $registry"
+else
+  where='ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)'
+fi
+# <<< WHERE THE IMAGES LIVE
+say "wrote     $lock_out — $release × $composition_id, four images baked + ${PULLED_FROM_RELEASE[*]} from the release, $(jq -r 'join(", ")' <<<"$mounted_json") mounted, $where"
 jq -r '.images | to_entries[] | "[bake]   \(.key): \(.value.ref)"' "$lock_out" >&2
