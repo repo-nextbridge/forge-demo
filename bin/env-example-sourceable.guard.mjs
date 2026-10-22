@@ -18,8 +18,9 @@
 // arrives pre-installed in every instance that follows the README.
 
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -70,4 +71,48 @@ test('⛔ ANTI-VACUUM — the file was really read, and it really declares varia
     `.env.example declares ${declared.length} variable(s) — the walk broke or the file shrank, and the rules ` +
       'above would be judging almost nothing',
   );
+});
+
+// ── ★★ v0.3.4 — AND A BOX'S OWN `.env` IS HELD TO THE SAME RULE, BY env-source.sh AND BY THE DEPLOY ──────────
+//
+// The template's v0.3.4 `env-source.sh` FAILS on a `.env` with an unquoted value with a space, naming the line and
+// the variable, never the value. This box's `env-source.sh` takes the template's scan as is, and `bin/deploy.sh`
+// runs the same pattern over the `.env` it assembles, BEFORE delivering — so a `deploy/*.env` line of that shape
+// is refused on the laptop instead of stopping every compose command on the box. Graded by running them.
+const SCAN = /grep -nE '(\^\[\[:space:\]\]\*\(export[^']*)'/;
+
+function sourceEnv(envText) {
+  const dir = mkdtempSync(join(tmpdir(), 'forge-env-shell-'));
+  try {
+    cpSync(join(ROOT, 'env-source.sh'), join(dir, 'env-source.sh'));
+    writeFileSync(join(dir, '.env'), envText);
+    const r = spawnSync('bash', ['-c', `. ${JSON.stringify(join(dir, 'env-source.sh'))}; echo "rc=$?"`], { encoding: 'utf8' });
+    return `${r.stdout}${r.stderr}`;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('⛔ SABOTAGE — env-source.sh REFUSES a .env with an unquoted value with a space, naming line and NAME, never the value', () => {
+  const out = sourceEnv('FORGE_A=1\nFORGE_REF_STORE_NAME=Forge Cafezinho\n');
+  assert.match(out, /rc=1/, out);
+  assert.match(out, /unquoted value with a space: line 2 \(FORGE_REF_STORE_NAME\)/, out);
+  assert.doesNotMatch(out, /Cafezinho/, `the refusal printed the value:\n${out}`);
+});
+
+test('★ CONTROL — the same value QUOTED passes the scan (the source goes on, to the secrets it then asks for)', () => {
+  const out = sourceEnv('FORGE_A=1\nFORGE_REF_STORE_NAME="Forge Cafezinho"\nFORGE_B=x # a comment is not a second word\n');
+  assert.doesNotMatch(out, /unquoted value with a space/, out);
+  assert.match(out, /missing required secret 'forge-postgres-password'/, `the control did not reach the step after the scan:\n${out}`);
+});
+
+test('★★ bin/deploy.sh scans the .env it assembles with THE SAME pattern, and refuses before anything is sent', () => {
+  const ours = readFileSync(join(ROOT, 'env-source.sh'), 'utf8').match(SCAN);
+  const deploy = readFileSync(join(ROOT, 'bin', 'deploy.sh'), 'utf8');
+  const theirs = deploy.match(SCAN);
+  assert.ok(ours && theirs, 'the scan pattern is not found in env-source.sh and bin/deploy.sh');
+  assert.equal(theirs[1], ours[1], 'bin/deploy.sh and env-source.sh scan with different patterns — the deploy would pass a .env the box refuses');
+  const scan = deploy.indexOf(theirs[0]);
+  const deliver = deploy.search(/^tar -C "\$HERE" -czf - "\$\{DELIVER\[@\]\}"/m);
+  assert.ok(scan > -1 && deliver > scan, 'the deploy scans the .env after the delivery — it must refuse before it');
 });

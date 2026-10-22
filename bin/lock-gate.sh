@@ -87,3 +87,31 @@ lock_gate_pull_logins() { # <lock> <registry-access.json (may be absent)>
     | select(($ref | contains("/")) and (($reg | has($host)) or ($host | test("-docker\\.pkg\\.dev$"))))
     | [.[0], $host, ($reg[$host].serviceAccount // "")] | @tsv' "$lock"
 }
+
+# ── ★★ KP-D2 — DOES THE LOCK SAY WHICH APPS THE KERNEL RECEIVES MOUNTED, AND THE SAME ONES THE LIST DECLARES? ──
+#
+# From v0.3.4 an app of `instanceApps` declared `"kernel": "mounted"` reaches the PULLED kernel as
+# `extensions/<id>`, and the lock says so in `composition.mounted` (the shape `bin/bake.sh` writes, the product's
+# templates/instance/README.md step 4). The product's fence grades the artifact and the kernel's origin — it does
+# NOT read `composition.mounted` (measured 2026-10-22 on @forgeco/surface-codegen 0.3.4: green on a lock without
+# the key). And `bin/verify-composition.sh` reads such a lock as the image MISSING both apps — on the box, after
+# the deploy. So it is asked HERE, before anything is touched: the two sets must be the same, and a lock without
+# the key while the list mounts something is refused by name. Applies to every environment, bench included:
+# a box whose lock and list disagree about what is mounted is one no `verify-composition.sh` can grade.
+lock_gate_mounted() { # <lock> <composition.json>
+  local lock="$1" list="$2" want got
+  command -v jq >/dev/null 2>&1 || { printf '[lock-gate] `jq` is required to read %s.\n' "$lock" >&2; return 2; }
+  jq -e . "$list" >/dev/null 2>&1 || { printf '[lock-gate] %s is not valid JSON.\n' "$list" >&2; return 2; }
+  want="$(jq -r '[.instanceApps // [] | .[] | select(.kernel == "mounted") | .id] | sort | join(" ")' "$list")"
+  if [ "$(jq -r '.composition | type == "object" and has("mounted")' "$lock")" != 'true' ]; then
+    [ -n "$want" ] || return 0
+    printf '[lock-gate] ⛔ %s carries no composition.mounted, and composition.json declares %s "kernel": "mounted".\n' "$lock" "$want" >&2
+    printf '[lock-gate]    A lock of a bake that predates the mount: the box would run a kernel that never heard of them, or\n' >&2
+    printf '[lock-gate]    one that composes them AND finds them mounted. Adopt the lock of a bake of this list (bin/bake.sh).\n' >&2
+    return 1
+  fi
+  got="$(jq -r '.composition.mounted | if type == "array" then sort | join(" ") else "NOT-AN-ARRAY" end' "$lock")"
+  [ "$want" = "$got" ] && return 0
+  printf '[lock-gate] ⛔ %s mounts [%s], and composition.json declares [%s] "kernel": "mounted" — the lock was baked from another list.\n' "$lock" "$got" "$want" >&2
+  return 1
+}

@@ -24,7 +24,8 @@
 # says why.
 
 #
-# ★ KP-D1 — AND THE RELEASE'S OWN LOCK, because the admin is no longer baked: `bin/bake.sh` copies its ref out
+# ★ KP-D1/KP-D2 — AND THE RELEASE'S OWN LOCK, because neither the admin nor (v0.3.4) the kernel is baked any
+# more: `bin/bake.sh` copies their refs out
 # of that file. CI downloads it with FORGE_RELEASE_TOKEN; here it is `FORGE_RELEASE_LOCK`, or downloaded with
 # your own `gh` login (the product repository is private: no access, no lock — and this says so).
 

@@ -1,0 +1,99 @@
+{
+  "id": "payment-pos",
+  "name": "Pay at the counter",
+  "kind": "app",
+  "icon": "icon.png",
+  "description": "The counter’s payment methods for a self-service totem: the card machine, approved on the spot because the machine has already taken the payment, and a PIX QR on the totem’s screen. No PSP is ever contacted: this app belongs to one box and is never offered. Enable each method per store via PAY-TOGGLES.",
+  "maturity": "stable",
+  "version": "0.1.0",
+  "i18n": {
+    "en": {
+      "name": "Pay at the counter",
+      "description": "The counter’s payment methods for a self-service totem: the card machine, approved on the spot because the machine has already taken the payment, and a PIX QR on the totem’s screen. No PSP is ever contacted: this app belongs to one box and is never offered. Enable each method per store via PAY-TOGGLES.",
+      "block.payment-options.label": "Pay at the counter · Payment options",
+      "block.after-payment.label": "Pay at the counter · After payment",
+      "config.active.label": "Accept payments at the counter",
+      "config.pix_enabled.label": "Enable the counter’s PIX QR",
+      "config.card_enabled.label": "Enable the card machine"
+    },
+    "pt-BR": {
+      "name": "Pagar no balcão",
+      "description": "As formas de pagamento do balcão para um totem de autoatendimento: a maquininha, aprovada na hora porque a máquina já recebeu, e um QR de PIX na tela do totem. Nenhum PSP é chamado: este app pertence a uma caixa só e nunca é ofertado. Habilite cada método por loja via PAY-TOGGLES.",
+      "block.payment-options.label": "Pagar no balcão · Formas de pagamento",
+      "block.after-payment.label": "Pagar no balcão · Depois do pagamento",
+      "config.active.label": "Aceitar pagamento no balcão",
+      "config.pix_enabled.label": "Habilitar o QR de PIX do balcão",
+      "config.card_enabled.label": "Habilitar a maquininha"
+    },
+    "es": {
+      "name": "Pagar en el mostrador",
+      "description": "Las formas de pago del mostrador para un tótem de autoservicio: el datáfono, aprobado al instante porque la máquina ya cobró, y un QR de PIX en la pantalla del tótem. No se llama a ningún PSP: esta app pertenece a una sola caja y nunca se oferta. Habilita cada método por tienda vía PAY-TOGGLES.",
+      "block.payment-options.label": "Pagar en el mostrador · Formas de pago",
+      "block.after-payment.label": "Pagar en el mostrador · Después del pago",
+      "config.active.label": "Aceptar pago en el mostrador",
+      "config.pix_enabled.label": "Habilitar el QR de PIX del mostrador",
+      "config.card_enabled.label": "Habilitar el datáfono"
+    }
+  },
+  "scopes": [],
+  "contact": {
+    "hooks": [
+      {
+        "component": "payment-options",
+        "target": "storefront:checkout.payment"
+      },
+      {
+        "component": "after-payment",
+        "target": "storefront:checkout.confirmation"
+      }
+    ],
+    "blocks": [
+      {
+        "component": "payment-options",
+        "label": "Pay at the counter · Payment options",
+        "surface": "storefront",
+        "placement": "single",
+        "area": "checkout"
+      },
+      {
+        "component": "after-payment",
+        "label": "Pay at the counter · After payment",
+        "surface": "storefront",
+        "placement": "single",
+        "area": "checkout"
+      }
+    ]
+  },
+  "config": {
+    "fields": [
+      {
+        "name": "active",
+        "type": "boolean",
+        "label": "Accept payments at the counter",
+        "default": true
+      },
+      {
+        "name": "pix_enabled",
+        "type": "boolean",
+        "label": "Enable the counter’s PIX QR",
+        "default": true
+      },
+      {
+        "name": "card_enabled",
+        "type": "boolean",
+        "label": "Enable the card machine",
+        "default": true
+      }
+    ]
+  },
+  "paymentProvider": {
+    "methods": [
+      "pix",
+      "card"
+    ],
+    "reservationWindowSeconds": {
+      "pix": 900,
+      "card": 600
+    }
+  }
+}

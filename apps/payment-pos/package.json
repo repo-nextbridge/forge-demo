@@ -7,6 +7,7 @@
   "description": "Forge extension (PAY-POS): the COUNTER's payment app, written by this box and offered to nobody. Two methods — `pos_card` (the card machine already approved; the kernel only records it) and `pos_pix` (a QR on the totem's screen, settled when the app's own webhook is called). No PSP is ever contacted. Enable per store via PAY-TOGGLES.",
   "forge": {
     "origin": "instance",
+    "kernel": ">=0.3.4 <0.4.0",
     "wiring": {
       "blocks": {
         "payment-options": {
