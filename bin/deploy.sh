@@ -142,6 +142,9 @@ say '0 · the lock: can anybody but this machine run it?'
 . "$HERE/bin/lock-gate.sh"
 lock_gate "$HERE/forge.lock" "$ENV_NAME" "$ALLOW_LOCAL" \
   || die "forge.lock cannot go to ${ENV_NAME} — the gate above names every image and why. Nothing was sent."
+# ★ KP-D2 — and the lock says which apps the pulled kernel receives on its mount, the same ones the list declares.
+lock_gate_mounted "$HERE/forge.lock" "$HERE/composition.json" \
+  || die "forge.lock and composition.json disagree about which apps are MOUNTED into the kernel (above). Nothing was sent."
 
 # ── 1 · THE FENCE ───────────────────────────────────────────────────────────────────────────────────────────
 say '1 · the fence: does every surface this box pins carry the apps this box declares?'
@@ -456,6 +459,16 @@ trap 'rm -f "$assembled"; registry_logout_all' EXIT
   fi
 } > "$assembled"
 
+# ★ v0.3.4 — THE ASSEMBLED `.env` MUST BE SHELL, because on the box `env-source.sh` refuses one that is not (an
+# unquoted value with a space), and then every `remote_compose` below would stop with the delivery half done.
+# The same scan, here, before anything is sent — line numbers and NAMES only, never a value.
+env_bad="$(grep -nE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=[^"'"'"'[:space:]][^[:space:]]*[[:space:]]+[^#[:space:]]' "$assembled" 2>/dev/null \
+  | sed -E 's/^([0-9]+):[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\3/' | sort -u | paste -sd' ' -)"
+[ -z "$env_bad" ] || die "the .env this deploy assembles carries an unquoted value with a space: ${env_bad}.
+     On the box env-source.sh refuses such a file (Forge v0.3.4), and the deploy would stop half done. Quote the
+     value where it is declared (deploy/box.env, deploy/${ENV_NAME}.env, or the box's own .env): NAME=\"two words\".
+     Nothing was sent to ${FORGE_DEPLOY_HOST}."
+
 # ★★ THE COUNTER IS THE ONE SERVICE A DEPLOY CANNOT START, AND THE BOX ALREADY HAD A WORD FOR THAT.
 #
 # `compose.override.yml:140` demands `FORGE_TOTEM_STORE_ID`, and a counter store is a ULID the SEED mints —
@@ -494,17 +507,34 @@ if [ "$PLAN" = 'yes' ]; then
   note "                ${FORK_IMAGES[*]}"
   note "would bring up: $BRINGING"
   note "would check   : every bind mount of the running containers, by content — recreating only what diverged"
+  note "would recreate: the kernel, if this delivery changes extensions/ ($(find "$HERE/extensions" -mindepth 1 -maxdepth 1 -type d -printf '%f ' 2>/dev/null)) — it reads its mount at boot only"
   printf '\n%s ✓ plan only. The fence above DID run, against the real lock.\n\n' "$TAG"
   exit 0
 fi
 
 "${SSH[@]}" "install -d -m 755 '${FORGE_DEPLOY_DIR}'" || die 'could not create the box directory on the host.'
 
+# ★★ KP-D2 — WHAT THE KERNEL LOADS FROM ITS MOUNT, BEFORE AND AFTER THIS DELIVERY. Since v0.3.4 this box's own
+# apps reach the pulled kernel as `extensions/<id>` (composition.json, `"kernel": "mounted"`), and the kernel
+# reads that directory ONCE, AT BOOT. `tar -x` rewrites the files inside a directory whose inode it keeps
+# (measured, see bin/remote-box.sh), so the bind mount stays live, step 6a finds nothing stale — and the
+# running kernel goes on serving the app it booted with. An app repacked with no kernel image change (the
+# common case: a fix to `payment-pos`) would ship to the disk and never reach the process. So the CONTENT of
+# `extensions/` is fingerprinted on the box on both sides of the delivery, and a difference recreates the
+# kernel after the `up` (step 6). `bin/mounted-apps.guard.mjs` runs this script against a fake host to hold it.
+extensions_fingerprint() {
+  "${SSH[@]}" "cd '${FORGE_DEPLOY_DIR}' 2>/dev/null && { find extensions -type f -print0 2>/dev/null | LC_ALL=C sort -z | xargs -0r sha256sum; } | sha256sum | cut -d' ' -f1" 2>/dev/null || true
+}
+extensions_before="$(extensions_fingerprint)"
+
 # tar over ssh: one stream, permissions kept, and no dependency on rsync being installed anywhere.
 tar -C "$HERE" -czf - "${DELIVER[@]}" \
   | "${SSH[@]}" "tar -C '${FORGE_DEPLOY_DIR}' -xzf -" \
   || die 'delivering the box failed.'
 note "delivered ${#DELIVER[@]} path(s)"
+extensions_after="$(extensions_fingerprint)"
+EXTENSIONS_CHANGED=no
+[ "$extensions_before" = "$extensions_after" ] || EXTENSIONS_CHANGED=yes
 
 "${SSH[@]}" "cat > '${FORGE_DEPLOY_DIR}/.env' && chmod 600 '${FORGE_DEPLOY_DIR}/.env'" < "$assembled" \
   || die 'writing the box .env failed.'
@@ -618,6 +648,15 @@ note 'migrated'
 remote_compose "${COMPOSE_FILES[@]}" up -d --remove-orphans $UP_ARGS >/dev/null \
   || die 'the stack did not come up. `docker compose ps` on the host says which container.'
 note "up        $BRINGING"
+
+# ★ KP-D2 — the kernel loads `extensions/` at boot only (step 4): what was delivered there reaches it by a recreate.
+if [ "$EXTENSIONS_CHANGED" = 'yes' ]; then
+  remote_compose "${COMPOSE_FILES[@]}" up -d --force-recreate --no-deps kernel >/dev/null \
+    || die 'extensions/ changed and the kernel could not be recreated to load it. `docker compose ps` on the host says more.'
+  note 'recreated kernel — extensions/ changed in this delivery, and the kernel reads its mount only at boot'
+else
+  note 'mount     extensions/ unchanged by this delivery — no recreate for it'
+fi
 
 # ── 6a · ★★ THE MOUNTS: DOES EVERY RUNNING CONTAINER SERVE WHAT STEP 4 JUST DELIVERED? ──────────────────────
 #

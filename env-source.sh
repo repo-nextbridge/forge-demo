@@ -55,6 +55,30 @@ _forge_env_declares() { # <VAR>
   printf '%s' "$line"
 }
 
+# ★★ v0.3.4 — `.env` IS SHELL TO EVERY SCRIPT THAT SOURCES IT, AND A VALUE WITH A SPACE IS REFUSED, BY LINE AND NAME.
+# The template's `env-source.sh` SOURCES `.env` and v0.3.4 made it fail on a file bash cannot read; this one never
+# sources it (it reads keys with `_forge_env_declares`), but `bin/box-up.sh` (lines 1020, 2265, 2324, 2423) and
+# `bin/box-down.sh` do — and an unquoted `NAME=two words` there runs `words` as a command and leaves `NAME=two`,
+# with a green prompt (the template measured it 2026-10-21; this repository measured the same shape in
+# `.env.example` on 2026-09-18, bin/env-example-sourceable.guard.mjs). So the template's signal (1) is taken AS IS:
+# the file is READ, never run, and a line of that shape stops the source naming its number and NAME — never the
+# value. ⚠️ On a deployed box this stops `remote_compose` (bin/remote-box.sh), which is why `bin/deploy.sh` runs
+# the SAME scan over the `.env` it assembles, before anything is delivered (bin/env-example-sourceable.guard.mjs holds the
+# two patterns equal). Fix: quote the value (`NAME="two words"`) — harmless for compose.
+_forge_env_unquoted_spaces() { # <file> → "line N (NAME)" per offending line
+  grep -nE '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=[^"'"'"'[:space:]][^[:space:]]*[[:space:]]+[^#[:space:]]' "$1" 2>/dev/null \
+    | sed -E 's/^([0-9]+):[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/line \1 (\3)/'
+}
+_forge_env_bad="$(_forge_env_unquoted_spaces "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.env")"
+if [ -n "$_forge_env_bad" ]; then
+  echo "[env-source] .env is not valid shell — scripts of this box SOURCE it, so a value with a space in it goes inside" >&2
+  echo "[env-source]   quotes (NAME=\"two words\"). Nothing was exported." >&2
+  printf '%s\n' "$_forge_env_bad" | sed 's/^/[env-source]     unquoted value with a space: /' >&2
+  unset _forge_env_bad
+  return 1
+fi
+unset _forge_env_bad
+
 require() { # <VAR> <secret name>
   local var="$1" name="$2" value
   if ! value="$(secret "$name")" || [ -z "$value" ]; then

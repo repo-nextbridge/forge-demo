@@ -67,7 +67,7 @@ esta tabela não a inventa, ela a espelha.
 | 1 | a `main` do produto assa e sobe em **Staging/QA** | produto | **Portão 2** — o QA **humano** aprova |
 | 2 | **corta o release**: tag `vX.Y.Z` + deploy na **Referência/Prod** | produto | **Portão 3** |
 | 3 | a Demo **PINA** esse release — os forks e as ferramentas instalam `@forgeco/*@<versão>` do npm | este repositório | §2.1 |
-| 4 | a Demo **ASSA** cinco imagens no CI dela, do oven do release, e publica no GHCR por digest; o admin é o da release (KP-D1) | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
+| 4 | a Demo **ASSA** quatro imagens no CI dela, do oven do release, e publica no GHCR por digest; kernel e admin são os da release (KP-D1, KP-D2), e os apps da demo chegam ao kernel MONTADOS (`extensions/`) | `.github/workflows/bake.yml` | §2.1 — o lock volta por PR |
 | 4b | a Demo **desce para o `stag` dela**, e depois para o `prod` com o MESMO lock | as duas VMs | `bash bin/deploy.sh stag` · `bash bin/deploy.sh prod` — §2.2 |
 | 5 | a Demo **nasce** | a bancada **ou** a VM | bancada: `bash bin/box-up.sh` — §3 · VM: `bash bin/birth-remote.sh <env>` — §2.3 |
 | 6 | **reset + reseed** | a bancada **ou** a VM | bancada: `bin/box-down.sh` + `bin/box-up.sh` — §5 · VM: `bash bin/box-down.sh --env <env> && bash bin/deploy.sh <env> --birth` — §2.3 |
@@ -263,7 +263,8 @@ do oven**. É o §5b de `templates/instance/README.md` do produto, seguido ao p�
 
 | quem | o quê | onde |
 |---|---|---|
-| `bin/bake.sh` | assa **kernel, storefront, checkout, admin** (a receita) + **storefront-coffee, totem** (os forks, `npm ci` do npm na versão do release) e escreve o lock | o MESMO script no CI e na bancada |
+| `bin/bake.sh` | assa **storefront, checkout** (a receita) + **storefront-coffee, totem** (os forks, `npm ci` do npm na versão do release) e escreve o lock, com **kernel e admin da release** e `composition.mounted` | o MESMO script no CI e na bancada |
+| `bin/pack-apps.sh` | empacota a metade-kernel de cada app `"kernel": "mounted"` em `extensions/<id>` (comitado) com o `forge pack-extension` da release | à mão, a cada mudança em `apps/` |
 | `.github/workflows/bake.yml` | em todo push na `main` que mude alguma entrada do bake (e `workflow_dispatch`): baixa o `forge.lock` da Release, puxa o oven por digest, roda `bin/bake.sh --registry ghcr.io/<org>`, publica `ghcr.io/<org>/forge-demo-<nome>` e sobe o lock como **artefato** do run | CI desta caixa |
 | `bin/bake-local.sh` | `bin/bake.sh` **sem** registry: refs **sem host de registry**, que só existem no daemon que assou | bancada |
 
@@ -311,7 +312,8 @@ continua **opcional**: se o `.secrets` da caixa tiver `GHCR_PULL_TOKEN` e `GHCR_
 
 ★★ **KP-D1 (21/10) — o ADMIN vem da RELEASE, não do forno.** Nenhum app da demo desenha no admin, então o
 `bin/bake.sh` assa cinco imagens e copia o `images.admin` do `forge.lock` da Release (`--release-lock`; o
-`bake.yml` usa o mesmo lock de onde lê o oven) como `{ ref, origin: "release" }`. Essa imagem mora no Artifact
+`bake.yml` usa o mesmo lock de onde lê o oven) como `{ ref, origin: "release" }`. (Desde a KP-D2 o kernel
+também — bloco abaixo.) Essa imagem mora no Artifact
 Registry **privado** do produto. **Sem chave** (a organização do GCP proíbe chave de conta de serviço): o
 `registry-access.json` (versionado, não é segredo) nomeia a conta de leitura do cliente, e o `bin/deploy.sh`
 (passo 3b), na máquina que faz o deploy, gera um token de 1 h com
@@ -321,14 +323,38 @@ Registry **privado** do produto. **Sem chave** (a organização do GCP proíbe c
 ⇒ recusa **nomeada antes de entregar qualquer coisa** (`bin/registry-pull.guard.mjs`). Na bancada, o `box-up`
 também puxa o admin: faça o mesmo `docker login` local uma vez.
 
+★★ **KP-D2 (22/10, Forge v0.3.4) — o KERNEL também vem da RELEASE, e os dois apps da demo chegam a ele MONTADOS.**
+Até a v0.3.4 a metade-kernel de `demo-setup` (o manifesto) e de `payment-pos` (o driver de pagamento) só entrava
+no kernel COMPOSTA, então a demo assava um kernel próprio. Agora o `composition.json` declara os dois
+`"kernel": "mounted"`, `bin/pack-apps.sh` os empacota em `extensions/<id>` (comitado), o `bin/bake.sh` copia
+`images.kernel` do `forge.lock` da Release e escreve `composition.mounted`, e a caixa monta `extensions/` em
+`FORGE_EXTENSIONS_DIR` (o `compose.yml` assume `/app/extensions`). O mesmo login curto por impersonação vale para
+kernel e admin (mesmo host). O que muda na operação:
+
+- **app mudou ⇒ reempacotar.** `npm ci && bash bin/pack-apps.sh` e comitar `apps/<id>` + `extensions/<id>` juntos.
+  O artefato carrega o digest da fonte (`forge.sourceDigest`); a cerca do produto (`forge-lock-provenance`, no
+  passo 1 do `deploy.sh` e no CI do bake) recusa um artefato mais velho que a fonte, nomeando-o.
+- **o deploy recria o kernel quando `extensions/` muda** (passo 6: o kernel lê o mount só no boot; um `tar -x`
+  sobre o diretório não o reinicia). Um deploy que não mexe em `extensions/` não reinicia nada por isso.
+- **o lock precisa de `composition.mounted`** igual ao que a lista declara: `lock_gate_mounted` (`bin/lock-gate.sh`)
+  recusa no passo 0, antes de tocar no host; o CI do bake pergunta o mesmo do lock que escreve.
+- **`apps` = a lista da release, entrada por entrada** (limitação declarada da v0.3.4: o kernel puxado compõe a
+  lista inteira da release). O `bin/bake.sh` recusa uma diferença antes de assar.
+- ⛔ **entre o merge da KP-D2 e a adoção do lock do 1º bake novo, `deploy.sh` RECUSA** — de propósito: o lock
+  comitado ainda tem kernel `own build` (que já compõe os dois apps) e a lista diz `mounted`; subir isso morreria
+  no boot por id duplicado. A cerca e o `lock_gate_mounted` dizem isso por nome.
+- depois de subir: `bash bin/verify-composition.sh` (cópia v0.3.4 do template) compara o kernel com `apps − mounted`
+  e pergunta ao kernel rodando o que ele serve montado (`/health` → `extensions`).
+
 **O que o CI precisa (nomes; nenhum valor neste repositório):** `vars.WIF_PROVIDER` (o provider `github-demo`
 do pool de Workload Identity, com `artifactregistry.reader` no repositório do oven — sem conta de serviço) e
 `secrets.FORGE_RELEASE_TOKEN` (leitura de conteúdo no repositório do produto, que é **privado**: o
 `GITHUB_TOKEN` deste repositório não lê a Release de outro repositório).
 
 **Como PROVAR, de uma linha:** `jq -e '.provenance // empty' forge.lock` sai **vazio**;
-`jq -r '.images[] | "\(.origin) \(.ref)"' forge.lock` lista **cinco** `own build ghcr.io/…@sha256:…` e o
-**admin** `release southamerica-east1-docker.pkg.dev/…/forge-admin@sha256:…` (KP-D1, abaixo); e
+`jq -r '.images[] | "\(.origin) \(.ref)"' forge.lock` lista **quatro** `own build ghcr.io/…@sha256:…` e o
+**kernel** e o **admin** `release southamerica-east1-docker.pkg.dev/…/forge-<nome>@sha256:…` (KP-D1/KP-D2, acima);
+`jq -c .composition.mounted forge.lock` dá `["demo-setup","payment-pos"]`; e
 `bash bin/deploy.sh stag --plan` passa do passo 0. Depois de nascer, `bash bin/verify-composition.sh` compara o
 que o lock pediu com o que o kernel declara.
 

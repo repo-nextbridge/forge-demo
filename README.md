@@ -25,10 +25,12 @@ composition.json       WHICH APPS the images compose. An instance's answer, not 
                        reason; `bin/composition.guard.mjs` grades that against the monorepo.
 env-source.sh          the one file that knows this box's secrets. Sourced, never read from disk by a container.
 .env.example           the boring configuration. Copy to `.env`.
-apps/                  the apps THIS box wrote: `demo-setup` (§4b) and `payment-pos` (§4c). Composed into
-                       the images. §4 is where the third one went.
-extensions/            the FORGE_EXTENSIONS_DIR mount, for an app of ACTIONS ONLY. Empty since this box's own
-                       apps became composed; `bin/pack-apps.sh` still produces this form for one that needs it.
+apps/                  the apps THIS box wrote: `demo-setup` (§4b) and `payment-pos` (§4c) — the SOURCE. Their
+                       front half is composed into storefront/checkout; their kernel half is MOUNTED (below).
+                       §4 is where the third one went.
+extensions/            the FORGE_EXTENSIONS_DIR mount — since KP-D2 (Forge v0.3.4) the PACKED kernel half of
+                       both apps (`bin/pack-apps.sh`, committed): how they reach the release's pulled kernel.
+                       GENERATED: edit `apps/<id>` ⇒ `bash bin/pack-apps.sh` ⇒ commit both. See §1.
 themes/                the store themes (`theme_key` on a store names one). `outlet` and `coffee-store` arrive with D2 and C2.
 seed/                  the birth data: the stores, the coffee and counter catalogues, the photos — and the
                        STOCK POOL (`catalog.json` → `stock_pool`), products this brand owns that no store
@@ -63,10 +65,11 @@ monorepo, anywhere**:
 | **our apps** | `apps/<id>/` (`instanceApps[].source`), handed over as the oven's `apps` build context. |
 | **our two fronts** | `storefront-coffee/` and `totem/`, which install `@forgeco/*` **from npm, at the release's exact version** (`bin/fork-release-pin.guard.mjs`). |
 
-**One script, two callers.** `bin/bake.sh` bakes FIVE images — kernel, storefront, checkout out of the recipe,
-plus the two forks — and writes `forge.lock` with a SIXTH it does not bake: the **admin of the release**,
-`{ "ref": "<release registry>/forge-admin@sha256:…", "origin": "release" }`, copied from the Release's own
-`forge.lock` (`--release-lock`; never typed). See [where each image comes from](#where-each-image-comes-from-kp-d1).
+**One script, two callers.** `bin/bake.sh` bakes FOUR images — storefront and checkout out of the recipe, plus
+the two forks — and writes `forge.lock` with two it does not bake: the **kernel and the admin of the release**,
+`{ "ref": "<release registry>/forge-<name>@sha256:…", "origin": "release" }`, copied from the Release's own
+`forge.lock` (`--release-lock`; never typed), and `composition.mounted` naming the apps the pulled kernel
+receives on its mount. See [where each image comes from](#where-each-image-comes-from-kp-d1-kp-d2).
 
 - **CI** — `.github/workflows/bake.yml`, on every push to `main` that changes an input of the bake — not one that only changes `forge.lock` (its output), `docs/**` or this README — (and by hand): reads the release this
   repository pins, downloads that Release's `forge.lock`, pulls the oven, runs `bin/bake.sh --registry
@@ -77,20 +80,51 @@ plus the two forks — and writes `forge.lock` with a SIXTH it does not bake: th
   it is the release's). It downloads the Release's `forge.lock` with your `gh` login, or takes
   `FORGE_RELEASE_LOCK=<file>`.
 
-### Where each image comes from (KP-D1)
+### Where each image comes from (KP-D1, KP-D2)
 
 | image | origin in `forge.lock` | registry | how a box pulls it |
 |---|---|---|---|
-| `kernel` · `storefront` · `checkout` | `own build` — baked here, with this box's list | `ghcr.io/repo-nextbridge/forge-demo-*` (public) | anonymously |
+| `storefront` · `checkout` | `own build` — baked here, with this box's list (both apps compiled in) | `ghcr.io/repo-nextbridge/forge-demo-*` (public) | anonymously |
 | `storefront-coffee` · `totem` | `own build` — our forks | `ghcr.io/repo-nextbridge/forge-demo-*` (public) | anonymously |
-| `admin` | **`release`** — the Forge release's own, by digest | the product's **private** Artifact Registry (`southamerica-east1-docker.pkg.dev`) | with a **1-hour token**, see below |
+| `kernel` · `admin` | **`release`** — the Forge release's own, by digest | the product's **private** Artifact Registry (`southamerica-east1-docker.pkg.dev`) | with a **1-hour token**, see below |
 
 **Why the admin is pulled:** the product's doctrine is "pull by digest what does not differentiate the box,
 bake what carries an app that draws a screen". No app of this box draws in the admin (`demo-setup` →
 storefront, `payment-pos` → checkout), and the product's fence (`forge-lock-provenance`, run by
 `bin/deploy.sh` step 1) stays green with `admin: release` — and turns red, naming the admin, the day an app
-here declares an admin block (`bin/deploy.guard.mjs`). The kernel waits for the v0.3.4 cut (it needs the
-mounted-app path).
+here declares an admin block (`bin/deploy.guard.mjs`).
+
+**Why the kernel is pulled too (KP-D2, Forge v0.3.4).** Both apps have a kernel half — `demo-setup`'s manifest,
+`payment-pos`'s payment driver — and until v0.3.4 the only way in was to be COMPOSED into a kernel this box
+baked. v0.3.4 loads an instance app from a packed directory: `composition.json` declares both
+`"kernel": "mounted"`, their kernel half is packed into `extensions/<id>` and committed, and the box mounts it at
+`FORGE_EXTENSIONS_DIR` (compose.yml defaults it to `/app/extensions`). The fronts still compile both apps — a
+React block reaches a front only by being built into it — so storefront and checkout are still baked here.
+`forge.lock` says what is mounted (`composition.mounted`) and `bin/verify-composition.sh` (the release's v0.3.4
+copy) proves it against the running kernel: `apps − mounted` in the image, and both apps served from the mount.
+
+⛔ **Two things the kernel refuses, and who catches each first.** A kernel BAKED from this list composes both
+apps and then finds them on the mount: the boot dies on a duplicate id — the product's fence refuses that lock
+(`own build` kernel + `mounted`) before anything ships. And `apps` must be **the release's list, entry for
+entry**: the pulled kernel composes exactly that list (v0.3.4's stated limitation); `bin/bake.sh` refuses a
+difference before baking.
+
+#### Regenerating `extensions/` when an app of this box changes
+
+```bash
+npm ci                    # the release's tools: `forge pack-extension` (@forgeco/cli) at the pinned version
+bash bin/pack-apps.sh     # packs every `instanceApps` entry declared "kernel": "mounted" into extensions/<id>
+git add apps/<id> extensions/<id>    # in the SAME change — the artifact carries its source's fingerprint
+```
+
+The artifact is stamped with the digest of the source it came from (`forge.sourceDigest`), and an artifact
+OLDER than its source is refused by name by the product's fence, which runs in `bin/deploy.sh` (step 1) and in
+the bake's CI — so a forgotten repack stops the deploy, not the box. Each app declares the kernels it fits
+(`"forge": { "kernel": ">=0.3.4 <0.4.0" }` in its `package.json`): moving to a release outside that range means
+widening the range and repacking. `bin/deploy.sh` recreates the kernel when a delivery changes `extensions/`
+(the kernel reads its mount at boot only); on a bench, `docker compose up -d --force-recreate --no-deps kernel`.
+Guards: `bin/mounted-apps.guard.mjs` (the chain, with its sabotages) and `bin/composed-apps-not-mounted.guard.mjs`
+(no composed app on the mount, every mounted app on it).
 
 **The customer gets access through a read-only service account — with no key.** The GCP organization forbids
 service-account keys, so nothing is stored on the box or in this repository: `registry-access.json` (versioned,
@@ -107,16 +141,17 @@ gcloud auth print-access-token --impersonate-service-account=<registry-access.js
 refuses **by name, before anything is delivered** (`bin/registry-pull.guard.mjs`). The CI bake never pulls the
 admin; it only writes its ref.
 
-⚠️ **A bench `box-up` pulls the admin too.** Log this machine's docker in once, the same way, before the
-first `box-up` of a lock with `admin: release`:
+⚠️ **A bench `box-up` pulls the kernel and the admin too.** Log this machine's docker in once, the same way,
+before the first `box-up` of a lock with `kernel`/`admin: release`:
 `gcloud auth print-access-token --impersonate-service-account=<…> | docker login -u oauth2accesstoken --password-stdin https://southamerica-east1-docker.pkg.dev`.
 
 ### ⚠️ Without GCP: you can RUN this box, you cannot BAKE it (measured 2026-10-10, dx-i4)
 
-**To run it, you need no oven — and, once the lock pins `admin: release` (KP-D1), read access to the release's
-admin** (a 1-hour token, [above](#where-each-image-comes-from-kp-d1)). The five baked images are on GHCR by
+**To run it, you need no oven — and, since the lock pins `kernel`/`admin: release` (KP-D1, KP-D2), read access
+to the release's registry** (a 1-hour token, [above](#where-each-image-comes-from-kp-d1-kp-d2)). The baked images are on GHCR by
 digest, and those packages are public: an anonymous pull token answers **200** for each of the six digests
-(`curl https://ghcr.io/token?scope=repository:repo-nextbridge/forge-demo-kernel:pull`, then the manifest by
+(measured 2026-10-10, when six were baked; four are since KP-D1/KP-D2)
+(`curl https://ghcr.io/token?scope=repository:repo-nextbridge/forge-demo-storefront:pull`, then the manifest by
 digest — without the token it is 401, and a made-up digest is 404, so the 200 means something). `docker
 compose` pulls them on the first `box-up`. That is the "EITHER" line of §2, and it is the path for anyone who
 wants the box, not a new build of it.
@@ -2284,8 +2319,8 @@ The demo instance is **six images**, and only four of them are the product:
 
 | image | whose | how it gets here |
 |---|---|---|
-| `kernel` · `storefront` · `checkout` | **the product's recipe**, baked with this box's list | `bin/bake.sh`, pinned BY DIGEST in `forge.lock` |
-| `admin` | **the product's release**, as published (KP-D1) | copied from the Release's `forge.lock` by `bin/bake.sh` (`origin: "release"`), pulled with a 1-hour token |
+| `storefront` · `checkout` | **the product's recipe**, baked with this box's list | `bin/bake.sh`, pinned BY DIGEST in `forge.lock` |
+| `kernel` · `admin` | **the product's release**, as published (KP-D1, KP-D2) | copied from the Release's `forge.lock` by `bin/bake.sh` (`origin: "release"`), pulled with a 1-hour token; our apps reach the kernel MOUNTED (`extensions/`, §1) |
 | `storefront-coffee` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
 | `totem` | **ours** | `bin/bake.sh` (the fork's own build), pinned BY DIGEST in `forge.lock` |
 

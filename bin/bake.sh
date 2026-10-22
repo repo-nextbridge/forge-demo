@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ★★★ THE DEMO'S BAKE — the six images this box runs, out of a Forge RELEASE's oven, and the `forge.lock` that
-# pins them. EXECUTE it (it builds images and writes a file); do not source it.
+# ★★★ THE DEMO'S BAKE — the four images this box bakes out of a Forge RELEASE's oven, the two it pulls from that
+# release, and the `forge.lock` that pins all six. EXECUTE it (it builds images and writes a file); do not source it.
 #
 #   OVEN_IMAGE=<images.oven of the release's forge.lock> bash bin/bake.sh --release-lock <release forge.lock> --lock <out>   (bench)
 #   OVEN_IMAGE=… bash bin/bake.sh --release-lock <…> --registry ghcr.io/<org> --tag <tag> --lock <out>                     (CI: pushes)
@@ -21,9 +21,21 @@
 #   · the FORKS     — `storefront-coffee/` and `totem/`, which install `@forgeco/*@<release>` from npm.
 #   · the RELEASE'S LOCK — `--release-lock`, the `forge.lock` asset of that Release, for what this box PULLS.
 #
-# WHAT COMES OUT: kernel, storefront, checkout (three of the recipe's four targets) + storefront-coffee and
-# totem (the forks' thin Dockerfiles), and a lock: `{ ref, origin: "own build", built_from: <release> }` per
-# baked image, no `provenance` block — and `admin: { ref, origin: "release" }`, copied from the release's lock.
+# WHAT COMES OUT: storefront, checkout (two of the recipe's four targets) + storefront-coffee and totem (the
+# forks' thin Dockerfiles), and a lock: `{ ref, origin: "own build", built_from: <release> }` per baked image, no
+# `provenance` block — and `kernel` and `admin` as `{ ref, origin: "release" }`, copied from the release's lock,
+# with `composition.mounted` naming the apps the pulled kernel receives on its mount.
+#
+# ★★ KP-D2 (2026-10-22, Forge v0.3.4) — THE KERNEL IS PULLED TOO, AND OUR APPS REACH IT MOUNTED. Until v0.3.4 an
+# app of this box with a kernel half (`demo-setup`'s manifest, `payment-pos`'s driver) could reach the kernel
+# only by being COMPOSED into it, so this box baked a kernel of its own. v0.3.4 loads an instance app from a
+# packed directory: `composition.json` declares both apps `"kernel": "mounted"`, `bin/pack-apps.sh` packs them
+# into `extensions/<id>` (committed), and the kernel here is the release's, by digest, exactly like the admin.
+# ⛔ DO NOT PUT `kernel` BACK IN THE LOOP BELOW while the list says `mounted`: a kernel baked from this list
+# composes both apps AND finds them on the mount, and the boot dies on a duplicate id (the product's fence says
+# so before anything ships — `forge-lock-provenance`, red on `own build` + `mounted`). To bake it again, drop
+# `"kernel": "mounted"` from composition.json in the same change. The fronts still compile both apps — a React
+# block reaches a front only by being built into it — and the oven records the mount in their composition.json.
 #
 # ★★ KP-D1 (2026-10-21) — THE ADMIN IS PULLED, NOT BAKED. The product's doctrine: pull by digest what does not
 # differentiate the box, bake what carries an app that draws a screen. No app of this box draws in the admin
@@ -63,7 +75,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "$lock_out" ] || die 'name the lock to write: --lock <path>. The bench writes forge.lock; CI writes an artifact.'
-[ -n "$release_lock" ] || die 'name the release'"'"'s forge.lock: --release-lock <path>. The admin is PULLED from it (gh release download <tag> -R repo-nextbridge/forge -p forge.lock).'
+[ -n "$release_lock" ] || die 'name the release'"'"'s forge.lock: --release-lock <path>. The kernel and the admin are PULLED from it (gh release download <tag> -R repo-nextbridge/forge -p forge.lock).'
 
 # The host's node first: the forks' `npm run build` and the provenance check are host node processes.
 # shellcheck source=bin/require-node.sh
@@ -115,7 +127,7 @@ say "release   $release (the forks' and the tools' pin; the oven is stamped the 
 # without docker. Every refusal names the file and the image, because a lock that pins a different release's
 # admin beside this release's kernel is a mix no release ever shipped.
 # >>> THE IMAGES THIS BOX PULLS FROM THE RELEASE
-PULLED_FROM_RELEASE=(admin)
+PULLED_FROM_RELEASE=(kernel admin)
 [ -f "$release_lock" ] || die "the release's lock '$release_lock' does not exist."
 jq -e . "$release_lock" >/dev/null 2>&1 || die "the release's lock '$release_lock' is not JSON."
 release_lock_version="$(jq -r '.forgeVersion // ""' "$release_lock")"
@@ -133,6 +145,32 @@ for target in "${PULLED_FROM_RELEASE[@]}"; do
 done
 # <<< THE IMAGES THIS BOX PULLS FROM THE RELEASE
 say "pulled    ${PULLED_FROM_RELEASE[*]} — from the $release release's lock, by digest (not baked here)"
+
+# ★ KP-D2 — `composition.mounted`, the shape the product publishes (templates/instance/README.md, "An app of your
+# own, MOUNTED into the pulled kernel", step 4): the ids of `instanceApps` declared `"kernel": "mounted"`, read
+# from the list and never typed. `bin/verify-composition.sh` (v0.3.4) compares the running kernel with
+# `apps − mounted` and asks it for the mount; a lock without the key reads both apps as MISSING from the image.
+# ⚠️ BETWEEN MARKERS so `bin/bake-mounts-apps.guard.mjs` can run THIS block over a fabricated list without docker.
+# >>> THE APPS THE PULLED KERNEL RECEIVES MOUNTED
+mounted_json="$(jq -c '[.instanceApps // [] | .[] | select(.kernel == "mounted") | .id]' "$here/composition.json")"
+composed_own="$(jq -r '[.instanceApps // [] | .[] | select(.kernel != "mounted") | .id] | join(", ")' "$here/composition.json")"
+[ -z "$composed_own" ] || die "composition.json declares $composed_own as COMPOSED into the kernel, and this bake pulls the release's kernel,
+     which has never seen that code. Declare it \"kernel\": \"mounted\" and pack it (bash bin/pack-apps.sh), or bake the kernel again."
+for id in $(jq -r '.[]' <<<"$mounted_json"); do
+  [ -f "$here/extensions/$id/forge-extension.json" ] \
+    || die "composition.json declares \"$id\" mounted, and extensions/$id holds no packed manifest — run bash bin/pack-apps.sh and commit extensions/$id."
+done
+# ⚠️ AND THE PULLED KERNEL COMPOSES THE RELEASE'S WHOLE LIST, so `apps` here must be that list, entry for entry —
+# the product's own limitation of v0.3.4 ("Composing fewer apps than the release and keeping the kernel pulled is
+# not supported yet"). A box that dropped or added a platform app would be told EXTRA/MISSING by
+# verify-composition.sh on the running box; this says it before anything is baked.
+ours="$(jq -r '[.apps[].id] | sort | join(" ")' "$here/composition.json")"
+theirs="$(jq -r '[.composition.apps // [] | .[]] | sort | join(" ")' "$release_lock")"
+[ "$ours" = "$theirs" ] || die "composition.json's apps are not the $release release's list, and the pulled kernel composes exactly that one.
+     ours:    $ours
+     release: $theirs"
+# <<< THE APPS THE PULLED KERNEL RECEIVES MOUNTED
+say "mounted   $(jq -r 'join(", ")' <<<"$mounted_json") — packed in extensions/<id>, into the pulled kernel (not composed)"
 
 # ── THE CONTEXTS: recipe, list, apps — one scratch directory, nothing of this repo beyond them ─────────────
 work="$(mktemp -d -t forge-demo-bake.XXXXXX)"
@@ -193,8 +231,8 @@ ref_of() { # <name:tag>
 }
 
 declare -A REFS=()
-# ⚠️ `admin` is NOT here: it is pulled from the release (above, KP-D1).
-for target in kernel storefront checkout; do
+# ⚠️ `admin` and `kernel` are NOT here: both are pulled from the release (above — KP-D1, KP-D2).
+for target in storefront checkout; do
   image="${prefix}${target}:${image_tag}"
   say "baking   $target → $image"
   docker_build_retry -f "$work/Dockerfile" --target "$target" \
@@ -255,7 +293,8 @@ jq -n \
   --argjson nodeMinMajor "$node_major" \
   --arg id "$composition_id" \
   --argjson apps "$(jq '[(.instanceApps // [] | .[].id), (.apps[].id)]' "$here/composition.json")" \
-  --argjson kernel "$(image_entry "${REFS[kernel]}")" \
+  --argjson mounted "$mounted_json" \
+  --argjson kernel "$(pulled_entry "${PULLED[kernel]}")" \
   --argjson storefront "$(image_entry "${REFS[storefront]}")" \
   --argjson checkout "$(image_entry "${REFS[checkout]}")" \
   --argjson admin "$(pulled_entry "${PULLED[admin]}")" \
@@ -265,7 +304,7 @@ jq -n \
   '{
     forgeVersion: $version,
     node: { minMajor: $nodeMinMajor, engines: $nodeEngines },
-    composition: { id: $id, apps: $apps },
+    composition: { id: $id, apps: $apps, mounted: $mounted },
     images: {
       kernel: $kernel, storefront: $storefront, checkout: $checkout, admin: $admin,
       "storefront-coffee": $coffee, totem: $totem
@@ -276,5 +315,5 @@ jq -n \
     why_not_offerable: "This image composes an app that belongs to THIS box (see `instanceApps` in composition.json). Forge stamps such an image not-offerable and its release gate refuses to promote one: an image carrying one customer\u0027s app must never be handed to another. That is a property of what this box asked for, not a defect."
   }' > "$lock_out"
 
-say "wrote     $lock_out — $release × $composition_id, five images baked + ${PULLED_FROM_RELEASE[*]} from the release, ${registry:+in $registry}${registry:-ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)}"
+say "wrote     $lock_out — $release × $composition_id, four images baked + ${PULLED_FROM_RELEASE[*]} from the release, $(jq -r 'join(", ")' <<<"$mounted_json") mounted, ${registry:+in $registry}${registry:-ONLY in this daemon (no registry host: bin/deploy.sh refuses it for stag/prod)}"
 jq -r '.images | to_entries[] | "[bake]   \(.key): \(.value.ref)"' "$lock_out" >&2

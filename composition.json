@@ -66,7 +66,14 @@
     "★ v032/C — `\"axis\": \"instance\"` IS DECLARED HERE, IN THE LIST. From v0.3.2 the oven reads the axis from the list",
     "(`image = release × list`, one input) and refuses a list that carries `instanceApps` without saying it, naming the",
     "key. Until then `bin/build-local.sh` passed `FORGE_COMPOSITION_AXIS=instance` on the command line; that script is",
-    "gone, and `bin/bake.sh` hands THIS file to the oven as is — no generated copy, no second list."
+    "gone, and `bin/bake.sh` hands THIS file to the oven as is — no generated copy, no second list.",
+    "",
+    "★★ KP-D2 (2026-10-22, Forge v0.3.4) — BOTH `instanceApps` SAY `\"kernel\": \"mounted\"`. Their FRONT half is still",
+    "composed by the oven into storefront and checkout; their KERNEL half reaches the RELEASE's kernel, pulled by digest,",
+    "as `extensions/<id>` (`bin/pack-apps.sh`, committed). The key is the product's own (`instanceApps[].kernel`, absent =",
+    "\"composed\"); `bin/bake.sh` writes the ids into the lock as `composition.mounted`. ⛔ Drop it from an app and the",
+    "bake refuses naming the app (a pulled kernel has never seen it) — to compose it again, bake the kernel again. And",
+    "with the kernel pulled, `apps` above must stay the RELEASE's list, entry for entry (v0.3.4's stated limitation)."
   ],
   "version": 1,
   "axis": "instance",
@@ -169,12 +176,14 @@
       "id": "demo-setup",
       "package": "@forge/ext-demo-setup",
       "source": "./apps/demo-setup",
+      "kernel": "mounted",
       "why": "the demo's own MARKS \u2014 the shop's name and logo in the three places the VITRINE shows one (header bar, mobile drawer, footer column), each placed and configured on its own in Compose \u2014 AND the demonstration ribbon, the bar that tells a visitor nothing here is charged or shipped. It is on THIS list because no Forge release carries it and none should: a logo is CONTENT, and the product ships the slots with a bare default while whoever wants a mark writes the block (r\u00e9gua 3 of CLAUDE.md). \u2605\u2605 AND IT IS THE DEMONSTRATION ITSELF, which is the reason it exists at all: an app that lives in ONE customer's repository, writes four blocks, ships no admin page, asks for no scope and changes the face of four shops is the shortest true answer to \u00abhow do I extend Forge?\u00bb \u2014 it shows one logo becoming another, plainly and with nothing else in the way. \u26d4 THE RIBBON IS A BLOCK AND NOT A GATE, AND THAT IS THIS BOX'S MOST EXPENSIVE MEASUREMENT: an app INSTALLED on `storefront:gate` puts every route of every store on the dynamic tree \u2014 the deployed box answered `private, no-cache, no-store` everywhere and served a robot the interstitial at every URL, with no `<title>`. A block is rendered by the slot it was dropped into and costs the cache nothing."
     },
     {
       "id": "payment-pos",
       "package": "@forge/ext-payment-pos",
       "source": "./apps/payment-pos",
+      "kernel": "mounted",
       "why": "the counter's two ways to pay: `pos_card` (the card machine already said yes) and `pos_pix` (the QR on the totem's screen). It is on THIS list and not on `apps` because no Forge release carries it — and it had to be written rather than reused, because `payment-reference`'s PIX mode is UNIVERSAL app config: turning it to auto-approve for the counter would take the live 'aguardando pagamento' away from the coffee store, which is a thing this demo exists to show. It is also the species' other specimen and its stronger one — `demo-setup` is UI, this is a payment DRIVER."
     }
   ]

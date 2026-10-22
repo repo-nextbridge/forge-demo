@@ -1,10 +1,12 @@
-# THE DEMO'S BAKE — the five images this box bakes, out of the Forge release it pins, published to this
-# repository's GHCR by digest, and the `forge.lock` that pins them (plus the admin the RELEASE published, by
-# its digest — KP-D1: the admin is pulled, not baked) handed back as an artifact.
+# THE DEMO'S BAKE — the four images this box bakes, out of the Forge release it pins, published to this
+# repository's GHCR by digest, and the `forge.lock` that pins them (plus the kernel and the admin the RELEASE
+# published, by their digests — KP-D1/KP-D2: both are pulled, not baked) handed back as an artifact.
 #
 # ★ KP-D1 — THIS JOB NEVER PULLS THE ADMIN. It only copies the admin's ref out of the release's lock (the same
 # file it already downloads for the oven) into the lock it writes; the box pulls it at deploy time with a
 # short-lived token (bin/deploy.sh, step 3). No new credential here.
+# ★ KP-D2 (Forge v0.3.4) — NOR THE KERNEL, the same way: this box's apps reach it MOUNTED (`extensions/`,
+# committed), and the lock carries `composition.mounted`; the gate step below refuses a lock without it.
 #
 # ★ v032/C (spec v032, decision 6). The recipe is `bin/bake.sh` — the SAME script a bench runs through
 # `bin/bake-local.sh`; this file only supplies what a bench does not have: the release's oven (read from the
@@ -113,7 +115,7 @@ jobs:
       - name: Install the release's tools
         run: npm ci --no-audit --no-fund
 
-      - name: Bake the five images and write the lock (the admin is the release's)
+      - name: Bake the four images and write the lock (the kernel and the admin are the release's)
         env:
           OVEN_IMAGE: ${{ steps.oven.outputs.ref }}
           FORGE_RELEASE: ${{ steps.release.outputs.tag }}
@@ -129,6 +131,7 @@ jobs:
       - name: The lock passes the deploy's gate and fence
         run: |
           . bin/lock-gate.sh && lock_gate "$RUNNER_TEMP/forge.lock" prod no
+          lock_gate_mounted "$RUNNER_TEMP/forge.lock" composition.json
           node_modules/.bin/forge-lock-provenance --root . --lock "$RUNNER_TEMP/forge.lock"
 
       - uses: actions/upload-artifact@v4

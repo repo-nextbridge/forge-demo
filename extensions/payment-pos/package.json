@@ -1,0 +1,11 @@
+{
+  "name": "@forge/ext-payment-pos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "forge": {
+    "manifest": "./forge-extension.json",
+    "kernel": ">=0.3.4 <0.4.0",
+    "sourceDigest": "sha256:022c67388cb3b956345116556f4b4d17404d589f46cea75994211d947a68aa48"
+  }
+}

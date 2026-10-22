@@ -156,18 +156,23 @@ services:
       FORGE_SEED_DATASET_DIR: ${FORGE_SEED_DATASET_DIR:-}
       # Where the photo payload is hydrated to, kept OFF the read-only dataset mount. See the volumes above.
       FORGE_SEED_PHOTOS_DIR: ${FORGE_SEED_PHOTOS_DIR:-}
+      # How hard `seed-demo` leans on the database (Forge v0.3.4; empty = full speed). Forwarded so the knob
+      # `.env.example` names reaches the one-shot — `birth-worker` extends this service and inherits it.
+      FORGE_SEED_CONCURRENCY: ${FORGE_SEED_CONCURRENCY:-}
       FORGE_REF_TENANT: ${FORGE_REF_TENANT:-}
       FORGE_REF_STORE_HANDLE: ${FORGE_REF_STORE_HANDLE:-}
       FORGE_REF_STORE_NAME: ${FORGE_REF_STORE_NAME:-}
       FORGE_ADMIN_SEED_EMAIL: ${FORGE_ADMIN_SEED_EMAIL:-}
       FORGE_ADMIN_SEED_NAME: ${FORGE_ADMIN_SEED_NAME:-}
-      # ★★ THE MOUNT FOR AN APP THIS BOX WANTS WITHOUT REBUILDING (FORGE_EXTENSIONS_DIR). It is EMPTY today and
-      # that is the state, not an omission: this box's own apps used to arrive this way and are now COMPOSED
-      # into the images (`instanceApps` in composition.json), which is what gives one a screen — a mounted app reaches
-      # the kernel and renders nothing, because a front draws an app only from the composition. The two must
-      # never both carry the same app: a composed id mounted on top of itself is a duplicate the kernel
-      # refuses at boot. The seam stays because a box may still want an app of ACTIONS ONLY, with no rebuild.
-      FORGE_EXTENSIONS_DIR: ${FORGE_EXTENSIONS_DIR:-}
+      # ★★★ KP-D2 (Forge v0.3.4) — THE MOUNT IS HOW THIS BOX'S OWN APPS REACH THE KERNEL. The kernel is the
+      # RELEASE's, pulled by digest, and it has never seen `demo-setup` or `payment-pos`: composition.json declares
+      # both `"kernel": "mounted"` and their kernel half arrives as `extensions/<id>` (bin/pack-apps.sh, committed),
+      # bind-mounted below. Their fronts' half is still COMPOSED into the storefront and checkout this box bakes.
+      # ⚠️ THE DEFAULT IS THE MOUNT, NOT EMPTY (the template's `:-`), ON PURPOSE: a box whose `.env` lacks the key —
+      # or sets it empty — would boot a kernel with no payment-pos (the counter offers no method) and no
+      # demo-setup, and say nothing. `:-` also turns an explicit empty into the mount. ⛔ An app the images
+      # COMPOSE must never be in `extensions/` too: a duplicate id stops the boot (composed-apps-not-mounted guard).
+      FORGE_EXTENSIONS_DIR: ${FORGE_EXTENSIONS_DIR:-/app/extensions}
       # Busting the storefront's cache when something a shopper can see changes. Both are needed.
       # ⚠️ This default is the reference vitrine alone; `compose.override.yml` (kernel) replaces it with the
       # list of EVERY front of this box that caches (POS-DEMO-PURGE) — that is the value a box runs with.
