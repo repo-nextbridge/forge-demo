@@ -1029,6 +1029,7 @@ resposta que falta**.
 | a **home do admin** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk30/§11 — a ordem dos widgets, contra o que o dataset declara |
 | os **blocos dos apps** | passo 12 · `bin/verify-seed.mjs`, **por tenant** | pk31/§6 — todo bloco que um app instalado **declara** está vivo em alguma loja |
 | os **apps desta caixa nos FRONTS desta caixa** | `bash bin/test.sh` (`bin/front-app-reach.guard.mjs`) | pk32/d1 — todo componente de front que um app **nosso** declara, alcançável pelo front que tem de desenhá-lo |
+| o **tempo de resposta na borda** | `node bin/edge-ttfb.mjs` (§6.3) | sprint v0.4/01 — TTFB p50/p95 por loja e tipo de rota, e **quem** respondeu (borda, cache do Next, origem). É régua, não veredicto: não falha |
 
 ★★ **pk30/§11 — a ORDEM DOS WIDGETS da home do admin, e ela era decidida pela ordem de instalação dos apps.**
 Medido em 10/09 nos dois admins: o bloco de últimas assinaturas vinha no **topo** do quadro da demo — o
@@ -1353,3 +1354,52 @@ voltam a ser mentira.
 ⇒ **Na prática, para quem opera:** a demo não tem porta de entrada. Se aparecer uma, o nascimento e o passo
 14-bis dizem **qual loja, qual app e o que a instalação custa**, antes de a caixa ser entregue.
 
+### 6.3 ★★ A régua de TTFB da borda — `bin/edge-ttfb.mjs` (sprint v0.4/01, 23/10)
+
+O produto está levando o HTML da vitrine para a borda (card `EDGE-CDN-HTML`); a demo só liga isso quando
+adotar a próxima versão. **O "antes × depois" só existe se a régua existir antes** — então ela foi escrita e
+rodada em 23/10 (o ANTES, `dados/materiais/briefs-v04/s01/ttfb-antes-2026-10-23.json` no repositório de
+materiais) e é rodada **igual** depois do corte. Só GET público, sem cookie, sem login, em sequência.
+
+```bash
+node bin/edge-ttfb.mjs                                    # as 4 vitrines públicas, 10 amostras por rota
+node bin/edge-ttfb.mjs --host cafe.forgecommerce.pro --samples 20
+node bin/edge-ttfb.mjs --label vpn-frankfurt --json fra.json   # ★ de longe: rode PELA VPN e dê o --label
+node bin/edge-ttfb.mjs --check-flight                     # o envenenamento do RSC, sem cronometrar
+node bin/edge-ttfb.mjs --help
+```
+
+**As rotas.** Por loja: `home` (`/`), `category`, `pdp`, `faq` (`/faq`) e `checkout` (`/checkout`). Categoria e
+PDP são **descobertas pelos links da home** — nada fixo no código: a PDP é a folha mais funda linkada, a
+categoria é a listagem onde ela mora. Loja que linka produto direto da home (o café) fica **sem categoria**, e a
+linha diz `not discovered from the home` em vez de medir outra coisa. Um link que redireciona na própria loja
+(o café linka `/p/<slug>`, que responde `308 → /pra_levar/<slug>`) é seguido **uma vez** na descoberta e as
+amostras vão para a página que renderiza; a tabela marca com `↪` e o JSON guarda `linkedAs`.
+
+**As colunas** (ms; cada amostra abre conexão **nova**, então DNS/TCP/TLS são pagos todas as vezes):
+
+| coluna | o que quer dizer |
+|---|---|
+| `status` | o HTTP da resposta; se variou entre amostras, `200×9 503×1` |
+| `ttfb p50` / `ttfb p95` | do início do pedido ao **primeiro byte** da resposta — percentil por posição (de 10 amostras, a 5ª e a 10ª) |
+| `dns` · `conn` · `tls` · `total p50` | as fases do socket (`lookup`, `connect`, `secureConnect`) e o pedido inteiro, corpo incluído — p50 |
+| `cf-cache-status` | o que a **borda** fez: `DYNAMIC`/`BYPASS` = não guardou; `HIT`/`MISS`/`STALE`… = guardou; `—` = **não há borda** na frente |
+| `age` | há quantos segundos a cópia servida existe num cache compartilhado |
+| `x-nextjs-cache` | o que o **cache do Next** (na origem) fez: `HIT`, `STALE`, `MISS` |
+| `colo` | o sufixo do `cf-ray` — o aeroporto do PoP da Cloudflare que atendeu (`GRU`, `FRA`…); `—` = sem borda |
+| `cache-control` | a ordem que a origem deu |
+
+O topo da saída carimba **quando**, **de onde** (IP público, país e PoP, lidos do `/cdn-cgi/trace` da própria
+borda medida — nenhum serviço de terceiro; ASN não sai, porque não dá para saber assim) e o `--label` que você
+der. A versão da demo **não** sai: em 23/10 nenhuma face pública a expõe (nem os cabeçalhos das vitrines, nem o
+`/health` do kernel).
+
+**`--check-flight`.** Para home, categoria e PDP: um GET com `RSC: 1` e **sem** `?_rsc=` — o pedido que pode pôr
+um payload Flight debaixo da chave de cache do HTML. Relata `content-type`, `cache-control`, `cdn-cache-control`
+(este vence, RFC 9213), o `cf-cache-status` de dois pedidos seguidos e um veredicto. Em 23/10 o esperado (e o
+medido) é *cacheável pelo cabeçalho, a borda não guarda (DYNAMIC)*; depois do corte, o esperado é `no-store`
+para a borda (`SAFE`). `POISONABLE` é a linha que não pode aparecer.
+
+⚠️ **O que ela não é.** Não é teste de carga e não roda em laço: 4 lojas × 5 rotas × 10 amostras ≈ 200 GETs.
+Fala HTTP/1.1 (o navegador fala h2/h3) — igual nas duas pontas, que é o que importa para comparar. A parte pura
+(percentil, descoberta, `cf-ray`, veredicto de cache) é testada em `bin/edge-ttfb.test.mjs`, no `bash bin/test.sh`.
