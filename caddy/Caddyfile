@@ -178,6 +178,19 @@
 # every shop hostname against every other, so a door added to one and not the rest is red the same day.
 #
 #   {args[0]} — the compose service serving the VITRINE at this hostname (`storefront`, or a fork of it).
+# TEMPORARY (2026-10-26) - crawlers off /search. meta-externalagent hit /search with facet combinations at
+# ~3500/h from 201 addresses and stalled the kernel. Product card: robots.txt and the facet links must keep
+# crawlers off faceted search. Remove this snippet and its three imports once the demo adopts that fix.
+(bot_search_block) {
+	@bot_search {
+		path /search /search/*
+		header_regexp User-Agent (?i)(bot|crawler|spider|externalagent|facebookexternalhit|slurp)
+	}
+	handle @bot_search {
+		respond "Search is not open to crawlers." 403
+	}
+}
+
 (forge_shop_host) {
 	# Who may reach the control face. Empty is not something `client_ip` accepts, so "nobody" is written as
 	# loopback — a source address no request arriving over the internet can have. Put your VPN / bastion CIDRs
@@ -322,6 +335,7 @@
 	import forwarded_client
 	import forge_noindex
 	import access_log
+	import bot_search_block
 	import forge_shop_host storefront
 }
 
@@ -332,6 +346,7 @@
 	import forwarded_client
 	import forge_noindex
 	import access_log
+	import bot_search_block
 	import forge_shop_host storefront
 }
 
@@ -343,6 +358,7 @@
 	import forwarded_client
 	import forge_noindex
 	import access_log
+	import bot_search_block
 	import forge_shop_host storefront-coffee
 	# ⚠️⚠️ THE ONE DOOR THIS HOSTNAME NEEDS AND ITS SIBLINGS DO NOT, AND ITS ABSENCE IS SILENT. The fork
 	# carries `assetPrefix: '/_coffee'` in its image (storefront-coffee/next.config.mjs) — unconditionally,
